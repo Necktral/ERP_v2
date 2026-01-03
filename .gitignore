@@ -31,3 +31,6 @@ yarn-error.log*
 
 # local .env files
 .env.local*
+
+# No subir backups
+ERP_CRM_backup_*.tar.gz
