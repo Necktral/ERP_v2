@@ -1,0 +1,70 @@
+name: erp_crm
+
+services:
+  db:
+    image: postgres:16.2-alpine
+    container_name: erpcrm_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Opcional (más seguro/estricto al inicializar):
+      # POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    image: python:3.10-slim
+    container_name: erpcrm_backend
+    restart: unless-stopped
+    working_dir: /app/login_module
+    env_file:
+      - ./.env
+    environment:
+      # IMPORTANTÍSIMO: dentro de Docker, el host de Postgres NO es 127.0.0.1.
+      # El settings por default usa 127.0.0.1
+      DB_HOST: db
+      DB_PORT: "5432"
+
+      # (redundante pero explícito; manage.py ya setea dev)
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+
+      # Para imports consistentes (tu código vive en /app/src)
+      PYTHONPATH: /app/login_module/src
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    command: >
+      bash -lc "
+        python -m pip install --upgrade pip &&
+        pip install -r /app/requirements/dev.txt &&
+        python src/manage.py migrate --noinput &&
+        python src/manage.py runserver 0.0.0.0:8000
+      "
+
+  # Herramienta opcional para inspeccionar DB por navegador:
+  adminer:
+    image: adminer:4.8.1
+    container_name: erpcrm_adminer
+    restart: unless-stopped
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

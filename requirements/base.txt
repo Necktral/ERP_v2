@@ -1,3 +1,5 @@
+# Seguridad y firmas
+cryptography==42.0.2
 # Framework + API
 Django==5.2.9
 djangorestframework==3.16.1
