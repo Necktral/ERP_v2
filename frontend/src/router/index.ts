@@ -65,6 +65,15 @@ export default route(function () {
       return true;
     }
 
+    const required = to.meta?.requiredPermissions as string[] | undefined;
+    if (required && required.length > 0) {
+      const companyId = ctx.activeCompanyId;
+      if (!companyId) return { path: '/select-context' };
+
+      const ok = required.every((p) => acl.hasPermission(companyId, p));
+      if (!ok) return { path: '/403' };
+    }
+
     return true;
   });
 

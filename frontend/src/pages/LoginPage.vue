@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-type ApiErrorBody = { detail?: string } | string;
 import { isAxiosError } from 'axios';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -56,8 +55,8 @@ const auth = useAuthStore();
 const acl = useAclStore();
 const ctx = useContextStore();
 
-const username = ref('loggin_user');
-const password = ref('loggin_pass_change_me');
+const username = ref('');
+const password = ref('');
 
 const loading = ref(false);
 const errorMsg = ref<string | null>(null);
@@ -83,10 +82,26 @@ async function onSubmit() {
     await router.replace('/select-context');
   } catch (e: unknown) {
     if (isAxiosError(e)) {
-      const data: ApiErrorBody = e.response?.data;
-      const detail = typeof data === 'string' ? data : data?.detail;
-
-      errorMsg.value = detail ?? e.message ?? 'Error de login';
+      const data: unknown = e.response?.data;
+      let detail = '';
+      if (typeof data === 'string') {
+        detail = data;
+      } else if (
+        typeof data === 'object' &&
+        data !== null &&
+        'non_field_errors' in data &&
+        Array.isArray((data as Record<string, unknown>).non_field_errors)
+      ) {
+        detail = (data as { non_field_errors: string[] }).non_field_errors[0] ?? '';
+      } else if (
+        typeof data === 'object' &&
+        data !== null &&
+        'detail' in data &&
+        typeof (data as Record<string, unknown>).detail === 'string'
+      ) {
+        detail = (data as { detail: string }).detail;
+      }
+      errorMsg.value = detail || e.message || 'Error de login';
     } else if (e instanceof Error) {
       errorMsg.value = e.message;
     } else {

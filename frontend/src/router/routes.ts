@@ -4,8 +4,14 @@ import MainLayout from 'layouts/MainLayout.vue';
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
-    component: () => import('pages/LoginPage.vue'),
-    meta: { requiresAuth: false },
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/LoginPage.vue'),
+        meta: { requiresAuth: false },
+      },
+    ],
   },
 
   {
@@ -28,6 +34,24 @@ const routes: RouteRecordRaw[] = [
         path: '403',
         component: () => import('pages/ForbiddenPage.vue'),
         meta: { requiresAuth: true, requiresContext: false },
+      },
+      {
+        path: 'org/company-profile',
+        component: () => import('pages/OrgCompanyProfilePage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['org.company.update'], // backend exige update incluso para GET
+        },
+      },
+      {
+        path: 'org/branches',
+        component: () => import('pages/OrgBranchesPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['org.branch.read'],
+        },
       },
     ],
   },
