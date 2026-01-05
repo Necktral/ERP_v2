@@ -53,6 +53,24 @@ const routes: RouteRecordRaw[] = [
           requiredPermissions: ['org.branch.read'],
         },
       },
+      {
+        path: 'hr/positions',
+        component: () => import('pages/HrPositionsPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['hr.position.read'],
+        },
+      },
+      {
+        path: 'hr/employees',
+        component: () => import('pages/HrEmployeesPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['hr.employee.read'],
+        },
+      },
     ],
   },
 

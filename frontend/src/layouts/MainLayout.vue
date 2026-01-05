@@ -31,6 +31,16 @@
 
         <q-separator />
 
+        <q-item v-if="canHrPositions" clickable v-ripple to="/hr/positions">
+          <q-item-section>HR · Puestos</q-item-section>
+        </q-item>
+
+        <q-item v-if="canHrEmployees" clickable v-ripple to="/hr/employees">
+          <q-item-section>HR · Empleados</q-item-section>
+        </q-item>
+
+        <q-separator />
+
         <q-item clickable v-ripple to="/select-context">
           <q-item-section>Cambiar contexto</q-item-section>
         </q-item>
@@ -61,6 +71,16 @@ const ctxLabel = computed(() => {
   const c = acl.companyName(ctx.activeCompanyId) ?? ctx.activeCompanyId ?? '—';
   const b = acl.branchName(ctx.activeCompanyId, ctx.activeBranchId) ?? ctx.activeBranchId ?? '—';
   return `Company: ${c} | Branch: ${b}`;
+});
+
+const canHrPositions = computed(() => {
+  if (!ctx.activeCompanyId) return false;
+  return acl.hasPermission(ctx.activeCompanyId, 'hr.position.read');
+});
+
+const canHrEmployees = computed(() => {
+  if (!ctx.activeCompanyId) return false;
+  return acl.hasPermission(ctx.activeCompanyId, 'hr.employee.read');
 });
 
 const canCompanyProfile = computed(() => {
