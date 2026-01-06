@@ -5,6 +5,10 @@
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
         <q-toolbar-title>Necktral Console</q-toolbar-title>
 
+        <q-badge v-if="contextLabel" outline class="q-mr-sm">
+          {{ contextLabel }}
+        </q-badge>
+
         <!-- UI Controls -->
         <q-btn flat dense round icon="tune" aria-label="Ajustes de interfaz">
           <q-menu>
@@ -162,7 +166,7 @@ const density = computed({
 });
 
 const themeOptions = [
-  { label: 'Auto', value: 'auto' },
+  { label: 'Sistema', value: 'system' },
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
 ];
@@ -171,6 +175,16 @@ const densityOptions = [
   { label: 'Std', value: 'comfortable' }, // "Std" para que quepa mejor si es btn-toggle
   { label: 'Compact', value: 'compact' },
 ];
+
+const contextLabel = computed(() => {
+  const c = ctx.activeCompanyId;
+  if (!c) return null;
+  const companyName = acl.companyName(c) ?? c;
+  const b = ctx.activeBranchId;
+  if (!b) return companyName;
+  const branchName = acl.branchName(c, b) ?? b;
+  return `${companyName} · ${branchName}`;
+});
 
 async function onLogout() {
   await auth.logout();

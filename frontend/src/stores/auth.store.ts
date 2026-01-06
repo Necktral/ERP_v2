@@ -72,14 +72,21 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       const refresh = this.refreshToken;
+      const access = this.accessToken;
 
       // limpiar stores primero para cortar UI rápido
       this.hardClearLocal();
 
       // y luego intentar avisar al backend (si falla, no pasa nada)
-      if (refresh) {
+      if (refresh && access) {
         try {
-          await authApi.post('/auth/logout/', { refresh });
+          // Usamos authApi pero inyectamos el header manualmente
+          // (porque hardClearLocal ya borró el token del store)
+          await authApi.post(
+            '/auth/logout/',
+            { refresh },
+            { headers: { Authorization: `Bearer ${access}` } },
+          );
         } catch {
           // intencional: no bloqueamos el logout local
         }

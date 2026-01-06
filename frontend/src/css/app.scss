@@ -80,3 +80,52 @@ body {
 .q-separator {
   background: var(--n-border);
 }
+
+/* ---------------------------
+   Layout containers (PC-first)
+   --------------------------- */
+.app-container {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.app-container--padded {
+  padding: 16px;
+}
+
+/* Max widths (ajustable) */
+.app-container--sm {
+  max-width: 720px;
+}
+.app-container--md {
+  max-width: 960px;
+}
+.app-container--lg {
+  max-width: 1200px;
+}
+.app-container--xl {
+  max-width: 1440px;
+}
+
+/* ---------------------------
+   App container: PC-first
+   --------------------------- */
+.app-container {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.app-container--fluid {
+  max-width: none;
+}
+
+/* Card style enterprise (sin sombras agresivas) */
+.app-card {
+  background: var(--n-surface-card);
+  border: 1px solid var(--n-border);
+  box-shadow: none;
+}
+
+.app-muted {
+  color: var(--n-text-muted);
+}
