@@ -50,7 +50,7 @@ import environ
 # base.py está en: backend/src/config/settings/base.py
 # BASE_DIR = backend/src
 BASE_DIR = Path(__file__).resolve().parents[2]   # -> backend/src
-ENV_FILE = BASE_DIR.parent / ".env"              # -> backend/.env
+ENV_FILE = BASE_DIR.parent.parent / ".env"       # -> ERP_CRM/.env
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -58,21 +58,31 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
-    AUDIT_HMAC_KEY=(str, "dev-audit-key-change-me"),
 )
 
 if ENV_FILE.exists():
-    environ.Env.read_env(str(ENV_FILE))
-
+    env.read_env(str(ENV_FILE))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 
-# Configuración de auditoría
-AUDIT_SCHEMA_VERSION = 1
-AUDIT_MODULE_NAME = "AUTH"
+# CORS / CSRF para PWA
+CORS_ALLOWED_ORIGINS = env("DJANGO_CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = env("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-company-id",
+    "x-branch-id",
+    "x-data-company-id",
+    "x-data-branch-id",
+]
+
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
+AUDIT_MODULE_NAME = "LOGIN_MODULE"
+AUDIT_SCHEMA_VERSION = 1
 
 TIME_ZONE = "America/Managua"
 USE_TZ = True

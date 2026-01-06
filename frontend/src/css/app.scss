@@ -1,1 +1,82 @@
 // app global css in SCSS form
+
+/* ---------------------------
+   Necktral Console - UI Foundation (Theme + Density)
+   --------------------------- */
+
+:root {
+  /* Surfaces (Light) */
+  --n-surface-page: #f6f7f9;
+  --n-surface-card: #ffffff;
+  --n-surface-elevated: #ffffff;
+
+  /* Text (Light) */
+  --n-text: rgba(0, 0, 0, 0.87);
+  --n-text-muted: rgba(0, 0, 0, 0.6);
+
+  /* Borders / Focus */
+  --n-border: rgba(0, 0, 0, 0.12);
+  --n-border-strong: rgba(0, 0, 0, 0.2);
+  --n-focus: #1976d2;
+
+  /* Shape / spacing */
+  --n-radius: 10px;
+}
+
+/* Quasar agrega body--dark cuando Dark.set(true) está activo */
+body.body--dark {
+  --n-surface-page: #0f1115;
+  --n-surface-card: #151923;
+  --n-surface-elevated: #1a2030;
+
+  --n-text: rgba(255, 255, 255, 0.92);
+  --n-text-muted: rgba(255, 255, 255, 0.68);
+
+  --n-border: rgba(255, 255, 255, 0.14);
+  --n-border-strong: rgba(255, 255, 255, 0.22);
+  --n-focus: #90caf9;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--n-surface-page);
+  color: var(--n-text);
+}
+
+/* Contenedor base para páginas (PC-first) */
+.app-page-container {
+  background: var(--n-surface-page);
+}
+
+/* Cards más “enterprise” */
+.q-card {
+  border-radius: var(--n-radius);
+}
+
+/* Focus accesible y consistente */
+:focus-visible {
+  outline: 2px solid var(--n-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------
+   Density: Compact (ERP tables)
+   --------------------------- */
+.density-compact .q-table thead tr th {
+  padding: 8px 10px;
+}
+.density-compact .q-table tbody td {
+  padding: 6px 10px;
+}
+.density-compact .q-btn--dense .q-btn__content {
+  line-height: 1.1;
+}
+
+/* Separadores y bordes suaves */
+.q-separator {
+  background: var(--n-border);
+}

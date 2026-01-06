@@ -30,7 +30,18 @@ yarn-error.log*
 *.sln
 
 # local .env files
+.env
 .env.local*
+
+# Python
+system_wis/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
 
 # No subir backups
 ERP_CRM_backup_*.tar.gz
