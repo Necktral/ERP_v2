@@ -1,8 +1,10 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import password_validation
 from rest_framework import serializers
 
-from apps.rbac.models import UserRole
+from apps.rbac.models import UserRole, Role
 from apps.rbac.selectors import get_effective_permissions
+from apps.iam.models import OrgUnit
 
 User = get_user_model()
 
@@ -22,25 +24,83 @@ class LoginSerializer(serializers.Serializer):
         return attrs
 
 
+class BootstrapInitSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
+    password = serializers.CharField(write_only=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        username = attrs.get("username", "").strip()
+        if not username:
+            raise serializers.ValidationError({"username": "Requerido"})
+        if User.objects.filter(username=username).exists():
+            raise serializers.ValidationError({"username": "Ya existe"})
+
+        email = attrs.get("email", None)
+        if email:
+            email = str(email).strip()
+            if User.objects.filter(email=email).exists():
+                raise serializers.ValidationError({"email": "Ya existe"})
+            attrs["email"] = email
+
+        # Password validators (mínimo robusto)
+        password_validation.validate_password(attrs["password"])
+        return attrs
+
+
+class BootstrapOrgSerializer(serializers.Serializer):
+    holding_name = serializers.CharField()
+    company_name = serializers.CharField()
+    company_tax_id = serializers.CharField(required=False, allow_blank=True)
+    branch_name = serializers.CharField()
+    branch_address = serializers.CharField(required=False, allow_blank=True)
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        newp = attrs["new_password"]
+        conf = attrs.get("confirm_password", "")
+        if conf and conf != newp:
+            raise serializers.ValidationError({"confirm_password": "No coincide"})
+        password_validation.validate_password(newp)
+        return attrs
+
+
 class MeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()
     email = serializers.EmailField(allow_null=True)
     roles = serializers.ListField(child=serializers.CharField())
     permissions = serializers.ListField(child=serializers.CharField())
+    must_change_password = serializers.BooleanField()
+    is_setup_complete = serializers.BooleanField()
 
     @staticmethod
     def from_user(user):
-        role_names = list(
-            UserRole.objects.filter(user=user)
-            .select_related("role")
-            .values_list("role__name", flat=True)
+        role_names = (
+            Role.objects.filter(assignments__user=user, assignments__is_active=True)
+            .values_list("name", flat=True)
         )
         perms = get_effective_permissions(user)
+
+        # Setup global: si existe HOLDING activo, el sistema ya tiene onboarding base hecho
+        is_setup_complete = OrgUnit.objects.filter(
+            unit_type=OrgUnit.UnitType.HOLDING,
+            is_active=True,
+        ).exists()
+
         return {
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "roles": sorted(set(role_names)),
             "permissions": perms,
+            "must_change_password": bool(getattr(user, "must_change_password", False)),
+            "is_setup_complete": bool(is_setup_complete),
         }

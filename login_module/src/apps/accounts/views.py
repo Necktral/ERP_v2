@@ -1,4 +1,5 @@
 from django.http import QueryDict
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -8,7 +9,20 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.audit.writer import write_event
 
-from .serializers import LoginSerializer, MeSerializer
+from apps.iam.models import AdminGrant, OrgUnit, UserMembership
+from apps.org.models import BranchProfile, CompanyProfile
+from apps.rbac.models import Role, RoleAssignment
+from apps.rbac.seed_v01 import seed_rbac_v01
+
+from .serializers import (
+    LoginSerializer,
+    MeSerializer,
+    BootstrapInitSerializer,
+    BootstrapOrgSerializer,
+    PasswordChangeSerializer,
+)
+
+User = get_user_model()
 
 
 def _extract_login_reason_code(serializer_errors) -> str:
@@ -51,6 +65,9 @@ class LoginView(APIView):
 
         user = serializer.validated_data["user"]
         refresh = RefreshToken.for_user(user)
+
+        # Nota: must_change_password se evalúa en /me y el frontend redirige a /password-change
+        # No alteramos tokens aquí.
 
         write_event(
             request=request,
@@ -101,7 +118,8 @@ class RefreshView(TokenRefreshView):
 
 
 class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    # Sin permiso chequeado severamente, pero idealmente IsAuthenticated
+    permission_classes = [AllowAny]
 
     def post(self, request):
         refresh = request.data.get("refresh")
@@ -143,6 +161,202 @@ class LogoutView(APIView):
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+class BootstrapStatusView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        has_user = User.objects.exists()
+        is_fresh = not has_user
+
+        has_holding = OrgUnit.objects.filter(unit_type=OrgUnit.UnitType.HOLDING, is_active=True).exists()
+        has_company = OrgUnit.objects.filter(unit_type=OrgUnit.UnitType.COMPANY, is_active=True).exists()
+        setup_required = (not has_holding) or (not has_company)
+
+        return Response(
+            {"is_fresh": bool(is_fresh), "setup_required": bool(setup_required)},
+            status=status.HTTP_200_OK,
+        )
+
+
+class BootstrapInitView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # contrato: solo se permite cuando no hay usuarios
+        if User.objects.exists():
+            return Response({"detail": "Sistema ya inicializado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        s = BootstrapInitSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        v = s.validated_data
+
+        user = User.objects.create_user(
+            username=v["username"].strip(),
+            email=(v.get("email") or None),
+            password=v["password"],
+            first_name=v.get("first_name", ""),
+            last_name=v.get("last_name", ""),
+        )
+        user.is_staff = True
+        user.is_superuser = True
+        user.must_change_password = False
+        user.save(update_fields=["is_staff", "is_superuser", "must_change_password"])
+
+        write_event(
+            request=request,
+            event_type="AUTH_BOOTSTRAP_ADMIN_CREATED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"username": user.username},
+        )
+
+        return Response({"id": user.id}, status=status.HTTP_201_CREATED)
+
+
+class BootstrapOrgView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        s = BootstrapOrgSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        v = s.validated_data
+
+        # contrato inicial: solo 1 holding en bootstrap
+        if OrgUnit.objects.filter(unit_type=OrgUnit.UnitType.HOLDING, is_active=True).exists():
+            return Response({"detail": "Bootstrap ya realizado."}, status=status.HTTP_409_CONFLICT)
+
+        from django.db import transaction
+
+        with transaction.atomic():
+            # 1) Seed RBAC (idempotente)
+            seed_rbac_v01()
+
+            # 2) Holding
+            holding = OrgUnit.objects.create(
+                unit_type=OrgUnit.UnitType.HOLDING,
+                name=v["holding_name"].strip(),
+                code="",
+                is_active=True,
+            )
+
+            # 3) Company
+            company = OrgUnit.objects.create(
+                unit_type=OrgUnit.UnitType.COMPANY,
+                parent=holding,
+                name=v["company_name"].strip(),
+                code="",
+                is_active=True,
+            )
+
+            cp, _ = CompanyProfile.objects.get_or_create(company=company)
+            # Completar campos pedidos por el wizard
+            cp.legal_name = v["company_name"].strip()
+            cp.tax_id = (v.get("company_tax_id") or "").strip()
+            cp.save(update_fields=["legal_name", "tax_id"])
+
+            # 4) Branch inicial
+            branch = OrgUnit.objects.create(
+                unit_type=OrgUnit.UnitType.BRANCH,
+                parent=company,
+                name=v["branch_name"].strip(),
+                code="",
+                is_active=True,
+            )
+
+            bp, _ = BranchProfile.objects.get_or_create(branch=branch)
+            bp.address = (v.get("branch_address") or "").strip()
+            bp.save(update_fields=["address"])
+
+            # 5) Membership a COMPANY (esto habilita accesibilidad en ACL snapshot)
+            UserMembership.objects.get_or_create(
+                user=request.user,
+                org_unit=company,
+                defaults={"is_active": True},
+            )
+
+            # 6) RoleAssignment SYSTEM: company_admin (scope COMPANY)
+            role = Role.objects.filter(name="company_admin").first()
+            if not role:
+                return Response({"detail": "Falta role 'company_admin'. Ejecuta seed_rbac_v01."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            RoleAssignment.objects.get_or_create(
+                user=request.user,
+                role=role,
+                org_unit=company,
+                origin=RoleAssignment.Origin.SYSTEM,
+                defaults={"is_active": True, "origin_ref": "bootstrap"},
+            )
+
+            # 7) AdminGrants (scoped a COMPANY, completos)
+            for cap, _ in AdminGrant.Capability.choices:
+                AdminGrant.objects.get_or_create(
+                    user=request.user,
+                    org_unit=company,
+                    capability=cap,
+                    defaults={"applies_to_subtree": True, "is_active": True},
+                )
+
+        write_event(
+            request=request,
+            event_type="IAM_BOOTSTRAP_ORG_CREATED",
+            reason_code="OK",
+            actor_user=request.user,
+            subject_type="COMPANY",
+            subject_id=str(company.id),
+            metadata={"holding_id": holding.id, "company_id": company.id, "branch_id": branch.id},
+        )
+
+        return Response(
+            {"holding_id": holding.id, "company_id": company.id, "branch_id": branch.id},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordChangeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        s = PasswordChangeSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        v = s.validated_data
+
+        user = request.user
+        if not user.check_password(v["old_password"]):
+            write_event(
+                request=request,
+                event_type="AUTH_PASSWORD_CHANGE_FAILURE",
+                reason_code="INVALID_OLD_PASSWORD",
+                actor_user=user,
+                subject_type="USER",
+                subject_id=str(user.id),
+                metadata={"stage": "password_change"},
+            )
+            return Response({"old_password": "Incorrecta"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(v["new_password"])
+        if hasattr(user, "must_change_password"):
+            user.must_change_password = False
+            user.save(update_fields=["password", "must_change_password"])
+        else:
+            user.save(update_fields=["password"])
+
+        write_event(
+            request=request,
+            event_type="AUTH_PASSWORD_CHANGED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"stage": "password_change"},
+        )
+
+        return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
 class MeView(APIView):

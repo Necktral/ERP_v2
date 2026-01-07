@@ -22,6 +22,8 @@ class JWTAuthWithOrgContext(JWTAuthentication):
         "/api/auth/logout/",
         "/api/auth/me/",
         "/api/auth/me/acl/",
+        "/api/auth/bootstrap/",
+        "/api/auth/password/",
         "/api/schema/",
         "/api/docs/",
     )
