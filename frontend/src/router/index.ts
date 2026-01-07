@@ -31,6 +31,47 @@ export default route(function () {
     auth.initFromStorage();
     ctx.initFromStorage();
 
+    // Ensure user details are loaded if authenticated
+    if (auth.isAuthenticated && !auth.user) {
+      await auth.fetchMe();
+    }
+
+    // --- Onboarding / Bootstrap Logic ---
+
+    // 0) Unauthenticated: Check for system freshness (First run)
+    if (!auth.isAuthenticated) {
+      // Only check if we are not already going there and haven't checked recently
+      // Ideally we check this once per app load.
+      // We can check if we are heading to login.
+      if (to.path === '/login' || to.path === '/') {
+        await auth.checkBootstrap();
+        if (auth.bootstrapState.is_fresh) {
+          return { path: '/bootstrap' };
+        }
+      }
+    }
+
+    // 0.5) Authenticated: Security & Setup checks
+    if (auth.isAuthenticated) {
+      // Enforce password change
+      if (auth.user?.must_change_password) {
+        if (to.path !== '/password-change' && to.path !== '/logout') {
+          return { path: '/password-change' };
+        }
+      }
+
+      // Enforce setup completion (if user has no companies or explicit flag)
+      // We need ACL loaded to know companies.
+      if (acl.loaded) {
+        // ACL is loaded in step 2 usually, but we check here if loaded
+        if (auth.user?.is_setup_complete === false) {
+          if (!to.path.startsWith('/bootstrap') && to.path !== '/logout') {
+            return { path: '/bootstrap' };
+          }
+        }
+      }
+    }
+
     const requiresAuth = Boolean(to.meta?.requiresAuth);
     const requiresContext = Boolean(to.meta?.requiresContext);
 

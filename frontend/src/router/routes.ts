@@ -3,6 +3,28 @@ import MainLayout from 'layouts/MainLayout.vue';
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/bootstrap',
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/BootstrapWizardPage.vue'),
+        meta: { requiresAuth: false },
+      },
+    ],
+  },
+  {
+    path: '/password-change',
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/ForcePasswordChangePage.vue'),
+        meta: { requiresAuth: true },
+      },
+    ],
+  },
+  {
     path: '/login',
     component: () => import('layouts/AuthLayout.vue'),
     children: [

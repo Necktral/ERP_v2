@@ -38,6 +38,8 @@ const CONTEXT_EXEMPT_PREFIXES = [
   '/auth/logout/',
   '/auth/me/',
   '/auth/me/acl/',
+  '/auth/bootstrap/',
+  '/auth/password/',
   '/schema/',
 ];
 

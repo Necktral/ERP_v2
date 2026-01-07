@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { authApi } from 'src/boot/axios';
+import { api, authApi } from 'src/boot/axios';
 import { clearTokens, readTokens, writeTokens } from 'src/core/storage/auth';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
@@ -13,6 +13,16 @@ export const useAuthStore = defineStore('auth', {
     status: 'anonymous' as 'anonymous' | 'authenticated' | 'refreshing',
     accessToken: null as string | null,
     refreshToken: null as string | null,
+    user: null as null | {
+      id: number;
+      username: string;
+      must_change_password: boolean;
+      is_setup_complete: boolean;
+    },
+    bootstrapState: {
+      is_fresh: false,
+      setup_required: false,
+    },
 
     // lock interno para refresh concurrente
     refreshInFlight: null as Promise<void> | null,
@@ -38,6 +48,28 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = data.refresh;
       this.status = 'authenticated';
       writeTokens({ access: data.access, refresh: data.refresh });
+
+      // Fetch user details immediately to check flags
+      await this.fetchMe();
+    },
+
+    async fetchMe() {
+      try {
+        const { data } = await api.get('/auth/me/');
+        this.user = data;
+      } catch (e) {
+        console.error('Failed to fetch user', e);
+      }
+    },
+
+    async checkBootstrap() {
+      try {
+        const { data } = await authApi.get('/auth/bootstrap/status/');
+        this.bootstrapState = data;
+        return data;
+      } catch {
+        // quiet fail
+      }
     },
 
     async refresh() {

@@ -1,43 +1,87 @@
-# Necktral Console (necktral-frontend)
+# Necktral ERP/CRM
 
-Admin console for Necktral ERP/CRM: secure JWT auth, multi-company context (X-Company-Id), ACL-based navigation, and modules for ORG, HR, RBAC, Audit, and Sync devices.
+Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría, HR, ORG, IAM, sincronización y ciclo de arranque profesional con Docker Compose.
 
-## Install the dependencies
+## 🚀 Guía de Inicio Rápido (Docker)
+
+### 1. Clonar y Configurar
 
 ```bash
-yarn
-# or
+git clone https://github.com/Necktral/Necktral.git
+cd ERP_CRM
+cp .env.example .env  # Ajustar credenciales DB si es necesario
+```
+
+### 2. Levantar Servicios
+
+```bash
+docker compose up -d --build
+```
+
+Esto levantará:
+
+- **Backend**: http://localhost:8000
+- **Base de Datos**: Postgres 16
+
+### 3. Aplicar Migraciones
+
+```bash
+docker compose exec backend python src/manage.py migrate --noinput
+```
+
+### 4. Flujo de Onboarding (Inicialización)
+
+El sistema cuenta con un asistente de instalación automático. **No es necesario crear superusuarios por consola.**
+
+1. Levanta el frontend (ver abajo).
+2. Accede a `http://localhost:3000`.
+3. El sistema detectará que es una instalación fresca y redirigirá automáticamente a `/bootstrap`.
+4. El asistente te guiará para:
+   - Crear el **Administrador Inicial**.
+   - Validar credenciales.
+   - Configurar la estructura organizacional base (**Holding -> Empresa -> Sucursal**).
+
+---
+
+## 💻 Desarrollo Frontend
+
+El frontend está desarrollado en Vue 3 + Quasar.
+
+```bash
+cd frontend
 npm install
+npm run dev
+# Accede a http://localhost:3000
 ```
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
+> El frontend detectará automáticamente si el backend requiere configuración inicial.
 
-```bash
-quasar dev
-```
+---
 
-### Lint the files
+## 🛠 Comandos Útiles
 
-```bash
-yarn lint
-# or
-npm run lint
-```
+- **Logs Backend**: `docker compose logs -f backend`
+- **Shell Backend**: `docker compose exec backend bash`
+- **Shell DB**: `docker compose exec db psql -U postgres -d erpcrm`
 
-### Format the files
+---
 
-```bash
-yarn format
-# or
-npm run format
-```
+## ✅ Estado del Proyecto
 
-### Build the app for production
+### Hitos Completados
 
-```bash
-quasar build
-```
+- [x] **Arquitectura Base**: Docker Compose, Django DRF, Postgres.
+- [x] **Autenticación y Seguridad**: JWT, `X-Company-Id` Context Middleware, Protección CSRF/CORS.
+- [x] **Onboarding/Bootstrap**: Wizard de instalación inicial (Admin + Estructura Org).
+- [x] **Módulo ORG**: Gestión de Perfil de Empresa y Sucursales.
+- [x] **Módulo HR**: Gestión de Empleados y Posiciones.
+- [x] **UI Kit**: Componentes base (`AppDataTable`, `AppPageHeader`, layouts).
 
-### Customize the configuration
+### Próximos Pasos
 
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+- [ ] **Auditoría**: Visualización de logs de eventos.
+- [ ] **RBAC Avanzado**: Editor visual de roles y permisos.
+
+---
+
+Actualizado: 2026-01-06
