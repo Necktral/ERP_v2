@@ -28,7 +28,20 @@
   - Solución a error `$q.notify is not a function` habilitando el plugin.
   - Tipado estricto en columnas de tablas Quasar (`QTableColumn`).
 
+## [2026-01-08] - Release
+
+### Added
+
+- Endpoint backend: `POST /hr/employees/<id>/provision-user/` para provisionar usuario a empleado.
+- Permiso IAM: `iam.users.create` para controlar el acceso a la provisión de usuarios.
+- Diálogo y botón en frontend para provisionar acceso desde la UI de empleados.
+- Documentación actualizada en todos los módulos sobre el nuevo flujo y seguridad HR.
+
 ### Changed
 
-- **Documentación:**
-  - Actualización de `README.md` con estado de hitos.
+- Lógica de reconciliación HR: ya no se fuerza la membresía a la empresa (COMPANY) por defecto, solo por asignaciones activas y roles mapeados.
+- Mejoras de robustez y seguridad en la asignación de memberships.
+
+### Fixed
+
+- Mensajes y validaciones en el flujo de provisionamiento de usuario (backend y frontend).
