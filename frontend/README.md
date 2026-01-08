@@ -84,4 +84,20 @@ npm run dev
 
 ---
 
+## 🆕 Provisionar usuario a empleado (HR)
+
+- Desde la UI de empleados, puedes crear acceso para un empleado con un solo clic.
+- El sistema valida que el empleado tenga al menos una asignación activa.
+- Se genera usuario, contraseña provisional y se muestra para entrega segura.
+- El usuario debe cambiar la contraseña en el primer login.
+- Requiere permisos `iam.users.create` y `hr.employee.update`.
+- Endpoint backend: `POST /hr/employees/<id>/provision-user/`
+
+## Seguridad memberships HR
+
+- La reconciliación de memberships ya no fuerza acceso a la empresa por defecto.
+- Solo se asignan memberships por asignaciones activas y roles mapeados.
+
+---
+
 Actualizado: 2026-01-06
