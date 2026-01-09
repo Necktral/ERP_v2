@@ -5,11 +5,13 @@ from django.utils import timezone
 
 from apps.iam.models import OrgUnit
 
+
 class CompanyProfile(models.Model):
     """
     Tabla separada para datos de empresa.
     Canon de jerarquía sigue siendo OrgUnit (COMPANY).
     """
+
     company = models.OneToOneField(OrgUnit, on_delete=models.CASCADE, related_name="company_profile")
     legal_name = models.CharField(max_length=255, blank=True, default="")
     tax_id = models.CharField(max_length=64, blank=True, default="")
@@ -24,11 +26,13 @@ class CompanyProfile(models.Model):
         if self.company.unit_type != OrgUnit.UnitType.COMPANY:
             raise ValueError("CompanyProfile.company debe ser OrgUnit de tipo COMPANY.")
 
+
 class BranchProfile(models.Model):
     """
     Tabla separada para datos de sucursal.
     Canon de jerarquía sigue siendo OrgUnit (BRANCH).
     """
+
     branch = models.OneToOneField(OrgUnit, on_delete=models.CASCADE, related_name="branch_profile")
     address = models.TextField(blank=True, default="")
     phone = models.CharField(max_length=64, blank=True, default="")

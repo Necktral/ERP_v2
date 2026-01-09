@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('rbac', '0002_roleassignment_origin'),
+        ("rbac", "0002_roleassignment_origin"),
     ]
 
     operations = [
         migrations.RenameIndex(
-            model_name='roleassignment',
-            new_name='rbac_roleas_origin_7700cc_idx',
-            old_name='rbac_roleas_origin_isactive_idx',
+            model_name="roleassignment",
+            new_name="rbac_roleas_origin_7700cc_idx",
+            old_name="rbac_roleas_origin_isactive_idx",
         ),
     ]

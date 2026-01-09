@@ -19,12 +19,16 @@ from .serializers import (
     PositionCreateSerializer,
     PositionRoleMapUpdateSerializer,
     PositionUpdateSerializer,
+    EmployeeProvisionUserSerializer,
 )
-from .services import end_assignment, reconcile_employee_roles, set_position_role_maps
+from .services import end_assignment, reconcile_employee_roles, set_position_role_maps, provision_user_for_employee
+
+
 class EmployeeAssignmentEndView(APIView):
     """
     Acción idempotente: si la asignación ya está finalizada, responde 200.
     """
+
     permission_classes = [rbac_permission("hr.assignment.end")]
 
     def post(self, request, employee_id: int, assignment_id: int):
@@ -35,7 +39,9 @@ class EmployeeAssignmentEndView(APIView):
         end_assignment(assignment=assignment, request=request, actor=request.user)
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
+
 User = get_user_model()
+
 
 class PositionListCreateView(APIView):
     def get_permissions(self):
@@ -46,10 +52,7 @@ class PositionListCreateView(APIView):
     def get(self, request):
         company: OrgUnit = request.company
         qs = JobPosition.objects.filter(company=company).order_by("name")
-        data = [
-            {"id": p.id, "name": p.name, "code": p.code, "is_active": p.is_active}
-            for p in qs
-        ]
+        data = [{"id": p.id, "name": p.name, "code": p.code, "is_active": p.is_active} for p in qs]
         return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request):
@@ -70,6 +73,7 @@ class PositionListCreateView(APIView):
             metadata={"position_name": pos.name},
         )
         return Response({"id": pos.id}, status=status.HTTP_201_CREATED)
+
 
 class PositionDetailView(APIView):
     permission_classes = [rbac_permission("hr.position.update")]
@@ -102,6 +106,7 @@ class PositionDetailView(APIView):
             after_snapshot=after,
         )
         return Response({"ok": True}, status=status.HTTP_200_OK)
+
 
 class PositionRoleMapUpdateView(APIView):
     permission_classes = [rbac_permission("hr.position.roles.update")]
@@ -141,6 +146,7 @@ class PositionRoleMapUpdateView(APIView):
         set_position_role_maps(position=pos, maps=deduped, request=request, actor=request.user)
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
+
 class EmployeeListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -148,22 +154,24 @@ class EmployeeListCreateView(APIView):
         return [rbac_permission("hr.employee.read")()]
 
     def get(self, request):
-        company: OrgUnit = request.company
-        qs = Employee.objects.filter(company=company).order_by("first_name", "last_name")
-        data = [
-            {
-                "id": e.id,
-                "employee_code": e.employee_code,
-                "first_name": e.first_name,
-                "last_name": e.last_name,
-                "phone": e.phone,
-                "email": e.email,
-                "is_active": e.is_active,
-                "linked_user_id": e.linked_user_id,
-            }
-            for e in qs
-        ]
-        return Response(data, status=status.HTTP_200_OK)
+        company = request.company
+        qs = Employee.objects.filter(company=company).select_related("linked_user").order_by("id")
+        out = []
+        for e in qs:
+            out.append(
+                {
+                    "id": e.id,
+                    "employee_code": e.employee_code or "",
+                    "first_name": e.first_name,
+                    "last_name": e.last_name or "",
+                    "phone": e.phone or "",
+                    "email": e.email or "",
+                    "is_active": e.is_active,
+                    "linked_user_id": e.linked_user_id,
+                    "linked_username": (e.linked_user.username if e.linked_user_id and e.linked_user else None),
+                }
+            )
+        return Response(out)
 
     def post(self, request):
         company: OrgUnit = request.company
@@ -199,6 +207,7 @@ class EmployeeListCreateView(APIView):
             reconcile_employee_roles(employee=emp, request=request, actor=request.user)
         return Response({"id": emp.id}, status=status.HTTP_201_CREATED)
 
+
 class EmployeeDetailView(APIView):
     permission_classes = [rbac_permission("hr.employee.update")]
 
@@ -208,7 +217,15 @@ class EmployeeDetailView(APIView):
         serializer = EmployeeUpdateSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        before = {"employee_code": emp.employee_code, "first_name": emp.first_name, "last_name": emp.last_name, "phone": emp.phone, "email": emp.email, "is_active": emp.is_active, "linked_user_id": emp.linked_user_id}
+        before = {
+            "employee_code": emp.employee_code,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "phone": emp.phone,
+            "email": emp.email,
+            "is_active": emp.is_active,
+            "linked_user_id": emp.linked_user_id,
+        }
         v = serializer.validated_data
         old_linked_user_id = emp.linked_user_id
         for f in ["employee_code", "first_name", "last_name", "phone", "email", "is_active"]:
@@ -224,7 +241,15 @@ class EmployeeDetailView(APIView):
                     return Response({"linked_user_id": "Usuario no existe"}, status=status.HTTP_400_BAD_REQUEST)
                 emp.linked_user = u
         emp.save()
-        after = {"employee_code": emp.employee_code, "first_name": emp.first_name, "last_name": emp.last_name, "phone": emp.phone, "email": emp.email, "is_active": emp.is_active, "linked_user_id": emp.linked_user_id}
+        after = {
+            "employee_code": emp.employee_code,
+            "first_name": emp.first_name,
+            "last_name": emp.last_name,
+            "phone": emp.phone,
+            "email": emp.email,
+            "is_active": emp.is_active,
+            "linked_user_id": emp.linked_user_id,
+        }
         write_event(
             request=request,
             module="HR",
@@ -251,6 +276,7 @@ class EmployeeDetailView(APIView):
         if emp.linked_user_id:
             reconcile_employee_roles(employee=emp, request=request, actor=request.user)
         return Response({"ok": True}, status=status.HTTP_200_OK)
+
 
 class EmployeeAssignmentCreateView(APIView):
     permission_classes = [rbac_permission("hr.assignment.create")]
@@ -289,3 +315,35 @@ class EmployeeAssignmentCreateView(APIView):
         if emp.linked_user_id:
             reconcile_employee_roles(employee=emp, request=request, actor=request.user)
         return Response({"id": a.id}, status=status.HTTP_201_CREATED)
+
+
+class EmployeeProvisionUserView(APIView):
+    permission_classes = [
+        rbac_permission("iam.users.create"),
+        rbac_permission("hr.employee.update"),
+    ]
+
+    def post(self, request, employee_id: int):
+        company: OrgUnit = request.company
+        emp = get_object_or_404(Employee, id=employee_id, company=company)
+
+        serializer = EmployeeProvisionUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            result = provision_user_for_employee(
+                employee=emp,
+                username=serializer.validated_data["username"],
+                email=serializer.validated_data["email"],
+                temp_password=serializer.validated_data.get("temp_password"),
+                request=request,
+                actor=request.user,
+            )
+            return Response(result, status=status.HTTP_201_CREATED)
+
+        except ValueError as e:
+            msg = str(e)
+            if "ya tiene un usuario vinculado" in msg:
+                return Response({"detail": msg}, status=status.HTTP_409_CONFLICT)
+            # Both "no active assignment" and username conflict fall here as 400
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)

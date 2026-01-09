@@ -129,7 +129,9 @@ def test_assignment_post_denied_without_assignment_create_permission():
 
     # Setup data (no depende de permisos)
     pos = JobPosition.objects.create(company=company, name="Vendedor", code="VEN", is_active=True)
-    emp = Employee.objects.create(company=company, employee_code="E1", first_name="Juan", last_name="Perez", is_active=True)
+    emp = Employee.objects.create(
+        company=company, employee_code="E1", first_name="Juan", last_name="Perez", is_active=True
+    )
 
     # Usuario sin hr.assignment.create
     client = _client_for_user_with_perms(company=company, perm_codes=["hr.employee.read"])

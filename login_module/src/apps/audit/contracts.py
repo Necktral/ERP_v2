@@ -14,7 +14,6 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "AUTH_LOGOUT_FAILURE",
     "AUTH_LOCKOUT_TRIGGERED",
     "AUTH_ACCESS_DENIED",
-
     # SYNC
     "SYNC_ENROLL_CHALLENGE_CREATED",
     "SYNC_DEVICE_ENROLLED",
@@ -23,21 +22,19 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "SYNC_COMMAND_APPLIED",
     "SYNC_COMMAND_REJECTED",
     "SYNC_COMMAND_DUPLICATE",
-
     # RBAC
     "RBAC_SEEDED_V01",
-
     # ORG
     "ORG_BRANCH_CREATED",
     "ORG_BRANCH_UPDATED",
     "ORG_COMPANY_PROFILE_UPDATED",
-
     # HR
     "HR_POSITION_CREATED",
     "HR_POSITION_UPDATED",
     "HR_POSITION_ROLEMAP_UPDATED",
     "HR_EMPLOYEE_CREATED",
     "HR_EMPLOYEE_UPDATED",
+    "HR_EMPLOYEE_USER_PROVISIONED",
     "HR_ASSIGNMENT_CREATED",
     "HR_ASSIGNMENT_ENDED",
     "HR_RECONCILE_APPLIED",
@@ -46,7 +43,6 @@ ALLOWED_EVENT_TYPES: set[str] = {
 ALLOWED_REASON_CODES: set[str] = {
     # Legacy / compat (mucho código actual usa "OK")
     "OK",
-
     # OK por módulo (Opción B)
     "AUTH_OK",
     "RBAC_OK",
@@ -55,7 +51,6 @@ ALLOWED_REASON_CODES: set[str] = {
     "HR_OK",
     "AUDIT_OK",
     "REPORTS_OK",
-
     # Auth/login
     "INVALID_CREDENTIALS",
     "USER_DISABLED",
@@ -64,11 +59,9 @@ ALLOWED_REASON_CODES: set[str] = {
     "TOKEN_EXPIRED",
     # Seguridad
     "RATE_LIMITED",
-
     # Authorization / policy
     "POLICY_PERMISSION_DENIED",
     "POLICY_SCOPE_DENIED",
-
     # Sync outcomes/errors
     "SYNC_DUPLICATE",
     "SYNC_INVALID_SIGNATURE",

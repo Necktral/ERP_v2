@@ -58,6 +58,16 @@ npm run dev
 
 ---
 
+## ✅ Calidad
+
+- Lint:
+  ```bash
+  npm run lint
+  ```
+- Tests: por ahora `npm run test` no ejecuta suite (placeholder).
+
+---
+
 ## 🛠 Comandos Útiles
 
 - **Logs Backend**: `docker compose logs -f backend`

@@ -10,6 +10,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from apps.audit.writer import write_event
 
 from apps.iam.models import AdminGrant, OrgUnit, UserMembership
+from apps.iam.selectors import build_acl_snapshot
 from apps.org.models import BranchProfile, CompanyProfile
 from apps.rbac.models import Role, RoleAssignment
 from apps.rbac.seed_v01 import seed_rbac_v01
@@ -282,7 +283,10 @@ class BootstrapOrgView(APIView):
             # 6) RoleAssignment SYSTEM: company_admin (scope COMPANY)
             role = Role.objects.filter(name="company_admin").first()
             if not role:
-                return Response({"detail": "Falta role 'company_admin'. Ejecuta seed_rbac_v01."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"detail": "Falta role 'company_admin'. Ejecuta seed_rbac_v01."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
             RoleAssignment.objects.get_or_create(
                 user=request.user,
@@ -368,11 +372,6 @@ class MeView(APIView):
 
 
 # --- ACL Snapshot endpoint ---
-from rest_framework.permissions import IsAuthenticated
-
-from apps.iam.selectors import build_acl_snapshot
-
-
 class MeACLView(APIView):
     permission_classes = [IsAuthenticated]
 

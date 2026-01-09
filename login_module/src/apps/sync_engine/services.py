@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import logging
 
@@ -15,13 +14,14 @@ from rest_framework.exceptions import PermissionDenied
 from apps.audit.writer import write_event
 from apps.iam.models import OrgUnit
 
-from .handlers_demo import handle_demo_ping  # fuerza registro demo
-from .models import AppliedCommand, Device, DeviceEnrollmentChallenge, SyncReceipt
+from .models import AppliedCommand, Device, SyncReceipt
 from .registry import get_handler
+
+# Import por side-effect: registra handlers demo en el registry.
+from . import handlers_demo as _handlers_demo  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,
-    public_key_from_b64,
     sha256_hex,
     verify_ed25519_signature,
     occurred_at_canonical,
@@ -81,7 +81,9 @@ def ensure_scope_matches(*, device: Device, company_id: int, branch_id: int | No
     return branch_id == device.branch_id
 
 
-def process_batch(*, request, actor_user, device: Device, batch_id, sent_at, commands: list[dict[str, Any]]) -> dict[str, Any]:
+def process_batch(
+    *, request, actor_user, device: Device, batch_id, sent_at, commands: list[dict[str, Any]]
+) -> dict[str, Any]:
     policy = get_policy()
     if len(commands) > policy.max_commands_per_batch:
         write_event(
@@ -93,7 +95,11 @@ def process_batch(*, request, actor_user, device: Device, batch_id, sent_at, com
             subject_id=str(device.id),
             device_id=str(device.id),
             offline_mode=True,
-            metadata={"batch_id": str(batch_id), "received_count": len(commands), "limit": policy.max_commands_per_batch},
+            metadata={
+                "batch_id": str(batch_id),
+                "received_count": len(commands),
+                "limit": policy.max_commands_per_batch,
+            },
         )
         return {
             "batch_id": str(batch_id),
@@ -172,7 +178,7 @@ def process_batch(*, request, actor_user, device: Device, batch_id, sent_at, com
             "rejected_count": rejected,
             "duplicate_count": duplicate,
             "errors_summary": errors_summary,
-        }
+        },
     )
 
     # Last seen (al final del batch)
@@ -530,7 +536,9 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
         return out
 
 
-def _reject_without_db(*, request, actor_user, device: Device, command_id: str, command_type: str, reason: str, details: dict) -> dict[str, Any]:
+def _reject_without_db(
+    *, request, actor_user, device: Device, command_id: str, command_type: str, reason: str, details: dict
+) -> dict[str, Any]:
     write_event(
         request=request,
         event_type="SYNC_COMMAND_REJECTED",

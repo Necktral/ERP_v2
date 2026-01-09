@@ -29,7 +29,9 @@ def test_end_assignment_endpoint_deactivates_assignment_and_position_roles():
     branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B1", parent=company)
 
     # Admin actor (tiene permiso hr.assignment.end)
-    admin = User.objects.create_user(username="admin_end", password="pass12345", email=f"admin_end_{uuid.uuid4().hex[:8]}@test.com")
+    admin = User.objects.create_user(
+        username="admin_end", password="pass12345", email=f"admin_end_{uuid.uuid4().hex[:8]}@test.com"
+    )
     UserMembership.objects.create(user=admin, org_unit=company, is_active=True)
 
     role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
@@ -38,20 +40,28 @@ def test_end_assignment_endpoint_deactivates_assignment_and_position_roles():
     RoleAssignment.objects.create(user=admin, role=role, org_unit=company, is_active=True)
 
     # Employee + linked user
-    emp_user = User.objects.create_user(username="emp_u", password="pass12345", email=f"emp_u_{uuid.uuid4().hex[:8]}@test.com")
-    emp = Employee.objects.create(company=company, employee_code="E1", first_name="Juan", last_name="Perez", linked_user=emp_user, is_active=True)
+    emp_user = User.objects.create_user(
+        username="emp_u", password="pass12345", email=f"emp_u_{uuid.uuid4().hex[:8]}@test.com"
+    )
+    emp = Employee.objects.create(
+        company=company, employee_code="E1", first_name="Juan", last_name="Perez", linked_user=emp_user, is_active=True
+    )
 
     # Position + mapping -> role (branch scope)
     mapped_role = Role.objects.create(name="sales_rep", is_active=True)
     pos = JobPosition.objects.create(company=company, name="Vendedor", code="VEN", is_active=True)
-    PositionRoleMap.objects.create(position=pos, role=mapped_role, scope_mode=PositionRoleMap.ScopeMode.BRANCH, is_active=True)
+    PositionRoleMap.objects.create(
+        position=pos, role=mapped_role, scope_mode=PositionRoleMap.ScopeMode.BRANCH, is_active=True
+    )
 
     # Active assignment in branch
     a = EmploymentAssignment.objects.create(employee=emp, position=pos, branch=branch, is_active=True)
 
     # Pre-reconcile: crea RoleAssignment origin=POSITION (para que luego se desactive)
     reconcile_employee_roles(employee=emp, request=None, actor=admin)
-    ra = RoleAssignment.objects.get(user=emp_user, role=mapped_role, org_unit=branch, origin=RoleAssignment.Origin.POSITION)
+    ra = RoleAssignment.objects.get(
+        user=emp_user, role=mapped_role, org_unit=branch, origin=RoleAssignment.Origin.POSITION
+    )
     assert ra.is_active is True
 
     # Call endpoint
@@ -75,10 +85,14 @@ def test_end_assignment_endpoint_deactivates_assignment_and_position_roles():
     assert ra.is_active is False
 
     # Audit event from request path
-    ev = AuditEvent.objects.filter(event_type="HR_ASSIGNMENT_ENDED", path=path, method="POST").latest("timestamp_server")
+    ev = AuditEvent.objects.filter(event_type="HR_ASSIGNMENT_ENDED", path=path, method="POST").latest(
+        "timestamp_server"
+    )
     assert ev.reason_code == "OK"
     assert ev.metadata.get("assignment_id") == a.id
 
     # Reconcile event on same request path: debe reflejar desactivación
-    ev2 = AuditEvent.objects.filter(event_type="HR_RECONCILE_APPLIED", path=path, method="POST").latest("timestamp_server")
+    ev2 = AuditEvent.objects.filter(event_type="HR_RECONCILE_APPLIED", path=path, method="POST").latest(
+        "timestamp_server"
+    )
     assert int(ev2.metadata.get("deactivated", 0)) >= 1

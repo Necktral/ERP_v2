@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from apps.audit.writer import write_event
 from apps.rbac.seed_v01 import seed_rbac_v01
 
+
 class Command(BaseCommand):
     help = "Seed idempotente RBAC v0.1 (roles/permisos estándar)."
 

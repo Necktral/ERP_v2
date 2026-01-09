@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.iam.models import OrgUnit
 from apps.rbac.models import Role
 
+
 class JobPosition(models.Model):
     company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="job_positions")
     code = models.CharField(max_length=64, blank=True, default="")
@@ -14,6 +15,7 @@ class JobPosition(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["company", "name"], name="uq_position_company_name"),
@@ -22,21 +24,26 @@ class JobPosition(models.Model):
             models.Index(fields=["company", "is_active"]),
         ]
 
+
 class PositionRoleMap(models.Model):
     """
     Mapeo Puesto -> Role (automatización controlada).
     """
+
     class ScopeMode(models.TextChoices):
         COMPANY = "COMPANY", "Company"
         BRANCH = "BRANCH", "Branch"
+
     position = models.ForeignKey(JobPosition, on_delete=models.CASCADE, related_name="role_maps")
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name="position_maps")
     scope_mode = models.CharField(max_length=16, choices=ScopeMode.choices, default=ScopeMode.BRANCH)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["position", "role", "scope_mode"], name="uq_position_role_scope"),
         ]
+
 
 class Employee(models.Model):
     company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="employees")
@@ -55,11 +62,13 @@ class Employee(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         indexes = [
             models.Index(fields=["company", "is_active"]),
             models.Index(fields=["linked_user"]),
         ]
+
 
 class EmploymentAssignment(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="assignments")
@@ -77,6 +86,7 @@ class EmploymentAssignment(models.Model):
         on_delete=models.SET_NULL,
         related_name="employment_assignments_created",
     )
+
     class Meta:
         indexes = [
             models.Index(fields=["employee", "is_active"]),

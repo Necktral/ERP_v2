@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from rest_framework.exceptions import (AuthenticationFailed, NotAuthenticated,
-                                       PermissionDenied, Throttled)
+from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied, Throttled
 from rest_framework.views import exception_handler as drf_exception_handler
 
 from apps.audit.writer import write_event
@@ -69,7 +68,6 @@ def custom_exception_handler(exc, context):
     }
     if required_perm:
         metadata["required_permission"] = required_perm
-
 
     write_event(
         request=request,

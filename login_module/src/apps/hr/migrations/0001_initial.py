@@ -5,8 +5,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
 
-class Migration(migrations.Migration):
 
+class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
@@ -20,7 +20,12 @@ class Migration(migrations.Migration):
             name="JobPosition",
             fields=[
                 ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("company", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="job_positions", to="iam.orgunit")),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="job_positions", to="iam.orgunit"
+                    ),
+                ),
                 ("code", models.CharField(max_length=64, blank=True, default="")),
                 ("name", models.CharField(max_length=200)),
                 ("is_active", models.BooleanField(default=True)),
@@ -34,8 +39,18 @@ class Migration(migrations.Migration):
                 ("id", models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("scope_mode", models.CharField(max_length=16, default="BRANCH")),
                 ("is_active", models.BooleanField(default=True)),
-                ("position", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="role_maps", to="hr.jobposition")),
-                ("role", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="position_maps", to="rbac.role")),
+                (
+                    "position",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="role_maps", to="hr.jobposition"
+                    ),
+                ),
+                (
+                    "role",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="position_maps", to="rbac.role"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -50,8 +65,22 @@ class Migration(migrations.Migration):
                 ("is_active", models.BooleanField(default=True)),
                 ("created_at", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("company", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="employees", to="iam.orgunit")),
-                ("linked_user", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="employee_links", to=settings.AUTH_USER_MODEL)),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="employees", to="iam.orgunit"
+                    ),
+                ),
+                (
+                    "linked_user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="employee_links",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -61,10 +90,38 @@ class Migration(migrations.Migration):
                 ("is_active", models.BooleanField(default=True)),
                 ("started_at", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
                 ("ended_at", models.DateTimeField(null=True, blank=True)),
-                ("employee", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="assignments", to="hr.employee")),
-                ("position", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="assignments", to="hr.jobposition")),
-                ("branch", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="employment_assignments", to="iam.orgunit")),
-                ("created_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name="employment_assignments_created", to=settings.AUTH_USER_MODEL)),
+                (
+                    "employee",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="assignments", to="hr.employee"
+                    ),
+                ),
+                (
+                    "position",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT, related_name="assignments", to="hr.jobposition"
+                    ),
+                ),
+                (
+                    "branch",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="employment_assignments",
+                        to="iam.orgunit",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="employment_assignments_created",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.AddConstraint(
@@ -73,7 +130,9 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="positionrolemap",
-            constraint=models.UniqueConstraint(fields=("position", "role", "scope_mode"), name="uq_position_role_scope"),
+            constraint=models.UniqueConstraint(
+                fields=("position", "role", "scope_mode"), name="uq_position_role_scope"
+            ),
         ),
         migrations.AddIndex(
             model_name="jobposition",

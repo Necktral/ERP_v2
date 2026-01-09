@@ -1,6 +1,6 @@
-
 from rest_framework import serializers
 from .models import AuditEvent
+
 
 class AuditEventListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,6 +23,7 @@ class AuditEventListSerializer(serializers.ModelSerializer):
             "subject_id",
             "metadata",
         ]
+
 
 class AuditEventDetailSerializer(serializers.ModelSerializer):
     class Meta:

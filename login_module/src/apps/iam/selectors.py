@@ -1,7 +1,16 @@
-
 from __future__ import annotations
 
+import hashlib
+import json
+from typing import Any
+
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+from apps.rbac.selectors import get_effective_permissions_for_scope
+
+from .models import AdminGrant, CompanyLink, LinkGrant, OrgUnit, UserMembership
 
 
 def has_intercompany_grant(
@@ -37,15 +46,15 @@ def has_intercompany_grant(
     if not link:
         return False
 
-    qs = LinkGrant.objects.filter(
-        link=link,
-        is_active=True,
-        access_mode=mode,
-        permission__code=permission_code,
-    ).filter(
-        models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now)
-    ).filter(
-        models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=now)
+    qs = (
+        LinkGrant.objects.filter(
+            link=link,
+            is_active=True,
+            access_mode=mode,
+            permission__code=permission_code,
+        )
+        .filter(models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=now))
+        .filter(models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=now))
     )
 
     if scope_branch is None:
@@ -54,17 +63,6 @@ def has_intercompany_grant(
 
     # Para branch, aceptamos grant específico a la branch o grant global (NULL)
     return qs.filter(models.Q(scope_org_unit__isnull=True) | models.Q(scope_org_unit=scope_branch)).exists()
-
-import hashlib
-import json
-from typing import Any
-
-from django.conf import settings
-from django.utils import timezone
-
-from apps.rbac.selectors import get_effective_permissions_for_scope
-
-from .models import AdminGrant, CompanyLink, LinkGrant, OrgUnit, UserMembership
 
 
 def _canon_json(obj: Any) -> str:
@@ -81,7 +79,9 @@ def get_accessible_companies(user) -> list[OrgUnit]:
     - membresía directa a COMPANY
     - membresía a BRANCH => se eleva a su parent COMPANY
     """
-    memberships = UserMembership.objects.filter(user=user, is_active=True).select_related("org_unit", "org_unit__parent")
+    memberships = UserMembership.objects.filter(user=user, is_active=True).select_related(
+        "org_unit", "org_unit__parent"
+    )
     company_ids: set[int] = set()
 
     for m in memberships:
@@ -91,7 +91,9 @@ def get_accessible_companies(user) -> list[OrgUnit]:
         elif ou.unit_type == OrgUnit.UnitType.BRANCH and ou.parent_id:
             company_ids.add(ou.parent_id)
 
-    return list(OrgUnit.objects.filter(id__in=company_ids, unit_type=OrgUnit.UnitType.COMPANY, is_active=True).order_by("name"))
+    return list(
+        OrgUnit.objects.filter(id__in=company_ids, unit_type=OrgUnit.UnitType.COMPANY, is_active=True).order_by("name")
+    )
 
 
 def get_accessible_branches(user, company: OrgUnit) -> list[OrgUnit]:
@@ -102,12 +104,13 @@ def get_accessible_branches(user, company: OrgUnit) -> list[OrgUnit]:
     """
     mem_company = UserMembership.objects.filter(user=user, org_unit=company, is_active=True).exists()
     if mem_company:
-        return list(OrgUnit.objects.filter(parent=company, unit_type=OrgUnit.UnitType.BRANCH, is_active=True).order_by("name"))
+        return list(
+            OrgUnit.objects.filter(parent=company, unit_type=OrgUnit.UnitType.BRANCH, is_active=True).order_by("name")
+        )
 
-    branch_ids = (
-        UserMembership.objects.filter(user=user, is_active=True, org_unit__unit_type=OrgUnit.UnitType.BRANCH, org_unit__parent=company)
-        .values_list("org_unit_id", flat=True)
-    )
+    branch_ids = UserMembership.objects.filter(
+        user=user, is_active=True, org_unit__unit_type=OrgUnit.UnitType.BRANCH, org_unit__parent=company
+    ).values_list("org_unit_id", flat=True)
     return list(OrgUnit.objects.filter(id__in=list(branch_ids), is_active=True).order_by("name"))
 
 
@@ -189,7 +192,9 @@ def build_acl_snapshot(user) -> dict:
     # Recomendación de contexto inicial (mobile-first)
     if len(companies_payload) == 1:
         payload["recommended_company_id"] = companies_payload[0]["company_id"]
-        payload["recommended_branch_id"] = companies_payload[0]["branches"][0]["branch_id"] if companies_payload[0]["branches"] else None
+        payload["recommended_branch_id"] = (
+            companies_payload[0]["branches"][0]["branch_id"] if companies_payload[0]["branches"] else None
+        )
     else:
         payload["recommended_company_id"] = None
         payload["recommended_branch_id"] = None

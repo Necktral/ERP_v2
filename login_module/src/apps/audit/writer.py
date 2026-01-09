@@ -11,11 +11,14 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-logger = logging.getLogger(__name__)
-
-from .contracts import (validate_event_type, validate_reason_code,
-                        validate_subject)
+from .contracts import (
+    validate_event_type,
+    validate_reason_code,
+    validate_subject,
+)
 from .models import AuditChainHeadV2, AuditEvent
+
+logger = logging.getLogger(__name__)
 
 
 def _chain_partition_key(request) -> str:
@@ -68,7 +71,7 @@ def write_event(
     metadata: dict | None = None,
     before_snapshot: dict | None = None,
     after_snapshot: dict | None = None,
-    module: str | None = None,   # <-- NUEVO
+    module: str | None = None,  # <-- NUEVO
 ) -> AuditEvent:
     """
     Writer contractual EAU v1:
@@ -77,8 +80,9 @@ def write_event(
     - calcula event_hash y signature (HMAC)
     """
 
-
-    logger.debug(f"write_event llamado: event_type={event_type}, reason_code={reason_code}, subject_type={subject_type}, subject_id={subject_id}")
+    logger.debug(
+        f"write_event llamado: event_type={event_type}, reason_code={reason_code}, subject_type={subject_type}, subject_id={subject_id}"
+    )
     validate_event_type(event_type)
     validate_reason_code(reason_code)
     validate_subject(subject_type, subject_id)
@@ -104,18 +108,13 @@ def write_event(
     path = (request.path if request else "") or ""
     method = (request.method if request else "") or ""
 
-
     resolved_module = module or settings.AUDIT_MODULE_NAME
 
     with transaction.atomic():
         try:
-            head, _ = AuditChainHeadV2.objects.select_for_update().get_or_create(
-                partition_key=partition_key
-            )
+            head, _ = AuditChainHeadV2.objects.select_for_update().get_or_create(partition_key=partition_key)
         except IntegrityError:
-            head = AuditChainHeadV2.objects.select_for_update().get(
-                partition_key=partition_key
-            )
+            head = AuditChainHeadV2.objects.select_for_update().get(partition_key=partition_key)
         prev_hash = head.last_event_hash or ""
 
         payload = {

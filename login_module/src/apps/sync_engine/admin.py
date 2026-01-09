@@ -21,12 +21,29 @@ class DeviceEnrollmentChallengeAdmin(admin.ModelAdmin):
 
 @admin.register(AppliedCommand)
 class AppliedCommandAdmin(admin.ModelAdmin):
-    list_display = ("command_id", "device", "company", "branch", "command_type", "result_status", "received_at", "applied_at")
+    list_display = (
+        "command_id",
+        "device",
+        "company",
+        "branch",
+        "command_type",
+        "result_status",
+        "received_at",
+        "applied_at",
+    )
     list_filter = ("result_status", "company", "command_type")
     search_fields = ("command_id", "device__id", "command_type")
 
 
 @admin.register(SyncReceipt)
 class SyncReceiptAdmin(admin.ModelAdmin):
-    list_display = ("batch_id", "device", "server_time", "received_count", "applied_count", "rejected_count", "duplicate_count")
+    list_display = (
+        "batch_id",
+        "device",
+        "server_time",
+        "received_count",
+        "applied_count",
+        "rejected_count",
+        "duplicate_count",
+    )
     search_fields = ("batch_id", "device__id")

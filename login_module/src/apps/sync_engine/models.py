@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from dataclasses import dataclass
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -192,8 +191,8 @@ class AppliedCommand(models.Model):
     prev_hash = models.CharField(max_length=64, default="", blank=True)
 
     result_status = models.CharField(max_length=16, choices=ResultStatus.choices)
-    result_ref = models.JSONField(default=dict, blank=True)   # refs (ticket_id, movement_id, ...)
-    error = models.JSONField(default=dict, blank=True)        # motivo estructurado si rejected
+    result_ref = models.JSONField(default=dict, blank=True)  # refs (ticket_id, movement_id, ...)
+    error = models.JSONField(default=dict, blank=True)  # motivo estructurado si rejected
 
     class Meta:
         indexes = [

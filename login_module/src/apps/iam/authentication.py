@@ -90,7 +90,9 @@ class JWTAuthWithOrgContext(JWTAuthentication):
                 raise NotFound("Sucursal no encontrada o inactiva.")
 
             if not has_company_membership:
-                has_branch_membership = UserMembership.objects.filter(user=user, org_unit=branch, is_active=True).exists()
+                has_branch_membership = UserMembership.objects.filter(
+                    user=user, org_unit=branch, is_active=True
+                ).exists()
                 if not has_branch_membership:
                     self._set_required_scope(request, company_id=company.id, branch_id=branch.id)
                     raise PermissionDenied("Sin acceso a esta sucursal.")
@@ -146,7 +148,12 @@ class JWTAuthWithOrgContext(JWTAuthentication):
 
         # Regla fuerte en esta fase:
         # No se permite data_branch distinto al branch activo si la data_company es la misma.
-        if data_company.id == company.id and branch is not None and data_branch is not None and data_branch.id != branch.id:
+        if (
+            data_company.id == company.id
+            and branch is not None
+            and data_branch is not None
+            and data_branch.id != branch.id
+        ):
             raise ParseError("No se permite X-Data-Branch-Id distinto al contexto activo en la misma empresa.")
 
         # Inyectar data scope en request (DRF y Django HttpRequest)

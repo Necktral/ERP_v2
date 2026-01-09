@@ -19,6 +19,7 @@ def register(command_type: str):
             raise RuntimeError(f"command_type duplicado en registry: {command_type}")
         _REGISTRY[command_type] = fn
         return fn
+
     return _wrap
 
 

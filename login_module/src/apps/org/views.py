@@ -16,6 +16,7 @@ from .serializers import (
     CompanyProfileUpdateSerializer,
 )
 
+
 class BranchListCreateView(APIView):
     """
     Permisos por método (robusto):
@@ -83,14 +84,13 @@ class BranchListCreateView(APIView):
         )
         return Response({"id": branch.id}, status=status.HTTP_201_CREATED)
 
+
 class BranchDetailView(APIView):
     permission_classes = [rbac_permission("org.branch.update")]
 
     def patch(self, request, branch_id: int):
         company: OrgUnit = request.company
-        branch = get_object_or_404(
-            OrgUnit, id=branch_id, parent=company, unit_type=OrgUnit.UnitType.BRANCH
-        )
+        branch = get_object_or_404(OrgUnit, id=branch_id, parent=company, unit_type=OrgUnit.UnitType.BRANCH)
         before = {"name": branch.name, "code": branch.code, "is_active": branch.is_active}
         serializer = BranchUpdateSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
@@ -98,11 +98,14 @@ class BranchDetailView(APIView):
         v = serializer.validated_data
         changed = False
         if "name" in v:
-            branch.name = v["name"]; changed = True
+            branch.name = v["name"]
+            changed = True
         if "code" in v:
-            branch.code = v["code"]; changed = True
+            branch.code = v["code"]
+            changed = True
         if "is_active" in v:
-            branch.is_active = bool(v["is_active"]); changed = True
+            branch.is_active = bool(v["is_active"])
+            changed = True
         if changed:
             branch.save()
         prof, _ = BranchProfile.objects.get_or_create(branch=branch)
@@ -126,6 +129,7 @@ class BranchDetailView(APIView):
             after_snapshot=after,
         )
         return Response({"ok": True}, status=status.HTTP_200_OK)
+
 
 class CompanyProfileView(APIView):
     permission_classes = [rbac_permission("org.company.update")]

@@ -15,8 +15,12 @@ User = get_user_model()
 def test_hr_position_role_automation_end_to_end():
     # Org tree
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="HOLDING", code="H", is_active=True)
-    company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, parent=holding, name="ACME", code="AC", is_active=True)
-    branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, parent=company, name="ACME-1", code="AC1", is_active=True)
+    company = OrgUnit.objects.create(
+        unit_type=OrgUnit.UnitType.COMPANY, parent=holding, name="ACME", code="AC", is_active=True
+    )
+    branch = OrgUnit.objects.create(
+        unit_type=OrgUnit.UnitType.BRANCH, parent=company, name="ACME-1", code="AC1", is_active=True
+    )
 
     # Admin user (actor)
     admin = User.objects.create_user(username="admin", password="pass12345", email="admin@example.com")

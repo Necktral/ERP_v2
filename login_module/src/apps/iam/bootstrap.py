@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TypedDict, Optional
+from typing import TypedDict
 from django.db import transaction
 from django.utils import timezone
-from apps.iam.models import OrgUnit, UserMembership, AdminGrant, OrgClosure
+from apps.iam.models import OrgUnit, UserMembership, AdminGrant
 from apps.org.models import CompanyProfile, BranchProfile
 from django.contrib.auth import get_user_model
 
@@ -36,7 +36,7 @@ def create_initial_admin(data: InitialAdminData) -> User:
     """Creates the first superuser of the system."""
     if not is_system_fresh():
         raise ValueError("System is not fresh. Cannot create initial admin.")
-    
+
     user = User.objects.create_superuser(
         username=data["username"],
         email=data["email"],
@@ -44,8 +44,8 @@ def create_initial_admin(data: InitialAdminData) -> User:
         first_name=data["first_name"],
         last_name=data["last_name"],
         is_setup_complete=False,  # Setup not complete until Org is created
-        must_change_password=False, # Initial admin sets their own password
-        pw_last_changed=timezone.now()
+        must_change_password=False,  # Initial admin sets their own password
+        pw_last_changed=timezone.now(),
     )
     return user
 
@@ -53,47 +53,30 @@ def create_initial_admin(data: InitialAdminData) -> User:
 @transaction.atomic
 def bootstrap_organization(user: User, data: OrganizationData) -> dict[str, OrgUnit]:
     """
-    Creates the initial Holding -> Company -> Branch structure 
+    Creates the initial Holding -> Company -> Branch structure
     and links the user to them.
     """
-    
+
     # 1. Create Holding
-    holding = OrgUnit.objects.create(
-        unit_type=OrgUnit.UnitType.HOLDING,
-        name=data["holding_name"],
-        code="HOLDING-001"
-    )
+    holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name=data["holding_name"], code="HOLDING-001")
 
     # 2. Create Company
     company = OrgUnit.objects.create(
-        unit_type=OrgUnit.UnitType.COMPANY,
-        name=data["company_name"],
-        parent=holding,
-        code="COMP-001"
+        unit_type=OrgUnit.UnitType.COMPANY, name=data["company_name"], parent=holding, code="COMP-001"
     )
-    CompanyProfile.objects.create(
-        company=company,
-        tax_id=data["company_tax_id"],
-        legal_name=data["company_name"]
-    )
+    CompanyProfile.objects.create(company=company, tax_id=data["company_tax_id"], legal_name=data["company_name"])
 
     # 3. Create Branch
     branch = OrgUnit.objects.create(
-        unit_type=OrgUnit.UnitType.BRANCH,
-        name=data["branch_name"],
-        parent=company,
-        code="BRANCH-001"
+        unit_type=OrgUnit.UnitType.BRANCH, name=data["branch_name"], parent=company, code="BRANCH-001"
     )
-    BranchProfile.objects.create(
-        branch=branch,
-        address=data["branch_address"]
-    )
+    BranchProfile.objects.create(branch=branch, address=data["branch_address"])
 
     # 4. Link User (Membership)
     # Grant membership to the Holding (cascades? No, usually explicit)
     # For simplicity, let's give membership to all 3 levels or just Holding?
     # Usually membership is at specific levels. Let's add to all for full access.
-    
+
     UserMembership.objects.create(user=user, org_unit=holding)
     UserMembership.objects.create(user=user, org_unit=company)
     UserMembership.objects.create(user=user, org_unit=branch)
@@ -106,15 +89,11 @@ def bootstrap_organization(user: User, data: OrganizationData) -> dict[str, OrgU
             org_unit=holding,
             capability=cap,
             applies_to_subtree=True,
-            granted_by=user  # Self-granted
+            granted_by=user,  # Self-granted
         )
 
     # 6. Mark user setup as complete
     user.is_setup_complete = True
     user.save()
 
-    return {
-        "holding": holding,
-        "company": company,
-        "branch": branch
-    }
+    return {"holding": holding, "company": company, "branch": branch}

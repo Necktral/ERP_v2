@@ -2,8 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.iam.models import OrgUnit
-from apps.rbac.models import (Permission, Role, RoleAssignment, RolePermission,
-                              UserRole)
+from apps.rbac.models import Permission, Role, RoleAssignment, RolePermission, UserRole
 from apps.rbac.selectors import get_effective_permissions_for_scope
 
 User = get_user_model()

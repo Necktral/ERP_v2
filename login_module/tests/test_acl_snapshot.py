@@ -13,7 +13,7 @@ def test_acl_snapshot_lists_companies_and_branches_and_admin_caps():
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H1")
     company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C1", parent=holding)
     b1 = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B1", parent=company)
-    b2 = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B2", parent=company)
+    OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B2", parent=company)
 
     user = User.objects.create_user(username="u_acl", password="pass12345")
 

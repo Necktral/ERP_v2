@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -26,6 +25,7 @@ class EnrollmentChallengeCreateView(APIView):
     POST /api/sync/enrollment/challenges/
     Requiere JWT + contexto (X-Company-Id) porque usa rbac_permission.
     """
+
     permission_classes = [rbac_permission("sync.device.enroll")]
 
     def post(self, request):
@@ -98,6 +98,7 @@ class DeviceEnrollView(APIView):
     POST /api/sync/enroll/
     No requiere JWT: el secreto es el enrollment_code (one-time).
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -108,9 +109,11 @@ class DeviceEnrollView(APIView):
         code_plain = str(data["enrollment_code"])
         code_hash = DeviceEnrollmentChallenge.sha256_hex(code_plain)
 
-        ch = DeviceEnrollmentChallenge.objects.select_related("company", "branch").filter(
-            enrollment_code_hash=code_hash
-        ).first()
+        ch = (
+            DeviceEnrollmentChallenge.objects.select_related("company", "branch")
+            .filter(enrollment_code_hash=code_hash)
+            .first()
+        )
         if not ch:
             raise PermissionDenied("Código inválido.")
         if not ch.is_valid_now():
@@ -155,6 +158,7 @@ class DeviceEnrollView(APIView):
         )
 
         from apps.sync_engine.services import get_policy
+
         policy = get_policy()
         return Response(
             {
@@ -179,6 +183,7 @@ class DeviceRevokeView(APIView):
     POST /api/sync/devices/<device_id>/revoke/
     Requiere JWT + permiso.
     """
+
     permission_classes = [rbac_permission("sync.device.revoke")]
 
     def post(self, request, device_id: str):
@@ -213,6 +218,7 @@ class DeviceListView(APIView):
     Requiere JWT + permiso.
     Política: quien puede revocar, puede listar.
     """
+
     permission_classes = [rbac_permission("sync.device.revoke")]
 
     def get(self, request):
@@ -273,6 +279,7 @@ class SyncBatchView(APIView):
     POST /api/sync/batch/
     Device-auth (X-Device-Id) + firma por comando.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):

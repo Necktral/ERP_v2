@@ -1,6 +1,11 @@
-
-
+import base64
 import datetime as dt
+import hashlib
+import json
+from typing import Any
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 
 def occurred_at_canonical(dt_value: dt.datetime) -> str:
     """
@@ -13,12 +18,6 @@ def occurred_at_canonical(dt_value: dt.datetime) -> str:
         dt_value = dt_value.replace(tzinfo=dt.timezone.utc)
     dt_utc = dt_value.astimezone(dt.timezone.utc)
     return dt_utc.isoformat(timespec="microseconds")
-import base64
-import hashlib
-import json
-from typing import Any
-
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 def canon_json(obj: Any) -> str:
@@ -44,8 +43,17 @@ def public_key_from_b64(pk_b64: str) -> bytes:
     return raw
 
 
-def build_command_signing_message(*, command_id: str, command_type: str, company_id: int, branch_id: int | None,
-                                  occurred_at: str, sequence: int | None, payload_hash: str, prev_hash: str) -> bytes:
+def build_command_signing_message(
+    *,
+    command_id: str,
+    command_type: str,
+    company_id: int,
+    branch_id: int | None,
+    occurred_at: str,
+    sequence: int | None,
+    payload_hash: str,
+    prev_hash: str,
+) -> bytes:
     """
     Mensaje estable (sin ambigüedad por JSON):
       command_id|command_type|company_id|branch_id|occurred_at|sequence|payload_hash|prev_hash

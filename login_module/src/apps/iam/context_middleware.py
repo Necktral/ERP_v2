@@ -85,7 +85,9 @@ class OrgContextMiddleware:
 
             # Si tiene membresía a company, permite cualquier branch; si no, exige membresía exacta a branch
             if not has_company_membership:
-                has_branch_membership = UserMembership.objects.filter(user=user, org_unit=branch, is_active=True).exists()
+                has_branch_membership = UserMembership.objects.filter(
+                    user=user, org_unit=branch, is_active=True
+                ).exists()
                 if not has_branch_membership:
                     setattr(request, "required_scope", {"company_id": company.id, "branch_id": branch.id})
                     return JsonResponse({"detail": "Sin acceso a esta sucursal."}, status=403)

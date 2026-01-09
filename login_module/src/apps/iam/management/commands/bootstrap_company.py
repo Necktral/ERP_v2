@@ -10,6 +10,7 @@ from apps.rbac.seed_v01 import seed_rbac_v01
 
 User = get_user_model()
 
+
 class Command(BaseCommand):
     help = "Bootstrap: crea holding/company/branch y asigna company_admin a un usuario existente."
 
@@ -25,7 +26,9 @@ class Command(BaseCommand):
     def _ask(self, prompt: str) -> str:
         return input(prompt).strip()
 
-    def _require_no_input(self, *, no_input: bool, company_name: str | None, branch_name: str | None, admin_username: str | None) -> None:
+    def _require_no_input(
+        self, *, no_input: bool, company_name: str | None, branch_name: str | None, admin_username: str | None
+    ) -> None:
         if not no_input:
             return
         missing = []
@@ -73,6 +76,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from django.db import transaction
+
         no_input = bool(options["no_input"])
 
         company_name = options["company_name"]

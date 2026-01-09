@@ -4,8 +4,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
 
-class Migration(migrations.Migration):
 
+class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
@@ -24,7 +24,12 @@ class Migration(migrations.Migration):
                 ("email", models.EmailField(blank=True, default="")),
                 ("created_at", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("company", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="company_profile", to="iam.orgunit")),
+                (
+                    "company",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="company_profile", to="iam.orgunit"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -36,7 +41,12 @@ class Migration(migrations.Migration):
                 ("email", models.EmailField(blank=True, default="")),
                 ("created_at", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("branch", models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name="branch_profile", to="iam.orgunit")),
+                (
+                    "branch",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="branch_profile", to="iam.orgunit"
+                    ),
+                ),
             ],
         ),
     ]

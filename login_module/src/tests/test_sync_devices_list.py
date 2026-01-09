@@ -11,6 +11,7 @@ from apps.sync_engine.models import Device
 
 User = get_user_model()
 
+
 @pytest.mark.django_db
 def test_sync_devices_list_returns_devices_for_company():
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
@@ -48,6 +49,7 @@ def test_sync_devices_list_returns_devices_for_company():
 
     ids = [x["id"] for x in r.data["results"]]
     assert str(device.id) in ids
+
 
 @pytest.mark.django_db
 def test_sync_devices_list_denied_without_permission_is_audited():

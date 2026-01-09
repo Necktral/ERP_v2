@@ -1,10 +1,11 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth import password_validation
+from django.db.models import Q
 from rest_framework import serializers
 
-from apps.rbac.models import UserRole, Role
+from apps.rbac.models import Role
 from apps.rbac.selectors import get_effective_permissions
-from apps.iam.models import OrgUnit
+from apps.iam.models import UserMembership
 
 User = get_user_model()
 
@@ -83,17 +84,16 @@ class MeSerializer(serializers.Serializer):
 
     @staticmethod
     def from_user(user):
-        role_names = (
-            Role.objects.filter(assignments__user=user, assignments__is_active=True)
-            .values_list("name", flat=True)
-        )
+        # Roles:
+        # - Nuevo modelo: RoleAssignment (scoped por OrgUnit) => related_name "assignments"
+        # - Legacy/transición: UserRole (global) => reverse relation "userrole"
+        role_names = Role.objects.filter(
+            Q(assignments__user=user, assignments__is_active=True) | Q(userrole__user=user)
+        ).values_list("name", flat=True)
         perms = get_effective_permissions(user)
 
-        # Setup global: si existe HOLDING activo, el sistema ya tiene onboarding base hecho
-        is_setup_complete = OrgUnit.objects.filter(
-            unit_type=OrgUnit.UnitType.HOLDING,
-            is_active=True,
-        ).exists()
+        # Setup global: depende de si el usuario tiene al menos una membership activa
+        is_setup_complete = UserMembership.objects.filter(user=user, is_active=True).exists()
 
         return {
             "id": user.id,

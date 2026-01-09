@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 @receiver(user_locked_out)
 def axes_locked_out_handler(*args, **kwargs):
-
     request = kwargs.get("request")
     creds = kwargs.get("credentials") or {}
 

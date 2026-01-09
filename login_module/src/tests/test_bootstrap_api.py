@@ -85,7 +85,11 @@ def test_password_change_clears_must_change_password():
 
     r = c.post(
         "/api/auth/password/",
-        {"old_password": "TempPass12345__", "new_password": "NewPass12345__Strong", "confirm_password": "NewPass12345__Strong"},
+        {
+            "old_password": "TempPass12345__",
+            "new_password": "NewPass12345__Strong",
+            "confirm_password": "NewPass12345__Strong",
+        },
         format="json",
     )
     assert r.status_code == 200

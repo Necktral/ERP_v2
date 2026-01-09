@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.db.models import Q
 
+if TYPE_CHECKING:
+    from apps.iam.models import OrgUnit
 
-## from apps.iam.models import OrgUnit
-## from .models import Permission, RolePermission, UserRole, RoleAssignment
-def get_effective_permissions_for_scope(user, *, company: OrgUnit, branch: OrgUnit | None = None, include_global: bool = True) -> set[str]:
+
+def get_effective_permissions_for_scope(
+    user, *, company: OrgUnit, branch: OrgUnit | None = None, include_global: bool = True
+) -> set[str]:
     """
     Permisos efectivos para un usuario en un contexto (company + opcional branch).
 
@@ -16,6 +21,7 @@ def get_effective_permissions_for_scope(user, *, company: OrgUnit, branch: OrgUn
     """
 
     from .models import RoleAssignment, RolePermission, UserRole
+
     role_ids: set[int] = set()
 
     # Scoped: company roles
@@ -43,7 +49,11 @@ def get_effective_permissions_for_scope(user, *, company: OrgUnit, branch: OrgUn
     if not role_ids:
         return set()
 
-    perm_codes = RolePermission.objects.filter(role_id__in=list(role_ids)).select_related("permission").values_list("permission__code", flat=True)
+    perm_codes = (
+        RolePermission.objects.filter(role_id__in=list(role_ids))
+        .select_related("permission")
+        .values_list("permission__code", flat=True)
+    )
     return set(perm_codes)
 
 
@@ -52,11 +62,9 @@ def get_effective_permissions(user) -> list[str]:
         return ["*"]
 
     from .models import Permission, RolePermission, UserRole
+
     role_ids = UserRole.objects.filter(user=user).values_list("role_id", flat=True)
     perm_ids = RolePermission.objects.filter(role_id__in=role_ids).values_list("permission_id", flat=True)
 
-    perms = (
-        Permission.objects.filter(Q(id__in=perm_ids), is_active=True)
-        .values_list("code", flat=True)
-    )
+    perms = Permission.objects.filter(Q(id__in=perm_ids), is_active=True).values_list("code", flat=True)
     return sorted(set(perms))

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 
 from django.db import transaction
 
 from apps.rbac.models import Permission, Role, RolePermission
+
 
 @dataclass(frozen=True)
 class SeedResult:
@@ -14,6 +14,7 @@ class SeedResult:
     perms_created: int
     perms_updated: int
     roleperms_created: int
+
 
 def seed_rbac_v01() -> SeedResult:
     """
@@ -43,6 +44,8 @@ def seed_rbac_v01() -> SeedResult:
         "org.branch.read": "Ver sucursales.",
         "org.branch.create": "Crear sucursales.",
         "org.branch.update": "Actualizar sucursales.",
+        # IAM
+        "iam.users.create": "Crear usuarios del sistema (provisionar acceso a empleados).",
         # HR
         "hr.position.read": "Ver puestos.",
         "hr.position.create": "Crear puestos.",
@@ -78,39 +81,72 @@ def seed_rbac_v01() -> SeedResult:
 
     role_to_perms = {
         "company_admin": [
-            "org.company.read", "org.company.update",
-            "org.branch.read", "org.branch.create", "org.branch.update",
-            "hr.position.read", "hr.position.create", "hr.position.update", "hr.position.roles.update",
-            "hr.employee.read", "hr.employee.create", "hr.employee.update",
-            "hr.assignment.create", "hr.assignment.end",
-            "rbac.roles.read", "rbac.roles.update",
-            "rbac.permissions.read", "rbac.permissions.update",
-            "rbac.assignments.read", "rbac.assignments.update",
-            "audit.read", "audit.export",
-            "sync.device.enroll", "sync.device.revoke", "sync.batch.receive",
-            "inventory.read", "inventory.write",
-            "clients.read", "clients.write",
-            "reports.view", "reports.export",
+            "org.company.read",
+            "org.company.update",
+            "org.branch.read",
+            "org.branch.create",
+            "org.branch.update",
+            "iam.users.create",
+            "hr.position.read",
+            "hr.position.create",
+            "hr.position.update",
+            "hr.position.roles.update",
+            "hr.employee.read",
+            "hr.employee.create",
+            "hr.employee.update",
+            "hr.assignment.create",
+            "hr.assignment.end",
+            "rbac.roles.read",
+            "rbac.roles.update",
+            "rbac.permissions.read",
+            "rbac.permissions.update",
+            "rbac.assignments.read",
+            "rbac.assignments.update",
+            "audit.read",
+            "audit.export",
+            "sync.device.enroll",
+            "sync.device.revoke",
+            "sync.batch.receive",
+            "inventory.read",
+            "inventory.write",
+            "clients.read",
+            "clients.write",
+            "reports.view",
+            "reports.export",
         ],
         "branch_manager": [
-            "org.branch.read", "org.branch.update",
-            "hr.employee.read", "hr.employee.update",
-            "inventory.read", "inventory.write",
-            "clients.read", "clients.write",
+            "org.branch.read",
+            "org.branch.update",
+            "hr.employee.read",
+            "hr.employee.update",
+            "inventory.read",
+            "inventory.write",
+            "clients.read",
+            "clients.write",
             "reports.view",
         ],
         "hr_manager": [
             "org.company.read",
             "org.branch.read",
-            "hr.position.read", "hr.position.create", "hr.position.update", "hr.position.roles.update",
-            "hr.employee.read", "hr.employee.create", "hr.employee.update",
-            "hr.assignment.create", "hr.assignment.end",
+            "iam.users.create",
+            "hr.position.read",
+            "hr.position.create",
+            "hr.position.update",
+            "hr.position.roles.update",
+            "hr.employee.read",
+            "hr.employee.create",
+            "hr.employee.update",
+            "hr.assignment.create",
+            "hr.assignment.end",
         ],
         "hr_clerk": [
             "org.branch.read",
             "hr.position.read",
-            "hr.employee.read", "hr.employee.create", "hr.employee.update",
-            "hr.assignment.create", "hr.assignment.end",
+            "hr.employee.read",
+            "hr.employee.create",
+            "hr.employee.update",
+            "hr.assignment.create",
+            "hr.assignment.end",
         ],
         "auditor": [
             "audit.read",
@@ -147,7 +183,9 @@ def seed_rbac_v01() -> SeedResult:
 
         perm_objs: dict[str, Permission] = {}
         for code, desc in permissions.items():
-            obj, created = Permission.objects.get_or_create(code=code, defaults={"description": desc, "is_active": True})
+            obj, created = Permission.objects.get_or_create(
+                code=code, defaults={"description": desc, "is_active": True}
+            )
             if created:
                 perms_created += 1
             else:

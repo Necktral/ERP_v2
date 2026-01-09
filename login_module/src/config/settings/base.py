@@ -8,39 +8,37 @@ NOTA:
 """
 
 
-
-
 # --- Logging para depuración de auditoría y lockout ---
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '[{levelname}] {asctime} {name}: {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name}: {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
-    'loggers': {
-        'apps.audit': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
+    "loggers": {
+        "apps.audit": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        'apps.accounts': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
+        "apps.accounts": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
         },
     },
 }
- # (AXES_* se define abajo en formato correcto con timedelta)
+# (AXES_* se define abajo en formato correcto con timedelta)
 
 from datetime import timedelta
 from pathlib import Path
@@ -49,8 +47,8 @@ import environ
 
 # base.py está en: backend/src/config/settings/base.py
 # BASE_DIR = backend/src
-BASE_DIR = Path(__file__).resolve().parents[2]   # -> backend/src
-ENV_FILE = BASE_DIR.parent.parent / ".env"       # -> ERP_CRM/.env
+BASE_DIR = Path(__file__).resolve().parents[2]  # -> backend/src
+ENV_FILE = BASE_DIR.parent.parent / ".env"  # -> ERP_CRM/.env
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -81,7 +79,8 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 ]
 
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
-AUDIT_MODULE_NAME = "LOGIN_MODULE"
+# Nombre contractual del módulo que emite eventos de auditoría para este servicio.
+AUDIT_MODULE_NAME = "AUTH"
 AUDIT_SCHEMA_VERSION = 1
 
 TIME_ZONE = "America/Managua"
@@ -97,7 +96,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Terceros
     "rest_framework",
     "rest_framework_simplejwt",
@@ -108,34 +106,29 @@ INSTALLED_APPS = [
     "django_filters",
     "axes",
     "csp",
-
     # Apps del proyecto
     "apps.common",
     "apps.audit",
     "apps.rbac",
     "apps.accounts.apps.AccountsConfig",
     "apps.iam.apps.IamConfig",
-    "apps.org.apps.OrgConfig",   # <-- NUEVO
-    "apps.hr.apps.HrConfig",     # <-- NUEVO
+    "apps.org.apps.OrgConfig",  # <-- NUEVO
+    "apps.hr.apps.HrConfig",  # <-- NUEVO
     "apps.sync_engine",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-
     # CORS lo más arriba posible (antes de CommonMiddleware y WhiteNoise)
     "corsheaders.middleware.CorsMiddleware",
-
     # WhiteNoise sirve estáticos (útil incluso en dev si lo deseas)
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-
     # Axes al final (recomendación oficial)
     "axes.middleware.AxesMiddleware",
     "apps.audit.middleware.AuditAccessDeniedMiddleware",
@@ -221,16 +214,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # DRF
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "config.drf_exception_handler.custom_exception_handler",
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "apps.iam.authentication.JWTAuthWithOrgContext",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("apps.iam.authentication.JWTAuthWithOrgContext",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_FILTER_BACKENDS": (
-        "django_filters.rest_framework.DjangoFilterBackend",
-    ),
+    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
 }
 
 # SimpleJWT

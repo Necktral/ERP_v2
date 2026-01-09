@@ -4,7 +4,8 @@
       <div>
         <div class="text-h6">HR · Empleados</div>
         <div class="text-caption text-grey-7">
-          GET /hr/employees/ devuelve lista con linked_user_id (para automatizar roles por puesto)
+          Flujo: 1) Crear empleado 2) Crear asignación 3) Provisionar acceso (usuario + contraseña
+          provisional)
         </div>
       </div>
 
@@ -23,6 +24,15 @@
           :loading="loading"
           :rows-per-page-options="[10, 20, 50, 0]"
         >
+          <template #body-cell-access="props">
+            <q-td :props="props">
+              <q-badge v-if="props.row.linked_user_id" color="positive" outline>
+                Activo: {{ props.row.linked_username || `id=${props.row.linked_user_id}` }}
+              </q-badge>
+              <q-badge v-else color="grey-7" outline>Sin acceso</q-badge>
+            </q-td>
+          </template>
+
           <template #body-cell-actions="props">
             <q-td :props="props">
               <q-btn v-if="canUpdate" dense flat icon="edit" @click="openEdit(props.row)" />
@@ -43,6 +53,16 @@
                 @click="openEnd(props.row)"
               >
                 <q-tooltip>Finalizar asignación (por ID)</q-tooltip>
+              </q-btn>
+
+              <q-btn
+                v-if="canProvision && !props.row.linked_user_id"
+                dense
+                flat
+                icon="person_add"
+                @click="openProvision(props.row)"
+              >
+                <q-tooltip>Provisionar acceso (usuario + contraseña provisional)</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -93,33 +113,110 @@
             </div>
 
             <div class="row q-col-gutter-md q-mt-sm items-center">
-              <div class="col-12 col-md-6">
-                <q-input
-                  v-model.number="form.linked_user_id"
-                  label="linked_user_id (opcional, user real)"
-                  type="number"
-                  outlined
-                  hint="Si lo llenas, el backend reconcilia roles POSITION en asignaciones."
-                />
-              </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-12">
                 <q-toggle v-model="form.is_active" label="Activo" />
               </div>
             </div>
 
             <div class="q-mt-md">
               <q-btn color="primary" type="submit" :loading="saving" label="Guardar" />
-              <q-btn
-                v-if="editingId"
-                flat
-                color="negative"
-                class="q-ml-sm"
-                label="Desvincular user"
-                :disable="saving"
-                @click="unlinkUser"
-              />
             </div>
           </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Provision dialog -->
+    <q-dialog v-model="provDialog">
+      <q-card style="width: 720px; max-width: 96vw">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Provisionar acceso</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <div class="text-caption text-grey-7 q-mb-sm">
+            Empleado: <b>{{ provTarget?.first_name }} {{ provTarget?.last_name }}</b>
+          </div>
+
+          <q-banner class="q-mb-md" dense rounded>
+            Se creará un usuario con contraseña provisional. Al iniciar sesión, el sistema fuerza
+            cambio de contraseña.
+          </q-banner>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model="provForm.username"
+                label="Username"
+                outlined
+                :rules="[(v) => !!v || 'Requerido']"
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model="provForm.email" label="Email (opcional)" outlined />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md q-mt-sm">
+            <div class="col-12 col-md-6">
+              <q-toggle
+                v-model="provForm.manualPass"
+                label="Ingresar contraseña provisional manual"
+              />
+            </div>
+            <div class="col-12 col-md-6" v-if="provForm.manualPass">
+              <q-input
+                v-model="provForm.temp_password"
+                label="Contraseña provisional"
+                outlined
+                type="password"
+              />
+            </div>
+          </div>
+
+          <div class="q-mt-md">
+            <q-btn
+              color="primary"
+              label="Crear acceso"
+              :loading="provSaving"
+              @click="doProvision"
+            />
+          </div>
+
+          <q-banner v-if="provError" class="q-mt-md" dense rounded>
+            {{ provError }}
+          </q-banner>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Provision result -->
+    <q-dialog v-model="provResultDialog">
+      <q-card style="width: 720px; max-width: 96vw">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Credenciales provisionales</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <q-banner dense rounded class="q-mb-md">
+            Esta contraseña no se almacena en texto plano. Copia y entrégala al empleado por un
+            canal seguro.
+          </q-banner>
+
+          <q-input label="Username" outlined :model-value="provResult?.username" readonly />
+          <div class="q-mt-sm" />
+          <q-input
+            label="Contraseña provisional"
+            outlined
+            :model-value="provResult?.temp_password"
+            readonly
+          >
+            <template #append>
+              <q-btn dense flat icon="content_copy" @click="copyProvPass" />
+            </template>
+          </q-input>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -240,7 +337,7 @@ const columns: QTableColumn[] = [
   { name: 'phone', label: 'Teléfono', field: 'phone', align: 'left' },
   { name: 'email', label: 'Email', field: 'email', align: 'left' },
   { name: 'is_active', label: 'Activo', field: 'is_active', align: 'left', sortable: true },
-  { name: 'linked_user_id', label: 'linked_user_id', field: 'linked_user_id', align: 'left' },
+  { name: 'access', label: 'Acceso', field: 'access', align: 'left' },
   { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
 ];
 
@@ -255,6 +352,9 @@ const canAssign = computed(
 );
 const canEndAssign = computed(
   () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'hr.assignment.end'),
+);
+const canProvision = computed(
+  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'iam.users.create'),
 );
 
 async function load() {
@@ -281,7 +381,6 @@ const form = reactive<{
   phone: string;
   email: string;
   is_active: boolean;
-  linked_user_id: number | null;
 }>({
   employee_code: '',
   first_name: '',
@@ -289,7 +388,6 @@ const form = reactive<{
   phone: '',
   email: '',
   is_active: true,
-  linked_user_id: null,
 });
 
 function openCreate() {
@@ -301,7 +399,6 @@ function openCreate() {
     phone: '',
     email: '',
     is_active: true,
-    linked_user_id: null,
   });
   editDialog.value = true;
 }
@@ -315,7 +412,6 @@ function openEdit(e: EmployeeRow) {
     phone: e.phone ?? '',
     email: e.email ?? '',
     is_active: e.is_active,
-    linked_user_id: e.linked_user_id,
   });
   editDialog.value = true;
 }
@@ -348,21 +444,6 @@ async function saveEmployee() {
       $q.notify({ type: 'positive', message: 'Empleado actualizado' });
     }
 
-    editDialog.value = false;
-    await load();
-  } catch (e: unknown) {
-    $q.notify({ type: 'negative', message: extractErrorMessage(e) });
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function unlinkUser() {
-  if (!editingId.value) return;
-  saving.value = true;
-  try {
-    await patchEmployee(editingId.value, { linked_user_id: null });
-    $q.notify({ type: 'positive', message: 'User desvinculado' });
     editDialog.value = false;
     await load();
   } catch (e: unknown) {

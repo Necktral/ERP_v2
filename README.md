@@ -1,58 +1,50 @@
-# Necktral ERP/CRM
+﻿# Necktral ERP/CRM
 
-Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría, HR, ORG, IAM, sincronización y ciclo de arranque profesional con Docker Compose.
+Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría contractual, HR, ORG, IAM y sincronización.
 
-## Backend: ciclo de arranque recomendado
+## Estructura del repo
 
-### 1. Clona el repositorio y configura variables
+- `login_module/`: backend Django/DRF (código en `login_module/src/`)
+- `frontend/`: consola web (Vue 3 + Quasar)
+- `compose.yaml`: entorno Docker (backend + Postgres)
+- `system_wis/`: entorno virtual Python (dev)
+
+## 🚀 Inicio rápido (Docker)
+
+1. Configura variables
 
 ```bash
-git clone https://github.com/Necktral/Necktral.git
-cd ERP_CRM
-cp .env.example .env  # Edita los valores según tu entorno
+cp .env.example .env
 ```
 
-### 2. Levanta los servicios con Docker Compose
+2. Levanta servicios
 
 ```bash
-docker compose up -d --force-recreate
+docker compose up -d
 ```
 
-### 3. Aplica migraciones y crea el superusuario admin
+3. Migraciones (si aplica)
 
 ```bash
 docker compose exec backend python src/manage.py migrate --noinput
-docker compose exec backend python src/manage.py createsuperuser --username admin --email admin@example.com --noinput
 ```
 
-### 4. Siembra RBAC y bootstrap de empresa/sucursal/admin
+Backend: `http://localhost:8000`
+
+## 💻 Desarrollo local
+
+### Backend (venv)
 
 ```bash
-docker compose exec backend python src/manage.py seed_rbac_v01
-docker compose exec backend python src/manage.py bootstrap_company \
-	--no-input \
-	--holding-name HOLDING \
-	--company-name ACME \
-	--company-code AC \
-	--branch-name ACME-1 \
-	--branch-code AC1 \
-	--admin-username admin
+source system_wis/bin/activate
+pip install -r requirements/dev.txt
+
+cd login_module
+python src/manage.py migrate --noinput
+python src/manage.py runserver
 ```
 
-### 5. Accede al backend
-
-El backend queda expuesto en http://localhost:8000
-
-### 6. Variables de entorno principales (.env)
-
-Revisa y ajusta:
-
-- DB_NAME, DB_USER, DB_PASSWORD: credenciales de Postgres
-- DJANGO_SECRET_KEY: clave secreta Django
-- DJANGO_ALLOWED_HOSTS: hosts permitidos
-- DJANGO_CORS_ALLOWED_ORIGINS: orígenes frontend permitidos
-
-### 7. Flujo de desarrollo frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -60,69 +52,112 @@ npm install
 npm run dev
 ```
 
----
+## ✅ Tests y análisis
 
-## Comandos útiles
+### Backend
 
-- `docker compose logs backend --tail=60` — Ver logs del backend
-- `docker compose exec backend python src/manage.py showmigrations` — Ver estado de migraciones
-- `docker compose exec db psql -U <DB_USER> -d <DB_NAME> -c "\\l"` — Ver bases de datos en Postgres
+- Tests:
+  ```bash
+  source system_wis/bin/activate
+  cd login_module
+  pytest
+  ```
+- Lint (ruff):
+  ```bash
+  source system_wis/bin/activate
+  cd login_module
+  ruff check .
+  ```
 
----
+### Frontend
 
-## Documentación extendida
+- Lint:
+  ```bash
+  cd frontend
+  npm run lint
+  ```
+- Tests: actualmente `npm run test` es un placeholder.
 
-Consulta el archivo login_module/README.md para detalles de endpoints, comandos, ciclo de migraciones, auditoría y buenas prácticas.
+## Auditoría (contrato)
 
----
+- Los eventos de auditoría se emiten con `module=AUTH` y `schema_version=1`.
+- Para trazabilidad: se encadenan hashes y se firma con HMAC.
 
-## Estado del Proyecto
+## Historial de cambios
 
-### Hitos Completados
+Ver [CHANGELOG.md](CHANGELOG.md).
 
-- [x] **Hito 1: Autenticación y Contexto**: Login JWT, manejo de `X-Company-Id`, selección de contexto (Empresa/Sucursal).
-- [x] **Hito 2: Módulo ORG**: Gestión de Perfil de Empresa y Listado de Sucursales con validación de permisos (`org.company.update`, `org.branch.read`).
-- [x] **Hito 3: Módulo HR**: Gestión de Posiciones, Empleados y Asignaciones (CRUD completo + Role Maps).
-- [x] **Estabilización**: Corrección de CORS, configuración de Auditoría en backend y plugins de Quasar (Notify).
+Actualizado: 2026-01-09.
 
-### Próximos Pasos
+### ORG (Organización)
 
-- [ ] **Hito 4: Auditoría**: Visualización de logs de auditoría.
+- `GET /api/org/company/profile/` — Ver perfil de la empresa
+- `PUT /api/org/company/profile/` — Actualizar perfil de la empresa
+- `GET /api/org/branches/` — Listar sucursales (requiere permiso: org.branch.read)
+- `POST /api/org/branches/` — Crear sucursal (requiere permiso: org.branch.create)
+- `PATCH /api/org/branches/{branch_id}/` — Actualizar sucursal (requiere permiso: org.branch.update)
 
----
+### HR (Recursos Humanos)
 
-## Historial de Cambios
-
-Ver [CHANGELOG.md](CHANGELOG.md) para detalles de versiones y correcciones.
-
----
-
-## Provisionar usuario a empleado (HR)
-
-Desde la versión 2026-01, el sistema permite provisionar acceso a empleados directamente desde la UI y API:
-
-- **Endpoint nuevo:**
-
-  - `POST /hr/employees/<id>/provision-user/`
+- `GET /api/hr/positions/` — Listar puestos
+- `POST /api/hr/positions/` — Crear puesto
+- `PATCH /api/hr/positions/<int:position_id>/` — Actualizar puesto
+- `PUT /api/hr/positions/<int:position_id>/roles/` — Mapear puesto a roles
+- `GET /api/hr/employees/` — Listar empleados
+- `POST /api/hr/employees/` — Crear empleado
+- `PATCH /api/hr/employees/<int:employee_id>/` — Actualizar empleado
+- `POST /api/hr/employees/<int:employee_id>/assignments/` — Asignar puesto/sucursal
+- `POST /api/hr/employees/<int:employee_id>/assignments/<int:assignment_id>/end/` — Finalizar asignación
+- Nuevo endpoint: `POST /hr/employees/<id>/provision-user/`
+  - Permite crear usuarios vinculados a empleados con contraseña provisional.
+  - Valida asignaciones activas y fuerza cambio de contraseña en primer login.
   - Requiere permisos `iam.users.create` y `hr.employee.update`.
-  - Valida que el empleado tenga al menos una asignación activa.
-  - Genera usuario, contraseña provisional y vincula al empleado.
-  - Fuerza cambio de contraseña en primer login.
 
-- **Frontend:**
-  - Nuevo botón y diálogo en la página de empleados para provisionar acceso.
-  - Muestra credenciales provisionales para entrega segura.
+## Comandos de gestión
 
-## Seguridad: reconciliación de memberships HR
+- `python manage.py seed_rbac_v01` — Siembra roles, permisos y mapeos estándar (idempotente, auditable)
+- `python manage.py bootstrap_company --company-name ... --branch-name ... --admin-username ...` — Bootstrap de empresa, sucursal y admin
+  - El comando es idempotente: si la empresa, sucursal o holding ya existen (por código o nombre), los reutiliza y reactiva si estaban desactivados.
+  - Si usas `--no-input`, todos los parámetros son obligatorios y el comando falla si falta alguno.
+  - AdminGrant siempre se crea con `org_unit=company` y se reactiva si estaba desactivado.
+  - Membership y RoleAssignment también se reactivan si estaban off.
+  - Validado por el test: `tests/test_bootstrap_company_command.py`.
 
-- El sistema ya **no fuerza la membresía a la empresa (COMPANY)** por defecto.
-- Las memberships se asignan solo por asignaciones activas y roles mapeados.
-- Esto mejora la robustez y evita accesos innecesarios.
+## Auditoría contractual
+
+- Todos los endpoints de escritura generan eventos en apps.audit con reason_code y event_type según contrato.
+- Ejemplo: `HR_POSITION_CREATED`, `ORG_BRANCH_CREATED`, `RBAC_SEEDED_V01`.
+- El contrato de auditoría es estricto y validado por tests.
+
+## Tests automáticos
+
+- `tests/test_hr_position_role_automation.py`: Valida automatización de roles por puesto y auditoría.
+- `tests/test_seed_rbac_v01_command.py`: Valida comando seed_rbac_v01, creación de permisos y evento de auditoría.
+- `tests/test_bootstrap_company_command.py`: Valida robustez, idempotencia y grants correctos del comando bootstrap_company.
+- `tests/test_org_endpoints_audit.py`: Valida permisos RBAC por método en endpoints ORG y la trazabilidad/auditoría contractual de operaciones clave.
+
+## Permisos y roles
+
+- Catálogo estándar en apps/rbac/seed_v01.py
+- Roles: company_admin, branch_manager, hr_manager, etc.
+- Permisos: hr.position.create, org.branch.create, etc.
+
+## Buenas prácticas
+
+- Siempre ejecutar los comandos de seed y bootstrap en entornos nuevos.
+- Validar con tests antes de desplegar.
+- Consultar la auditoría para trazabilidad de cambios críticos.
+
+## Seguridad y memberships HR
+
+- La reconciliación de memberships ya no fuerza acceso a la empresa (COMPANY) por defecto.
+- Solo se asignan memberships por asignaciones activas y roles mapeados.
+- Mejora la robustez y evita accesos innecesarios.
 
 ## Permisos IAM
 
-- Nuevo permiso: `iam.users.create` para controlar quién puede provisionar usuarios desde HR.
+- Nuevo permiso: `iam.users.ecreate` para controlar el provisionamiento de usuarios desde HR.
 
 ---
 
-Actualizado al 2026-01-05.
+Actualizado al 2026-01-02.

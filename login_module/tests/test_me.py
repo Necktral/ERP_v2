@@ -25,4 +25,3 @@ def test_me_returns_roles_and_permissions():
     assert me.status_code == 200
     assert "warehouse" in me.data["roles"]
     assert "inventory.read" in me.data["permissions"]
-

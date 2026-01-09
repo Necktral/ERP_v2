@@ -18,6 +18,7 @@ def _set_on_request_and_raw(request, key: str, value):
     except Exception:
         pass
 
+
 def rbac_permission(required_permission: str):
     """
     Factory DRF-friendly:

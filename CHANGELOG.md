@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-01-05
+## [Unreleased] - 2026-01-09
 
 ### Added
 
@@ -24,9 +24,12 @@
   - Adición de headers CORS personalizados (`x-company-id`, `x-branch-id`, etc.) en `base.py`.
   - Corrección de error 500 en Login por falta de configuración de auditoría (`AUDIT_MODULE_NAME`, `AUDIT_SCHEMA_VERSION`).
   - Corrección de tipo de dato para `AUDIT_SCHEMA_VERSION` (int en lugar de str).
+  - Auditoría contractual: `module` de eventos ajustado a `AUTH`.
+  - Endpoint `GET /api/auth/me/`: `roles` incluye roles scoped (`RoleAssignment`) y legacy (`UserRole`).
 - **Frontend:**
   - Solución a error `$q.notify is not a function` habilitando el plugin.
   - Tipado estricto en columnas de tablas Quasar (`QTableColumn`).
+  - Lint: eliminación de imports/funciones no usados en `HrEmployeesPage.vue`.
 
 ## [2026-01-08] - Release
 

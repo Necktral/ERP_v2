@@ -53,7 +53,6 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
 
         required_perm = getattr(request, "required_permission", "")  # Fase RBAC
 
-
         metadata = {
             "status_code": status_code,
         }

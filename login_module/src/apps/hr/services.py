@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Set
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from apps.audit.writer import write_event
 from apps.iam.models import OrgUnit, UserMembership
@@ -11,16 +14,19 @@ from apps.rbac.models import Role, RoleAssignment
 
 from .models import Employee, EmploymentAssignment, JobPosition, PositionRoleMap
 
+User = get_user_model()
+
+
 @dataclass(frozen=True)
 class ReconcileResult:
     created: int
     reactivated: int
     deactivated: int
 
+
 def _company_branches(company: OrgUnit) -> list[int]:
-    return list(
-        OrgUnit.objects.filter(parent=company, unit_type=OrgUnit.UnitType.BRANCH).values_list("id", flat=True)
-    )
+    return list(OrgUnit.objects.filter(parent=company, unit_type=OrgUnit.UnitType.BRANCH).values_list("id", flat=True))
+
 
 def _ensure_membership(user, org_unit: OrgUnit) -> None:
     mem, created = UserMembership.objects.get_or_create(user=user, org_unit=org_unit, defaults={"is_active": True})
@@ -28,6 +34,7 @@ def _ensure_membership(user, org_unit: OrgUnit) -> None:
         mem.is_active = True
         mem.left_at = None
         mem.save(update_fields=["is_active", "left_at"])
+
 
 def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) -> ReconcileResult:
     """
@@ -54,7 +61,9 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
 
     # Pre-cargar maps de puestos involucrados
     pos_ids = {a.position_id for a in active_assignments}
-    maps = PositionRoleMap.objects.filter(position_id__in=list(pos_ids), is_active=True).select_related("role", "position")
+    maps = PositionRoleMap.objects.filter(position_id__in=list(pos_ids), is_active=True).select_related(
+        "role", "position"
+    )
 
     maps_by_position: dict[int, list[PositionRoleMap]] = {}
     for m in maps:
@@ -78,7 +87,7 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
         existing = {(ra.role_id, ra.org_unit_id): ra for ra in existing_qs.select_for_update()}
 
         # create/reactivate desired
-        for (role_id, org_unit_id) in desired:
+        for role_id, org_unit_id in desired:
             ra = existing.get((role_id, org_unit_id))
             if ra is None:
                 RoleAssignment.objects.create(
@@ -101,7 +110,7 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
                     reactivated += 1
 
         # deactivate obsolete POSITION grants
-        for ((role_id, org_unit_id), ra) in existing.items():
+        for (role_id, org_unit_id), ra in existing.items():
             if (role_id, org_unit_id) in desired:
                 continue
             if ra.is_active:
@@ -110,13 +119,26 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
                 deactivated += 1
 
         # memberships: agregar, no remover (robustez)
-        _ensure_membership(user, company)
-        orgunit_ids = {org_unit_id for (_, org_unit_id) in desired}
-        if orgunit_ids:
-            org_map = OrgUnit.objects.in_bulk(list(orgunit_ids))
-            for oid in orgunit_ids:
-                ou = org_map.get(oid)
-                if ou is not None:
+        #
+        # Cambio: NO forzar membership a COMPANY siempre.
+        # Base = asignaciones activas (branch o company si assignment sin branch)
+        # + org units implicadas por role maps (desired)
+        membership_ids: Set[int] = set()
+
+        for a in active_assignments:
+            if a.branch_id:
+                membership_ids.add(a.branch_id)
+            else:
+                membership_ids.add(company.id)
+
+        for _, org_unit_id in desired:
+            membership_ids.add(org_unit_id)
+
+        if membership_ids:
+            org_map = OrgUnit.objects.in_bulk(list(membership_ids))
+            for org_unit_id in membership_ids:
+                ou = org_map.get(org_unit_id)
+                if ou:
                     _ensure_membership(user, ou)
 
     # audit
@@ -137,6 +159,7 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
 
     return ReconcileResult(created=created, reactivated=reactivated, deactivated=deactivated)
 
+
 def end_assignment(*, assignment: EmploymentAssignment, request=None, actor=None) -> None:
     if not assignment.is_active:
         return
@@ -156,6 +179,7 @@ def end_assignment(*, assignment: EmploymentAssignment, request=None, actor=None
     )
 
     reconcile_employee_roles(employee=assignment.employee, request=request, actor=actor)
+
 
 def set_position_role_maps(*, position: JobPosition, maps: list[dict], request=None, actor=None) -> None:
     """
@@ -201,3 +225,52 @@ def set_position_role_maps(*, position: JobPosition, maps: list[dict], request=N
     )
     for eid in employee_ids:
         reconcile_employee_roles(employee=Employee.objects.get(id=eid), request=request, actor=actor)
+
+
+def provision_user_for_employee(
+    *, employee: Employee, username: str, email: str, temp_password: str | None = None, request=None, actor=None
+) -> dict:
+    # Validaciones de negocio
+    if employee.linked_user_id is not None:
+        raise ValueError("El empleado ya tiene un usuario vinculado.")
+
+    has_assignment = EmploymentAssignment.objects.filter(employee=employee, is_active=True).exists()
+    if not has_assignment:
+        raise ValueError("El empleado no tiene ninguna asignación activa. No se puede determinar el contexto.")
+
+    if not temp_password:
+        temp_password = get_random_string(length=12)
+
+    with transaction.atomic():
+        # Crear usuario
+        if User.objects.filter(username=username).exists():
+            raise ValueError(f"El username '{username}' ya existe.")
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=temp_password,
+        )
+        user.must_change_password = True
+        user.is_active = True
+        user.save(update_fields=["must_change_password", "is_active"])
+
+        # Linkear
+        employee.linked_user = user
+        employee.save(update_fields=["linked_user"])
+
+        # Reconciliar roles
+        reconcile_employee_roles(employee=employee, request=request, actor=actor)
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_USER_PROVISIONED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={"created_user_id": user.id, "username": user.username},
+    )
+
+    return {"user_id": user.id, "username": user.username, "temp_password": temp_password}

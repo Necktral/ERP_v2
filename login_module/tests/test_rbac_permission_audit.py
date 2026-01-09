@@ -3,15 +3,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from apps.audit.models import AuditEvent
-from apps.rbac.models import Permission, Role, RolePermission
-
-User = get_user_model()
-
-
-from django.contrib.auth import get_user_model
-
 from apps.iam.models import OrgUnit, UserMembership
-from apps.rbac.models import RoleAssignment
+from apps.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 User = get_user_model()
 

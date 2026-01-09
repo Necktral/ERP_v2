@@ -16,6 +16,7 @@ export type EmployeeRow = {
   email: string;
   is_active: boolean;
   linked_user_id: number | null;
+  linked_username?: string | null;
 };
 
 export type PositionRoleMapItem = {
@@ -88,4 +89,16 @@ export async function endAssignment(employeeId: number, assignmentId: number) {
     {},
   );
   return data.ok;
+}
+
+export async function provisionEmployeeUser(
+  employeeId: number,
+  payload: { username: string; email?: string; temp_password?: string },
+) {
+  const { data } = await api.post<{
+    user_id: number;
+    username: string;
+    temp_password: string;
+  }>(`/hr/employees/${employeeId}/provision-user/`, payload);
+  return data;
 }

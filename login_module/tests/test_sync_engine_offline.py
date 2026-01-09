@@ -21,8 +21,18 @@ def _b64(b: bytes) -> str:
     return base64.b64encode(b).decode("utf-8")
 
 
-def sign_cmd(priv: Ed25519PrivateKey, *, command_id: str, command_type: str, company_id: int, branch_id: int | None,
-             occurred_at_iso: str, sequence: int | None, payload_hash: str, prev_hash: str) -> str:
+def sign_cmd(
+    priv: Ed25519PrivateKey,
+    *,
+    command_id: str,
+    command_type: str,
+    company_id: int,
+    branch_id: int | None,
+    occurred_at_iso: str,
+    sequence: int | None,
+    payload_hash: str,
+    prev_hash: str,
+) -> str:
     msg = build_command_signing_message(
         command_id=command_id,
         command_type=command_type,
@@ -48,23 +58,18 @@ def test_enroll_and_sync_replay_is_duplicate():
     user = User.objects.create_user(username="owner", password="pass12345")
     UserMembership.objects.create(user=user, org_unit=company, is_active=True)
     # Permisos RBAC necesarios (blindado)
-    role, _ = Role.objects.get_or_create(
-        name=f"admin_{uuid.uuid4().hex}", defaults={"is_active": True}
-    )
+    role, _ = Role.objects.get_or_create(name=f"admin_{uuid.uuid4().hex}", defaults={"is_active": True})
     if not role.is_active:
         role.is_active = True
         role.save(update_fields=["is_active"])
     p_enroll, _ = Permission.objects.get_or_create(
-        code="sync.device.enroll",
-        defaults={"is_active": True, "description": ""}
+        code="sync.device.enroll", defaults={"is_active": True, "description": ""}
     )
     if not p_enroll.is_active:
         p_enroll.is_active = True
         p_enroll.save(update_fields=["is_active"])
     RolePermission.objects.get_or_create(role=role, permission=p_enroll)
-    RoleAssignment.objects.get_or_create(
-        user=user, role=role, org_unit=company, defaults={"is_active": True}
-    )
+    RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=company, defaults={"is_active": True})
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner", "password": "pass12345"}, format="json")
@@ -128,23 +133,18 @@ def test_enroll_and_sync_replay_is_duplicate():
     assert verify_ed25519_signature(public_key_raw=pub, signature_b64=sig, message=msg) is True
 
     # Permisos RBAC necesarios (blindado)
-    role, _ = Role.objects.get_or_create(
-        name="admin", defaults={"is_active": True}
-    )
+    role, _ = Role.objects.get_or_create(name="admin", defaults={"is_active": True})
     if not role.is_active:
         role.is_active = True
         role.save(update_fields=["is_active"])
     p_enroll, _ = Permission.objects.get_or_create(
-        code="sync.device.enroll",
-        defaults={"is_active": True, "description": ""}
+        code="sync.device.enroll", defaults={"is_active": True, "description": ""}
     )
     if not p_enroll.is_active:
         p_enroll.is_active = True
         p_enroll.save(update_fields=["is_active"])
     RolePermission.objects.get_or_create(role=role, permission=p_enroll)
-    RoleAssignment.objects.get_or_create(
-        user=user, role=role, org_unit=company, defaults={"is_active": True}
-    )
+    RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=company, defaults={"is_active": True})
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner", "password": "pass12345"}, format="json")
@@ -237,23 +237,18 @@ def test_batch_partial_invalid_signature_does_not_break_other_commands():
     user = User.objects.create_user(username="owner2", password="pass12345")
     UserMembership.objects.create(user=user, org_unit=company, is_active=True)
 
-    role, _ = Role.objects.get_or_create(
-        name="admin2", defaults={"is_active": True}
-    )
+    role, _ = Role.objects.get_or_create(name="admin2", defaults={"is_active": True})
     if not role.is_active:
         role.is_active = True
         role.save(update_fields=["is_active"])
     p_enroll, _ = Permission.objects.get_or_create(
-        code="sync.device.enroll",
-        defaults={"is_active": True, "description": ""}
+        code="sync.device.enroll", defaults={"is_active": True, "description": ""}
     )
     if not p_enroll.is_active:
         p_enroll.is_active = True
         p_enroll.save(update_fields=["is_active"])
     RolePermission.objects.get_or_create(role=role, permission=p_enroll)
-    RoleAssignment.objects.get_or_create(
-        user=user, role=role, org_unit=company, defaults={"is_active": True}
-    )
+    RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=company, defaults={"is_active": True})
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner2", "password": "pass12345"}, format="json")
@@ -345,23 +340,18 @@ def test_payload_mismatch_same_command_id_is_rejected():
     user = User.objects.create_user(username="owner3", password="pass12345")
     UserMembership.objects.create(user=user, org_unit=company, is_active=True)
 
-    role, _ = Role.objects.get_or_create(
-        name="admin3", defaults={"is_active": True}
-    )
+    role, _ = Role.objects.get_or_create(name="admin3", defaults={"is_active": True})
     if not role.is_active:
         role.is_active = True
         role.save(update_fields=["is_active"])
     p_enroll, _ = Permission.objects.get_or_create(
-        code="sync.device.enroll",
-        defaults={"is_active": True, "description": ""}
+        code="sync.device.enroll", defaults={"is_active": True, "description": ""}
     )
     if not p_enroll.is_active:
         p_enroll.is_active = True
         p_enroll.save(update_fields=["is_active"])
     RolePermission.objects.get_or_create(role=role, permission=p_enroll)
-    RoleAssignment.objects.get_or_create(
-        user=user, role=role, org_unit=company, defaults={"is_active": True}
-    )
+    RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=company, defaults={"is_active": True})
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner3", "password": "pass12345"}, format="json")

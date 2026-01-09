@@ -66,6 +66,7 @@ class OrgClosure(models.Model):
     """
     Closure table: ancestor -> descendant con depth
     """
+
     ancestor = models.ForeignKey(OrgUnit, on_delete=models.CASCADE, related_name="closure_ancestor")
     descendant = models.ForeignKey(OrgUnit, on_delete=models.CASCADE, related_name="closure_descendant")
     depth = models.PositiveIntegerField()
