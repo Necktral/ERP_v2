@@ -9,8 +9,24 @@
       <q-separator />
 
       <q-card-section>
+        <q-banner v-if="bootstrapChecked && isFresh" class="q-mb-md" dense rounded inline-actions>
+          <div class="text-weight-medium">Primer arranque: no hay usuarios creados.</div>
+          <div class="text-caption text-grey-7">
+            Crea el usuario administrador inicial y luego configura Holding → Company → Branch.
+          </div>
+          <template #action>
+            <q-btn color="primary" label="Crear usuario inicial" to="/bootstrap" />
+          </template>
+        </q-banner>
+
         <q-form @submit.prevent="onSubmit">
-          <q-input v-model="username" label="Username" autocomplete="username" outlined />
+          <q-input
+            v-model="username"
+            label="Username"
+            autocomplete="username"
+            outlined
+            :disable="isFresh"
+          />
           <div class="q-mt-md" />
           <q-input
             v-model="password"
@@ -18,6 +34,7 @@
             type="password"
             autocomplete="current-password"
             outlined
+            :disable="isFresh"
           />
 
           <div class="q-mt-lg">
@@ -27,6 +44,7 @@
               label="Entrar"
               color="primary"
               class="full-width"
+              :disable="isFresh"
             />
           </div>
         </q-form>
@@ -44,7 +62,7 @@
 
 <script setup lang="ts">
 import { isAxiosError } from 'axios';
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAclStore } from 'src/stores/acl.store';
@@ -60,6 +78,17 @@ const password = ref('');
 
 const loading = ref(false);
 const errorMsg = ref<string | null>(null);
+
+const bootstrapChecked = ref(false);
+const isFresh = computed(() => auth.bootstrapState.is_fresh);
+
+onMounted(async () => {
+  try {
+    await auth.checkBootstrap();
+  } finally {
+    bootstrapChecked.value = true;
+  }
+});
 
 async function onSubmit() {
   loading.value = true;

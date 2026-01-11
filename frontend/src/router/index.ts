@@ -38,19 +38,6 @@ export default route(function () {
 
     // --- Onboarding / Bootstrap Logic ---
 
-    // 0) Unauthenticated: Check for system freshness (First run)
-    if (!auth.isAuthenticated) {
-      // Only check if we are not already going there and haven't checked recently
-      // Ideally we check this once per app load.
-      // We can check if we are heading to login.
-      if (to.path === '/login' || to.path === '/') {
-        await auth.checkBootstrap();
-        if (auth.bootstrapState.is_fresh) {
-          return { path: '/bootstrap' };
-        }
-      }
-    }
-
     // 0.5) Authenticated: Security & Setup checks
     if (auth.isAuthenticated) {
       // Enforce password change

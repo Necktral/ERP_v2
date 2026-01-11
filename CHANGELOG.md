@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-01-09
+## [Unreleased] - 2026-01-10
 
 ### Added
 
@@ -13,6 +13,16 @@
 - **Módulo ORG (Frontend):**
   - Implementación de `OrgCompanyProfilePage.vue` y `OrgBranchesPage.vue`.
   - Servicio `org.service.ts`.
+- **ORG Multi-company (Backend + Frontend):**
+  - Endpoint `GET/POST /api/org/companies/` (listado por memberships + creación bajo holding).
+  - Auditoría contractual: `ORG_COMPANY_CREATED` permitido y emitido en POST.
+  - Clonado de accesos del creador (roles/grants) al crear una nueva company.
+  - Permiso RBAC nuevo: `org.company.create` (asignado a `company_admin`).
+  - UI: página `OrgCompaniesPage.vue` (ORG · Empresas) con tabla PC-first + dialog de creación.
+- **UX Bootstrap/Login:**
+  - En primer arranque, `/login` muestra CTA para crear usuario inicial en `/bootstrap`.
+- **UI Density:**
+  - Modo `compact` más perceptible (padding de páginas, gutters, densidad real de tablas).
 - **Configuración:**
   - Plugin `Notify` habilitado en `quasar.config.ts`.
   - Configuración de auditoría (`AUDIT_MODULE_NAME`, `AUDIT_SCHEMA_VERSION`) en `base.py`.
@@ -30,6 +40,9 @@
   - Solución a error `$q.notify is not a function` habilitando el plugin.
   - Tipado estricto en columnas de tablas Quasar (`QTableColumn`).
   - Lint: eliminación de imports/funciones no usados en `HrEmployeesPage.vue`.
+- **ORG (Backend):**
+  - Permisos por método en Company Profile: `GET` usa `org.company.read`, `PUT` usa `org.company.update`.
+  - URLs ORG con nombres de ruta (`org-companies`, `org-company-profile`, etc.).
 
 ## [2026-01-08] - Release
 

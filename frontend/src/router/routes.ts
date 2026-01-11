@@ -58,12 +58,21 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresContext: false },
       },
       {
+        path: 'org/companies',
+        component: () => import('pages/OrgCompaniesPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['org.company.read'],
+        },
+      },
+      {
         path: 'org/company-profile',
         component: () => import('pages/OrgCompanyProfilePage.vue'),
         meta: {
           requiresAuth: true,
           requiresContext: true,
-          requiredPermissions: ['org.company.update'], // backend exige update incluso para GET
+          requiredPermissions: ['org.company.read'],
         },
       },
       {

@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
@@ -160,6 +161,23 @@ def test_org_patch_branch_updates_and_audit():
 
 
 @pytest.mark.django_db
+def test_org_get_company_profile_requires_read_not_update():
+    holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
+    company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C1", parent=holding)
+    CompanyProfile.objects.create(company=company, legal_name="C1", tax_id="", address="", phone="", email="")
+
+    client, _ = _mk_user_with_company_access(
+        username="u_org_company_read",
+        company=company,
+        perm_codes=["org.company.read"],
+    )
+
+    r = client.get("/api/org/company/profile/", HTTP_X_COMPANY_ID=str(company.id))
+    assert r.status_code == 200
+    assert r.data["legal_name"] == "C1"
+
+
+@pytest.mark.django_db
 def test_org_put_company_profile_updates_and_audit():
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
     company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C1", parent=holding)
@@ -202,5 +220,64 @@ def test_org_put_company_profile_updates_and_audit():
     assert ev.reason_code == "OK"
     assert ev.actor_user_id == user.id
     assert ev.after_snapshot.get("legal_name") == "C1 SA"
+    assert ev.event_hash is not None and len(ev.event_hash) == 64
+    assert ev.signature is not None and len(ev.signature) == 64
+
+
+@pytest.mark.django_db
+def test_org_list_companies_and_create_company_audit():
+    holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
+    company1 = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C1", parent=holding)
+    CompanyProfile.objects.create(company=company1, legal_name="C1 SA", tax_id="", address="", phone="", email="")
+
+    # Permisos mínimos: read para listar, create para crear
+    client, user = _mk_user_with_company_access(
+        username="u_org_company_create",
+        company=company1,
+        perm_codes=["org.company.read", "org.company.create"],
+    )
+
+    r0 = client.get("/api/org/companies/", HTTP_X_COMPANY_ID=str(company1.id))
+    assert r0.status_code == 200
+    assert len(r0.data["results"]) == 1
+
+    payload = {
+        "name": "C2",
+        "code": "C2",
+        "legal_name": "C2 SA",
+        "tax_id": "J-222",
+        "address": "Av 2",
+        "phone": "222",
+        "email": "admin@c2.com",
+    }
+
+    ts_before = timezone.now()
+    r1 = client.post("/api/org/companies/", payload, format="json", HTTP_X_COMPANY_ID=str(company1.id))
+    assert r1.status_code == 201
+    new_id = r1.data["id"]
+
+    c2 = OrgUnit.objects.get(id=new_id)
+    assert c2.unit_type == OrgUnit.UnitType.COMPANY
+    assert c2.parent_id == holding.id
+    assert c2.name == "C2"
+
+    prof2 = CompanyProfile.objects.get(company=c2)
+    assert prof2.legal_name == "C2 SA"
+
+    # Membership del creador en la nueva empresa
+    assert UserMembership.objects.filter(user=user, org_unit=c2, is_active=True).exists()
+
+    ev = AuditEvent.objects.filter(
+        event_type="ORG_COMPANY_CREATED",
+        module="ORG",
+        path="/api/org/companies/",
+        method="POST",
+        subject_type="COMPANY",
+        subject_id=str(c2.id),
+    ).latest("timestamp_server")
+    assert ev.timestamp_server >= ts_before
+    assert ev.reason_code == "OK"
+    assert ev.actor_user_id == user.id
+    assert ev.metadata.get("company_name") == "C2"
     assert ev.event_hash is not None and len(ev.event_hash) == 64
     assert ev.signature is not None and len(ev.signature) == 64

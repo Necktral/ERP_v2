@@ -134,6 +134,8 @@ Para soporte o dudas, contacta a los administradores del repositorio.
 
 - `GET /api/org/company/profile/` — Ver perfil de la empresa
 - `PUT /api/org/company/profile/` — Actualizar perfil de la empresa
+- `GET /api/org/companies/` — Listar compañías accesibles por membresía
+- `POST /api/org/companies/` — Crear compañía bajo el holding (clona accesos del creador)
 - `GET /api/org/branches/` — Listar sucursales (requiere permiso: org.branch.read)
 - `POST /api/org/branches/` — Crear sucursal (requiere permiso: org.branch.create)
 - `PATCH /api/org/branches/{branch_id}/` — Actualizar sucursal (requiere permiso: org.branch.update)
@@ -201,4 +203,4 @@ Para soporte o dudas, contacta a los administradores del repositorio.
 
 ---
 
-Actualizado al 2026-01-02.
+Actualizado: 2026-01-10.

@@ -76,6 +76,36 @@ body {
   line-height: 1.1;
 }
 
+/* Compact visible: forms + cards + page padding */
+.density-compact .app-container--padded {
+  padding: 12px;
+}
+
+.density-compact .q-card__section {
+  padding: 12px;
+}
+
+.density-compact .q-toolbar {
+  min-height: 44px;
+}
+
+/* Inputs/fields más bajos (PC-first ERP style) */
+.density-compact .q-field--outlined .q-field__control {
+  min-height: 38px;
+}
+.density-compact .q-field__marginal {
+  height: 38px;
+}
+.density-compact .q-field__label {
+  font-size: 12px;
+}
+
+/* Separación vertical un poco más corta */
+.density-compact .q-my-md {
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+}
+
 /* Separadores y bordes suaves */
 .q-separator {
   background: var(--n-border);

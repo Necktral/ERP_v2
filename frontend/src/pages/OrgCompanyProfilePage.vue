@@ -2,16 +2,17 @@
   <AppContainer>
     <AppPageHeader
       title="ORG · Perfil de compañía"
-      subtitle="GET/PUT /org/company/profile/ (backend exige org.company.update incluso para ver)"
+      subtitle="GET /org/company/profile/ · PUT /org/company/profile/"
     >
       <template #badges>
         <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
-        <q-badge outline>Perm: org.company.update</q-badge>
+        <q-badge outline>Read: org.company.read</q-badge>
+        <q-badge outline v-if="canEdit">Update: org.company.update</q-badge>
       </template>
 
       <template #actions>
         <q-btn flat label="Recargar" :disable="loading || saving" @click="load" />
-        <q-btn color="primary" label="Guardar" :loading="saving" @click="onSave" />
+        <q-btn v-if="canEdit" color="primary" label="Guardar" :loading="saving" @click="onSave" />
       </template>
     </AppPageHeader>
 
@@ -27,11 +28,12 @@
                 v-model="form.legal_name"
                 label="Razón social / nombre legal"
                 outlined
+                :disable="!canEdit"
                 :rules="[(v) => !!String(v || '').trim() || 'Requerido']"
               />
             </div>
             <div class="col-12 col-md-4">
-              <q-input v-model="form.tax_id" label="RIF / Tax ID" outlined />
+              <q-input v-model="form.tax_id" label="RIF / Tax ID" outlined :disable="!canEdit" />
             </div>
           </div>
 
@@ -40,14 +42,21 @@
 
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-              <q-input v-model="form.phone" label="Teléfono" outlined />
+              <q-input v-model="form.phone" label="Teléfono" outlined :disable="!canEdit" />
             </div>
             <div class="col-12 col-md-6">
-              <q-input v-model="form.email" label="Email" outlined />
+              <q-input v-model="form.email" label="Email" outlined :disable="!canEdit" />
             </div>
 
             <div class="col-12">
-              <q-input v-model="form.address" label="Dirección" outlined type="textarea" autogrow />
+              <q-input
+                v-model="form.address"
+                label="Dirección"
+                outlined
+                type="textarea"
+                autogrow
+                :disable="!canEdit"
+              />
             </div>
           </div>
 
@@ -84,6 +93,10 @@ import AppPageHeader from 'src/ui/AppPageHeader.vue';
 const $q = useQuasar();
 const acl = useAclStore();
 const ctx = useContextStore();
+
+const canEdit = computed(
+  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'org.company.update'),
+);
 
 const loading = ref(false);
 const saving = ref(false);

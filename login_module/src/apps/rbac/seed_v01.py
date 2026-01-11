@@ -39,6 +39,7 @@ def seed_rbac_v01() -> SeedResult:
 
     permissions = {
         # ORG
+        "org.company.create": "Crear empresas (COMPANY) bajo el holding",
         "org.company.read": "Ver datos de empresa.",
         "org.company.update": "Actualizar datos de empresa.",
         "org.branch.read": "Ver sucursales.",
@@ -81,6 +82,7 @@ def seed_rbac_v01() -> SeedResult:
 
     role_to_perms = {
         "company_admin": [
+            "org.company.create",
             "org.company.read",
             "org.company.update",
             "org.branch.read",

@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout view="hHh lpR fFf" :class="layoutClasses">
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="leftDrawerOpen = !leftDrawerOpen" />
@@ -103,6 +103,11 @@
 
         <q-item-label header>Módulos</q-item-label>
 
+        <q-item clickable to="/org/companies">
+          <q-item-section avatar><q-icon name="domain" /></q-item-section>
+          <q-item-section>ORG Compañías</q-item-section>
+        </q-item>
+
         <q-item clickable to="/org/company-profile">
           <q-item-section avatar><q-icon name="apartment" /></q-item-section>
           <q-item-section>ORG Profile</q-item-section>
@@ -175,6 +180,13 @@ const densityOptions = [
   { label: 'Std', value: 'comfortable' }, // "Std" para que quepa mejor si es btn-toggle
   { label: 'Compact', value: 'compact' },
 ];
+
+const layoutClasses = computed(() => {
+  return {
+    'density-compact': ui.density === 'compact',
+    'density-comfortable': ui.density === 'comfortable',
+  };
+});
 
 const contextLabel = computed(() => {
   const c = ctx.activeCompanyId;

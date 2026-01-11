@@ -35,8 +35,8 @@ El sistema cuenta con un asistente de instalación automático. **No es necesari
 
 1. Levanta el frontend (ver abajo).
 2. Accede a `http://localhost:3000`.
-3. El sistema detectará que es una instalación fresca y redirigirá automáticamente a `/bootstrap`.
-4. El asistente te guiará para:
+3. Si es una instalación fresca, el login mostrará un CTA fuerte para ir a `/bootstrap` (crear usuario inicial).
+4. El asistente (`/bootstrap`) te guiará para:
    - Crear el **Administrador Inicial**.
    - Validar credenciales.
    - Configurar la estructura organizacional base (**Holding -> Empresa -> Sucursal**).
@@ -110,4 +110,4 @@ npm run dev
 
 ---
 
-Actualizado: 2026-01-06
+Actualizado: 2026-01-10

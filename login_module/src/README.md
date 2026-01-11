@@ -1,4 +1,4 @@
-﻿# Necktral ERP/CRM
+# Necktral ERP/CRM
 
 Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría contractual, HR, ORG, IAM y sincronización.
 
@@ -87,7 +87,7 @@ npm run dev
 
 Ver [CHANGELOG.md](CHANGELOG.md).
 
-Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](BITACORA.md).
+Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](../../BITACORA.md).
 
 ### ORG (Organización)
 

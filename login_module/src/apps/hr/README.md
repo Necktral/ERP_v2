@@ -22,8 +22,9 @@ docker compose up -d --force-recreate
 
 ```bash
 docker compose exec backend python src/manage.py migrate --noinput
-docker compose exec backend python src/manage.py createsuperuser --username admin --email admin@example.com --noinput
 ```
+
+> Nota: en instalaciones frescas, el flujo recomendado es usar el wizard `/bootstrap` desde el frontend para crear el usuario inicial.
 
 ### 4. Siembra RBAC y bootstrap de empresa/sucursal/admin
 

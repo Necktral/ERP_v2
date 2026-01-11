@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -7,14 +8,162 @@ from rest_framework.views import APIView
 
 from apps.audit.writer import write_event
 from apps.common.permissions import rbac_permission
-from apps.iam.models import OrgUnit
+from apps.iam.models import AdminGrant, OrgUnit, UserMembership
+from apps.iam.selectors import get_accessible_companies
+from apps.rbac.models import RoleAssignment
 
 from .models import BranchProfile, CompanyProfile
 from .serializers import (
     BranchCreateSerializer,
     BranchUpdateSerializer,
+    CompanyCreateSerializer,
     CompanyProfileUpdateSerializer,
 )
+
+
+class CompanyListCreateView(APIView):
+    """
+    Holding → Companies (multi-company).
+    Permisos por método:
+      - GET  -> org.company.read
+      - POST -> org.company.create
+    """
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [rbac_permission("org.company.read")()]
+        if self.request.method == "POST":
+            return [rbac_permission("org.company.create")()]
+        return [rbac_permission("org.company.read")()]
+
+    def get(self, request):
+        qs = get_accessible_companies(request.user)
+        out = []
+        for c in qs:
+            prof = getattr(c, "company_profile", None)
+            out.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "code": c.code,
+                    "is_active": c.is_active,
+                    "legal_name": getattr(prof, "legal_name", ""),
+                    "tax_id": getattr(prof, "tax_id", ""),
+                }
+            )
+        return Response({"results": out}, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        with transaction.atomic():
+            current_company: OrgUnit | None = getattr(request, "company", None)
+
+            holding: OrgUnit | None = None
+            if current_company and current_company.unit_type == OrgUnit.UnitType.HOLDING:
+                holding = current_company
+            elif current_company and current_company.parent and current_company.parent.unit_type == OrgUnit.UnitType.HOLDING:
+                holding = current_company.parent
+            else:
+                holding = OrgUnit.objects.filter(unit_type=OrgUnit.UnitType.HOLDING).order_by("id").first()
+
+            if not holding:
+                return Response({"detail": "No existe holding. Ejecuta bootstrap primero."}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = CompanyCreateSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            v = serializer.validated_data
+
+            # Dedupe por name dentro del holding (robusto)
+            if OrgUnit.objects.filter(parent=holding, unit_type=OrgUnit.UnitType.COMPANY, name=v["name"]).exists():
+                return Response(
+                    {"name": "Ya existe una compañía con ese nombre en el holding"},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            new_company = OrgUnit.objects.create(
+                unit_type=OrgUnit.UnitType.COMPANY,
+                parent=holding,
+                name=v["name"],
+                code=v.get("code", ""),
+                is_active=True,
+            )
+            CompanyProfile.objects.create(
+                company=new_company,
+                legal_name=v.get("legal_name", "") or v["name"],
+                tax_id=v.get("tax_id", ""),
+                address=v.get("address", ""),
+                phone=v.get("phone", ""),
+                email=v.get("email", ""),
+            )
+
+            # Dar acceso inmediato al creador (para selector/ACL)
+            membership, _created = UserMembership.objects.get_or_create(
+                user=request.user,
+                org_unit=new_company,
+                defaults={"is_active": True},
+            )
+            if not membership.is_active:
+                membership.is_active = True
+                membership.left_at = None
+                membership.save()
+
+            # Clonar roles del creador desde su compañía actual
+            if current_company and current_company.unit_type == OrgUnit.UnitType.COMPANY:
+                roles_to_clone = RoleAssignment.objects.filter(
+                    user=request.user,
+                    org_unit=current_company,
+                    is_active=True,
+                )
+                for ra in roles_to_clone:
+                    cloned_ra, _ = RoleAssignment.objects.get_or_create(
+                        user=request.user,
+                        role=ra.role,
+                        org_unit=new_company,
+                        defaults={
+                            "is_active": True,
+                            "granted_by": request.user,
+                            "origin_ref": "org.company.create.clone",
+                        },
+                    )
+                    if not cloned_ra.is_active:
+                        cloned_ra.is_active = True
+                        cloned_ra.granted_by = request.user
+                        cloned_ra.origin_ref = "org.company.create.clone"
+                        cloned_ra.save()
+
+                grants_to_clone = AdminGrant.objects.filter(
+                    user=request.user,
+                    org_unit=current_company,
+                    is_active=True,
+                )
+                for g in grants_to_clone:
+                    cloned_g, _ = AdminGrant.objects.get_or_create(
+                        user=request.user,
+                        org_unit=new_company,
+                        capability=g.capability,
+                        defaults={
+                            "is_active": True,
+                            "applies_to_subtree": g.applies_to_subtree,
+                            "granted_by": request.user,
+                        },
+                    )
+                    if not cloned_g.is_active:
+                        cloned_g.is_active = True
+                        cloned_g.applies_to_subtree = g.applies_to_subtree
+                        cloned_g.granted_by = request.user
+                        cloned_g.save()
+
+            write_event(
+                request=request,
+                module="ORG",
+                event_type="ORG_COMPANY_CREATED",
+                reason_code="OK",
+                actor_user=request.user,
+                subject_type="COMPANY",
+                subject_id=str(new_company.id),
+                metadata={"company_name": new_company.name, "holding_id": str(holding.id)},
+            )
+            return Response({"id": new_company.id}, status=status.HTTP_201_CREATED)
 
 
 class BranchListCreateView(APIView):
@@ -132,7 +281,13 @@ class BranchDetailView(APIView):
 
 
 class CompanyProfileView(APIView):
-    permission_classes = [rbac_permission("org.company.update")]
+    def get_permissions(self):
+        # Separar ver vs editar
+        if self.request.method == "GET":
+            return [rbac_permission("org.company.read")()]
+        if self.request.method == "PUT":
+            return [rbac_permission("org.company.update")()]
+        return [rbac_permission("org.company.read")()]
 
     def get(self, request):
         company: OrgUnit = request.company
