@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Set
+from typing import Optional, Set
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -15,6 +15,11 @@ from apps.rbac.models import Role, RoleAssignment
 from .models import Employee, EmploymentAssignment, JobPosition, PositionRoleMap
 
 User = get_user_model()
+
+
+def _make_temp_password(user_model=User) -> str:
+    # Evita dependencias: usa util estándar ya usado en provisioning
+    return get_random_string(length=12)
 
 
 @dataclass(frozen=True)
@@ -279,3 +284,54 @@ def provision_user_for_employee(
     )
 
     return {"user_id": user.id, "username": user.username, "temp_password": temp_password}
+
+
+@transaction.atomic
+def reset_temp_password_for_employee(
+    *,
+    employee: Employee,
+    request=None,
+    actor=None,
+    temp_password: Optional[str] = None,
+) -> dict:
+    """
+    Resetea contraseña provisional del usuario ligado a un empleado.
+    Reglas:
+      - Debe existir linked_user
+      - Debe existir al menos 1 asignación activa (coherente con provisioning)
+      - Fuerza must_change_password=True
+      - Audita sin exponer la contraseña
+    """
+    if not employee.linked_user_id or not employee.linked_user:
+        raise ValueError("EMPLOYEE_HAS_NO_LINKED_USER")
+
+    has_active_assignment = EmploymentAssignment.objects.filter(employee=employee, is_active=True).exists()
+    if not has_active_assignment:
+        raise ValueError("EMPLOYEE_HAS_NO_ACTIVE_ASSIGNMENT")
+
+    user = employee.linked_user
+    pwd = (temp_password or "").strip() or _make_temp_password(User)
+
+    user.set_password(pwd)
+    user.must_change_password = True
+    user.save(update_fields=["password", "must_change_password"])
+
+    # Reconcile por consistencia (si el puesto cambió, o scopes cambiaron)
+    reconcile_employee_roles(employee=employee, request=request, actor=actor)
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_TEMP_PASSWORD_RESET",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={
+            "linked_user_id": user.id,
+            "linked_username": user.username,
+            "manual_password": bool((temp_password or "").strip()),
+        },
+    )
+
+    return {"user_id": user.id, "username": user.username, "temp_password": pwd}

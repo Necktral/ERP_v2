@@ -3,6 +3,11 @@ from __future__ import annotations
 from rest_framework import serializers
 
 
+# Payload para reset password provisional
+class ResetTempPasswordSerializer(serializers.Serializer):
+    temp_password = serializers.CharField(required=False, allow_blank=True, default="")
+
+
 class PositionCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     code = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")

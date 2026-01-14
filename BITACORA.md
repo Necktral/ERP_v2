@@ -206,3 +206,58 @@ Se completa el flujo PC-first de HR (empleados/asignaciones/provisionamiento) y 
 
 - Frontend: `npm run build` compila correctamente.
 - Backend: migraciones aplicadas; el endpoint `/api/hr/employees/<id>/provision-user/` deja de responder 500 en BD existentes.
+
+---
+
+## 2026-01-14 — HR reset de contraseña provisional (A)
+
+### Contexto
+
+Se implementa el reset controlado de contraseña provisional para empleados (HR), alineado con el flujo de provisionamiento y con auditoría contractual (sin exponer secretos).
+
+### Backend (Django/DRF)
+
+- Nuevo endpoint: `POST /api/hr/employees/<id>/reset-temp-password/`
+  - Permisos: `iam.users.create` + `hr.employee.update`.
+  - Reglas:
+    - `409` si el empleado no tiene `linked_user`.
+    - `409` si el empleado no tiene asignación activa.
+    - Fuerza `must_change_password=True`.
+  - Payload opcional: `{ "temp_password": "..." }` (si se omite, se autogenera).
+  - Respuesta: `{ user_id, username, temp_password }`.
+- Auditoría:
+  - Se habilita y emite el evento `HR_EMPLOYEE_TEMP_PASSWORD_RESET`.
+  - La contraseña **no** se guarda en auditoría.
+
+**Archivos tocados**
+
+- `login_module/src/apps/audit/contracts.py`
+- `login_module/src/apps/hr/serializers.py`
+- `login_module/src/apps/hr/services.py`
+- `login_module/src/apps/hr/views.py`
+- `login_module/src/apps/hr/urls.py`
+
+### Tests
+
+- Se agregan pruebas para éxito + auditoría y para `409` sin `linked_user`.
+
+**Archivo tocado**
+
+- `login_module/src/tests/test_hr_end_assignment_endpoint.py`
+
+### Frontend (Quasar/Vue)
+
+- HR Empleados: acción `lock_reset` para resetear contraseña provisional.
+- Diálogo para reset (auto o manual) + diálogo de resultado (mostrar una vez + copiar).
+- Servicio: método `resetEmployeeTempPassword()`.
+- Mensajes UX mejorados para errores típicos (`403/404/409`).
+
+**Archivos tocados**
+
+- `frontend/src/pages/HrEmployeesPage.vue`
+- `frontend/src/services/hr.service.ts`
+
+### Validación
+
+- Backend: `pytest -q`.
+- Frontend: `npm run build`.

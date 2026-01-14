@@ -110,10 +110,15 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](.
 - `PATCH /api/hr/employees/<int:employee_id>/` — Actualizar empleado
 - `POST /api/hr/employees/<int:employee_id>/assignments/` — Asignar puesto/sucursal
 - `POST /api/hr/employees/<int:employee_id>/assignments/<int:assignment_id>/end/` — Finalizar asignación
-- Nuevo endpoint: `POST /hr/employees/<id>/provision-user/`
-  - Permite crear usuarios vinculados a empleados con contraseña provisional.
-  - Valida asignaciones activas y fuerza cambio de contraseña en primer login.
+- `POST /api/hr/employees/<id>/provision-user/`
+  - Crea un usuario vinculado al empleado con contraseña provisional.
+  - Valida asignación activa y fuerza cambio de contraseña en primer login.
   - Requiere permisos `iam.users.create` y `hr.employee.update`.
+- `POST /api/hr/employees/<id>/reset-temp-password/`
+  - Resetea la contraseña provisional del usuario vinculado al empleado.
+  - Payload opcional: `{ "temp_password": "..." }`.
+  - Responde `409` si el empleado no tiene `linked_user` o no tiene asignación activa.
+  - Auditoría: emite `HR_EMPLOYEE_TEMP_PASSWORD_RESET` (metadata sin password).
 
 ## Comandos de gestión
 
@@ -162,4 +167,4 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](.
 
 ---
 
-Actualizado: 2026-01-10.
+Actualizado: 2026-01-14.

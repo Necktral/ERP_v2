@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
+
 ## [2026-01-13] - Release
 
 ### Added

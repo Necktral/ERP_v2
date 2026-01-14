@@ -129,3 +129,15 @@ export async function provisionEmployeeUser(
   }>(`/hr/employees/${employeeId}/provision-user/`, payload);
   return data;
 }
+
+export async function resetEmployeeTempPassword(
+  employeeId: number,
+  payload: { temp_password?: string } = {},
+) {
+  const { data } = await api.post<{
+    user_id: number;
+    username: string;
+    temp_password: string;
+  }>(`/hr/employees/${employeeId}/reset-temp-password/`, payload);
+  return data;
+}

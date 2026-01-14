@@ -16,13 +16,20 @@ from .models import Employee, EmploymentAssignment, JobPosition
 from .serializers import (
     AssignmentCreateSerializer,
     EmployeeCreateSerializer,
+    ResetTempPasswordSerializer,
     EmployeeUpdateSerializer,
     PositionCreateSerializer,
     PositionRoleMapUpdateSerializer,
     PositionUpdateSerializer,
     EmployeeProvisionUserSerializer,
 )
-from .services import end_assignment, reconcile_employee_roles, set_position_role_maps, provision_user_for_employee
+from .services import (
+    end_assignment,
+    provision_user_for_employee,
+    reconcile_employee_roles,
+    reset_temp_password_for_employee,
+    set_position_role_maps,
+)
 
 
 class EmployeeAssignmentEndView(APIView):
@@ -402,3 +409,39 @@ class EmployeeProvisionUserView(APIView):
                 return Response({"detail": msg}, status=status.HTTP_409_CONFLICT)
             # Both "no active assignment" and username conflict fall here as 400
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmployeeResetTempPasswordView(APIView):
+    """
+    POST /hr/employees/<id>/reset-temp-password/
+    Requiere: iam.users.create + hr.employee.update (mismo estándar que provision)
+    """
+
+    permission_classes = [rbac_permission("iam.users.create"), rbac_permission("hr.employee.update")]
+
+    def post(self, request, employee_id: int):
+        company = request.company
+        emp = Employee.objects.filter(id=employee_id, company=company).select_related("linked_user").first()
+        if not emp:
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        ser = ResetTempPasswordSerializer(data=request.data or {})
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            out = reset_temp_password_for_employee(
+                employee=emp,
+                request=request,
+                actor=request.user,
+                temp_password=ser.validated_data.get("temp_password") or None,
+            )
+        except ValueError as e:
+            code = str(e)
+            if code == "EMPLOYEE_HAS_NO_LINKED_USER":
+                return Response({"detail": "Employee has no linked user"}, status=status.HTTP_409_CONFLICT)
+            if code == "EMPLOYEE_HAS_NO_ACTIVE_ASSIGNMENT":
+                return Response({"detail": "Employee has no active assignment"}, status=status.HTTP_409_CONFLICT)
+            return Response({"detail": "Invalid state"}, status=status.HTTP_409_CONFLICT)
+
+        return Response(out, status=status.HTTP_200_OK)

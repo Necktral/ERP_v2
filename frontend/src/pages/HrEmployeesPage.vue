@@ -2,7 +2,7 @@
   <AppContainer>
     <AppPageHeader
       title="HR · Empleados"
-      subtitle="GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/"
+      subtitle="GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/ · POST /hr/employees/{id}/reset-temp-password/"
     >
       <template #badges>
         <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
@@ -11,7 +11,7 @@
         <q-badge outline v-if="canUpdate">Update: hr.employee.update</q-badge>
         <q-badge outline v-if="canAssign">Assign: hr.assignment.create</q-badge>
         <q-badge outline v-if="canEndAssign">End: hr.assignment.end</q-badge>
-        <q-badge outline v-if="canProvision">Provision: iam.users.create</q-badge>
+        <q-badge outline v-if="canProvisionUser">Provision: iam.users.create</q-badge>
       </template>
 
       <template #actions>
@@ -87,12 +87,21 @@
               @click="openEnd(props.row)"
             />
             <q-btn
-              v-if="canProvision"
+              v-if="canProvisionUser"
               dense
               flat
               icon="vpn_key"
               :disable="!!props.row.linked_user_id"
               @click="openProvision(props.row)"
+            />
+
+            <q-btn
+              v-if="canProvisionUser"
+              dense
+              flat
+              icon="lock_reset"
+              :disable="!props.row.linked_user_id || !props.row.active_assignments?.length"
+              @click="openResetTempPassword(props.row)"
             />
           </q-td>
         </template>
@@ -345,6 +354,92 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Reset temp password dialog -->
+    <q-dialog v-model="resetDialog">
+      <q-card style="width: 760px; max-width: 96vw" class="app-card">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Reset contraseña provisional</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section>
+          <div class="text-caption text-grey-7">
+            Empleado: {{ resetTarget?.first_name }} {{ resetTarget?.last_name }}
+          </div>
+
+          <q-form class="q-mt-sm" @submit.prevent="doResetTempPassword">
+            <q-banner class="q-mb-sm" dense rounded>
+              Esto invalidará la contraseña actual del usuario y forzará cambio al iniciar sesión.
+            </q-banner>
+
+            <div class="q-mt-sm">
+              <q-toggle v-model="resetForm.manualPass" label="Definir contraseña manual" />
+            </div>
+
+            <div class="q-mt-sm" v-if="resetForm.manualPass">
+              <q-input
+                v-model="resetForm.temp_password"
+                label="Contraseña provisional"
+                outlined
+                type="password"
+              />
+            </div>
+
+            <q-banner v-if="resetError" class="q-mt-md" dense rounded>
+              {{ resetError }}
+            </q-banner>
+
+            <div class="q-mt-md">
+              <q-btn color="primary" type="submit" :loading="resetSaving" label="Reset" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Reset result dialog -->
+    <q-dialog v-model="resetResultDialog">
+      <q-card style="width: 560px; max-width: 96vw" class="app-card">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Credenciales provisionales</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12">
+              <q-input
+                :model-value="resetResult?.username || ''"
+                label="Username"
+                outlined
+                readonly
+              />
+            </div>
+            <div class="col-12">
+              <q-input
+                :model-value="resetResult?.temp_password || ''"
+                label="Contraseña provisional"
+                outlined
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="q-mt-md">
+            <q-btn flat icon="content_copy" label="Copiar contraseña" @click="copyResetPass" />
+          </div>
+
+          <q-banner class="q-mt-md" dense rounded>
+            Guarda esta contraseña ahora: no se volverá a mostrar.
+          </q-banner>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </AppContainer>
 </template>
 
@@ -352,6 +447,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { copyToClipboard, useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
+import { isAxiosError } from 'axios';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
@@ -364,6 +460,7 @@ import {
   listPositions,
   patchEmployee,
   provisionEmployeeUser,
+  resetEmployeeTempPassword,
   type EmployeeRow,
   type PositionRow,
 } from 'src/services/hr.service';
@@ -413,6 +510,7 @@ const canEndAssign = computed(
 const canProvision = computed(
   () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'iam.users.create'),
 );
+const canProvisionUser = computed(() => canProvision.value && canUpdate.value);
 
 async function load() {
   loading.value = true;
@@ -688,7 +786,41 @@ async function doProvision() {
     $q.notify({ type: 'positive', message: 'Acceso provisionado' });
     await load();
   } catch (e: unknown) {
-    provError.value = extractErrorMessage(e);
+    if (isAxiosError(e)) {
+      const status = e.response?.status;
+      const detail =
+        typeof e.response?.data === 'object' && e.response?.data
+          ? (e.response?.data as { detail?: unknown }).detail
+          : undefined;
+      const detailStr = typeof detail === 'string' ? detail : '';
+
+      if (status === 403) {
+        provError.value =
+          'No tienes permisos para esta acción (requiere iam.users.create y hr.employee.update).';
+      } else if (status === 409) {
+        // backend actual devuelve 409 con mensaje en español
+        provError.value =
+          detailStr ||
+          'Conflicto: el empleado ya tiene usuario vinculado o el estado no permite provisionar.';
+      } else if (status === 400) {
+        // Mensajes “humanos” basados en ValueError del backend (en español)
+        if (detailStr.includes('no tiene ninguna asignación activa')) {
+          provError.value =
+            'El empleado no tiene asignación activa. Asigna un puesto/sucursal antes de provisionar acceso.';
+        } else if (detailStr.includes('ya existe') && detailStr.includes('username')) {
+          provError.value =
+            'El username ya existe. Prueba con otro o usa un estándar (ej: nombre.apellido).';
+        } else if (detailStr.includes('ya existe') && detailStr.includes('email')) {
+          provError.value = 'El email ya está en uso por otro usuario.';
+        } else {
+          provError.value = extractErrorMessage(e);
+        }
+      } else {
+        provError.value = extractErrorMessage(e);
+      }
+    } else {
+      provError.value = extractErrorMessage(e);
+    }
   } finally {
     provSaving.value = false;
   }
@@ -696,6 +828,111 @@ async function doProvision() {
 
 async function copyProvPass() {
   const pass = provResult.value?.temp_password;
+  if (!pass) return;
+  try {
+    await copyToClipboard(pass);
+    $q.notify({ type: 'positive', message: 'Contraseña copiada' });
+  } catch {
+    $q.notify({ type: 'negative', message: 'No pude copiar al portapapeles' });
+  }
+}
+
+// Reset temp password
+const resetDialog = ref(false);
+const resetTarget = ref<EmployeeRow | null>(null);
+const resetSaving = ref(false);
+const resetError = ref<string | null>(null);
+
+const resetResultDialog = ref(false);
+const resetResult = ref<{ username: string; temp_password: string } | null>(null);
+
+const resetForm = reactive<{ manualPass: boolean; temp_password: string }>({
+  manualPass: false,
+  temp_password: '',
+});
+
+function openResetTempPassword(e: EmployeeRow) {
+  resetTarget.value = e;
+  resetError.value = null;
+  resetResult.value = null;
+  resetForm.manualPass = false;
+  resetForm.temp_password = '';
+  resetDialog.value = true;
+}
+
+async function doResetTempPassword() {
+  if (!resetTarget.value) return;
+
+  const ok = await new Promise<boolean>((resolve) => {
+    $q.dialog({
+      title: 'Confirmar reset',
+      message:
+        'Esto invalidará la contraseña actual y el usuario deberá cambiarla al iniciar sesión. ¿Continuar?',
+      cancel: true,
+      persistent: true,
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false));
+  });
+  if (!ok) return;
+
+  resetSaving.value = true;
+  resetError.value = null;
+
+  try {
+    const payload: { temp_password?: string } = {};
+    if (resetForm.manualPass && resetForm.temp_password.trim()) {
+      payload.temp_password = resetForm.temp_password;
+    }
+
+    const data = await resetEmployeeTempPassword(resetTarget.value.id, payload);
+
+    resetDialog.value = false;
+    resetResult.value = { username: data.username, temp_password: data.temp_password };
+    resetResultDialog.value = true;
+    $q.notify({ type: 'positive', message: 'Contraseña provisional reseteada' });
+    await load();
+  } catch (e: unknown) {
+    if (isAxiosError(e)) {
+      const status = e.response?.status;
+      const detail =
+        typeof e.response?.data === 'object' && e.response?.data
+          ? (e.response?.data as { detail?: unknown }).detail
+          : undefined;
+
+      if (status === 403) {
+        resetError.value =
+          'No tienes permisos para esta acción (requiere iam.users.create y hr.employee.update).';
+      } else if (status === 404) {
+        resetError.value = 'Empleado no encontrado en esta empresa.';
+      } else if (status === 409) {
+        if (
+          detail === 'Employee has no linked user' ||
+          detail === 'Employee has no linked user; cannot reset password.' ||
+          detail === 'Employee has no linked user'
+        ) {
+          resetError.value = 'El empleado no tiene usuario vinculado (no se puede resetear).';
+        } else if (
+          detail === 'Employee has no active assignment' ||
+          detail === 'Employee has no active assignment; cannot reset password.'
+        ) {
+          resetError.value = 'El empleado no tiene asignación activa (no corresponde resetear).';
+        } else {
+          resetError.value = extractErrorMessage(e);
+        }
+      } else {
+        resetError.value = extractErrorMessage(e);
+      }
+    } else {
+      resetError.value = extractErrorMessage(e);
+    }
+  } finally {
+    resetSaving.value = false;
+  }
+}
+
+async function copyResetPass() {
+  const pass = resetResult.value?.temp_password;
   if (!pass) return;
   try {
     await copyToClipboard(pass);
