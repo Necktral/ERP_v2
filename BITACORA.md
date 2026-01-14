@@ -153,3 +153,56 @@ Se endurece el endpoint de compañías y se aclara el flujo UX para que sea cohe
   - badge de estado,
   - acción para cambiar contexto,
   - diálogo de creación que recarga ACL + cambia contexto a la nueva empresa.
+
+---
+
+## 2026-01-13 — HR Empleados (PC-first) + fixes de provisionamiento
+
+### Contexto
+
+Se completa el flujo PC-first de HR (empleados/asignaciones/provisionamiento) y se corrigen fallos encontrados al probar el frontend contra una BD existente.
+
+### Frontend (Quasar/Vue)
+
+- Se reestructura `HrEmployeesPage.vue` (template + script) y se eliminan artefactos que rompían el build.
+- Tabla densa con filtro, badges de estado (activo/asignación/acceso) y acciones rápidas:
+  - Crear/editar empleado
+  - Asignar puesto/sucursal
+  - Terminar asignación
+  - Provisionar acceso (username + password provisional)
+
+**Archivos tocados**
+
+- `frontend/src/pages/HrEmployeesPage.vue`
+- `frontend/src/services/hr.service.ts`
+- `frontend/src/ui/AppDataTable.vue`
+
+### Backend (Django/DRF)
+
+- HR:
+  - Listado de empleados incluye resumen de asignaciones activas.
+  - Endpoints de asignaciones del empleado (`GET/POST`) y endpoint idempotente para terminar asignación.
+  - Provisionamiento de usuario: normaliza `email` vacío a `NULL` y valida unicidad.
+- Cuentas:
+  - Se agrega el campo `is_setup_complete` al modelo `accounts.User` y una migración compatible (agrega columna solo si falta) para evitar 500 por NOT NULL en BD existentes.
+
+**Archivos tocados**
+
+- `login_module/src/apps/hr/views.py`
+- `login_module/src/apps/hr/services.py`
+- `login_module/src/apps/hr/serializers.py`
+- `login_module/src/apps/accounts/models.py`
+- `login_module/src/apps/accounts/migrations/0003_user_is_setup_complete.py`
+
+### RBAC
+
+- Se incorpora el permiso `hr.assignment.read` y se asigna a roles relevantes vía seed.
+
+**Archivo tocado**
+
+- `login_module/src/apps/rbac/seed_v01.py`
+
+### Validación
+
+- Frontend: `npm run build` compila correctamente.
+- Backend: migraciones aplicadas; el endpoint `/api/hr/employees/<id>/provision-user/` deja de responder 500 en BD existentes.

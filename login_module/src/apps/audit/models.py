@@ -12,7 +12,8 @@ class AuditChainHead(models.Model):
     Usamos una sola fila (id=1) y la bloqueamos con SELECT FOR UPDATE
     al escribir eventos, para evitar carreras en entornos concurrentes.
     """
-
+    class Meta:
+        app_label = "audit"
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     last_event_hash = models.CharField(max_length=64, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
@@ -25,7 +26,8 @@ class AuditChainHeadV2(models.Model):
             - SYSTEM
             - COMPANY:123
     """
-
+    class Meta:
+        app_label = "audit"
     partition_key = models.CharField(max_length=64, primary_key=True)
     last_event_hash = models.CharField(max_length=64, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
@@ -77,6 +79,7 @@ class AuditEvent(models.Model):
     signature = models.CharField(max_length=64, null=True, blank=True)
 
     class Meta:
+        app_label = "audit"
         indexes = [
             models.Index(fields=["timestamp_server"]),
             models.Index(fields=["module", "event_type"]),

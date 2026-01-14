@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -155,9 +156,20 @@ class EmployeeListCreateView(APIView):
 
     def get(self, request):
         company = request.company
-        qs = Employee.objects.filter(company=company).select_related("linked_user").order_by("id")
+        active_asg_qs = (
+            EmploymentAssignment.objects.filter(is_active=True)
+            .select_related("position", "branch")
+            .order_by("-started_at", "-id")
+        )
+        qs = (
+            Employee.objects.filter(company=company)
+            .select_related("linked_user")
+            .prefetch_related(Prefetch("assignments", queryset=active_asg_qs, to_attr="active_assignments"))
+            .order_by("id")
+        )
         out = []
         for e in qs:
+            actives = getattr(e, "active_assignments", []) or []
             out.append(
                 {
                     "id": e.id,
@@ -169,6 +181,18 @@ class EmployeeListCreateView(APIView):
                     "is_active": e.is_active,
                     "linked_user_id": e.linked_user_id,
                     "linked_username": (e.linked_user.username if e.linked_user_id and e.linked_user else None),
+                    "has_active_assignment": bool(actives),
+                    "active_assignments": [
+                        {
+                            "id": a.id,
+                            "position_id": a.position_id,
+                            "position_name": a.position.name if a.position_id and a.position else "",
+                            "branch_id": a.branch_id,
+                            "branch_name": a.branch.name if a.branch_id and a.branch else None,
+                            "started_at": a.started_at.isoformat() if a.started_at else None,
+                        }
+                        for a in actives
+                    ],
                 }
             )
         return Response(out)
@@ -191,6 +215,7 @@ class EmployeeListCreateView(APIView):
             last_name=v.get("last_name", ""),
             phone=v.get("phone", ""),
             email=v.get("email", ""),
+            is_active=bool(v.get("is_active", True)),
             linked_user=linked_user,
         )
         write_event(
@@ -278,8 +303,37 @@ class EmployeeDetailView(APIView):
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
-class EmployeeAssignmentCreateView(APIView):
-    permission_classes = [rbac_permission("hr.assignment.create")]
+
+# Vista combinada para listar y crear asignaciones de empleado
+class EmployeeAssignmentListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("hr.assignment.create")()]
+        return [rbac_permission("hr.assignment.read")()]
+
+    def get(self, request, employee_id: int):
+        company: OrgUnit = request.company
+        emp = get_object_or_404(Employee, id=employee_id, company=company)
+        qs = (
+            EmploymentAssignment.objects.filter(employee=emp)
+            .select_related("position", "branch")
+            .order_by("-is_active", "-started_at", "-id")
+        )
+        data = []
+        for a in qs:
+            data.append(
+                {
+                    "id": a.id,
+                    "is_active": a.is_active,
+                    "position_id": a.position_id,
+                    "position_name": a.position.name if a.position_id and a.position else "",
+                    "branch_id": a.branch_id,
+                    "branch_name": a.branch.name if a.branch_id and a.branch else None,
+                    "started_at": a.started_at.isoformat() if a.started_at else None,
+                    "ended_at": a.ended_at.isoformat() if a.ended_at else None,
+                }
+            )
+        return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request, employee_id: int):
         company: OrgUnit = request.company
@@ -301,6 +355,7 @@ class EmployeeAssignmentCreateView(APIView):
             employee=emp,
             position=position,
             branch=branch,
+            created_by=request.user,
         )
         write_event(
             request=request,

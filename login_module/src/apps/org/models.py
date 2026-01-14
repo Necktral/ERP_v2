@@ -7,6 +7,8 @@ from apps.iam.models import OrgUnit
 
 
 class CompanyProfile(models.Model):
+    class Meta:
+        app_label = "org"
     """
     Tabla separada para datos de empresa.
     Canon de jerarquía sigue siendo OrgUnit (COMPANY).
@@ -28,6 +30,8 @@ class CompanyProfile(models.Model):
 
 
 class BranchProfile(models.Model):
+    class Meta:
+        app_label = "org"
     """
     Tabla separada para datos de sucursal.
     Canon de jerarquía sigue siendo OrgUnit (BRANCH).

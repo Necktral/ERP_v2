@@ -1,3 +1,22 @@
+export type EmployeeActiveAssignmentSummary = {
+  id: number;
+  position_id: number;
+  position_name: string;
+  branch_id: number | null;
+  branch_name: string | null;
+  started_at: string | null;
+};
+
+export type EmployeeAssignmentRow = {
+  id: number;
+  is_active: boolean;
+  position_id: number;
+  position_name: string;
+  branch_id: number | null;
+  branch_name: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+};
 import { api } from 'src/boot/axios';
 
 export type PositionRow = {
@@ -17,7 +36,15 @@ export type EmployeeRow = {
   is_active: boolean;
   linked_user_id: number | null;
   linked_username?: string | null;
+  has_active_assignment?: boolean;
+  active_assignments?: EmployeeActiveAssignmentSummary[];
 };
+export async function listEmployeeAssignments(employeeId: number) {
+  const { data } = await api.get<EmployeeAssignmentRow[]>(
+    `/hr/employees/${employeeId}/assignments/`,
+  );
+  return data;
+}
 
 export type PositionRoleMapItem = {
   role_id: number;

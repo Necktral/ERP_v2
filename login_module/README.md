@@ -150,8 +150,10 @@ Para soporte o dudas, contacta a los administradores del repositorio.
 - `POST /api/hr/employees/` — Crear empleado
 - `PATCH /api/hr/employees/<int:employee_id>/` — Actualizar empleado
 - `POST /api/hr/employees/<int:employee_id>/assignments/` — Asignar puesto/sucursal
+- `GET /api/hr/employees/<int:employee_id>/assignments/` — Listar asignaciones del empleado (requiere permiso: hr.assignment.read)
+- `POST /api/hr/employees/<int:employee_id>/assignments/` — Asignar puesto/sucursal
 - `POST /api/hr/employees/<int:employee_id>/assignments/<int:assignment_id>/end/` — Finalizar asignación
-- Nuevo endpoint: `POST /hr/employees/<id>/provision-user/`
+- Nuevo endpoint: `POST /api/hr/employees/<id>/provision-user/`
   - Permite crear usuarios vinculados a empleados con contraseña provisional.
   - Valida asignaciones activas y fuerza cambio de contraseña en primer login.
   - Requiere permisos `iam.users.create` y `hr.employee.update`.

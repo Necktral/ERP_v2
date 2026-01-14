@@ -101,7 +101,9 @@ npm run dev
 - Se genera usuario, contraseña provisional y se muestra para entrega segura.
 - El usuario debe cambiar la contraseña en el primer login.
 - Requiere permisos `iam.users.create` y `hr.employee.update`.
-- Endpoint backend: `POST /hr/employees/<id>/provision-user/`
+- Endpoint backend: `POST /api/hr/employees/<id>/provision-user/`
+
+Nota: si envías email vacío, el backend lo normaliza a `NULL` para evitar conflictos con la unicidad.
 
 ## Seguridad memberships HR
 

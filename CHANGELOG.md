@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-01-10
+## [Unreleased] - 2026-01-13
 
 ### Added
 
@@ -10,6 +10,7 @@
   - Servicio `hr.service.ts` con métodos para interactuar con la API de HR (Positions, Employees, Assignments).
   - Rutas `/hr/positions` y `/hr/employees` protegidas por permisos RBAC (`hr.position.read`, `hr.employee.read`).
   - Integración de `RoleMap` en la creación de asignaciones.
+  - Columna "Asignación" (badge) y acciones PC-first (asignar, terminar, provisionar).
 - **Módulo ORG (Frontend):**
   - Implementación de `OrgCompanyProfilePage.vue` y `OrgBranchesPage.vue`.
   - Servicio `org.service.ts`.
@@ -37,9 +38,15 @@
   - Auditoría contractual: `module` de eventos ajustado a `AUTH`.
   - Endpoint `GET /api/auth/me/`: `roles` incluye roles scoped (`RoleAssignment`) y legacy (`UserRole`).
 - **Frontend:**
+
   - Solución a error `$q.notify is not a function` habilitando el plugin.
   - Tipado estricto en columnas de tablas Quasar (`QTableColumn`).
   - Lint: eliminación de imports/funciones no usados en `HrEmployeesPage.vue`.
+
+- **HR (Backend/Frontend):**
+  - Se corrige el endpoint documentado de provisión: `POST /api/hr/employees/<id>/provision-user/`.
+  - Se agrega migración y campo `is_setup_complete` en `accounts.User` para evitar error 500 al crear usuarios en BD existentes.
+  - Se normaliza `email` vacío a `NULL` en provisionamiento para evitar violación de unicidad en `accounts_user.email`.
 - **ORG (Backend):**
   - Permisos por método en Company Profile: `GET` usa `org.company.read`, `PUT` usa `org.company.update`.
   - URLs ORG con nombres de ruta (`org-companies`, `org-company-profile`, etc.).
@@ -48,7 +55,7 @@
 
 ### Added
 
-- Endpoint backend: `POST /hr/employees/<id>/provision-user/` para provisionar usuario a empleado.
+- Endpoint backend: `POST /api/hr/employees/<id>/provision-user/` para provisionar usuario a empleado.
 - Permiso IAM: `iam.users.create` para controlar el acceso a la provisión de usuarios.
 - Diálogo y botón en frontend para provisionar acceso desde la UI de empleados.
 - Documentación actualizada en todos los módulos sobre el nuevo flujo y seguridad HR.

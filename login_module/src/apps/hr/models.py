@@ -17,6 +17,7 @@ class JobPosition(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "hr"
         constraints = [
             models.UniqueConstraint(fields=["company", "name"], name="uq_position_company_name"),
         ]
@@ -40,6 +41,7 @@ class PositionRoleMap(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
+        app_label = "hr"
         constraints = [
             models.UniqueConstraint(fields=["position", "role", "scope_mode"], name="uq_position_role_scope"),
         ]
@@ -64,6 +66,7 @@ class Employee(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "hr"
         indexes = [
             models.Index(fields=["company", "is_active"]),
             models.Index(fields=["linked_user"]),
@@ -88,6 +91,7 @@ class EmploymentAssignment(models.Model):
     )
 
     class Meta:
+        app_label = "hr"
         indexes = [
             models.Index(fields=["employee", "is_active"]),
             models.Index(fields=["position", "is_active"]),

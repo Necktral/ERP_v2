@@ -27,6 +27,7 @@ class EmployeeCreateSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
     phone = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     email = serializers.EmailField(required=False, allow_blank=True, default="")
+    is_active = serializers.BooleanField(required=False, default=True)
     linked_user_id = serializers.IntegerField(required=False)
 
 

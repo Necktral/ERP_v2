@@ -228,7 +228,7 @@ def set_position_role_maps(*, position: JobPosition, maps: list[dict], request=N
 
 
 def provision_user_for_employee(
-    *, employee: Employee, username: str, email: str, temp_password: str | None = None, request=None, actor=None
+    *, employee: Employee, username: str, email: str | None, temp_password: str | None = None, request=None, actor=None
 ) -> dict:
     # Validaciones de negocio
     if employee.linked_user_id is not None:
@@ -241,14 +241,19 @@ def provision_user_for_employee(
     if not temp_password:
         temp_password = get_random_string(length=12)
 
+    normalized_email = (email or "").strip() or None
+
     with transaction.atomic():
         # Crear usuario
         if User.objects.filter(username=username).exists():
             raise ValueError(f"El username '{username}' ya existe.")
 
+        if normalized_email and User.objects.filter(email=normalized_email).exists():
+            raise ValueError(f"El email '{normalized_email}' ya existe.")
+
         user = User.objects.create_user(
             username=username,
-            email=email,
+            email=normalized_email,
             password=temp_password,
         )
         user.must_change_password = True

@@ -60,6 +60,7 @@ class Device(models.Model):
     )
 
     class Meta:
+        app_label = "sync_engine"
         indexes = [
             models.Index(fields=["company", "status"]),
             models.Index(fields=["branch", "status"]),
@@ -130,6 +131,7 @@ class DeviceEnrollmentChallenge(models.Model):
     created_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
+        app_label = "sync_engine"
         indexes = [
             models.Index(fields=["company", "expires_at"]),
             models.Index(fields=["used_at"]),
@@ -195,6 +197,7 @@ class AppliedCommand(models.Model):
     error = models.JSONField(default=dict, blank=True)  # motivo estructurado si rejected
 
     class Meta:
+        app_label = "sync_engine"
         indexes = [
             models.Index(fields=["device", "received_at"]),
             models.Index(fields=["company", "received_at"]),
@@ -218,6 +221,7 @@ class SyncReceipt(models.Model):
     errors_summary = models.JSONField(default=dict, blank=True)
 
     class Meta:
+        app_label = "sync_engine"
         indexes = [
             models.Index(fields=["device", "server_time"]),
         ]

@@ -22,6 +22,7 @@ class OrgUnit(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "iam"
         indexes = [
             models.Index(fields=["unit_type", "is_active"]),
             models.Index(fields=["parent", "unit_type"]),
@@ -72,6 +73,7 @@ class OrgClosure(models.Model):
     depth = models.PositiveIntegerField()
 
     class Meta:
+        app_label = "iam"
         constraints = [
             models.UniqueConstraint(fields=["ancestor", "descendant"], name="uq_orgclosure_ancestor_descendant"),
         ]
@@ -112,6 +114,7 @@ class UserMembership(models.Model):
     left_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        app_label = "iam"
         constraints = [
             models.UniqueConstraint(fields=["user", "org_unit"], name="uq_membership_user_orgunit"),
         ]
@@ -148,6 +151,7 @@ class AdminGrant(models.Model):
     granted_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
+        app_label = "iam"
         constraints = [
             models.UniqueConstraint(fields=["user", "org_unit", "capability"], name="uq_admingrant_user_org_cap"),
         ]
@@ -183,6 +187,7 @@ class CompanyLink(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "iam"
         constraints = [
             models.UniqueConstraint(fields=["from_company", "to_company"], name="uq_companylink_from_to"),
         ]
@@ -231,6 +236,7 @@ class LinkGrant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        app_label = "iam"
         constraints = [
             models.UniqueConstraint(
                 fields=["link", "permission", "access_mode", "scope_org_unit"],

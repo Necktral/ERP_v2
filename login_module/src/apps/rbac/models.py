@@ -39,6 +39,7 @@ class RoleAssignment(models.Model):
     granted_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
+        app_label = "rbac"
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "role", "org_unit", "origin"],
@@ -61,6 +62,8 @@ class RoleAssignment(models.Model):
 
 
 class Role(models.Model):
+    class Meta:
+        app_label = "rbac"
     name = models.CharField(max_length=64, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -70,6 +73,8 @@ class Role(models.Model):
 
 
 class Permission(models.Model):
+    class Meta:
+        app_label = "rbac"
     code = models.CharField(max_length=128, unique=True)  # ejemplo: "inventory.read"
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -83,6 +88,7 @@ class RolePermission(models.Model):
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
 
     class Meta:
+        app_label = "rbac"
         unique_together = ("role", "permission")
 
 
@@ -91,4 +97,5 @@ class UserRole(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
 
     class Meta:
+        app_label = "rbac"
         unique_together = ("user", "role")

@@ -18,7 +18,7 @@
     <q-separator v-if="title || caption || $slots.toolbar" />
 
     <q-card-section class="q-pa-none">
-      <q-table v-bind="boundAttrs" :dense="isDense" :class="tablePadClass">
+      <q-table v-bind="tableProps" :dense="isDense" :class="tablePadClass">
         <template v-for="name in tableSlotNames" :key="name" #[name]="slotProps">
           <slot :name="name" v-bind="slotProps" />
         </template>
@@ -28,16 +28,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs, useSlots } from 'vue';
+import { computed, useSlots } from 'vue';
 import { useUiStore } from 'src/stores/ui.store';
+import type { QTableProps } from 'quasar';
 
-defineProps<{ title?: string; caption?: string }>();
+type AppDataTableProps = { title?: string; caption?: string } & QTableProps;
 
-const attrs = useAttrs();
+const props = defineProps<AppDataTableProps>();
 const slots = useSlots();
 const ui = useUiStore();
 
-const boundAttrs = computed(() => attrs as Record<string, unknown>);
+const tableProps = computed<QTableProps>(() => {
+  // title/caption son del wrapper; el resto son props de QTable.
+  // Con exactOptionalPropertyTypes, no debemos pasar props con valor `undefined`.
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
+    if (key === 'title' || key === 'caption') continue;
+    if (value === undefined) continue;
+    out[key] = value;
+  }
+  return out as unknown as QTableProps;
+});
 
 // “toolbar” es solo del wrapper; no se lo pasamos a QTable
 const tableSlotNames = computed(() => Object.keys(slots).filter((n) => n !== 'toolbar'));
@@ -49,8 +60,7 @@ const tablePadClass = computed(() => (isCompact.value ? 'q-pa-sm' : 'q-pa-md'));
 
 // Si alguien ya pasa dense explícito, lo respetamos; si no, lo activamos en compacto
 const isDense = computed(() => {
-  const dense = boundAttrs.value.dense;
-  if (typeof dense === 'boolean') return dense;
+  if (typeof props.dense === 'boolean') return props.dense;
   return isCompact.value;
 });
 </script>

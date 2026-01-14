@@ -23,6 +23,72 @@ def _perm(code: str) -> Permission:
 
 @pytest.mark.django_db
 def test_end_assignment_endpoint_deactivates_assignment_and_position_roles():
+    @pytest.mark.django_db
+    def test_employee_list_includes_active_assignment_summary():
+        holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
+        company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C", parent=holding)
+        branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B1", parent=company)
+
+        admin = User.objects.create_user(
+            username="admin_list_emp", password="pass12345", email=f"admin_list_emp_{uuid.uuid4().hex[:8]}@test.com"
+        )
+        UserMembership.objects.create(user=admin, org_unit=company, is_active=True)
+
+        role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
+        for code in ["hr.employee.read"]:
+            RolePermission.objects.get_or_create(role=role, permission=_perm(code))
+        RoleAssignment.objects.create(user=admin, role=role, org_unit=company, is_active=True)
+
+        pos = JobPosition.objects.create(company=company, name="Vendedor", code="VEN", is_active=True)
+        emp = Employee.objects.create(company=company, employee_code="E1", first_name="Juan", last_name="Perez", is_active=True)
+        EmploymentAssignment.objects.create(employee=emp, position=pos, branch=branch, is_active=True)
+
+        client = APIClient()
+        login = client.post("/api/auth/login/", {"username": "admin_list_emp", "password": "pass12345"}, format="json")
+        assert login.status_code == 200
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+
+        r = client.get("/api/hr/employees/", HTTP_X_COMPANY_ID=str(company.id))
+        assert r.status_code == 200
+        row = next(x for x in r.data if x["id"] == emp.id)
+        assert row["has_active_assignment"] is True
+        assert isinstance(row["active_assignments"], list)
+        assert len(row["active_assignments"]) == 1
+        a0 = row["active_assignments"][0]
+        assert a0["position_name"] == "Vendedor"
+        assert a0["branch_name"] == "B1"
+
+
+    @pytest.mark.django_db
+    def test_list_employee_assignments_endpoint_returns_rows():
+        holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
+        company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C", parent=holding)
+        branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B1", parent=company)
+
+        admin = User.objects.create_user(
+            username="admin_list_asg", password="pass12345", email=f"admin_list_asg_{uuid.uuid4().hex[:8]}@test.com"
+        )
+        UserMembership.objects.create(user=admin, org_unit=company, is_active=True)
+
+        role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
+        for code in ["hr.assignment.read"]:
+            RolePermission.objects.get_or_create(role=role, permission=_perm(code))
+        RoleAssignment.objects.create(user=admin, role=role, org_unit=company, is_active=True)
+
+        pos = JobPosition.objects.create(company=company, name="Vendedor", code="VEN", is_active=True)
+        emp = Employee.objects.create(company=company, employee_code="E1", first_name="Juan", last_name="Perez", is_active=True)
+        a = EmploymentAssignment.objects.create(employee=emp, position=pos, branch=branch, is_active=True)
+
+        client = APIClient()
+        login = client.post("/api/auth/login/", {"username": "admin_list_asg", "password": "pass12345"}, format="json")
+        assert login.status_code == 200
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+
+        r = client.get(f"/api/hr/employees/{emp.id}/assignments/", HTTP_X_COMPANY_ID=str(company.id))
+        assert r.status_code == 200
+        assert isinstance(r.data, list)
+        ids = [x["id"] for x in r.data]
+        assert a.id in ids
     # Org
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="H")
     company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C", parent=holding)
