@@ -40,3 +40,30 @@ def test_login_failed_creates_contractual_audit_event():
     assert ev.subject_id == "u2"
     assert ev.event_hash is not None and len(ev.event_hash) == 64
     assert ev.signature is not None and len(ev.signature) == 64
+
+
+@pytest.mark.django_db
+def test_logout_requires_auth_and_creates_audit_event():
+    user = User.objects.create_user(username="u3", password="pass12345")
+
+    client = APIClient()
+    r = client.post("/api/auth/login/", {"username": "u3", "password": "pass12345"}, format="json")
+    assert r.status_code == 200
+    refresh = r.data["refresh"]
+    access = r.data["access"]
+
+    # 1) sin Authorization -> 401 (bloqueado por IsAuthenticated)
+    r2 = client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
+    assert r2.status_code == 401
+
+    # 2) con Authorization -> 204 + audit AUTH_LOGOUT
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    r3 = client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
+    assert r3.status_code == 204
+
+    ev = AuditEvent.objects.filter(event_type="AUTH_LOGOUT").latest("timestamp_server")
+    assert ev.actor_user == user
+    assert ev.subject_type == "USER"
+    assert ev.subject_id == str(user.id)
+    assert ev.event_hash is not None and len(ev.event_hash) == 64
+    assert ev.signature is not None and len(ev.signature) == 64

@@ -119,8 +119,8 @@ class RefreshView(TokenRefreshView):
 
 
 class LogoutView(APIView):
-    # Sin permiso chequeado severamente, pero idealmente IsAuthenticated
-    permission_classes = [AllowAny]
+    # Seguridad: evita que un tercero pueda invalidar refresh ajenos (DoS por blacklist).
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         refresh = request.data.get("refresh")
@@ -138,6 +138,20 @@ class LogoutView(APIView):
 
         try:
             token = RefreshToken(refresh)
+
+            token_user_id = token.get("user_id")
+            if token_user_id is not None and str(token_user_id) != str(request.user.id):
+                write_event(
+                    request=request,
+                    event_type="AUTH_LOGOUT_FAILURE",
+                    reason_code="TOKEN_MISMATCH",
+                    actor_user=request.user,
+                    subject_type="SESSION",
+                    subject_id="",
+                    metadata={"stage": "logout", "detail": "refresh_owner_mismatch"},
+                )
+                return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
+
             token.blacklist()
         except Exception:
             write_event(
