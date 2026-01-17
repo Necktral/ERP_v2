@@ -4,32 +4,36 @@ set -euo pipefail
 cd /app/login_module
 
 : "${DJANGO_SETTINGS_MODULE:=config.settings.dev}"
-: "${DB_HOST:=db}"
-: "${DB_PORT:=5432}"
+
+# Compat: permite usar POSTGRES_HOST/PORT o DB_HOST/PORT
+: "${POSTGRES_HOST:=${DB_HOST:-db}}"
+: "${POSTGRES_PORT:=${DB_PORT:-5432}}"
 
 export DJANGO_SETTINGS_MODULE
 
-# Esperar a Postgres
+# Espera simple a Postgres (sin herramientas extra)
+echo "Waiting for postgres at ${POSTGRES_HOST}:${POSTGRES_PORT}..."
 python - <<'PY'
 import os, time, socket
-host = os.getenv('DB_HOST', 'db')
-port = int(os.getenv('DB_PORT', '5432'))
+
+host = os.getenv("POSTGRES_HOST", "db")
+port = int(os.getenv("POSTGRES_PORT", "5432"))
 
 deadline = time.time() + 60
-last_err = None
 while time.time() < deadline:
     try:
         with socket.create_connection((host, port), timeout=2):
-            print('db_ready')
+            print("Postgres is up.")
             raise SystemExit(0)
-    except OSError as e:
-        last_err = e
-        time.sleep(2)
+    except OSError:
+        time.sleep(1)
 
-print(f'db_not_ready: {last_err}')
+print("Postgres not reachable within 60s.")
 raise SystemExit(1)
 PY
 
+# Migraciones automáticas en dev
 python src/manage.py migrate --noinput
 
+# Arranque servidor dev
 exec python src/manage.py runserver 0.0.0.0:8000
