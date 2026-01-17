@@ -15,6 +15,7 @@ from apps.rbac.models import RoleAssignment
 from .models import Employee, EmploymentAssignment, JobPosition
 from .serializers import (
     AssignmentCreateSerializer,
+    EmployeeRevokeAccessSerializer,
     EmployeeCreateSerializer,
     ResetTempPasswordSerializer,
     EmployeeUpdateSerializer,
@@ -27,6 +28,7 @@ from .services import (
     end_assignment,
     provision_user_for_employee,
     reconcile_employee_roles,
+    revoke_employee_access,
     reset_temp_password_for_employee,
     set_position_role_maps,
 )
@@ -443,5 +445,37 @@ class EmployeeResetTempPasswordView(APIView):
             if code == "EMPLOYEE_HAS_NO_ACTIVE_ASSIGNMENT":
                 return Response({"detail": "Employee has no active assignment"}, status=status.HTTP_409_CONFLICT)
             return Response({"detail": "Invalid state"}, status=status.HTTP_409_CONFLICT)
+
+        return Response(out, status=status.HTTP_200_OK)
+
+
+class EmployeeRevokeAccessView(APIView):
+    """
+    POST /hr/employees/<id>/revoke-access/
+    Requiere: iam.users.create + hr.employee.update (mismo estándar que provision/reset)
+    """
+
+    permission_classes = [rbac_permission("iam.users.create"), rbac_permission("hr.employee.update")]
+
+    def post(self, request, employee_id: int):
+        company = request.company
+        employee = Employee.objects.select_related("linked_user").filter(company=company, id=employee_id).first()
+        if employee is None:
+            return Response({"detail": "Empleado no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        s = EmployeeRevokeAccessSerializer(data=request.data or {})
+        s.is_valid(raise_exception=True)
+
+        try:
+            out = revoke_employee_access(
+                employee=employee,
+                request=request,
+                actor=request.user,
+                disable_user=bool(s.validated_data.get("disable_user", False)),
+            )
+        except ValueError as e:
+            if str(e) == "EMPLOYEE_HAS_NO_LINKED_USER":
+                return Response({"detail": "El empleado no tiene usuario ligado."}, status=status.HTTP_409_CONFLICT)
+            return Response({"detail": "Estado inválido."}, status=status.HTTP_409_CONFLICT)
 
         return Response(out, status=status.HTTP_200_OK)
