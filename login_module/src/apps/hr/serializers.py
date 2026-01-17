@@ -8,6 +8,12 @@ class ResetTempPasswordSerializer(serializers.Serializer):
     temp_password = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class EmployeeRevokeAccessSerializer(serializers.Serializer):
+    # Si True: intenta setear user.is_active=False, pero solo si el usuario ya no tiene
+    # memberships activas en ninguna otra org_unit
+    disable_user = serializers.BooleanField(required=False, default=False)
+
+
 class PositionCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=200)
     code = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
