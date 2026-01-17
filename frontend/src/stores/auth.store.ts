@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { isAxiosError } from 'axios';
 import { api, authApi } from 'src/boot/axios';
 import { clearTokens, readTokens, writeTokens } from 'src/core/storage/auth';
 import { useAclStore } from 'src/stores/acl.store';
@@ -23,6 +24,8 @@ export const useAuthStore = defineStore('auth', {
       is_fresh: false,
       setup_required: false,
     },
+
+    bootstrapChecked: false as boolean,
 
     // lock interno para refresh concurrente
     refreshInFlight: null as Promise<void> | null,
@@ -58,14 +61,29 @@ export const useAuthStore = defineStore('auth', {
         const { data } = await api.get('/auth/me/');
         this.user = data;
       } catch (e) {
-        console.error('Failed to fetch user', e);
+        // Si hay tokens viejos (DB reseteada), /me devuelve 401.
+        // En ese caso limpiamos sesión para evitar loops de refresh/401.
+        if (isAxiosError(e)) {
+          const status = e.response?.status;
+          if (status === 401 || status === 403) {
+            this.hardClearLocal();
+          }
+        }
+        throw e;
       }
     },
 
     async checkBootstrap() {
       try {
+        if (this.bootstrapChecked) return this.bootstrapState;
         const { data } = await authApi.get('/auth/bootstrap/status/');
         this.bootstrapState = data;
+        this.bootstrapChecked = true;
+
+        // Si el sistema está fresh, aseguramos no mantener tokens/contexto previos.
+        if (data?.is_fresh) {
+          this.hardClearLocal();
+        }
         return data;
       } catch {
         // quiet fail

@@ -23,13 +23,20 @@ cp .env.example .env
 docker compose up -d
 ```
 
-3. Migraciones (si aplica)
+URLs por defecto:
+
+- Frontend (Quasar): http://localhost:3000
+- Backend (Django/DRF): http://localhost:8000
+
+Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
+
+### Reset total de DB (instalación fresca)
 
 ```bash
-docker compose exec backend python src/manage.py migrate --noinput
+docker compose down -v
+docker compose up -d
+curl http://localhost:8000/api/auth/bootstrap/status/
 ```
-
-Backend: `http://localhost:8000`
 
 ## 💻 Desarrollo local
 

@@ -103,7 +103,6 @@ Ver [CHANGELOG.md](CHANGELOG.md) para detalles de versiones y correcciones.
 Desde la versión 2026-01, el sistema permite provisionar acceso a empleados directamente desde la UI y API:
 
 - **Endpoint nuevo:**
-
   - `POST /hr/employees/<id>/provision-user/`
   - Requiere permisos `iam.users.create` y `hr.employee.update`.
   - Valida que el empleado tenga al menos una asignación activa.
@@ -112,6 +111,7 @@ Desde la versión 2026-01, el sistema permite provisionar acceso a empleados dir
 
 - **Frontend:**
   - Nuevo botón y diálogo en la página de empleados para provisionar acceso.
+  - Si el empleado no tiene asignación activa, la UI bloquea el provisionamiento y muestra un mensaje claro.
   - Muestra credenciales provisionales para entrega segura.
 
 ## Seguridad: reconciliación de memberships HR

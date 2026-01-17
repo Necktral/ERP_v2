@@ -91,7 +91,7 @@
               dense
               flat
               icon="vpn_key"
-              :disable="!!props.row.linked_user_id"
+              :disable="!!props.row.linked_user_id || !props.row.active_assignments?.length"
               @click="openProvision(props.row)"
             />
 
@@ -748,6 +748,14 @@ const provForm = reactive<{
 });
 
 function openProvision(e: EmployeeRow) {
+  if (!e.active_assignments?.length) {
+    $q.notify({
+      type: 'warning',
+      message:
+        'El empleado no tiene asignación activa. Asigna un puesto antes de provisionar acceso.',
+    });
+    return;
+  }
   provTarget.value = e;
   provError.value = null;
   provResult.value = null;
@@ -762,6 +770,11 @@ function openProvision(e: EmployeeRow) {
 
 async function doProvision() {
   if (!provTarget.value) return;
+  if (!provTarget.value.active_assignments?.length) {
+    provError.value =
+      'El empleado no tiene asignación activa. Asigna un puesto/sucursal antes de provisionar acceso.';
+    return;
+  }
   if (!provForm.username.trim()) {
     provError.value = 'Username es requerido';
     return;

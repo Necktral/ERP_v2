@@ -22,6 +22,7 @@ Esto levantará:
 
 - **Backend**: http://localhost:8000
 - **Base de Datos**: Postgres 16
+- **Frontend**: http://localhost:3000
 
 ### 3. Aplicar Migraciones
 
@@ -43,7 +44,7 @@ El sistema cuenta con un asistente de instalación automático. **No es necesari
 
 ---
 
-## 💻 Desarrollo Frontend
+## 💻 Desarrollo Frontend (local)
 
 El frontend está desarrollado en Vue 3 + Quasar.
 
@@ -72,7 +73,17 @@ npm run dev
 
 - **Logs Backend**: `docker compose logs -f backend`
 - **Shell Backend**: `docker compose exec backend bash`
-- **Shell DB**: `docker compose exec db psql -U postgres -d erpcrm`
+- **Shell DB**: `docker compose exec db psql -U $DB_USER -d $DB_NAME`
+
+## 🐳 Frontend 100% Docker (sin Node local)
+
+El `compose.yaml` incluye un servicio `frontend` que corre `quasar dev` dentro del contenedor.
+
+```bash
+docker compose up -d frontend
+```
+
+Luego abre http://localhost:3000
 
 ---
 

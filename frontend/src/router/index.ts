@@ -31,9 +31,43 @@ export default route(function () {
     auth.initFromStorage();
     ctx.initFromStorage();
 
-    // Ensure user details are loaded if authenticated
-    if (auth.isAuthenticated && !auth.user) {
-      await auth.fetchMe();
+    // 0) Bootstrap (BD vacía / setup requerido). Esto debe correr antes de intentar /me o cargar ACL.
+    try {
+      await auth.checkBootstrap();
+    } catch {
+      // intencional: si el backend no responde, no bloqueamos navegación
+    }
+
+    // Si el sistema está fresh, no debe haber llamadas a endpoints protegidos.
+    if (auth.bootstrapState.is_fresh) {
+      if (to.path !== '/login' && !to.path.startsWith('/bootstrap')) {
+        return { path: '/login' };
+      }
+      return true;
+    }
+
+    const requiresAuth = Boolean(to.meta?.requiresAuth);
+    const requiresContext = Boolean(to.meta?.requiresContext);
+
+    // Si la ruta NO requiere auth, no disparamos llamadas protegidas en background.
+    // Esto evita 401 molestos en /login cuando hay tokens viejos (DB reseteada).
+    if (!requiresAuth) {
+      return true;
+    }
+
+    // 1) Si requiere auth y no hay sesión → login
+    if (!auth.isAuthenticated) {
+      if (to.path !== '/login') return { path: '/login' };
+      return true;
+    }
+
+    // Ensure user details are loaded if authenticated (solo cuando se requiere auth)
+    if (!auth.user) {
+      try {
+        await auth.fetchMe();
+      } catch {
+        return { path: '/login' };
+      }
     }
 
     // --- Onboarding / Bootstrap Logic ---
@@ -57,15 +91,6 @@ export default route(function () {
           }
         }
       }
-    }
-
-    const requiresAuth = Boolean(to.meta?.requiresAuth);
-    const requiresContext = Boolean(to.meta?.requiresContext);
-
-    // 1) Si requiere auth y no hay sesión → login
-    if (requiresAuth && !auth.isAuthenticated) {
-      if (to.path !== '/login') return { path: '/login' };
-      return true;
     }
 
     // 2) Si hay sesión y ACL no está cargado, cargarlo

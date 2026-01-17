@@ -54,6 +54,27 @@ services:
         python src/manage.py runserver 0.0.0.0:8000
       "
 
+  frontend:
+    image: node:20-bullseye-slim
+    container_name: erpcrm_frontend
+    restart: unless-stopped
+    working_dir: /app/frontend
+    environment:
+      # El navegador accede al backend por el puerto publicado del host.
+      VITE_API_BASE_URL: http://localhost:8000/api
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    command: >
+      bash -lc "
+        npm install &&
+        npm run dev -- --host 0.0.0.0 --port 3000
+      "
+
   # Herramienta opcional para inspeccionar DB por navegador:
   adminer:
     image: adminer:4.8.1

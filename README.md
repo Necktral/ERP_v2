@@ -23,13 +23,32 @@ cp .env.example .env
 docker compose up -d
 ```
 
-3. Migraciones (si aplica)
+Si solo quieres backend + db (sin frontend):
 
 ```bash
-docker compose exec backend python src/manage.py migrate --noinput
+docker compose up -d db backend
 ```
 
-Backend: `http://localhost:8000`
+Esto levanta por defecto:
+
+- Frontend (Quasar): http://localhost:3000
+- Backend (Django/DRF): http://localhost:8000
+- DB (Postgres): localhost:5432
+
+Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
+
+### Reset total de DB (prueba “instalación fresca”)
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+Para verificar el estado fresh:
+
+```bash
+curl http://localhost:8000/api/auth/bootstrap/status/
+```
 
 ## 💻 Desarrollo local
 
@@ -51,6 +70,19 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## 🐳 100% Docker (incluye frontend)
+
+Si prefieres no instalar Node localmente, el `compose.yaml` incluye un servicio `frontend`.
+
+```bash
+docker compose up -d frontend
+```
+
+Logs útiles:
+
+- `docker compose logs -f backend`
+- `docker compose logs -f frontend`
 
 ## ✅ Tests y análisis
 
