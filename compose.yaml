@@ -22,7 +22,9 @@ services:
       retries: 30
 
   backend:
-    image: python:3.10-slim
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile.dev
     container_name: erpcrm_backend
     restart: unless-stopped
     working_dir: /app/login_module
@@ -46,13 +48,7 @@ services:
       - "8000:8000"
     volumes:
       - ./:/app
-    command: >
-      bash -lc "
-        python -m pip install --upgrade pip &&
-        pip install -r /app/requirements/dev.txt &&
-        python src/manage.py migrate --noinput &&
-        python src/manage.py runserver 0.0.0.0:8000
-      "
+    # command/entrypoint quedan definidos en la imagen (docker/entrypoint.sh)
 
   frontend:
     image: node:20-bullseye-slim

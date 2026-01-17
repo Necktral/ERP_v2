@@ -1,0 +1,31 @@
+# Dockerfile (desarrollo) para ERP_CRM backend
+# Optimiza cache de dependencias y soporta hot-reload vía bind-mount (compose.yaml)
+
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Dependencias del sistema (psycopg, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Dependencias Python (cacheable)
+COPY requirements/ /app/requirements/
+RUN python -m pip install --upgrade pip \
+  && pip install --no-cache-dir -r /app/requirements/dev.txt
+
+# Código (en dev se sobreescribe con bind-mount; esto sirve para build inicial)
+COPY . /app
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]

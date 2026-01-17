@@ -37,6 +37,13 @@ Esto levanta por defecto:
 
 Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
 
+Si cambias dependencias Python (`requirements/*.txt`), reconstruye la imagen del backend:
+
+```bash
+docker compose build backend
+docker compose up -d backend
+```
+
 ### Reset total de DB (prueba “instalación fresca”)
 
 ```bash

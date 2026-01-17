@@ -40,6 +40,15 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.Python
+.venv
+venv/
+env/
+*.sqlite3
+staticfiles/
+media/
 .coverage
 htmlcov/
 

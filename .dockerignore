@@ -1,0 +1,38 @@
+# Reduce el contexto de build para Docker (especialmente backend)
+
+# Git
+.git
+.gitignore
+
+# Python virtualenv local
+system_wis/
+.venv/
+venv/
+env/
+
+# Caches
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django artefactos runtime
+staticfiles/
+media/
+*.sqlite3
+
+# Frontend / Node
+frontend/node_modules/
+frontend/dist/
+frontend/.quasar/
+node_modules/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.idea/
+
+# Backups
+ERP_CRM_backup_*.tar.gz
