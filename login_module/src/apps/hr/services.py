@@ -335,3 +335,83 @@ def reset_temp_password_for_employee(
     )
 
     return {"user_id": user.id, "username": user.username, "temp_password": pwd}
+
+
+@transaction.atomic
+def revoke_employee_access(
+    *,
+    employee: Employee,
+    request=None,
+    actor=None,
+    disable_user: bool = False,
+) -> dict:
+    """
+    B = revoke-access:
+    - Desactiva RoleAssignments origin=POSITION en scope company + branches
+    - Desactiva memberships del linked_user en scope company + branches
+    - Opcional: user.is_active=False si el usuario ya no tiene memberships activas en ninguna otra org_unit
+    - Audita HR_EMPLOYEE_ACCESS_REVOKED
+    """
+    if employee.linked_user is None:
+        raise ValueError("EMPLOYEE_HAS_NO_LINKED_USER")
+
+    user = employee.linked_user
+    company = employee.company
+
+    branch_ids = _company_branches(company)
+    scoped_orgunit_ids = [company.id, *branch_ids]
+
+    # 1) RoleAssignments origin=POSITION
+    ra_qs = RoleAssignment.objects.filter(
+        user=user,
+        org_unit_id__in=scoped_orgunit_ids,
+        origin=RoleAssignment.Origin.POSITION,
+        is_active=True,
+    )
+    ra_deactivated = ra_qs.update(is_active=False)
+
+    # 2) Memberships (company + branches)
+    mem_qs = UserMembership.objects.filter(
+        user=user,
+        org_unit_id__in=scoped_orgunit_ids,
+        is_active=True,
+    )
+    mem_deactivated = mem_qs.update(is_active=False, left_at=timezone.now())
+
+    # 3) Opcional: user.is_active=False (solo si no queda activo en otro lado)
+    user_disabled = False
+    if disable_user:
+        still_has_active_memberships = UserMembership.objects.filter(user=user, is_active=True).exists()
+        if not still_has_active_memberships and user.is_active:
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            user_disabled = True
+
+    # 4) Auditoría
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_ACCESS_REVOKED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={
+            "company_id": company.id,
+            "employee_id": employee.id,
+            "linked_user_id": user.id,
+            "role_assignments_deactivated": ra_deactivated,
+            "memberships_deactivated": mem_deactivated,
+            "user_disabled": user_disabled,
+            "disable_user_requested": bool(disable_user),
+        },
+    )
+
+    return {
+        "ok": True,
+        "employee_id": employee.id,
+        "linked_user_id": user.id,
+        "role_assignments_deactivated": ra_deactivated,
+        "memberships_deactivated": mem_deactivated,
+        "user_disabled": user_disabled,
+    }
