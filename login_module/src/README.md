@@ -13,6 +13,14 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 1. Configura variables
 
+### Windows 11 (PowerShell)
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### WSL (Ubuntu / bash)
+
 ```bash
 cp .env.example .env
 ```
@@ -36,6 +44,17 @@ Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver
 docker compose down -v
 docker compose up -d
 curl http://localhost:8000/api/auth/bootstrap/status/
+```
+
+### Bootstrap inicial (después de reset DB)
+
+```bash
+docker compose exec backend python src/manage.py seed_rbac_v01
+docker compose exec backend python src/manage.py createsuperuser
+docker compose exec backend python src/manage.py bootstrap_company \
+  --company-name "Necktral" \
+  --branch-name "Principal" \
+  --admin-username "admin"
 ```
 
 ## 💻 Desarrollo local
@@ -64,10 +83,16 @@ npm run dev
 ### Backend
 
 - Tests:
+
   ```bash
   source system_wis/bin/activate
   cd login_module
   pytest
+  ```
+
+- Tests (dentro de Docker):
+  ```bash
+  docker compose exec backend pytest -q
   ```
 - Lint (ruff):
   ```bash
@@ -174,4 +199,4 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](.
 
 ---
 
-Actualizado: 2026-01-14.
+Actualizado: 2026-01-17.

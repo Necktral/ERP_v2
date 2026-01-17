@@ -13,6 +13,14 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 1. Configura variables
 
+### Windows 11 (PowerShell)
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### WSL (Ubuntu / bash)
+
 ```bash
 cp .env.example .env
 ```
@@ -57,6 +65,31 @@ Para verificar el estado fresh:
 curl http://localhost:8000/api/auth/bootstrap/status/
 ```
 
+### Bootstrap inicial (después de reset DB)
+
+En una instalación fresca normalmente quieres:
+
+1. Sembrar RBAC
+
+```bash
+docker compose exec backend python src/manage.py seed_rbac_v01
+```
+
+2. Crear usuario admin (si no existe)
+
+```bash
+docker compose exec backend python src/manage.py createsuperuser
+```
+
+3. Crear empresa/sucursal y grants iniciales (requiere que el usuario exista)
+
+```bash
+docker compose exec backend python src/manage.py bootstrap_company \
+  --company-name "Necktral" \
+  --branch-name "Principal" \
+  --admin-username "admin"
+```
+
 ## 💻 Desarrollo local
 
 ### Backend (venv)
@@ -96,10 +129,16 @@ Logs útiles:
 ### Backend
 
 - Tests:
+
   ```bash
   source system_wis/bin/activate
   cd login_module
   pytest
+  ```
+
+- Tests (dentro de Docker):
+  ```bash
+  docker compose exec backend pytest -q
   ```
 - Lint (ruff):
   ```bash
@@ -167,13 +206,20 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](B
 
 ## Comandos de gestión
 
-- `python manage.py seed_rbac_v01` — Siembra roles, permisos y mapeos estándar (idempotente, auditable)
-- `python manage.py bootstrap_company --company-name ... --branch-name ... --admin-username ...` — Bootstrap de empresa, sucursal y admin
+- `python src/manage.py seed_rbac_v01` — Siembra roles, permisos y mapeos estándar (idempotente, auditable)
+- `python src/manage.py bootstrap_company --company-name ... --branch-name ... --admin-username ...` — Bootstrap de empresa, sucursal y admin
   - El comando es idempotente: si la empresa, sucursal o holding ya existen (por código o nombre), los reutiliza y reactiva si estaban desactivados.
   - Si usas `--no-input`, todos los parámetros son obligatorios y el comando falla si falta alguno.
   - AdminGrant siempre se crea con `org_unit=company` y se reactiva si estaba desactivado.
   - Membership y RoleAssignment también se reactivan si estaban off.
   - Validado por el test: `tests/test_bootstrap_company_command.py`.
+
+En Docker, ejecuta estos comandos así:
+
+```bash
+docker compose exec backend python src/manage.py seed_rbac_v01
+docker compose exec backend python src/manage.py bootstrap_company --company-name ... --branch-name ... --admin-username ...
+```
 
 ## Auditoría contractual
 
@@ -212,4 +258,4 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](B
 
 ---
 
-Actualizado: 2026-01-14.
+Actualizado: 2026-01-17.
