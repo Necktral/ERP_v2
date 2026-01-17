@@ -50,7 +50,7 @@ docker compose exec backend python src/manage.py migrate --noinput
 
 Revisa y ajusta:
 
-- DB_NAME, DB_USER, DB_PASSWORD: credenciales de Postgres
+- POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD: credenciales de Postgres
 - VITE_API_BASE_URL: URL del backend para el frontend
 
 ### 7. Acceso al backend

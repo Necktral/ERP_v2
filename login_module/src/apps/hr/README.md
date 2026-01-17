@@ -48,7 +48,7 @@ El backend queda expuesto en http://localhost:8000
 
 Revisa y ajusta:
 
-- DB_NAME, DB_USER, DB_PASSWORD: credenciales de Postgres
+- POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD: credenciales de Postgres
 - DJANGO_SECRET_KEY: clave secreta Django
 - DJANGO_ALLOWED_HOSTS: hosts permitidos
 - DJANGO_CORS_ALLOWED_ORIGINS: orígenes frontend permitidos
@@ -67,7 +67,7 @@ npm run dev
 
 - `docker compose logs backend --tail=60` — Ver logs del backend
 - `docker compose exec backend python src/manage.py showmigrations` — Ver estado de migraciones
-- `docker compose exec db psql -U <DB_USER> -d <DB_NAME> -c "\\l"` — Ver bases de datos en Postgres
+- `docker compose exec db psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "\\l"` — Ver bases de datos en Postgres
 
 ---
 

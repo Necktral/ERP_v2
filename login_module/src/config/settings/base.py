@@ -159,11 +159,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": env("DB_ENGINE", default="django.db.backends.postgresql"),
-        "NAME": env("DB_NAME", default="loggin_db"),
-        "USER": env("DB_USER", default="loggin_user"),
-        "PASSWORD": env("DB_PASSWORD", default=""),
-        "HOST": env("DB_HOST", default="127.0.0.1"),
-        "PORT": env("DB_PORT", default="5432"),
+        "NAME": env("POSTGRES_DB", default=env("DB_NAME", default="loggin_db")),
+        "USER": env("POSTGRES_USER", default=env("DB_USER", default="loggin_user")),
+        "PASSWORD": env(
+            "POSTGRES_PASSWORD",
+            default=env("DB_PASSWORD", default=""),
+        ),
+        "HOST": env("POSTGRES_HOST", default=env("DB_HOST", default="127.0.0.1")),
+        "PORT": env("POSTGRES_PORT", default=env("DB_PORT", default="5432")),
         "CONN_MAX_AGE": 60,
     }
 }

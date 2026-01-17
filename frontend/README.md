@@ -73,7 +73,7 @@ npm run dev
 
 - **Logs Backend**: `docker compose logs -f backend`
 - **Shell Backend**: `docker compose exec backend bash`
-- **Shell DB**: `docker compose exec db psql -U $DB_USER -d $DB_NAME`
+- **Shell DB**: `docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB`
 
 ## 🐳 Frontend 100% Docker (sin Node local)
 
