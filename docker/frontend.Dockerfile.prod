@@ -1,0 +1,25 @@
+# docker/frontend.Dockerfile.prod
+# Frontend PROD: build Quasar SPA y servir con Nginx (proxy /api -> backend)
+
+FROM node:20-bullseye-slim AS builder
+
+WORKDIR /app
+
+# Copia el proyecto completo (Quasar necesita quasar.config.* en postinstall)
+COPY frontend/ /app/frontend/
+WORKDIR /app/frontend
+
+RUN npm ci
+RUN npm run build
+
+# ---------------------
+
+FROM nginx:1.27-alpine
+
+# Config Nginx (SPA + proxy /api)
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Quasar Vite SPA output: dist/spa
+COPY --from=builder /app/frontend/dist/spa/ /usr/share/nginx/html/
+
+EXPOSE 80
