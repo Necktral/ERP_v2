@@ -2,7 +2,7 @@
   <AppContainer>
     <AppPageHeader
       title="HR · Empleados"
-      subtitle="GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/ · POST /hr/employees/{id}/reset-temp-password/"
+      subtitle="GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/ · POST /hr/employees/{id}/reset-temp-password/ · POST /hr/employees/{id}/revoke-access/"
     >
       <template #badges>
         <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
