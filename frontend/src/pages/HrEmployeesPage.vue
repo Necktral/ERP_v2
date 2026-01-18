@@ -12,6 +12,7 @@
         <q-badge outline v-if="canAssign">Assign: hr.assignment.create</q-badge>
         <q-badge outline v-if="canEndAssign">End: hr.assignment.end</q-badge>
         <q-badge outline v-if="canProvisionUser">Provision: iam.users.create</q-badge>
+        <q-badge outline v-if="canProvisionUser">Revoke: iam.users.create</q-badge>
       </template>
 
       <template #actions>
@@ -93,6 +94,15 @@
               icon="vpn_key"
               :disable="!!props.row.linked_user_id || !props.row.active_assignments?.length"
               @click="openProvision(props.row)"
+            />
+
+            <q-btn
+              v-if="canProvisionUser"
+              dense
+              flat
+              icon="person_off"
+              :disable="!props.row.linked_user_id"
+              @click="openRevokeAccess(props.row)"
             />
 
             <q-btn
@@ -440,6 +450,103 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Revoke access dialog -->
+    <q-dialog v-model="revokeDialog">
+      <q-card style="width: 760px; max-width: 96vw" class="app-card">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Revocar acceso</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section>
+          <div class="text-caption text-grey-7">
+            Empleado: {{ revokeTarget?.first_name }} {{ revokeTarget?.last_name }}
+          </div>
+
+          <q-form class="q-mt-sm" @submit.prevent="doRevokeAccess">
+            <q-banner class="q-mb-sm" dense rounded>
+              Esto desactiva roles (origin=POSITION) y memberships del usuario en la empresa y sus
+              sucursales.
+            </q-banner>
+
+            <div class="q-mt-sm">
+              <q-toggle
+                v-model="revokeForm.disable_user"
+                label="Deshabilitar usuario (si queda sin memberships activas)"
+              />
+            </div>
+
+            <q-banner v-if="revokeError" class="q-mt-md" dense rounded>
+              {{ revokeError }}
+            </q-banner>
+
+            <div class="q-mt-md">
+              <q-btn color="negative" type="submit" :loading="revokeSaving" label="Revocar" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Revoke result dialog -->
+    <q-dialog v-model="revokeResultDialog">
+      <q-card style="width: 560px; max-width: 96vw" class="app-card">
+        <q-card-section class="row items-center justify-between">
+          <div class="text-h6">Acceso revocado</div>
+          <q-btn flat icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-md-6">
+              <q-input
+                :model-value="String(revokeResult?.employee_id ?? '')"
+                label="employee_id"
+                outlined
+                readonly
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                :model-value="String(revokeResult?.linked_user_id ?? '')"
+                label="linked_user_id"
+                outlined
+                readonly
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                :model-value="String(revokeResult?.role_assignments_deactivated ?? '')"
+                label="role_assignments_deactivated"
+                outlined
+                readonly
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                :model-value="String(revokeResult?.memberships_deactivated ?? '')"
+                label="memberships_deactivated"
+                outlined
+                readonly
+              />
+            </div>
+            <div class="col-12">
+              <q-input
+                :model-value="revokeResult?.user_disabled ? 'true' : 'false'"
+                label="user_disabled"
+                outlined
+                readonly
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </AppContainer>
 </template>
 
@@ -460,7 +567,9 @@ import {
   listPositions,
   patchEmployee,
   provisionEmployeeUser,
+  revokeEmployeeAccess,
   resetEmployeeTempPassword,
+  type RevokeEmployeeAccessResponse,
   type EmployeeRow,
   type PositionRow,
 } from 'src/services/hr.service';
@@ -952,6 +1061,87 @@ async function copyResetPass() {
     $q.notify({ type: 'positive', message: 'Contraseña copiada' });
   } catch {
     $q.notify({ type: 'negative', message: 'No pude copiar al portapapeles' });
+  }
+}
+
+// Revoke access
+const revokeDialog = ref(false);
+const revokeTarget = ref<EmployeeRow | null>(null);
+const revokeSaving = ref(false);
+const revokeError = ref<string | null>(null);
+
+const revokeResultDialog = ref(false);
+const revokeResult = ref<RevokeEmployeeAccessResponse | null>(null);
+
+const revokeForm = reactive<{ disable_user: boolean }>({
+  disable_user: false,
+});
+
+function openRevokeAccess(e: EmployeeRow) {
+  revokeTarget.value = e;
+  revokeError.value = null;
+  revokeResult.value = null;
+  revokeForm.disable_user = false;
+  revokeDialog.value = true;
+}
+
+async function doRevokeAccess() {
+  if (!revokeTarget.value) return;
+  if (!revokeTarget.value.linked_user_id) {
+    revokeError.value = 'El empleado no tiene usuario vinculado (no se puede revocar).';
+    return;
+  }
+
+  const ok = await new Promise<boolean>((resolve) => {
+    $q.dialog({
+      title: 'Confirmar revocación',
+      message:
+        'Esta acción revoca el acceso del usuario (roles por puesto y memberships en company+sucursales). ¿Continuar?',
+      cancel: true,
+      persistent: true,
+    })
+      .onOk(() => resolve(true))
+      .onCancel(() => resolve(false));
+  });
+  if (!ok) return;
+
+  revokeSaving.value = true;
+  revokeError.value = null;
+  try {
+    const data = await revokeEmployeeAccess(revokeTarget.value.id, {
+      disable_user: revokeForm.disable_user,
+    });
+
+    revokeDialog.value = false;
+    revokeResult.value = data;
+    revokeResultDialog.value = true;
+    $q.notify({ type: 'positive', message: 'Acceso revocado' });
+    await load();
+  } catch (e: unknown) {
+    if (isAxiosError(e)) {
+      const status = e.response?.status;
+      const detail =
+        typeof e.response?.data === 'object' && e.response?.data
+          ? (e.response?.data as { detail?: unknown }).detail
+          : undefined;
+      const detailStr = typeof detail === 'string' ? detail : '';
+
+      if (status === 403) {
+        revokeError.value =
+          'No tienes permisos para esta acción (requiere iam.users.create y hr.employee.update).';
+      } else if (status === 404) {
+        revokeError.value = 'Empleado no encontrado en esta empresa.';
+      } else if (status === 409) {
+        revokeError.value =
+          detailStr || 'Conflicto: el empleado no tiene usuario ligado o estado inválido.';
+      } else {
+        revokeError.value = extractErrorMessage(e);
+      }
+    } else {
+      revokeError.value = extractErrorMessage(e);
+    }
+  } finally {
+    revokeSaving.value = false;
   }
 }
 </script>
