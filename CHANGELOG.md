@@ -5,6 +5,8 @@
 ### Added
 
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
+- **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/revoke-access/` + evento de auditoría `HR_EMPLOYEE_ACCESS_REVOKED` + acción UI en empleados.
+- **Infra PROD:** `compose.prod.yaml` (backend+db+web), Nginx SPA + proxy `/api/`, `.env.prod.example` y Dockerfiles PROD (backend y web).
 
 ## [2026-01-13] - Release
 
@@ -44,7 +46,6 @@
   - Auditoría contractual: `module` de eventos ajustado a `AUTH`.
   - Endpoint `GET /api/auth/me/`: `roles` incluye roles scoped (`RoleAssignment`) y legacy (`UserRole`).
 - **Frontend:**
-
   - Solución a error `$q.notify is not a function` habilitando el plugin.
   - Tipado estricto en columnas de tablas Quasar (`QTableColumn`).
   - Lint: eliminación de imports/funciones no usados en `HrEmployeesPage.vue`.

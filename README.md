@@ -28,7 +28,7 @@ cp .env.example .env
 2. Levanta servicios
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Si solo quieres backend + db (sin frontend):
@@ -44,6 +44,33 @@ Esto levanta por defecto:
 - DB (Postgres): localhost:5432
 
 Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
+
+## 🚀 Producción (Docker Compose)
+
+El stack PROD sirve el frontend compilado con Nginx en `:80` y hace proxy de `/api/` hacia el backend.
+
+1. Configura variables PROD
+
+```bash
+cp .env.prod.example .env
+```
+
+2. Levanta el stack PROD
+
+```bash
+docker compose -f compose.prod.yaml up -d --build
+```
+
+Endpoints:
+
+- Web (SPA): http://localhost/
+- API (proxy): http://localhost/api/
+
+Herramientas opcionales (Adminer):
+
+```bash
+docker compose -f compose.prod.yaml --profile tools up -d adminer
+```
 
 Si cambias dependencias Python (`requirements/*.txt`), reconstruye la imagen del backend:
 
@@ -199,6 +226,13 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](B
   - Payload opcional: `{ "temp_password": "..." }` (si se omite, se autogenera).
   - Responde `409` si no hay `linked_user` o si el empleado no tiene asignación activa.
   - Auditoría: `HR_EMPLOYEE_TEMP_PASSWORD_RESET` (sin exponer la contraseña).
+
+- `POST /api/hr/employees/<id>/revoke-access/`
+  - Revoca accesos del usuario vinculado al empleado en el scope de la company y sus sucursales.
+  - Desactiva `RoleAssignment` con `origin=POSITION` y cierra memberships (`left_at`) en scope.
+  - Payload: `{ "disable_user": true|false }` (opcional; si es `true`, desactiva el usuario solo si no quedan memberships activas).
+  - Responde `409` si el empleado no tiene `linked_user`.
+  - Auditoría: `HR_EMPLOYEE_ACCESS_REVOKED` (sin incluir secretos).
 
 ### Nota de compatibilidad (provisionamiento)
 

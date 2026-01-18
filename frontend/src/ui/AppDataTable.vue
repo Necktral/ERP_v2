@@ -35,6 +35,9 @@ import type { QTableProps } from 'quasar';
 type AppDataTableProps = { title?: string; caption?: string } & QTableProps;
 
 const props = defineProps<AppDataTableProps>();
+const emit = defineEmits<{
+  (e: 'row-click', evt: unknown, row: unknown, index: number): void;
+}>();
 const slots = useSlots();
 const ui = useUiStore();
 

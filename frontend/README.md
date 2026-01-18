@@ -24,6 +24,8 @@ Esto levantará:
 - **Base de Datos**: Postgres 16
 - **Frontend**: http://localhost:3000
 
+> Para stack PROD (SPA servida por Nginx y proxy `/api/`), ver el README raíz y usar `compose.prod.yaml`.
+
 ### 3. Aplicar Migraciones
 
 ```bash
@@ -54,6 +56,11 @@ npm install
 npm run dev
 # Accede a http://localhost:3000
 ```
+
+### API base
+
+- En Docker DEV, el contenedor `frontend` usa `VITE_API_BASE_URL=http://localhost:8000/api` (ver `compose.yaml`).
+- En PROD (Nginx), el frontend usa `VITE_API_BASE_URL=/api` para pegarle al mismo origen.
 
 > El frontend detectará automáticamente si el backend requiere configuración inicial.
 

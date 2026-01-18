@@ -127,6 +127,11 @@
           <q-item-section avatar><q-icon name="badge" /></q-item-section>
           <q-item-section>HR Empleados</q-item-section>
         </q-item>
+
+        <q-item clickable to="/audit/bitacora" :disable="!canAuditRead">
+          <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
+          <q-item-section>Auditoría</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -196,6 +201,12 @@ const contextLabel = computed(() => {
   if (!b) return companyName;
   const branchName = acl.branchName(c, b) ?? b;
   return `${companyName} · ${branchName}`;
+});
+
+const canAuditRead = computed(() => {
+  const companyId = ctx.activeCompanyId;
+  if (!companyId) return false;
+  return acl.hasPermission(companyId, 'audit.read');
 });
 
 async function onLogout() {

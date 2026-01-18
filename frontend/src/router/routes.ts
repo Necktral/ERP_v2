@@ -102,6 +102,15 @@ const routes: RouteRecordRaw[] = [
           requiredPermissions: ['hr.employee.read'],
         },
       },
+      {
+        path: 'audit/bitacora',
+        component: () => import('pages/AuditEventsPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['audit.read'],
+        },
+      },
     ],
   },
 
