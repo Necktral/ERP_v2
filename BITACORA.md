@@ -1,3 +1,32 @@
+## 2026-01-18 — Cierre login_module: revoke-access, Auditoría UI y PROD
+
+### Contexto
+
+Cierre funcional del módulo login_module (ORG/HR/IAM/RBAC/AUDIT) tras implementar auditoría UI, revoke-access y despliegue PROD.
+
+### Cambios principales
+
+- **HR:** Implementado endpoint y lógica `revoke-access` (desactiva RoleAssignments origin=POSITION, memberships y opcional user.is_active). Test dedicado y documentado en README.
+- **Auditoría UI:** Nueva pantalla en `/audit/bitacora` (gated por permiso `audit.read`), integrada en menú y router. Permite filtrar y ver eventos, incluyendo `HR_EMPLOYEE_ACCESS_REVOKED`.
+- **Infraestructura PROD:** Agregado `compose.prod.yaml`, Nginx SPA + proxy `/api/`, `.env.prod.example`, Dockerfiles prod. Documentado en CHANGELOG y README.
+
+### Archivos/Endpoints
+
+- `frontend/src/pages/AuditBitacoraPage.vue`
+- `frontend/src/router/routes.ts`
+- `frontend/src/layouts/MainLayout.vue`
+- `frontend/README.md`
+- `login_module/src/apps/hr/services.py` (revoke-access)
+- `login_module/src/apps/hr/tests/test_hr_method_permissions.py`
+- `compose.prod.yaml`, `Dockerfile.frontend`, `Dockerfile.backend`, `.env.prod.example`
+
+### Notas/Riesgos
+
+- Auditoría UI requiere permiso `audit.read` y contexto activo.
+- `revoke-access` afecta acceso inmediato y memberships; requiere validación en ambientes productivos.
+
+---
+
 # Bitácora de Cambios (desarrollo)
 
 ## ¿Qué es esto?

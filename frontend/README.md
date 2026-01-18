@@ -105,10 +105,14 @@ Luego abre http://localhost:3000
 - [x] **Módulo HR**: Gestión de Empleados y Posiciones.
 - [x] **UI Kit**: Componentes base (`AppDataTable`, `AppPageHeader`, layouts).
 
-### Próximos Pasos
+## Próximos pasos
 
-- [ ] **Auditoría**: Visualización de logs de eventos.
-- [ ] **RBAC Avanzado**: Editor visual de roles y permisos.
+- RBAC Avanzado: Editor visual de roles y permisos (módulo separado de administración).
+
+Notas:
+
+- Auditoría ya disponible en la ruta /audit/bitacora (requiere permiso audit.read).
+- Frontend tests: npm run test sigue siendo placeholder.
 
 ---
 

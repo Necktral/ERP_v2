@@ -104,7 +104,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'audit/bitacora',
-        component: () => import('pages/AuditEventsPage.vue'),
+        component: () => import('pages/AuditBitacoraPage.vue'),
         meta: {
           requiresAuth: true,
           requiresContext: true,
