@@ -141,3 +141,23 @@ export async function resetEmployeeTempPassword(
   }>(`/hr/employees/${employeeId}/reset-temp-password/`, payload);
   return data;
 }
+
+export type RevokeEmployeeAccessResponse = {
+  ok: true;
+  employee_id: number;
+  linked_user_id: number;
+  role_assignments_deactivated: number;
+  memberships_deactivated: number;
+  user_disabled: boolean;
+};
+
+export async function revokeEmployeeAccess(
+  employeeId: number,
+  payload: { disable_user?: boolean } = {},
+) {
+  const { data } = await api.post<RevokeEmployeeAccessResponse>(
+    `/hr/employees/${employeeId}/revoke-access/`,
+    payload,
+  );
+  return data;
+}
