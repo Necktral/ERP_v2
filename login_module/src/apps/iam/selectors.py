@@ -159,7 +159,7 @@ def build_acl_snapshot(user) -> dict:
     """
     companies = get_accessible_companies(user)
 
-    companies_payload = []
+    companies_payload: list[dict[str, Any]] = []
     for company in companies:
         branches = get_accessible_branches(user, company)
         include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
@@ -178,7 +178,7 @@ def build_acl_snapshot(user) -> dict:
 
     admin_caps = get_admin_caps_snapshot(user, companies)
 
-    payload = {
+    payload: dict[str, Any] = {
         "user_id": user.id,
         "username": getattr(user, "username", ""),
         "server_time": timezone.now().isoformat(),

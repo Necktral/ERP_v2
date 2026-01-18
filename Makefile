@@ -1,0 +1,131 @@
+.PHONY: qa-backend-gunicorn qa-backend-runserver \
+	qa-load-user qa-load-reset-axes qa-load-smoke qa-load-stress qa-gate3 \
+	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
+	qa-backend-ruff qa-backend-mypy qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity
+
+BASE_URL ?= http://localhost:8000/api
+K6_IMAGE ?= grafana/k6
+
+QA_REPORTS_DIR ?= qa/reports
+
+# Si QA_FRESH_DB=1, destruye volúmenes (DB limpia) antes de levantar.
+# Útil para CI determinista o cuando hay datos locales viejos que rompen Gate 3.
+QA_FRESH_DB ?= 0
+
+# Credenciales por defecto (ajusta en tu entorno/CI)
+USERNAME ?= k6
+PASSWORD ?= Pass12345__Strong
+
+# k6 defaults
+VUS ?= 5
+DURATION ?= 30s
+
+# Gate 3 defaults (overrideables)
+STRESS_WARMUP ?= 15s
+STRESS_SUSTAIN ?= 60s
+STRESS_COOLDOWN ?= 15s
+STRESS_VUS_WARMUP ?= 10
+STRESS_VUS_TARGET ?= 50
+STRESS_LOGIN_RATE_START ?= 1
+STRESS_LOGIN_RATE_WARMUP ?= 2
+STRESS_LOGIN_RATE_TARGET ?= 5
+STRESS_SLEEP ?= 0.1
+
+qa-load-reset-axes:
+	docker compose exec -T backend python manage.py axes_reset
+
+qa-backend-gunicorn:
+	USE_GUNICORN=1 \
+	GUNICORN_THREADS=4 \
+	GUNICORN_KEEPALIVE=10 \
+	docker compose up -d --build --force-recreate backend
+
+qa-backend-runserver:
+	USE_GUNICORN=0 docker compose up -d --build --force-recreate backend
+
+# --- QA Runner (Gates 1–3) ---
+
+qa-ci-up:
+	@if [ "$(QA_FRESH_DB)" = "1" ]; then \
+		echo "[qa] QA_FRESH_DB=1: bajando stack y volúmenes..."; \
+		docker compose down -v --remove-orphans; \
+	fi
+	docker compose up -d --build db backend
+	$(MAKE) qa-backend-wait
+
+qa-backend-wait:
+	docker compose exec -T backend bash -lc "python /app/qa/wait_backend_ready.py"
+
+qa-ci-fresh:
+	$(MAKE) QA_FRESH_DB=1 qa-ci
+
+# Alias explícito para pipelines CI
+qa-ci-ci: qa-ci-fresh
+
+qa-static-scan:
+	docker compose exec -T backend bash -lc "chmod +x /app/qa/static_scan_backend.sh && /app/qa/static_scan_backend.sh /app"
+
+qa-backend-ruff:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/login_module/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
+
+qa-backend-mypy:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini login_module/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+
+qa-backend-tests:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && coverage run -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
+
+qa-audit-integrity:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && python manage.py audit_verify_chain --seed-minimal --format json --output /app/$(QA_REPORTS_DIR)/audit_integrity.json"
+
+qa-frontend-ci:
+	docker compose --profile qa run --rm frontend_ci
+
+# Gate 1: calidad estática + typecheck
+qa-ci-gate1: qa-ci-up qa-static-scan qa-backend-ruff qa-backend-mypy qa-frontend-ci
+
+# Gate 2: pruebas deterministas (pytest + cobertura)
+qa-ci-gate2: qa-ci-up qa-backend-tests
+
+# Gate 3: integridad de auditoría (reporte)
+qa-ci-gate3: qa-ci-up qa-audit-integrity
+
+# Runner completo Gates 1–3
+qa-ci: qa-ci-gate1 qa-ci-gate2 qa-ci-gate3
+
+qa-load-user:
+	docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong'); setattr(u, 'must_change_password', False); u.save(); print('K6_USER_READY')"
+
+qa-load-smoke:
+	docker run --rm -i --network host \
+		-e BASE_URL=$(BASE_URL) \
+		-e USERNAME=$(USERNAME) \
+		-e PASSWORD=$(PASSWORD) \
+		-e VUS=$(VUS) \
+		-e DURATION=$(DURATION) \
+		$(K6_IMAGE) run - < qa/k6/auth_smoke.js
+
+# Stress test (stages). Ajusta con variables env si hace falta:
+# VUS_WARMUP, VUS_TARGET, WARMUP, SUSTAIN, COOLDOWN, SLEEP
+qa-load-stress:
+	docker run --rm -i --network host \
+		-e BASE_URL=$(BASE_URL) \
+		-e USERNAME=$(USERNAME) \
+		-e PASSWORD=$(PASSWORD) \
+		-e WARMUP=$(STRESS_WARMUP) \
+		-e SUSTAIN=$(STRESS_SUSTAIN) \
+		-e COOLDOWN=$(STRESS_COOLDOWN) \
+		-e VUS_WARMUP=$(STRESS_VUS_WARMUP) \
+		-e VUS_TARGET=$(STRESS_VUS_TARGET) \
+		-e LOGIN_RATE_START=$(STRESS_LOGIN_RATE_START) \
+		-e LOGIN_RATE_WARMUP=$(STRESS_LOGIN_RATE_WARMUP) \
+		-e LOGIN_RATE_TARGET=$(STRESS_LOGIN_RATE_TARGET) \
+		-e SLEEP=$(STRESS_SLEEP) \
+		$(K6_IMAGE) run - < qa/k6/auth_stress.js
+
+# Gate 3 (determinista): prepara entorno + smoke + stress
+qa-gate3:
+	$(MAKE) qa-backend-gunicorn
+	$(MAKE) qa-load-user
+	$(MAKE) qa-load-reset-axes
+	$(MAKE) qa-load-smoke VUS=2 DURATION=5s
+	$(MAKE) qa-load-stress

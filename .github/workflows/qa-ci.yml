@@ -1,0 +1,51 @@
+name: QA CI (Gates 1–3)
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+concurrency:
+  group: qa-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker info
+        run: |
+          docker version
+          docker compose version
+
+      - name: Prepare .env for Docker Compose
+        run: |
+          cp .env.example .env
+
+      - name: Run QA gates (deterministic)
+        run: |
+          make qa-ci-ci
+
+      - name: Upload QA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-reports
+          path: qa/reports/
+          if-no-files-found: warn
+
+      - name: Backend logs (on failure)
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --timestamps backend db | tail -n 400
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans

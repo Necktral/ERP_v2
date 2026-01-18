@@ -9,3 +9,11 @@ freezegun==1.5.5
 Faker==39.0.0
 
 ruff==0.14.10
+
+# Server (para load/QA en dev)
+gunicorn==23.0.0
+
+# Type-checking (Gate 2)
+mypy
+django-stubs
+djangorestframework-stubs

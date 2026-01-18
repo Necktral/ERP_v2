@@ -280,6 +280,7 @@ import {
   getAuditEvent,
   type AuditEventRow,
   type AuditEventDetail,
+  type AuditListParams,
 } from 'src/services/audit.service';
 
 import { useAclStore } from 'src/stores/acl.store';
@@ -412,30 +413,30 @@ function cursorFromUrl(url: string | null) {
 async function loadPage(cursor?: string | null) {
   loading.value = true;
   try {
-    const data = await listAuditEvents({
-      cursor: cursor ?? undefined,
+    const params: AuditListParams = {
       page_size: filters.page_size,
+    };
 
-      event_type: filters.event_type || undefined,
-      reason_code: filters.reason_code || undefined,
-      module: filters.module || undefined,
-      method: filters.method || undefined,
+    if (cursor) params.cursor = cursor;
+    if (filters.event_type) params.event_type = filters.event_type;
+    if (filters.reason_code) params.reason_code = filters.reason_code;
+    if (filters.module) params.module = filters.module;
+    if (filters.method) params.method = filters.method;
 
-      actor_user_id: filters.actor_user_id || undefined,
-      subject_type: filters.subject_type || undefined,
-      subject_id: filters.subject_id || undefined,
+    if (filters.actor_user_id) params.actor_user_id = filters.actor_user_id;
+    if (filters.subject_type) params.subject_type = filters.subject_type;
+    if (filters.subject_id) params.subject_id = filters.subject_id;
 
-      device_id: filters.device_id || undefined,
-      ip: filters.ip || undefined,
-      path_contains: filters.path_contains || undefined,
+    if (filters.device_id) params.device_id = filters.device_id;
+    if (filters.ip) params.ip = filters.ip;
+    if (filters.path_contains) params.path_contains = filters.path_contains;
 
-      offline_mode: filters.offline_mode ? true : undefined,
+    if (filters.offline_mode) params.offline_mode = true;
+    if (filters.after) params.after = filters.after;
+    if (filters.before) params.before = filters.before;
+    if (filters.include_integrity) params.include_integrity = true;
 
-      after: filters.after || undefined,
-      before: filters.before || undefined,
-
-      include_integrity: filters.include_integrity ? true : undefined,
-    });
+    const data = await listAuditEvents(params);
 
     rows.value = data.results;
     cursorNext.value = cursorFromUrl(data.next);

@@ -90,7 +90,7 @@ class LoginView(APIView):
 
 
 class RefreshView(TokenRefreshView):
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)  # type: ignore[assignment]
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)

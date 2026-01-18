@@ -4,12 +4,10 @@ from typing import TypedDict
 from django.db import transaction
 from apps.iam.models import OrgUnit, UserMembership, AdminGrant
 from apps.org.models import CompanyProfile, BranchProfile
-from django.contrib.auth import get_user_model
+from apps.accounts.models import User
 
 from apps.rbac.models import Role, RoleAssignment
 from apps.rbac.seed_v01 import seed_rbac_v01
-
-User = get_user_model()
 
 
 class InitialAdminData(TypedDict):

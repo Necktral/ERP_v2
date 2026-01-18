@@ -3,7 +3,8 @@ from django.db import models
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=True, null=True)
+    # AbstractUser.email es str (no nullable). Mantener compatibilidad de tipos.
+    email = models.EmailField(unique=True, blank=True)
 
     # Flujo onboarding:
     # - empleado creado por admin: entra con contraseña provisional y el sistema obliga a cambiarla

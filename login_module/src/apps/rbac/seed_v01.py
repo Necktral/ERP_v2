@@ -172,41 +172,44 @@ def seed_rbac_v01() -> SeedResult:
     with transaction.atomic():
         role_objs: dict[str, Role] = {}
         for name, desc in roles.items():
-            obj, created = Role.objects.get_or_create(name=name, defaults={"description": desc, "is_active": True})
+            role_obj, created = Role.objects.get_or_create(
+                name=name,
+                defaults={"description": desc, "is_active": True},
+            )
             if created:
                 roles_created += 1
             else:
-                update_fields: list[str] = []
-                if obj.description != desc:
-                    obj.description = desc
-                    update_fields.append("description")
-                if not obj.is_active:
-                    obj.is_active = True
-                    update_fields.append("is_active")
-                if update_fields:
-                    obj.save(update_fields=update_fields)
+                role_update_fields: list[str] = []
+                if role_obj.description != desc:
+                    role_obj.description = desc
+                    role_update_fields.append("description")
+                if not role_obj.is_active:
+                    role_obj.is_active = True
+                    role_update_fields.append("is_active")
+                if role_update_fields:
+                    role_obj.save(update_fields=role_update_fields)
                     roles_updated += 1
-            role_objs[name] = obj
+            role_objs[name] = role_obj
 
         perm_objs: dict[str, Permission] = {}
         for code, desc in permissions.items():
-            obj, created = Permission.objects.get_or_create(
+            perm_obj, created = Permission.objects.get_or_create(
                 code=code, defaults={"description": desc, "is_active": True}
             )
             if created:
                 perms_created += 1
             else:
-                update_fields: list[str] = []
-                if obj.description != desc:
-                    obj.description = desc
-                    update_fields.append("description")
-                if not obj.is_active:
-                    obj.is_active = True
-                    update_fields.append("is_active")
-                if update_fields:
-                    obj.save(update_fields=update_fields)
+                perm_update_fields: list[str] = []
+                if perm_obj.description != desc:
+                    perm_obj.description = desc
+                    perm_update_fields.append("description")
+                if not perm_obj.is_active:
+                    perm_obj.is_active = True
+                    perm_update_fields.append("is_active")
+                if perm_update_fields:
+                    perm_obj.save(update_fields=perm_update_fields)
                     perms_updated += 1
-            perm_objs[code] = obj
+            perm_objs[code] = perm_obj
 
         for role_name, perm_codes in role_to_perms.items():
             role = role_objs[role_name]

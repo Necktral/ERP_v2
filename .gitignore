@@ -52,5 +52,8 @@ media/
 .coverage
 htmlcov/
 
+# QA runner artefacts
+qa/reports/
+
 # No subir backups
 ERP_CRM_backup_*.tar.gz

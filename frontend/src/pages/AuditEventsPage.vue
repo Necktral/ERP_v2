@@ -222,6 +222,7 @@ import {
   getAuditEvent,
   listAuditEvents,
   type AuditEventRow,
+  type AuditListParams,
   type CursorPage,
 } from 'src/services/audit.service';
 
@@ -314,24 +315,41 @@ function cursorFromUrl(url: string | null): string | undefined {
 function buildParams(cursor?: string) {
   const offline = filters.offline_mode === 'any' ? undefined : filters.offline_mode === 'true';
 
-  return {
-    cursor,
-    event_type: normalizeStr(filters.event_type),
-    reason_code: normalizeStr(filters.reason_code),
-    module: normalizeStr(filters.module),
-    method: normalizeStr(filters.method)?.toUpperCase(),
-    actor_user_id: normalizeStr(filters.actor_user_id),
-    subject_type: normalizeStr(filters.subject_type),
-    subject_id: normalizeStr(filters.subject_id),
-    device_id: normalizeStr(filters.device_id),
-    ip: normalizeStr(filters.ip),
-    path_contains: normalizeStr(filters.path_contains),
-    offline_mode: offline,
-    after: normalizeStr(filters.after),
-    before: normalizeStr(filters.before),
-    page_size: 50,
-    include_integrity: filters.include_integrity || undefined,
-  };
+  const params: AuditListParams = { page_size: 50 };
+
+  if (cursor) params.cursor = cursor;
+
+  const eventType = normalizeStr(filters.event_type);
+  if (eventType) params.event_type = eventType;
+  const reasonCode = normalizeStr(filters.reason_code);
+  if (reasonCode) params.reason_code = reasonCode;
+  const moduleVal = normalizeStr(filters.module);
+  if (moduleVal) params.module = moduleVal;
+  const methodVal = normalizeStr(filters.method)?.toUpperCase();
+  if (methodVal) params.method = methodVal;
+
+  const actorUserId = normalizeStr(filters.actor_user_id);
+  if (actorUserId) params.actor_user_id = actorUserId;
+  const subjectType = normalizeStr(filters.subject_type);
+  if (subjectType) params.subject_type = subjectType;
+  const subjectId = normalizeStr(filters.subject_id);
+  if (subjectId) params.subject_id = subjectId;
+  const deviceId = normalizeStr(filters.device_id);
+  if (deviceId) params.device_id = deviceId;
+  const ipVal = normalizeStr(filters.ip);
+  if (ipVal) params.ip = ipVal;
+  const pathContains = normalizeStr(filters.path_contains);
+  if (pathContains) params.path_contains = pathContains;
+
+  if (offline !== undefined) params.offline_mode = offline;
+  const after = normalizeStr(filters.after);
+  if (after) params.after = after;
+  const before = normalizeStr(filters.before);
+  if (before) params.before = before;
+
+  if (filters.include_integrity) params.include_integrity = true;
+
+  return params;
 }
 
 async function load(cursor?: string) {

@@ -13,7 +13,7 @@ class EnrollmentChallengeCreateIn(serializers.Serializer):
 class DeviceEnrollIn(serializers.Serializer):
     enrollment_code = serializers.CharField()
     public_key_b64 = serializers.CharField()
-    label = serializers.CharField(required=False, allow_blank=True, max_length=200)
+    label = serializers.CharField(required=False, allow_blank=True, max_length=200)  # type: ignore[assignment]
     meta = serializers.JSONField(required=False)
 
 

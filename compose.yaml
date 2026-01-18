@@ -44,6 +44,16 @@ services:
 
       # Para imports consistentes (tu código vive en /app/src)
       PYTHONPATH: /app/login_module/src
+
+      # QA / Load: habilita Gunicorn para mejor concurrencia
+      USE_GUNICORN: ${USE_GUNICORN:-0}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-60}
+      GUNICORN_LOG_LEVEL: ${GUNICORN_LOG_LEVEL:-info}
+      GUNICORN_KEEPALIVE: ${GUNICORN_KEEPALIVE:-5}
+      GUNICORN_GRACEFUL_TIMEOUT: ${GUNICORN_GRACEFUL_TIMEOUT:-30}
+      GUNICORN_BACKLOG: ${GUNICORN_BACKLOG:-2048}
     depends_on:
       db:
         condition: service_healthy
@@ -74,6 +84,22 @@ services:
         npm run dev -- --host 0.0.0.0 --port 3000
       "
 
+  # Runner CI para frontend (lint + typecheck). No expone puertos.
+  frontend_ci:
+    image: node:20-bullseye-slim
+    container_name: erpcrm_frontend_ci
+    profiles: ["qa"]
+    working_dir: /app/frontend
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend_node_modules:/app/frontend/node_modules
+    command: >
+      bash -lc "
+        npm ci &&
+        npm run lint &&
+        npm run typecheck
+      "
+
   # Herramienta opcional para inspeccionar DB por navegador:
   adminer:
     image: adminer:4.8.1
@@ -88,3 +114,4 @@ services:
 
 volumes:
   pgdata:
+  frontend_node_modules:

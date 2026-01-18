@@ -153,6 +153,38 @@ Logs útiles:
 
 ## ✅ Tests y análisis
 
+## ✅ QA Runner (Gates 1–3)
+
+El repo incluye un runner determinista para CI/local (lint + typecheck + tests + verificación de integridad de auditoría) con reportes en `qa/reports/`.
+
+- Runner recomendado (DB limpia, reproducible):
+
+  ```bash
+  make qa-ci-fresh
+  ```
+
+- En CI (GitHub Actions):
+
+  ```bash
+  make qa-ci-ci
+  ```
+
+- Runner “normal” (usa la DB/volúmenes actuales; Gate 3 puede fallar si hay datos viejos inconsistentes):
+
+  ```bash
+  make qa-ci
+  ```
+
+Artefactos generados:
+
+- `qa/reports/static_scan.txt`
+- `qa/reports/ruff.txt`
+- `qa/reports/mypy.txt`
+- `qa/reports/pytest.xml`
+- `qa/reports/coverage.xml`
+- `qa/reports/coverage.txt`
+- `qa/reports/audit_integrity.json`
+
 ### Backend
 
 - Tests:

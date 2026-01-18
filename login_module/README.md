@@ -61,6 +61,28 @@ En PROD, Nginx sirve la SPA y proxyea `/api/` hacia el backend.
 - Todos los endpoints de escritura emiten eventos de auditoría con `reason_code` y `event_type` permitido por contrato.
 - Integridad: encadenado por hash y firmado con HMAC (`AUDIT_HMAC_KEY` en PROD).
 
+### Verificar integridad (Gate 3)
+
+El comando valida:
+
+- `event_hash` (SHA-256 del payload canónico)
+- `signature` (HMAC-SHA256 sobre `event_hash`)
+- consistencia del encadenamiento por partición (`prev_event_hash` + `AuditChainHeadV2`)
+
+Ejemplos:
+
+- Verificar todo (falla con exit code 2 si hay errores):
+
+  ```bash
+  docker compose exec -T backend python manage.py audit_verify_chain
+  ```
+
+- En DB vacía (CI determinista):
+
+  ```bash
+  docker compose exec -T backend python manage.py audit_verify_chain --seed-minimal
+  ```
+
 ## Endpoints principales
 
 ### Documentación y esquema

@@ -1,4 +1,5 @@
 from django.core.exceptions import FieldDoesNotExist
+from datetime import datetime
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
@@ -32,7 +33,7 @@ def _parse_dt(v: str | None):
         return dt if timezone.is_aware(dt) else timezone.make_aware(dt, timezone.get_current_timezone())
     d = parse_date(v)
     if d:
-        dt2 = timezone.datetime.combine(d, timezone.datetime.min.time())
+        dt2 = datetime.combine(d, datetime.min.time())
         return timezone.make_aware(dt2, timezone.get_current_timezone())
     return None
 

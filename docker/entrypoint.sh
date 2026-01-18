@@ -35,5 +35,31 @@ PY
 # Migraciones automáticas en dev
 python src/manage.py migrate --noinput
 
-# Arranque servidor dev
+# Arranque servidor
+# - Por defecto: runserver (DX / hot-reload)
+# - Para carga/QA: Gunicorn (mejor concurrencia y latencias más estables)
+: "${USE_GUNICORN:=0}"
+
+if [[ "${USE_GUNICORN}" == "1" || "${USE_GUNICORN}" == "true" ]]; then
+    : "${GUNICORN_WORKERS:=4}"
+    : "${GUNICORN_THREADS:=2}"
+    : "${GUNICORN_TIMEOUT:=60}"
+    : "${GUNICORN_LOG_LEVEL:=info}"
+    : "${GUNICORN_KEEPALIVE:=5}"
+    : "${GUNICORN_GRACEFUL_TIMEOUT:=30}"
+    : "${GUNICORN_BACKLOG:=2048}"
+
+    exec gunicorn config.wsgi:application \
+        --bind 0.0.0.0:8000 \
+        --workers "${GUNICORN_WORKERS}" \
+        --threads "${GUNICORN_THREADS}" \
+        --timeout "${GUNICORN_TIMEOUT}" \
+        --graceful-timeout "${GUNICORN_GRACEFUL_TIMEOUT}" \
+        --keep-alive "${GUNICORN_KEEPALIVE}" \
+        --backlog "${GUNICORN_BACKLOG}" \
+        --log-level "${GUNICORN_LOG_LEVEL}" \
+        --access-logfile - \
+        --error-logfile -
+fi
+
 exec python src/manage.py runserver 0.0.0.0:8000

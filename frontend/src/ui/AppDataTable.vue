@@ -29,15 +29,15 @@
 
 <script setup lang="ts">
 import { computed, useSlots } from 'vue';
-import { useUiStore } from 'src/stores/ui.store';
 import type { QTableProps } from 'quasar';
+import { useUiStore } from 'src/stores/ui.store';
 
-type AppDataTableProps = { title?: string; caption?: string } & QTableProps;
+interface AppDataTableProps extends QTableProps {
+  title?: string;
+  caption?: string;
+}
 
 const props = defineProps<AppDataTableProps>();
-const emit = defineEmits<{
-  (e: 'row-click', evt: unknown, row: unknown, index: number): void;
-}>();
 const slots = useSlots();
 const ui = useUiStore();
 
