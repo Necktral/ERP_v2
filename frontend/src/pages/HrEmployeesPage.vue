@@ -466,27 +466,30 @@
             Empleado: {{ revokeTarget?.first_name }} {{ revokeTarget?.last_name }}
           </div>
 
-          <q-form class="q-mt-sm" @submit.prevent="doRevokeAccess">
-            <q-banner class="q-mb-sm" dense rounded>
-              Esto desactiva roles (origin=POSITION) y memberships del usuario en la empresa y sus
-              sucursales.
-            </q-banner>
+          <q-banner class="q-mt-sm" dense rounded>
+            Esto desactiva roles con origen POSITION y memberships del usuario en esta empresa y sus
+            sucursales. No borra al empleado ni elimina el usuario.
+          </q-banner>
 
-            <div class="q-mt-sm">
-              <q-toggle
-                v-model="revokeForm.disable_user"
-                label="Deshabilitar usuario (si queda sin memberships activas)"
-              />
-            </div>
+          <div class="q-mt-sm">
+            <q-toggle
+              v-model="revokeForm.disable_user"
+              label="Desactivar usuario globalmente (solo si ya no tiene memberships activas en otras empresas)"
+            />
+          </div>
 
-            <q-banner v-if="revokeError" class="q-mt-md" dense rounded>
-              {{ revokeError }}
-            </q-banner>
+          <q-banner v-if="revokeError" class="q-mt-md" dense rounded>
+            {{ revokeError }}
+          </q-banner>
 
-            <div class="q-mt-md">
-              <q-btn color="negative" type="submit" :loading="revokeSaving" label="Revocar" />
-            </div>
-          </q-form>
+          <div class="q-mt-md">
+            <q-btn
+              color="negative"
+              :loading="revokeSaving"
+              label="Revocar"
+              @click="doRevokeAccess"
+            />
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -502,47 +505,33 @@
         <q-separator />
 
         <q-card-section>
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-6">
-              <q-input
-                :model-value="String(revokeResult?.employee_id ?? '')"
-                label="employee_id"
-                outlined
-                readonly
-              />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-input
-                :model-value="String(revokeResult?.linked_user_id ?? '')"
-                label="linked_user_id"
-                outlined
-                readonly
-              />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-input
-                :model-value="String(revokeResult?.role_assignments_deactivated ?? '')"
-                label="role_assignments_deactivated"
-                outlined
-                readonly
-              />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-input
-                :model-value="String(revokeResult?.memberships_deactivated ?? '')"
-                label="memberships_deactivated"
-                outlined
-                readonly
-              />
-            </div>
-            <div class="col-12">
-              <q-input
-                :model-value="revokeResult?.user_disabled ? 'true' : 'false'"
-                label="user_disabled"
-                outlined
-                readonly
-              />
-            </div>
+          <q-input
+            :model-value="String(revokeResult?.linked_user_id ?? '')"
+            label="linked_user_id"
+            outlined
+            readonly
+          />
+          <div class="q-mt-sm">
+            <q-input
+              :model-value="String(revokeResult?.role_assignments_deactivated ?? 0)"
+              label="RoleAssignments POSITION desactivados"
+              outlined
+              readonly
+            />
+          </div>
+          <div class="q-mt-sm">
+            <q-input
+              :model-value="String(revokeResult?.memberships_deactivated ?? 0)"
+              label="Memberships desactivados"
+              outlined
+              readonly
+            />
+          </div>
+          <div class="q-mt-sm">
+            <q-badge v-if="revokeResult?.user_disabled" outline color="positive">
+              Usuario global desactivado
+            </q-badge>
+            <q-badge v-else outline color="grey-7"> Usuario global no cambiado </q-badge>
           </div>
         </q-card-section>
       </q-card>
