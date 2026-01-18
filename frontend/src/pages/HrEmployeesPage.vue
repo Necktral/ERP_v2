@@ -567,9 +567,8 @@ import {
   listPositions,
   patchEmployee,
   provisionEmployeeUser,
-  revokeEmployeeAccess,
   resetEmployeeTempPassword,
-  type RevokeEmployeeAccessResponse,
+  revokeEmployeeAccess,
   type EmployeeRow,
   type PositionRow,
 } from 'src/services/hr.service';
@@ -1064,14 +1063,20 @@ async function copyResetPass() {
   }
 }
 
-// Revoke access
+// Revoke access (B)
 const revokeDialog = ref(false);
 const revokeTarget = ref<EmployeeRow | null>(null);
 const revokeSaving = ref(false);
 const revokeError = ref<string | null>(null);
 
 const revokeResultDialog = ref(false);
-const revokeResult = ref<RevokeEmployeeAccessResponse | null>(null);
+const revokeResult = ref<{
+  employee_id: number;
+  linked_user_id: number;
+  role_assignments_deactivated: number;
+  memberships_deactivated: number;
+  user_disabled: boolean;
+} | null>(null);
 
 const revokeForm = reactive<{ disable_user: boolean }>({
   disable_user: false,
@@ -1087,16 +1092,16 @@ function openRevokeAccess(e: EmployeeRow) {
 
 async function doRevokeAccess() {
   if (!revokeTarget.value) return;
-  if (!revokeTarget.value.linked_user_id) {
-    revokeError.value = 'El empleado no tiene usuario vinculado (no se puede revocar).';
-    return;
-  }
+
+  // Confirmación (si aún tiene asignación activa, avisar)
+  const hasActive = !!revokeTarget.value.active_assignments?.length;
 
   const ok = await new Promise<boolean>((resolve) => {
     $q.dialog({
       title: 'Confirmar revocación',
-      message:
-        'Esta acción revoca el acceso del usuario (roles por puesto y memberships en company+sucursales). ¿Continuar?',
+      message: hasActive
+        ? 'Este empleado aún tiene asignación activa. Lo normal es terminar la asignación y luego revocar el acceso. Si continúas, se revocará el acceso igualmente. ¿Continuar?'
+        : 'Esto revocará el acceso del usuario en esta empresa y sus sucursales (desactiva roles POSITION y memberships). ¿Continuar?',
       cancel: true,
       persistent: true,
     })
@@ -1108,9 +1113,10 @@ async function doRevokeAccess() {
   revokeSaving.value = true;
   revokeError.value = null;
   try {
-    const data = await revokeEmployeeAccess(revokeTarget.value.id, {
-      disable_user: revokeForm.disable_user,
-    });
+    const payload: { disable_user?: boolean } = {};
+    if (revokeForm.disable_user) payload.disable_user = true;
+
+    const data = await revokeEmployeeAccess(revokeTarget.value.id, payload);
 
     revokeDialog.value = false;
     revokeResult.value = data;
@@ -1130,10 +1136,9 @@ async function doRevokeAccess() {
         revokeError.value =
           'No tienes permisos para esta acción (requiere iam.users.create y hr.employee.update).';
       } else if (status === 404) {
-        revokeError.value = 'Empleado no encontrado en esta empresa.';
+        revokeError.value = 'Empleado no encontrado.';
       } else if (status === 409) {
-        revokeError.value =
-          detailStr || 'Conflicto: el empleado no tiene usuario ligado o estado inválido.';
+        revokeError.value = detailStr || 'Conflicto: el empleado no tiene usuario vinculado.';
       } else {
         revokeError.value = extractErrorMessage(e);
       }
