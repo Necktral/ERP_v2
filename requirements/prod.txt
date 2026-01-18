@@ -1,7 +1,4 @@
-# Dependencias de producción
-psycopg2-binary==2.9.9
-# Dependencias de producción
-gunicorn==23.0.0
-# Dependencias de producción
-psycopg2-binary==2.9.9
+# Producción = base + gunicorn (DB driver ya viene en base.txt: psycopg[binary])
+-r base.txt
+
 gunicorn==23.0.0
