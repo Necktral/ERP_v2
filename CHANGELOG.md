@@ -7,6 +7,9 @@
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/revoke-access/` + evento de auditoría `HR_EMPLOYEE_ACCESS_REVOKED` + acción UI en empleados.
 - **Infra PROD:** `compose.prod.yaml` (backend+db+web), Nginx SPA + proxy `/api/`, `.env.prod.example` y Dockerfiles PROD (backend y web).
+- **FUEL (Backend):** base del módulo Estación de Servicios bajo `/api/fuel/` + endpoint `GET /api/fuel/health/`.
+- **RBAC:** roles `fuel_*` y permisos `fuel.*` en `seed_rbac_v01`.
+- **Auditoría (contrato):** extensión del contrato con `event_type`, `reason_code` y `subject_type` para FUEL.
 
 ## [2026-01-13] - Release
 

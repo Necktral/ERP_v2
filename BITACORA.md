@@ -1,3 +1,27 @@
+## 2026-01-20 — Base módulo Estación de Servicios (FUEL): RBAC + rutas + contrato auditoría
+
+### Contexto
+
+Se inicializa el módulo de dominio **Estación de Servicios** (FUEL) con una app Django mínima, ruta API y catálogo RBAC, dejando el esqueleto listo para implementar operación (turnos, despachos, ventas, tanques, conciliación e intercompany).
+
+### Cambios principales
+
+- **API:** se agrega prefijo `api/fuel/` con un healthcheck autenticado.
+- **RBAC:** roles `fuel_admin`, `fuel_supervisor`, `fuel_cashier`, `fuel_auditor` + permisos `fuel.*` en `seed_rbac_v01`.
+- **Auditoría contractual:** se extiende el contrato con `event_type`/`reason_code`/`subject_type` de FUEL (preparado para operación futura).
+- **Infra backend:** se habilita import de `modulos.*` desde la raíz del repo agregando `REPO_ROOT` al `sys.path` en settings.
+
+### Archivos/Endpoints
+
+- Endpoint: `GET /api/fuel/health/`
+- `modulos/estacion_servicios/` (apps/urls/views)
+- `login_module/src/config/settings/base.py` (REPO_ROOT en `sys.path` + INSTALLED_APPS)
+- `login_module/src/config/urls.py` (include `api/fuel/`)
+- `login_module/src/apps/rbac/seed_v01.py`
+- `login_module/src/apps/audit/contracts.py`
+
+---
+
 ## 2026-01-18 — Cierre login_module: revoke-access, Auditoría UI y PROD
 
 ### Contexto

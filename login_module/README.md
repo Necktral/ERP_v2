@@ -65,17 +65,19 @@ En PROD, Nginx sirve la SPA y proxyea `/api/` hacia el backend.
 
 El comando valida:
 
-- `event_hash` (SHA-256 del payload canónico)
 - `signature` (HMAC-SHA256 sobre `event_hash`)
 - consistencia del encadenamiento por partición (`prev_event_hash` + `AuditChainHeadV2`)
 
-Ejemplos:
+## FUEL (Estación de Servicios)
 
-- Verificar todo (falla con exit code 2 si hay errores):
+- Base path: `/api/fuel/`
+- `GET /api/fuel/health/` — Healthcheck del módulo (requiere sesión/auth)
 
-  ```bash
-  docker compose exec -T backend python manage.py audit_verify_chain
-  ```
+Roles/permisos del módulo se agregan vía `python src/manage.py seed_rbac_v01` (roles `fuel_*`, permisos `fuel.*`).
+
+```bash
+docker compose exec -T backend python manage.py audit_verify_chain
+```
 
 - En DB vacía (CI determinista):
 

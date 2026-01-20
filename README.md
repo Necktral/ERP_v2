@@ -6,6 +6,7 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 - `login_module/`: backend Django/DRF (código en `login_module/src/`)
 - `frontend/`: consola web (Vue 3 + Quasar)
+- `modulos/`: módulos de dominio en la raíz del repo (ej: `modulos.estacion_servicios`)
 - `compose.yaml`: entorno Docker (backend + Postgres)
 - `system_wis/`: entorno virtual Python (dev)
 
@@ -266,6 +267,12 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](B
   - Responde `409` si el empleado no tiene `linked_user`.
   - Auditoría: `HR_EMPLOYEE_ACCESS_REVOKED` (sin incluir secretos).
 
+### FUEL (Estación de Servicios)
+
+- `GET /api/fuel/health/` — Healthcheck del módulo (requiere sesión/auth)
+
+Nota: el módulo FUEL está inicializado como “base” (scaffolding). El catálogo RBAC incluye roles/permisos `fuel.*` en `seed_rbac_v01`.
+
 ### Nota de compatibilidad (provisionamiento)
 
 - Si tu base de datos ya tenía la columna `accounts_user.is_setup_complete` como NOT NULL, asegúrate de aplicar migraciones: `docker compose exec backend python src/manage.py migrate --noinput`.
@@ -324,4 +331,4 @@ docker compose exec backend python src/manage.py bootstrap_company --company-nam
 
 ---
 
-Actualizado: 2026-01-17.
+Actualizado: 2026-01-20.

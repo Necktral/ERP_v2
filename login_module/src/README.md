@@ -6,6 +6,7 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 - `login_module/`: backend Django/DRF (código en `login_module/src/`)
 - `frontend/`: consola web (Vue 3 + Quasar)
+- `modulos/`: módulos de dominio en la raíz del repo (ej: `modulos.estacion_servicios`)
 - `compose.yaml`: entorno Docker (backend + Postgres)
 - `system_wis/`: entorno virtual Python (dev)
 
@@ -152,6 +153,10 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](.
   - Responde `409` si el empleado no tiene `linked_user` o no tiene asignación activa.
   - Auditoría: emite `HR_EMPLOYEE_TEMP_PASSWORD_RESET` (metadata sin password).
 
+### FUEL (Estación de Servicios)
+
+- `GET /api/fuel/health/` — Healthcheck del módulo (requiere sesión/auth)
+
 ## Comandos de gestión
 
 - `python manage.py seed_rbac_v01` — Siembra roles, permisos y mapeos estándar (idempotente, auditable)
@@ -199,4 +204,4 @@ Bitácora de desarrollo (registro detallado y cronológico): ver [BITACORA.md](.
 
 ---
 
-Actualizado: 2026-01-17.
+Actualizado: 2026-01-20.
