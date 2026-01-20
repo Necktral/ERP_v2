@@ -132,6 +132,11 @@
           <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
           <q-item-section>Auditoría</q-item-section>
         </q-item>
+
+        <q-item clickable to="/fuel/health" :disable="!canFuelRead">
+          <q-item-section avatar><q-icon name="local_gas_station" /></q-item-section>
+          <q-item-section>FUEL Health</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
@@ -207,6 +212,12 @@ const canAuditRead = computed(() => {
   const companyId = ctx.activeCompanyId;
   if (!companyId) return false;
   return acl.hasPermission(companyId, 'audit.read');
+});
+
+const canFuelRead = computed(() => {
+  const companyId = ctx.activeCompanyId;
+  if (!companyId) return false;
+  return acl.hasPermission(companyId, 'fuel.shift.read');
 });
 
 async function onLogout() {
