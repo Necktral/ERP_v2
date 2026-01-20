@@ -41,6 +41,21 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "HR_ASSIGNMENT_CREATED",
     "HR_ASSIGNMENT_ENDED",
     "HR_RECONCILE_APPLIED",
+
+    # FUEL (Estación de Servicios)
+    "FUEL_SHIFT_OPENED",
+    "FUEL_SHIFT_CLOSED",
+    "FUEL_PRICE_SET",
+    "FUEL_DISPENSE_RECORDED",
+    "FUEL_DISPENSE_VOIDED",
+    "FUEL_SALE_CREATED",
+    "FUEL_SALE_VOIDED",
+    "FUEL_TANK_RECEIPT_POSTED",
+    "FUEL_TANK_ADJUSTMENT_POSTED",
+    "FUEL_RECONCILIATION_POSTED",
+    "FUEL_INTERCOMPANY_OUTBOX_ENQUEUED",
+    "FUEL_INTERCOMPANY_OUTBOX_APPLIED",
+    "FUEL_INTERCOMPANY_OUTBOX_FAILED",
 }
 
 ALLOWED_REASON_CODES: set[str] = {
@@ -52,6 +67,7 @@ ALLOWED_REASON_CODES: set[str] = {
     "SYNC_OK",
     "ORG_OK",
     "HR_OK",
+    "FUEL_OK",
     "AUDIT_OK",
     "REPORTS_OK",
     # Auth/login
@@ -65,6 +81,12 @@ ALLOWED_REASON_CODES: set[str] = {
     # Authorization / policy
     "POLICY_PERMISSION_DENIED",
     "POLICY_SCOPE_DENIED",
+
+    # FUEL (operación)
+    "SHIFT_CLOSED",
+    "VOID_NOT_ALLOWED",
+    "METER_READING_MISMATCH",
+    "INTERNAL_CREDIT_LIMIT",
     # Sync outcomes/errors
     "SYNC_DUPLICATE",
     "SYNC_INVALID_SIGNATURE",
@@ -87,6 +109,16 @@ ALLOWED_SUBJECT_TYPES: set[str] = {
     "BRANCH",
     "POSITION",
     "EMPLOYEE",
+
+    # FUEL (Estación de Servicios)
+    "FUEL_SHIFT",
+    "FUEL_DISPENSE",
+    "FUEL_SALE",
+    "FUEL_TANK",
+    "FUEL_NOZZLE",
+    "FUEL_PRICE",
+    "FUEL_OUTBOX",
+    "FUEL_LIQUIDATION",
 }
 
 
