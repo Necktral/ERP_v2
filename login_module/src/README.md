@@ -1,43 +1,15 @@
-# Necktral ERP/CRM
+## Documentación (fuentes canónicas)
 
-Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría contractual, HR, ORG, IAM y sincronización.
+Este archivo existía como copia y se desincronizaba con facilidad.
 
-## Estructura del repo
+Desde ahora, la documentación se mantiene **en un solo lugar**:
 
-- `login_module/`: backend Django/DRF (código en `login_module/src/`)
-- `frontend/`: consola web (Vue 3 + Quasar)
-- `modulos/`: módulos de dominio en la raíz del repo (ej: `modulos.estacion_servicios`)
-- `compose.yaml`: entorno Docker (backend + Postgres)
-- `system_wis/`: entorno virtual Python (dev)
+- Repo (principal): ../../README.md
+- Backend (login_module): ../README.md
+- Bitácora (oficial, append-only): ../../BITACORA.md
+- Changelog: ../../CHANGELOG.md
 
-## 🚀 Inicio rápido (Docker)
-
-1. Configura variables
-
-### Windows 11 (PowerShell)
-
-```powershell
-Copy-Item .env.example .env
-```
-
-### WSL (Ubuntu / bash)
-
-```bash
-cp .env.example .env
-```
-
-2. Levanta servicios
-
-```bash
-docker compose up -d
-```
-
-URLs por defecto:
-
-- Frontend (Quasar): http://localhost:3000
-- Backend (Django/DRF): http://localhost:8000
-
-Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
+Si necesitas doc específica del backend, edita ../README.md.
 
 ### Reset total de DB (instalación fresca)
 

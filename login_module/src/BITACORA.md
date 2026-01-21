@@ -1,62 +1,10 @@
-## 2026-01-20 — Base módulo Estación de Servicios (FUEL): RBAC + rutas + contrato auditoría
+## Bitácora (fuente canónica)
 
-### Contexto
+La bitácora oficial del proyecto se mantiene en un solo lugar para evitar duplicados:
 
-Se inicializa el módulo de dominio **Estación de Servicios** (FUEL) con una app Django mínima, ruta API y catálogo RBAC, dejando el esqueleto listo para implementar operación (turnos, despachos, ventas, tanques, conciliación e intercompany).
+- ../../BITACORA.md
 
-### Cambios principales
-
-- **API:** se agrega prefijo `api/fuel/` con un healthcheck autenticado.
-- **RBAC:** roles `fuel_admin`, `fuel_supervisor`, `fuel_cashier`, `fuel_auditor` + permisos `fuel.*` en `seed_rbac_v01`.
-- **Auditoría contractual:** se extiende el contrato con `event_type`/`reason_code`/`subject_type` de FUEL (preparado para operación futura).
-- **Infra backend:** se habilita import de `modulos.*` desde la raíz del repo agregando `REPO_ROOT` al `sys.path` en settings.
-
-### Archivos/Endpoints
-
-- Endpoint: `GET /api/fuel/health/`
-- `modulos/estacion_servicios/` (apps/urls/views)
-- `login_module/src/config/settings/base.py` (REPO_ROOT en `sys.path` + INSTALLED_APPS)
-- `login_module/src/config/urls.py` (include `api/fuel/`)
-- `login_module/src/apps/rbac/seed_v01.py`
-- `login_module/src/apps/audit/contracts.py`
-
----
-
-## 2026-01-18 — Cierre login_module: revoke-access, Auditoría UI y PROD
-
-### Contexto
-
-Cierre funcional del módulo login_module (ORG/HR/IAM/RBAC/AUDIT) tras implementar auditoría UI, revoke-access y despliegue PROD.
-
-### Cambios principales
-
-- **HR:** Implementado endpoint y lógica `revoke-access` (desactiva RoleAssignments origin=POSITION, memberships y opcional user.is_active). Test dedicado y documentado en README.
-- **Auditoría UI:** Nueva pantalla en `/audit/bitacora` (gated por permiso `audit.read`), integrada en menú y router. Permite filtrar y ver eventos, incluyendo `HR_EMPLOYEE_ACCESS_REVOKED`.
-- **Infraestructura PROD:** Agregado `compose.prod.yaml`, Nginx SPA + proxy `/api/`, `.env.prod.example`, Dockerfiles prod. Documentado en CHANGELOG y README.
-
-### Archivos/Endpoints
-
-- `frontend/src/pages/AuditBitacoraPage.vue`
-- `frontend/src/router/routes.ts`
-- `frontend/src/layouts/MainLayout.vue`
-- `frontend/README.md`
-- `login_module/src/apps/hr/services.py` (revoke-access)
-- `login_module/src/apps/hr/tests/test_hr_method_permissions.py`
-- `compose.prod.yaml`, `Dockerfile.frontend`, `Dockerfile.backend`, `.env.prod.example`
-
-### Notas/Riesgos
-
-- Auditoría UI requiere permiso `audit.read` y contexto activo.
-- `revoke-access` afecta acceso inmediato y memberships; requiere validación en ambientes productivos.
-
----
-
-# Bitácora de Cambios (desarrollo)
-
-> Nota: la bitácora **oficial del repo** está en `/<repo>/BITACORA.md`.
-> Este archivo en `login_module/src/` se mantiene como copia para el módulo backend.
-
-## ¿Qué es esto?
+Este archivo queda como stub por compatibilidad con referencias antiguas.
 
 Este documento es un **registro cronológico, detallado y “append-only”** de las acciones realizadas durante el desarrollo del proyecto.
 
