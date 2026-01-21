@@ -133,6 +133,15 @@
           <q-item-section>Auditoría</q-item-section>
         </q-item>
 
+        <q-separator spaced />
+
+        <q-item-label header>FUEL</q-item-label>
+
+        <q-item clickable to="/fuel" :disable="!canFuelRead">
+          <q-item-section avatar><q-icon name="local_gas_station" /></q-item-section>
+          <q-item-section>Dashboard</q-item-section>
+        </q-item>
+
         <q-item clickable to="/fuel/health" :disable="!canFuelRead">
           <q-item-section avatar><q-icon name="local_gas_station" /></q-item-section>
           <q-item-section>FUEL Health</q-item-section>

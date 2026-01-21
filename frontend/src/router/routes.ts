@@ -112,6 +112,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'fuel',
+        component: () => import('pages/FuelDashboardPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['fuel.shift.read'],
+        },
+      },
+      {
         path: 'fuel/health',
         component: () => import('pages/FuelHealthPage.vue'),
         meta: {
