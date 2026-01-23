@@ -221,6 +221,17 @@ Artefactos generados:
 - Los eventos de auditoría se emiten con `module=AUTH` y `schema_version=1`.
 - Para trazabilidad: se encadenan hashes y se firma con HMAC.
 
+### FUEL (Estación de Servicios)
+
+Base path: `/api/fuel/`
+
+- `GET /api/fuel/health/` — Healthcheck del módulo (público)
+- `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
+- `POST /api/fuel/shifts/{shift_id}/close/` — Cerrar turno (permiso: `fuel.shift.close`)
+- `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
+- `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
+- `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
+
 ## Historial de cambios
 
 Ver [CHANGELOG.md](CHANGELOG.md).

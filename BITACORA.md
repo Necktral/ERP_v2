@@ -1,3 +1,41 @@
+## 2026-01-23 — MVP módulo Estación de Servicios (FUEL): turnos + despachos + ventas + cancelación
+
+### Contexto
+
+Se completa el MVP operativo del módulo **Estación de Servicios** (FUEL) para soportar el flujo mínimo de operación diaria, integrado con **RBAC**, **scope multiempresa** y **auditoría contractual**.
+
+### Cambios principales
+
+- **Dominio/Modelos:** se agregan `FuelShift`, `FuelDispense`, `FuelSale` con estados y constraints (un turno abierto por sucursal).
+- **Servicios:** lógica transaccional en `services.py` (open/close shift, record dispense, create sale, cancel sale) con validaciones DRF-friendly.
+- **API:** endpoints operativos bajo `/api/fuel/`.
+- **RBAC:** enforcement por endpoint (`fuel.shift.open`, `fuel.shift.close`, `fuel.dispense.create`, `fuel.sale.create`, `fuel.sale.void`).
+- **Auditoría:** eventos mínimos emitidos por operación (module `FUEL`).
+- **Migraciones:** se crea migración inicial manual para `estacion_servicios` para evitar bloqueo de `makemigrations` por cambios ajenos.
+- **Tests:** se agrega/ajusta test de flujo Fuel usando el patrón de “client con permisos” ya existente en la suite.
+
+### Archivos/Endpoints
+
+- Endpoints:
+  - `GET /api/fuel/health/` (público)
+  - `POST /api/fuel/shifts/open/`
+  - `POST /api/fuel/shifts/<shift_id>/close/`
+  - `POST /api/fuel/dispenses/`
+  - `POST /api/fuel/sales/`
+  - `POST /api/fuel/sales/<sale_id>/cancel/`
+- `modulos/estacion_servicios/models.py` (FuelShift/FuelDispense/FuelSale)
+- `modulos/estacion_servicios/services.py` (operaciones + auditoría)
+- `modulos/estacion_servicios/views.py`, `modulos/estacion_servicios/urls.py`
+- `modulos/estacion_servicios/migrations/0001_initial.py`
+- `login_module/src/tests/test_fuel_shift_flow.py`
+
+### Notas/Riesgos
+
+- El endpoint de health fue dejado **público** por conveniencia operativa (monitoreo); el resto requiere auth + RBAC.
+- Cancelación expone solo ruta `/cancel/` (sin alias `/void/`).
+
+---
+
 ## 2026-01-20 — Base módulo Estación de Servicios (FUEL): RBAC + rutas + contrato auditoría
 
 ### Contexto

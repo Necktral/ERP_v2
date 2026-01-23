@@ -71,7 +71,15 @@ El comando valida:
 ## FUEL (Estación de Servicios)
 
 - Base path: `/api/fuel/`
-- `GET /api/fuel/health/` — Healthcheck del módulo (requiere sesión/auth)
+- `GET /api/fuel/health/` — Healthcheck del módulo (público)
+
+Endpoints (MVP):
+
+- `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
+- `POST /api/fuel/shifts/<shift_id>/close/` — Cerrar turno (permiso: `fuel.shift.close`)
+- `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
+- `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
+- `POST /api/fuel/sales/<sale_id>/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
 
 Roles/permisos del módulo se agregan vía `python src/manage.py seed_rbac_v01` (roles `fuel_*`, permisos `fuel.*`).
 
@@ -198,4 +206,4 @@ docker compose exec -T backend python manage.py audit_verify_chain
 
 ---
 
-Actualizado: 2026-01-10.
+Actualizado: 2026-01-23.
