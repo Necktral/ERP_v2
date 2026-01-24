@@ -55,5 +55,8 @@ htmlcov/
 # QA runner artefacts
 qa/reports/
 
+# PM snapshot (generado localmente / artefacto de CI)
+pm_snapshot.md
+
 # No subir backups
 ERP_CRM_backup_*.tar.gz
