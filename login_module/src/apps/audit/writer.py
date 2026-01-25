@@ -1,3 +1,17 @@
+"""Writer de auditoría contractual (precedente).
+
+Objetivo:
+- Emitir eventos auditables con propiedades de integridad:
+    - Payload canónico (JSON determinista)
+    - event_hash = SHA256(payload_canónico)
+    - signature = HMAC(event_hash) con AUDIT_HMAC_KEY
+    - Encadenamiento por partición (prev_event_hash)
+
+Precedente:
+- El partition_key se deriva del contexto (company) para aislar cadenas por tenant.
+- Si no hay contexto, se usa partición SYSTEM (eventos globales/operativos).
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -22,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 def _chain_partition_key(request) -> str:
-    # Soporta DRF Request (request._request) o request normal
+    # Precedente: soportar DRF Request (request._request) o request normal.
     base_req = getattr(request, "_request", request)
     company = getattr(base_req, "company", None) or getattr(request, "company", None)
     if not company:
@@ -74,10 +88,15 @@ def write_event(
     module: str | None = None,  # <-- NUEVO
 ) -> AuditEvent:
     """
-    Writer contractual EAU v1:
-    - valida catálogos
-    - encadena prev_event_hash con AuditChainHead
-    - calcula event_hash y signature (HMAC)
+    Writer contractual EAU v1.
+
+    Contrato:
+    - Valida catálogos (event_type/reason_code/subject).
+    - Encadena con prev_event_hash en una partición estable.
+    - Calcula event_hash y signature (HMAC) para detección de alteración.
+
+    Nota:
+    - before_snapshot/after_snapshot deben ser JSON-serializables.
     """
 
     logger.debug(

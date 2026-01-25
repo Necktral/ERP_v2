@@ -1,3 +1,10 @@
+"""Vistas del motor de sync (precedente).
+
+Precedente:
+- Enrollment: requiere JWT + contexto (X-Company-Id) y deja trazas de auditoría.
+- Batch: usa autenticación por dispositivo (X-Device-Id) + firma Ed25519 por comando.
+"""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -290,6 +297,8 @@ class SyncBatchView(APIView):
         hdr_device_id = request.headers.get("X-Device-Id")
         body_device_id = data.get("device_id")
 
+        # Regla fuerte: el device_id efectivo se toma del header si está presente.
+        # Motivo: evita discrepancias entre infraestructura (gateway) y body.
         if hdr_device_id:
             device_id = hdr_device_id.strip()
         elif body_device_id:

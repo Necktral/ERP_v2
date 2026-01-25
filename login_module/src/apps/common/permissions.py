@@ -1,3 +1,12 @@
+"""Permisos DRF (precedente).
+
+Este módulo concentra reglas de autorización que deben ser consistentes en todo el backend.
+
+Precedente:
+- Toda denegación relevante debe dejar rastros en request (required_permission/required_scope)
+    para que la auditoría contractual pueda emitir AUTH_ACCESS_DENIED con contexto.
+"""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -24,10 +33,17 @@ def rbac_permission(required_permission: str):
     Factory DRF-friendly:
         permission_classes = [rbac_permission("inventory.read")]
 
-    Fase 3.3B:
-      - Valida permisos por contexto activo (request.company/request.branch)
-      - Usa RoleAssignment (scoped) + opcional UserRole (legacy) vía settings
-      - Marca required_permission + required_scope para auditoría
+        Contrato (autorización):
+        - Evalúa permisos efectivos en el contexto activo (request.company/request.branch).
+        - Permite superpermiso '*' dentro del set efectivo.
+
+        Precedente (auditoría):
+        - Siempre marca required_permission.
+        - Si deniega, marca required_scope para que AuditAccessDeniedMiddleware pueda auditar con detalle.
+
+        Intercompany:
+        - Si request.data_company difiere de request.company, valida grants en modo READ.
+        - En caso de denegación, required_scope refleja el data_scope intentado.
     """
 
     class _RBACPermission(BasePermission):

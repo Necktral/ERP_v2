@@ -79,7 +79,8 @@ def test_fuel_shift_dispense_sale_close_flow():
         {
             "shift_id": shift_id,
             "product": "DIESEL",
-            "liters": "10.000",
+            # Legacy: liters (sigue soportado)
+            "liters": "10.0000",
             "unit_price": "42.5000",
             "vehicle_plate": "M123-456",
             "external_ref": "PED-001",
@@ -89,6 +90,9 @@ def test_fuel_shift_dispense_sale_close_flow():
     assert resp.status_code == 201
     dispense_id = resp.data["id"]
     assert resp.data["amount"] == "425.00"
+    # El serializer siempre devuelve ambas unidades
+    assert "liters" in resp.data
+    assert "gallons_us" in resp.data
 
     # 3) venta
     resp = client.post(
@@ -119,6 +123,44 @@ def test_fuel_shift_dispense_sale_close_flow():
 
     # sanity
     assert sale_id is not None
+
+
+@pytest.mark.django_db
+def test_fuel_dispense_diesel_in_gallons_returns_both_units():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "fuel.dispense.create",
+        ],
+    )
+
+    # abrir turno
+    resp = client.post("/api/fuel/shifts/open/", {"note": "turno galones"}, format="json")
+    assert resp.status_code == 201
+    shift_id = resp.data["id"]
+
+    # despacho: 10 galones US de diesel
+    resp = client.post(
+        "/api/fuel/dispenses/",
+        {
+            "shift_id": shift_id,
+            "product": "DIESEL",
+            "volume": "10.0000",
+            "unit_price": "42.5000",
+            "volume_uom": "GALLON",
+            "unit_price_uom": "PER_GALLON",
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.data["amount"] == "425.00"
+    # litros canónicos (10 * 3.785411784 = 37.85411784 -> 37.8541)
+    assert resp.data["liters"] == "37.8541"
+    # el serializer devuelve ambos siempre
+    assert resp.data["gallons_us"] == "10.0000"
 
 
 @pytest.mark.django_db

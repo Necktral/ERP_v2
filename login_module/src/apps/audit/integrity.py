@@ -1,3 +1,14 @@
+"""Verificación de integridad de auditoría (precedente).
+
+Este verificador re-calcula hashes y firmas a partir del payload canónico y valida:
+- event_hash (SHA256 del JSON canónico)
+- signature (HMAC del event_hash)
+- consistencia del encadenamiento por partición (prev_event_hash)
+
+Importante:
+- La verificación de cadena NO asume orden temporal; opera por partición y referencias de hash.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -77,6 +88,12 @@ def _payload_for_event(ev: AuditEvent) -> dict[str, Any]:
 
 
 def verify_events(events: Iterable[AuditEvent]) -> AuditIntegrityReport:
+    """Verifica hashes/firmas evento por evento.
+
+    Contrato:
+    - Retorna ok=True si no hay discrepancias.
+    - No valida orden de encadenamiento (eso se hace en verify_queryset).
+    """
     errors: list[AuditIntegrityError] = []
     events_scanned = 0
     partitions: set[str] = set()
@@ -148,6 +165,12 @@ def verify_events(events: Iterable[AuditEvent]) -> AuditIntegrityReport:
 
 
 def verify_queryset(qs: QuerySet[AuditEvent]) -> AuditIntegrityReport:
+    """Verifica integridad completa desde la base.
+
+    Incluye:
+    - Re-cálculo de hashes/firmas
+    - Reglas de encadenamiento por partición (génesis único, tail único, head existente)
+    """
     ordered = list(qs.order_by("partition_key", "id"))
     report = verify_events(ordered)
 

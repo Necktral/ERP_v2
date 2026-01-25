@@ -1,3 +1,12 @@
+"""Servicios del módulo Fuel (precedente).
+
+Precedente de dominio:
+- liters es canónico (para cierres/reportes).
+- volume_entered/volume_uom preservan exactamente lo ingresado (trazabilidad).
+- unit_price es canónico por litro (base para totales/reporting).
+- unit_price_entered/unit_price_uom preservan exactamente lo pactado/capturado (no discutir después).
+"""
+
 from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
@@ -15,14 +24,54 @@ from modulos.estacion_servicios.models import (
     FuelSaleStatus,
     FuelShift,
     FuelShiftStatus,
+    FuelPriceUOM,
+    FuelVolumeUOM,
+    GALLON_TO_LITER,
 )
 
 
 MONEY_Q = Decimal("0.01")
+VOLUME_Q = Decimal("0.0001")
 
 
 def _money(x: Decimal) -> Decimal:
     return x.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+
+
+def _volume(x: Decimal) -> Decimal:
+    return Decimal(x).quantize(VOLUME_Q, rounding=ROUND_HALF_UP)
+
+
+def _to_liters(*, volume_entered: Decimal, volume_uom: str) -> Decimal:
+    """Convierte el volumen ingresado a litros canónicos.
+
+    Regla fuerte:
+    - Toda persistencia/reporting usa litros (precisión 4 decimales).
+    - Si la unidad no es soportada, se rechaza (evita datos inconsistentes).
+    """
+    v = _volume(volume_entered)
+    if volume_uom == FuelVolumeUOM.LITER:
+        return v
+    if volume_uom == FuelVolumeUOM.GALLON:
+        return _volume(v * GALLON_TO_LITER)
+    raise ValidationError({"detail": "Unidad de volumen inválida."})
+
+
+def _to_unit_price_per_liter(*, unit_price_entered: Decimal, unit_price_uom: str) -> Decimal:
+    """Convierte el precio ingresado a precio canónico por litro.
+
+    Regla fuerte:
+    - Persistimos unit_price como "precio por litro".
+    - Preservamos unit_price_entered + unit_price_uom como lo pactado/capturado.
+    """
+    p = _volume(unit_price_entered)
+    if unit_price_uom == FuelPriceUOM.PER_LITER:
+        return p
+    if unit_price_uom == FuelPriceUOM.PER_GALLON:
+        return _volume(p / GALLON_TO_LITER)
+    if unit_price_uom == FuelPriceUOM.PER_GALLON_US:
+        return _volume(p / GALLON_TO_LITER)
+    raise ValidationError({"detail": "Unidad de precio inválida."})
 
 
 def _require_branch(branch):
@@ -97,8 +146,10 @@ def record_dispense(
     actor_user,
     occurred_at=None,
     product: str,
-    liters: Decimal,
-    unit_price: Decimal,
+    volume_entered: Decimal,
+    volume_uom: str,
+    unit_price_entered: Decimal,
+    unit_price_uom: str,
     vehicle_plate: str = "",
     vehicle_ref: str = "",
     driver_name: str = "",
@@ -113,7 +164,26 @@ def record_dispense(
     if shift.status != FuelShiftStatus.OPEN:
         raise ValidationError({"detail": "No se puede despachar: turno cerrado."})
 
-    amount = _money(Decimal(liters) * Decimal(unit_price))
+    # Contrato de cálculo (sin ambigüedad):
+    # - volume_entered_q + volume_uom: lo que el operador capturó.
+    # - liters: canónico (4 decimales) para cierres/reportes.
+    # - unit_price_per_liter: canónico (4 decimales) para cierres/reportes.
+    # - amount (fuerte): monto operativo (entered) = volume_entered_q * unit_price_entered_q (dinero 2dp).
+    # - amount_canonical: monto canónico = liters * unit_price_per_liter (dinero 2dp).
+    # - amount_delta: drift por cuantización = amount - amount_canonical.
+    volume_entered_q = _volume(volume_entered)
+    liters = _to_liters(volume_entered=volume_entered_q, volume_uom=volume_uom)
+    gallons_equiv = _volume(Decimal(liters) / GALLON_TO_LITER)
+
+    unit_price_entered_q = _volume(unit_price_entered)
+    unit_price_per_liter = _to_unit_price_per_liter(
+        unit_price_entered=unit_price_entered_q,
+        unit_price_uom=unit_price_uom,
+    )
+
+    amount_entered = _money(Decimal(volume_entered_q) * Decimal(unit_price_entered_q))
+    amount_canonical = _money(Decimal(liters) * Decimal(unit_price_per_liter))
+    amount_delta = _money(Decimal(amount_entered) - Decimal(amount_canonical))
 
     d = FuelDispense.objects.create(
         company=company,
@@ -123,8 +193,14 @@ def record_dispense(
         recorded_by=actor_user,
         product=product,
         liters=liters,
-        unit_price=unit_price,
-        amount=amount,
+        volume_entered=volume_entered_q,
+        volume_uom=volume_uom,
+        unit_price=unit_price_per_liter,
+        unit_price_entered=unit_price_entered_q,
+        unit_price_uom=unit_price_uom,
+        amount=amount_entered,
+        amount_canonical=amount_canonical,
+        amount_delta=amount_delta,
         vehicle_plate=vehicle_plate or "",
         vehicle_ref=vehicle_ref or "",
         driver_name=driver_name or "",
@@ -145,10 +221,18 @@ def record_dispense(
         actor_user=actor_user,
         after_snapshot={
             "shift_id": shift.id,
-            "amount": str(amount),
+            "amount": str(amount_entered),
+            "amount_canonical": str(amount_canonical),
+            "amount_delta": str(amount_delta),
             "product": product,
             "liters": str(liters),
-            "unit_price": str(unit_price),
+            "gallons_equiv": str(gallons_equiv),
+            "volume_entered": str(volume_entered_q),
+            "volume_uom": str(volume_uom),
+            "unit_price_per_liter": str(unit_price_per_liter),
+            "unit_price_per_gallon": str(_volume(Decimal(unit_price_per_liter) * GALLON_TO_LITER)),
+            "unit_price_entered": str(unit_price_entered_q),
+            "unit_price_uom": str(unit_price_uom),
         },
         metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
     )

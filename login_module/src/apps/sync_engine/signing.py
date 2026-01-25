@@ -1,3 +1,10 @@
+"""Primitivas de firma del motor offline/sync (precedente).
+
+Precedente:
+- El mensaje firmado NO es JSON: es un formato concatenado estable para evitar ambigüedad.
+- occurred_at se canonicaliza a UTC con microsegundos para firma determinista.
+"""
+
 import base64
 import datetime as dt
 import hashlib

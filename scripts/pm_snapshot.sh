@@ -165,4 +165,21 @@ fi
   fi
 } >"$OUT_FILE"
 
+echo "" >> "$OUT_FILE"
+echo "## QA Summary" >> "$OUT_FILE"
+
+for f in qa_ruff.txt qa_pytest.txt qa_django_check.txt qa_makemigrations_check.txt; do
+  if [ -f "$f" ]; then
+    echo "" >> "$OUT_FILE"
+    echo "### $(basename "$f")" >> "$OUT_FILE"
+    echo '```' >> "$OUT_FILE"
+    tail -n 60 "$f" >> "$OUT_FILE"
+    echo '```' >> "$OUT_FILE"
+  else
+    echo "" >> "$OUT_FILE"
+    echo "### $(basename "$f")" >> "$OUT_FILE"
+    echo "_(no output file)_" >> "$OUT_FILE"
+  fi
+done
+
 echo "Wrote: $OUT_FILE"

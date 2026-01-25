@@ -1,3 +1,13 @@
+"""Middleware de auditoría para denegaciones (precedente).
+
+Contrato:
+- Si una request termina en 401/403/429, se emite un evento AUTH_ACCESS_DENIED (salvo exclusiones).
+- Usa required_permission/required_scope cuando estén presentes (inyectados por RBAC/contexto).
+
+Objetivo:
+- Tener un rastro consistente de intentos de acceso fallidos sin duplicar eventos.
+"""
+
 from __future__ import annotations
 
 from django.utils.deprecation import MiddlewareMixin
@@ -36,7 +46,7 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
         if getattr(request, "_audit_access_denied_written", False):
             return response
 
-        # Mapping contractual
+        # Mapping contractual (códigos estándar para consumo externo)
         if status_code == 401:
             reason_code = "POLICY_SCOPE_DENIED"
         elif status_code == 403:

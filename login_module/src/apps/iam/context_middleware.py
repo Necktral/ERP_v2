@@ -1,3 +1,13 @@
+"""Middleware de contexto organizacional (precedente).
+
+Responsabilidad:
+- Resolver e inyectar request.company y request.branch según headers.
+
+Nota:
+- En este repo también existe JWTAuthWithOrgContext que realiza una función similar.
+    El precedente es que *alguna* de estas capas debe garantizar que las vistas operen con contexto.
+"""
+
 from __future__ import annotations
 
 from django.http import JsonResponse
@@ -36,8 +46,11 @@ class OrgContextMiddleware:
 
         user = getattr(request, "user", None)
         if user is None or not getattr(user, "is_authenticated", False):
-            return self.get_response(request)  # DRF responderá 401; el middleware de auditoría lo capturará
+            # Precedente: no devolvemos 401 aquí; dejamos que DRF lo gestione.
+            # El middleware de auditoría capturará la denegación si corresponde.
+            return self.get_response(request)
 
+        # Regla fuerte: sin X-Company-Id no hay contexto operativo.
         company_id = request.headers.get("X-Company-Id")
         branch_id = request.headers.get("X-Branch-Id")
 

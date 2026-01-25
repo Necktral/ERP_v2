@@ -1,3 +1,10 @@
+"""Servicios de RRHH (precedente).
+
+Precedente:
+- La lógica de RRHH puede impactar autorización (RoleAssignment) y por eso debe ser transaccional,
+  auditable y limitada por origen.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,6 +52,10 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
     """
     Regla: SOLO toca RoleAssignment con origin=POSITION dentro del scope de la company del empleado.
     MANUAL y SYSTEM quedan intactos.
+
+    Precedente de seguridad:
+    - No se “expanden” permisos fuera del scope de company+branches.
+    - Cambios se realizan dentro de una transacción para evitar estados parciales.
     """
     if employee.linked_user is None:
         return ReconcileResult(created=0, reactivated=0, deactivated=0)

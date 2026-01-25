@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
   pull-requests: write
   issues: write
 
@@ -27,6 +28,55 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/dev.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt
+
+      # QA (captura aunque falle)
+      - name: QA - ruff
+        id: qa_ruff
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ruff check . | tee qa_ruff.txt
+
+      - name: QA - pytest + coverage
+        id: qa_pytest
+        continue-on-error: true
+        working-directory: login_module
+        run: |
+          set -o pipefail
+          coverage run -m pytest -q --maxfail=1 --disable-warnings | tee ../qa_pytest.txt
+          coverage report | tee ../qa_coverage.txt
+
+      - name: QA - django checks
+        id: qa_django
+        continue-on-error: true
+        working-directory: login_module
+        run: |
+          set -o pipefail
+          python manage.py check | tee ../qa_django_check.txt
+          python manage.py makemigrations --check --dry-run | tee ../qa_makemigrations_check.txt
+
+      - name: QA - write outcomes
+        if: always()
+        run: |
+          {
+            echo "qa_ruff_outcome=${{ steps.qa_ruff.outcome }}";
+            echo "qa_pytest_outcome=${{ steps.qa_pytest.outcome }}";
+            echo "qa_django_outcome=${{ steps.qa_django.outcome }}";
+          } > qa_outcomes.txt
 
       - name: Generate PM snapshot
         env:
@@ -52,7 +102,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pm-snapshot
-          path: pm_snapshot.md
+          path: |
+            pm_snapshot.md
+            qa_ruff.txt
+            qa_pytest.txt
+            qa_coverage.txt
+            qa_django_check.txt
+            qa_makemigrations_check.txt
+            qa_outcomes.txt
           if-no-files-found: error
           retention-days: 30
 

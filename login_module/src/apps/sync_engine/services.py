@@ -1,3 +1,19 @@
+"""Servicios del motor offline/sync (precedente).
+
+Este módulo implementa el pipeline completo de procesamiento:
+1) Política (límites)
+2) Validación de scope (company/branch) contra el dispositivo
+3) Canonicalización y verificación de firma (Ed25519)
+4) Idempotencia (AppliedCommand) y concurrencia segura
+5) Dispatch a handlers registrados
+6) Auditoría por batch y por comando
+
+Semántica de estados (respuesta por comando):
+- APPLIED: aplicado y persistido
+- DUPLICATE: mismo command_id y mismo payload_hash ya visto
+- REJECTED: rechazado (firma inválida, scope prohibido, schema inválido, etc.)
+"""
+
 from __future__ import annotations
 import logging
 
@@ -201,15 +217,19 @@ def process_batch(
 
 
 def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any], policy: SyncPolicy) -> dict[str, Any]:
-    """
-    cmd ya viene validado por serializer a nivel de tipos base.
-    Aquí aplicamos:
-      - límites de payload
-      - scope enforcement
-      - hash y firma Ed25519
-      - idempotencia AppliedCommand
-      - dispatch a handler
-      - auditoría por resultado
+    """Procesa un comando individual.
+
+    Precondición:
+    - cmd ya fue validado por serializer (tipos base y formato).
+
+    Pipeline:
+    - límites de payload (protección DoS / abuso)
+    - status del device + política de skew (cuarentena)
+    - scope enforcement (company/branch)
+    - canonicalización (payload_hash + occurred_at) y verificación Ed25519
+    - idempotencia AppliedCommand (command_id)
+    - dispatch a handler
+    - auditoría por resultado (APPLIED/DUPLICATE/REJECTED)
     """
     command_id = cmd["command_id"]
     command_type = cmd["command_type"]
@@ -221,7 +241,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
     signature = cmd["signature"]
     prev_hash = cmd.get("prev_hash") or ""
 
-    # Límite de payload
+    # Límite de payload (regla fuerte: evita batches gigantes y firma sobre datos arbitrarios)
     if _payload_size_bytes(payload) > policy.max_payload_bytes:
         return _reject_without_db(
             request=request,
@@ -255,7 +275,8 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             details={},
         )
 
-    # Time skew policy (no usamos occurred_at como verdad, pero sí controlamos desvíos extremos)
+    # Time skew policy: occurred_at no es “verdad”, pero sí se controla desvío extremo.
+    # Regla fuerte: si el desfase es muy grande, se pone el device en cuarentena.
     now = timezone.now()
     skew = abs((now - occurred_at).total_seconds())
     if skew > policy.max_device_clock_skew_seconds:
@@ -272,7 +293,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             details={"skew_seconds": int(skew), "limit_seconds": policy.max_device_clock_skew_seconds},
         )
 
-    # Scope enforcement
+    # Scope enforcement: el dispositivo no puede emitir comandos para otra empresa/sucursal.
     if not ensure_scope_matches(device=device, company_id=company_id, branch_id=branch_id):
         return _reject_without_db(
             request=request,
@@ -284,7 +305,8 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             details={"company_id": company_id, "branch_id": branch_id},
         )
 
-    # payload_hash: si viene, se valida; si no viene, se calcula
+    # payload_hash: si viene, se valida; si no viene, se calcula.
+    # Precedente: el hash se calcula sobre JSON canónico (canon_json).
     try:
         payload_canon = canon_json(payload)
         computed_payload_hash = sha256_hex(payload_canon)
@@ -300,6 +322,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
                 details={"payload_hash": "mismatch"},
             )
 
+        # Mensaje firmado estable: evita ambigüedad de JSON (orden de keys, espacios, etc.)
         msg = build_command_signing_message(
             command_id=str(command_id),
             command_type=command_type,
@@ -362,7 +385,8 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             details={"unknown_command_type": command_type},
         )
 
-    # Idempotencia + aplicación transaccional (por comando) con SAVEPOINT robusto
+    # Idempotencia + aplicación transaccional (por comando) con SAVEPOINT robusto.
+    # Precedente: command_id es la clave; mismo ID con payload distinto se rechaza.
 
     with transaction.atomic():
         # Lock del command_id si existe

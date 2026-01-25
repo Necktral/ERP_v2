@@ -1,3 +1,16 @@
+"""Autenticación + contexto organizacional (precedente).
+
+Este módulo es un punto crítico del sistema:
+- Entra un request autenticado (JWT) y se le inyecta contexto multiempresa.
+- Se valida el scope efectivo (X-Company-Id / X-Branch-Id).
+- Se expone opcionalmente un "data scope" (X-Data-Company-Id / X-Data-Branch-Id) para lecturas intercompany,
+  cuyo enforcement final se hace vía RBAC/Intercompany Grants.
+
+Contrato:
+- En endpoints operativos, X-Company-Id es obligatorio.
+- X-Branch-Id es opcional, pero si viene debe pertenecer a la empresa y el usuario debe tener membresía.
+"""
+
 from __future__ import annotations
 
 from rest_framework.exceptions import NotFound, ParseError, PermissionDenied
@@ -40,6 +53,7 @@ class JWTAuthWithOrgContext(JWTAuthentication):
             return (user, token)
 
         # --- Context headers ---
+        # Regla fuerte: sin X-Company-Id no hay contexto; se deniega temprano.
         company_id = request.headers.get("X-Company-Id")
         branch_id = request.headers.get("X-Branch-Id")
 
@@ -97,11 +111,15 @@ class JWTAuthWithOrgContext(JWTAuthentication):
                     self._set_required_scope(request, company_id=company.id, branch_id=branch.id)
                     raise PermissionDenied("Sin acceso a esta sucursal.")
 
-        # Inyectar contexto
+        # Inyectar contexto (DRF Request y Django HttpRequest).
+        # Precedente: otras capas (RBAC/auditoría) leen request.company/request.branch.
         self._set_context(request, company=company, branch=branch)
 
         # -----------------------------
-        # Data scope (opcional): permite pedir datos de otra empresa
+        # Data scope (opcional): permite pedir datos de otra empresa.
+        # Precedente:
+        # - Se usa para casos de lectura intercompany (modo READ en esta fase).
+        # - La autorización final depende de rbac_permission + intercompany grants.
         # Headers:
         #   X-Data-Company-Id
         #   X-Data-Branch-Id
@@ -146,8 +164,8 @@ class JWTAuthWithOrgContext(JWTAuthentication):
 
             data_branch = db
 
-        # Regla fuerte en esta fase:
-        # No se permite data_branch distinto al branch activo si la data_company es la misma.
+        # Regla fuerte (evita bypass de sucursal dentro de la misma empresa):
+        # No se permite X-Data-Branch-Id distinto al contexto activo si la data_company es la misma.
         if (
             data_company.id == company.id
             and branch is not None
