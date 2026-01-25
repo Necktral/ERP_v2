@@ -39,35 +39,48 @@ jobs:
             requirements/dev.txt
 
       - name: Install backend dependencies
+        continue-on-error: true
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements/dev.txt
 
+      - name: QA - init output files
+        if: always()
+        run: |
+          : > qa_ruff.txt
+          : > qa_pytest.txt
+          : > qa_coverage.txt
+          : > qa_django_check.txt
+          : > qa_makemigrations_check.txt
+
       # QA (captura aunque falle)
       - name: QA - ruff
         id: qa_ruff
+        if: always()
         continue-on-error: true
         run: |
           set -o pipefail
-          ruff check . | tee qa_ruff.txt
+          ruff check . 2>&1 | tee qa_ruff.txt
 
       - name: QA - pytest + coverage
         id: qa_pytest
+        if: always()
         continue-on-error: true
         working-directory: login_module
         run: |
           set -o pipefail
-          coverage run -m pytest -q --maxfail=1 --disable-warnings | tee ../qa_pytest.txt
-          coverage report | tee ../qa_coverage.txt
+          coverage run -m pytest -q --maxfail=1 --disable-warnings 2>&1 | tee ../qa_pytest.txt
+          coverage report 2>&1 | tee ../qa_coverage.txt
 
       - name: QA - django checks
         id: qa_django
+        if: always()
         continue-on-error: true
         working-directory: login_module
         run: |
           set -o pipefail
-          python manage.py check | tee ../qa_django_check.txt
-          python manage.py makemigrations --check --dry-run | tee ../qa_makemigrations_check.txt
+          python manage.py check 2>&1 | tee ../qa_django_check.txt
+          python manage.py makemigrations --check --dry-run 2>&1 | tee ../qa_makemigrations_check.txt
 
       - name: QA - write outcomes
         if: always()
@@ -79,6 +92,8 @@ jobs:
           } > qa_outcomes.txt
 
       - name: Generate PM snapshot
+        if: always()
+        continue-on-error: true
         env:
           PM_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           PM_PR_URL: ${{ github.event.pull_request.html_url || '' }}
@@ -87,7 +102,18 @@ jobs:
           PM_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
           PM_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
-          bash scripts/pm_snapshot.sh
+          bash scripts/pm_snapshot.sh pm_snapshot.md
+
+      - name: Ensure pm_snapshot.md exists
+        if: always()
+        run: |
+          if [ ! -f pm_snapshot.md ]; then
+            {
+              echo "# PM Snapshot";
+              echo;
+              echo "(snapshot generation failed; placeholder)";
+            } > pm_snapshot.md
+          fi
 
       - name: Publish snapshot to job summary (truncated)
         if: always()
@@ -99,6 +125,7 @@ jobs:
           echo "_(Truncated. Descarga el artefacto **pm-snapshot** para el archivo completo.)_" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload snapshot artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pm-snapshot
@@ -110,7 +137,7 @@ jobs:
             qa_django_check.txt
             qa_makemigrations_check.txt
             qa_outcomes.txt
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Upsert PR comment (PM snapshot)
