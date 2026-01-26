@@ -1,7 +1,8 @@
 .PHONY: qa-backend-gunicorn qa-backend-runserver \
 	qa-load-user qa-load-reset-axes qa-load-smoke qa-load-stress qa-gate3 \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
-	qa-backend-ruff qa-backend-mypy qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity
+	qa-backend-ruff qa-backend-mypy qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity \
+	docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
 K6_IMAGE ?= grafana/k6
@@ -91,6 +92,23 @@ qa-ci-gate3: qa-ci-up qa-audit-integrity
 
 # Runner completo Gates 1–3
 qa-ci: qa-ci-gate1 qa-ci-gate2 qa-ci-gate3
+
+# --- Docker helpers (dev/local) ---
+
+# Limpia contenedores huérfanos sin tocar volúmenes. Útil cuando ves “copias”.
+docker-clean:
+	@echo "[docker] down --remove-orphans (sin volúmenes)…"
+	@docker compose down --remove-orphans || true
+	@echo "[docker] removiendo contenedores EXITED con imagen erp_crm-backend…"
+	@docker rm -f $$(docker ps -aq --filter status=exited --filter ancestor=erp_crm-backend:latest) 2>/dev/null || true
+	@echo "[docker] listo. Contenedores actuales:"
+	@docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+
+# Variante agresiva: también elimina volúmenes (pierdes DB local).
+docker-clean-all:
+	@echo "[docker] down -v --remove-orphans (ELIMINA volúmenes)…"
+	@docker compose down -v --remove-orphans || true
+	@$(MAKE) docker-clean
 
 qa-load-user:
 	docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong'); setattr(u, 'must_change_password', False); u.save(); print('K6_USER_READY')"

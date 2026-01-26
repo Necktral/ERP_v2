@@ -192,7 +192,7 @@ class FuelUoMPreference(models.Model):
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="fuel_uom_prefs",
+        related_name="fuel_uom_prefs_unified",
     )
 
     # product="" significa "ALL".

@@ -61,6 +61,16 @@ services:
       - "8000:8000"
     volumes:
       - ./:/app
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8000/api/auth/bootstrap/status/ >/dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
     # command/entrypoint quedan definidos en la imagen (docker/entrypoint.sh)
 
   frontend:
@@ -72,7 +82,8 @@ services:
       # El navegador accede al backend por el puerto publicado del host.
       VITE_API_BASE_URL: http://localhost:8000/api
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
     volumes:
