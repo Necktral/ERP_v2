@@ -11,8 +11,12 @@ from __future__ import annotations
 
 from decimal import Decimal, ROUND_HALF_UP
 
+from datetime import datetime, date, time
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.db.models import Sum, Count
+from django.utils.dateparse import parse_datetime, parse_date
 
 from rest_framework.exceptions import ValidationError
 
@@ -78,6 +82,266 @@ def _require_branch(branch):
     if branch is None:
         raise ValidationError({"detail": "X-Branch-Id requerido para operación de estación."})
     return branch
+
+
+def _dt_range_from_query(*, from_s: str | None, to_s: str | None) -> tuple[datetime | None, datetime | None]:
+    """Parsea rangos de tiempo desde query params.
+
+    Acepta:
+    - ISO datetime (con o sin zona)
+    - ISO date (YYYY-MM-DD) => inicio del día / fin del día
+    """
+
+    def _parse(v: str | None, *, is_end: bool) -> datetime | None:
+        if not v:
+            return None
+        dt = parse_datetime(v)
+        if dt is not None:
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, timezone.get_current_timezone())
+            return dt
+        d = parse_date(v)
+        if d is None:
+            raise ValidationError({"detail": f"Fecha/hora inválida: {v}"})
+        t = time.max if is_end else time.min
+        dt2 = datetime.combine(d, t)
+        return timezone.make_aware(dt2, timezone.get_current_timezone())
+
+    return _parse(from_s, is_end=False), _parse(to_s, is_end=True)
+
+
+def list_shifts(*, company, branch, status: str | None = None, from_s: str | None = None, to_s: str | None = None):
+    branch = _require_branch(branch)
+    qs = FuelShift.objects.filter(company=company, branch=branch)
+    if status:
+        qs = qs.filter(status=status)
+    dt_from, dt_to = _dt_range_from_query(from_s=from_s, to_s=to_s)
+    if dt_from is not None:
+        qs = qs.filter(opened_at__gte=dt_from)
+    if dt_to is not None:
+        qs = qs.filter(opened_at__lte=dt_to)
+    return qs.order_by("-opened_at", "-id")
+
+
+def get_shift(*, company, branch, shift_id: int) -> FuelShift:
+    branch = _require_branch(branch)
+    return FuelShift.objects.get(pk=shift_id, company=company, branch=branch)
+
+
+def list_dispenses(
+    *,
+    company,
+    branch,
+    shift_id: int | None = None,
+    product: str | None = None,
+    from_s: str | None = None,
+    to_s: str | None = None,
+):
+    branch = _require_branch(branch)
+    qs = FuelDispense.objects.filter(company=company, branch=branch)
+    if shift_id is not None:
+        qs = qs.filter(shift_id=shift_id)
+    if product:
+        qs = qs.filter(product=product)
+    dt_from, dt_to = _dt_range_from_query(from_s=from_s, to_s=to_s)
+    if dt_from is not None:
+        qs = qs.filter(occurred_at__gte=dt_from)
+    if dt_to is not None:
+        qs = qs.filter(occurred_at__lte=dt_to)
+    return qs.order_by("-occurred_at", "-id")
+
+
+def get_dispense(*, company, branch, dispense_id: int) -> FuelDispense:
+    branch = _require_branch(branch)
+    return FuelDispense.objects.get(pk=dispense_id, company=company, branch=branch)
+
+
+def list_sales(
+    *,
+    company,
+    branch,
+    shift_id: int | None = None,
+    status: str | None = None,
+    sale_type: str | None = None,
+    payment_method: str | None = None,
+    from_s: str | None = None,
+    to_s: str | None = None,
+):
+    branch = _require_branch(branch)
+    qs = FuelSale.objects.filter(company=company, branch=branch).select_related("dispense")
+    if shift_id is not None:
+        qs = qs.filter(shift_id=shift_id)
+    if status:
+        qs = qs.filter(status=status)
+    if sale_type:
+        qs = qs.filter(sale_type=sale_type)
+    if payment_method:
+        qs = qs.filter(payment_method=payment_method)
+    dt_from, dt_to = _dt_range_from_query(from_s=from_s, to_s=to_s)
+    if dt_from is not None:
+        qs = qs.filter(created_at__gte=dt_from)
+    if dt_to is not None:
+        qs = qs.filter(created_at__lte=dt_to)
+    return qs.order_by("-created_at", "-id")
+
+
+def get_sale(*, company, branch, sale_id: int) -> FuelSale:
+    branch = _require_branch(branch)
+    return FuelSale.objects.select_related("dispense").get(pk=sale_id, company=company, branch=branch)
+
+
+def _gallons_from_liters(liters: Decimal) -> Decimal:
+    return _volume(Decimal(liters) / GALLON_TO_LITER)
+
+
+def build_shift_close_report(*, company, branch, shift: FuelShift) -> dict:
+    branch = _require_branch(branch)
+    if shift.company_id != company.id or shift.branch_id != branch.id:
+        raise ValidationError({"detail": "Shift fuera de scope."})
+
+    disp_qs = FuelDispense.objects.filter(company=company, branch=branch, shift=shift)
+    sale_qs = FuelSale.objects.filter(company=company, branch=branch, shift=shift)
+
+    by_product = (
+        disp_qs.values("product")
+        .annotate(
+            dispense_count=Count("id"),
+            liters=Sum("liters"),
+            amount=Sum("amount"),
+            amount_canonical=Sum("amount_canonical"),
+            amount_delta=Sum("amount_delta"),
+        )
+        .order_by("product")
+    )
+
+    totals_by_product = []
+    for row in by_product:
+        liters = row.get("liters") or Decimal("0")
+        totals_by_product.append(
+            {
+                "key": row["product"],
+                "dispense_count": int(row.get("dispense_count") or 0),
+                "liters": f"{_volume(Decimal(liters)):.4f}",
+                "gallons_equiv": f"{_gallons_from_liters(Decimal(liters)):.4f}",
+                "amount": f"{_money(Decimal(row.get('amount') or 0)):.2f}",
+                "amount_canonical": f"{_money(Decimal(row.get('amount_canonical') or 0)):.2f}",
+                "amount_delta": f"{_money(Decimal(row.get('amount_delta') or 0)):.2f}",
+            }
+        )
+
+    sales_active = sale_qs.filter(status=FuelSaleStatus.ACTIVE)
+    sales_cancelled = sale_qs.filter(status=FuelSaleStatus.CANCELLED)
+
+    sales_by_type = list(
+        sales_active.values("sale_type").annotate(count=Count("id"), total=Sum("total_amount")).order_by("sale_type")
+    )
+    for row in sales_by_type:
+        row["total"] = f"{_money(Decimal(row.get('total') or 0)):.2f}"
+
+    sales_by_payment_method = list(
+        sales_active.values("payment_method")
+        .annotate(count=Count("id"), total=Sum("total_amount"))
+        .order_by("payment_method")
+    )
+    for row in sales_by_payment_method:
+        row["total"] = f"{_money(Decimal(row.get('total') or 0)):.2f}"
+
+    amount_delta_abs_sum = disp_qs.aggregate(x=Sum("amount_delta"))
+    alerts = {
+        "cancelled_sales": int(sales_cancelled.count()),
+        "amount_delta_sum": f"{_money(Decimal((amount_delta_abs_sum.get('x') or 0))):.2f}",
+    }
+
+    counts = {
+        "dispenses": int(disp_qs.count()),
+        "sales_active": int(sales_active.count()),
+        "sales_cancelled": int(sales_cancelled.count()),
+    }
+
+    return {
+        "shift": shift,
+        "totals_by_product": totals_by_product,
+        "sales_by_type": sales_by_type,
+        "sales_by_payment_method": sales_by_payment_method,
+        "counts": counts,
+        "alerts": alerts,
+    }
+
+
+def build_daily_close_report(*, company, branch, report_date: date) -> dict:
+    branch = _require_branch(branch)
+    tz = timezone.get_current_timezone()
+    start = timezone.make_aware(datetime.combine(report_date, time.min), tz)
+    end = timezone.make_aware(datetime.combine(report_date, time.max), tz)
+
+    disp_qs = FuelDispense.objects.filter(company=company, branch=branch, occurred_at__gte=start, occurred_at__lte=end)
+    sale_qs = FuelSale.objects.filter(company=company, branch=branch, created_at__gte=start, created_at__lte=end)
+
+    by_product = (
+        disp_qs.values("product")
+        .annotate(
+            dispense_count=Count("id"),
+            liters=Sum("liters"),
+            amount=Sum("amount"),
+            amount_canonical=Sum("amount_canonical"),
+            amount_delta=Sum("amount_delta"),
+        )
+        .order_by("product")
+    )
+
+    totals_by_product = []
+    for row in by_product:
+        liters = row.get("liters") or Decimal("0")
+        totals_by_product.append(
+            {
+                "key": row["product"],
+                "dispense_count": int(row.get("dispense_count") or 0),
+                "liters": f"{_volume(Decimal(liters)):.4f}",
+                "gallons_equiv": f"{_gallons_from_liters(Decimal(liters)):.4f}",
+                "amount": f"{_money(Decimal(row.get('amount') or 0)):.2f}",
+                "amount_canonical": f"{_money(Decimal(row.get('amount_canonical') or 0)):.2f}",
+                "amount_delta": f"{_money(Decimal(row.get('amount_delta') or 0)):.2f}",
+            }
+        )
+
+    sales_active = sale_qs.filter(status=FuelSaleStatus.ACTIVE)
+    sales_cancelled = sale_qs.filter(status=FuelSaleStatus.CANCELLED)
+
+    sales_by_type = list(
+        sales_active.values("sale_type").annotate(count=Count("id"), total=Sum("total_amount")).order_by("sale_type")
+    )
+    for row in sales_by_type:
+        row["total"] = f"{_money(Decimal(row.get('total') or 0)):.2f}"
+
+    sales_by_payment_method = list(
+        sales_active.values("payment_method")
+        .annotate(count=Count("id"), total=Sum("total_amount"))
+        .order_by("payment_method")
+    )
+    for row in sales_by_payment_method:
+        row["total"] = f"{_money(Decimal(row.get('total') or 0)):.2f}"
+
+    amount_delta_sum = disp_qs.aggregate(x=Sum("amount_delta"))
+    alerts = {
+        "cancelled_sales": int(sales_cancelled.count()),
+        "amount_delta_sum": f"{_money(Decimal((amount_delta_sum.get('x') or 0))):.2f}",
+    }
+
+    counts = {
+        "dispenses": int(disp_qs.count()),
+        "sales_active": int(sales_active.count()),
+        "sales_cancelled": int(sales_cancelled.count()),
+    }
+
+    return {
+        "date": report_date,
+        "branch_id": branch.id,
+        "totals_by_product": totals_by_product,
+        "sales_by_type": sales_by_type,
+        "sales_by_payment_method": sales_by_payment_method,
+        "counts": counts,
+        "alerts": alerts,
+    }
 
 
 @transaction.atomic

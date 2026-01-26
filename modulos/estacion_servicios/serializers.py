@@ -48,6 +48,25 @@ class ShiftCloseIn(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
 
+class ShiftReadOut(serializers.ModelSerializer):
+    opened_by_id = serializers.IntegerField(read_only=True)
+    closed_by_id = serializers.IntegerField(read_only=True)
+    branch_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = FuelShift
+        fields = [
+            "id",
+            "status",
+            "opened_at",
+            "closed_at",
+            "opened_by_id",
+            "closed_by_id",
+            "note",
+            "branch_id",
+        ]
+
+
 class DispenseCreateIn(serializers.Serializer):
     """Entrada para registrar un despacho.
 
@@ -276,3 +295,37 @@ class SaleOut(serializers.ModelSerializer):
             "cancelled_at",
             "cancel_reason",
         ]
+
+
+class FuelReportLine(serializers.Serializer):
+    """Línea genérica para totales del módulo Fuel.
+
+    Nota: usamos strings para decimales porque DRF los serializa así en el resto del módulo.
+    """
+
+    key = serializers.CharField()
+    dispense_count = serializers.IntegerField()
+    liters = serializers.CharField()
+    gallons_equiv = serializers.CharField()
+    amount = serializers.CharField()
+    amount_canonical = serializers.CharField()
+    amount_delta = serializers.CharField()
+
+
+class FuelShiftCloseReportOut(serializers.Serializer):
+    shift = ShiftReadOut()
+    totals_by_product = FuelReportLine(many=True)
+    sales_by_type = serializers.ListField(child=serializers.DictField(), required=True)
+    sales_by_payment_method = serializers.ListField(child=serializers.DictField(), required=True)
+    counts = serializers.DictField()
+    alerts = serializers.DictField()
+
+
+class FuelDailyCloseReportOut(serializers.Serializer):
+    date = serializers.DateField()
+    branch_id = serializers.IntegerField()
+    totals_by_product = FuelReportLine(many=True)
+    sales_by_type = serializers.ListField(child=serializers.DictField(), required=True)
+    sales_by_payment_method = serializers.ListField(child=serializers.DictField(), required=True)
+    counts = serializers.DictField()
+    alerts = serializers.DictField()
