@@ -61,6 +61,12 @@ En PROD, Nginx sirve la SPA y proxyea `/api/` hacia el backend.
 - Todos los endpoints de escritura emiten eventos de auditoría con `reason_code` y `event_type` permitido por contrato.
 - Integridad: encadenado por hash y firmado con HMAC (`AUDIT_HMAC_KEY` en PROD).
 
+Guías de organización:
+
+- Contract Pack v1.0: [../docs/CONTRACT_PACK_v1.0.md](../docs/CONTRACT_PACK_v1.0.md)
+- Addendum Offline-first v1.0: [../docs/ADDENDUM_OFFLINE_FIRST_v1.0.md](../docs/ADDENDUM_OFFLINE_FIRST_v1.0.md)
+- Índice de docs: [../docs/README.md](../docs/README.md)
+
 ### Verificar integridad (Gate 3)
 
 El comando valida:
@@ -174,6 +180,12 @@ docker compose exec -T backend python manage.py audit_verify_chain
 - Todos los endpoints de escritura generan eventos en apps.audit con reason_code y event_type según contrato.
 - Ejemplo: `HR_POSITION_CREATED`, `ORG_BRANCH_CREATED`, `RBAC_SEEDED_V01`.
 - El contrato de auditoría es estricto y validado por tests.
+
+Guías de organización:
+
+- Contract Pack v1.0: [../docs/CONTRACT_PACK_v1.0.md](../docs/CONTRACT_PACK_v1.0.md)
+- Addendum Offline-first v1.0: [../docs/ADDENDUM_OFFLINE_FIRST_v1.0.md](../docs/ADDENDUM_OFFLINE_FIRST_v1.0.md)
+- Índice de docs: [../docs/README.md](../docs/README.md)
 
 ## Tests automáticos
 

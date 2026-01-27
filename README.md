@@ -332,6 +332,12 @@ docker compose exec backend python src/manage.py bootstrap_company --company-nam
 - Ejemplo: `HR_POSITION_CREATED`, `ORG_BRANCH_CREATED`, `RBAC_SEEDED_V01`.
 - El contrato de auditoría es estricto y validado por tests.
 
+Guías de organización:
+
+- Contract Pack v1.0: [docs/CONTRACT_PACK_v1.0.md](docs/CONTRACT_PACK_v1.0.md)
+- Addendum Offline-first v1.0: [docs/ADDENDUM_OFFLINE_FIRST_v1.0.md](docs/ADDENDUM_OFFLINE_FIRST_v1.0.md)
+- Índice de docs: [docs/README.md](docs/README.md)
+
 ## Tests automáticos
 
 - `tests/test_hr_position_role_automation.py`: Valida automatización de roles por puesto y auditoría.
