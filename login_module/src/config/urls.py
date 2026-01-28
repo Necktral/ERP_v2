@@ -33,6 +33,7 @@ urlpatterns = [
     # RBAC
     path("api/rbac/", include("apps.rbac.urls")),
     path("api/sync/", include("apps.sync_engine.urls")),
+    path("api/sync-hmac/", include("apps.sync.urls")),
     # Auditoría
     path("api/audit/", include("apps.audit.urls")),
     # ORG
@@ -41,4 +42,13 @@ urlpatterns = [
     path("api/hr/", include("apps.hr.urls")),
     # Estación de Servicios
     path("api/fuel/", include("modulos.estacion_servicios.urls")),
+]
+
+urlpatterns += [
+    path("api/inventory/", include("modulos.inventarios.urls")),
+    path("api/billing/", include("modulos.facturacion.urls")),
+]
+
+urlpatterns += [
+    path("api/billing/", include("modulos.facturacion.urls_legacy")),
 ]

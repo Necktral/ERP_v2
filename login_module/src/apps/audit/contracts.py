@@ -56,7 +56,31 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "FUEL_INTERCOMPANY_OUTBOX_ENQUEUED",
     "FUEL_INTERCOMPANY_OUTBOX_APPLIED",
     "FUEL_INTERCOMPANY_OUTBOX_FAILED",
+
+    # INVENTORY
+    "INVENTORY_ITEM_CREATED",
+    "INVENTORY_ITEM_UPDATED",
+    "INVENTORY_STOCK_MOVEMENT_POSTED",
+
+    # BILLING
+    "BILLING_CUSTOMER_CREATED",
+    "BILLING_CUSTOMER_UPDATED",
+    "BILLING_INVOICE_CREATED",
+    "BILLING_INVOICE_ISSUED",
+    "BILLING_INVOICE_VOIDED",
 }
+
+# Event Types (añadir)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "INVENTORY_MOVEMENT_POSTED",
+        "INVENTORY_ADJUSTMENT_POSTED",
+        "INVENTORY_TRANSFER_POSTED",
+        "BILLING_DOC_CREATED",
+        "BILLING_DOC_ISSUED",
+        "BILLING_DOC_VOIDED",
+    }
+)
 
 ALLOWED_REASON_CODES: set[str] = {
     # Legacy / compat (mucho código actual usa "OK")
@@ -70,6 +94,9 @@ ALLOWED_REASON_CODES: set[str] = {
     "FUEL_OK",
     "AUDIT_OK",
     "REPORTS_OK",
+
+    # OK por módulo (futuros kernels)
+
     # Auth/login
     "INVALID_CREDENTIALS",
     "USER_DISABLED",
@@ -98,7 +125,23 @@ ALLOWED_REASON_CODES: set[str] = {
     "SYNC_LIMIT_EXCEEDED",
     "SYNC_TIME_SKEW",
     "SYNC_INTERNAL_ERROR",
+
+    # INVENTORY (reglas)
+    "NEGATIVE_STOCK_BLOCKED",
+
+    # BILLING (reglas)
+    "INVOICE_NOT_DRAFT",
+    "SERIES_EXHAUSTED",
 }
+
+# Reason Codes (añadir)
+ALLOWED_REASON_CODES.update(
+    {
+        "INVENTORY_OK",
+        "BILLING_OK",
+        "BILLING_VOID",
+    }
+)
 
 ALLOWED_SUBJECT_TYPES: set[str] = {
     "",
@@ -119,7 +162,25 @@ ALLOWED_SUBJECT_TYPES: set[str] = {
     "FUEL_PRICE",
     "FUEL_OUTBOX",
     "FUEL_LIQUIDATION",
+
+    # INVENTORY
+    "INVENTORY_ITEM",
+    "STOCK_MOVEMENT",
+
+    # BILLING
+    "CUSTOMER",
+    "INVOICE",
+    "PAYMENT",
 }
+
+# Subject Types (añadir)
+ALLOWED_SUBJECT_TYPES.update(
+    {
+        "INVENTORY_MOVEMENT",
+        "INVENTORY_TRANSFER",
+        "BILLING_DOC",
+    }
+)
 
 
 def validate_event_type(event_type: str) -> None:

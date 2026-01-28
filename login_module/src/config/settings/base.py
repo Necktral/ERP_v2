@@ -82,6 +82,10 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-branch-id",
     "x-data-company-id",
     "x-data-branch-id",
+    "x-device-id",
+    "x-device-ts",
+    "x-device-nonce",
+    "x-device-signature",
 ]
 
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
@@ -121,8 +125,15 @@ INSTALLED_APPS = [
     "apps.org.apps.OrgConfig",  # <-- NUEVO
     "apps.hr.apps.HrConfig",  # <-- NUEVO
     "apps.sync_engine",
+    "apps.sync.apps.SyncConfig",
     # Módulos de dominio (raíz/modulos)
-    "modulos.estacion_servicios.apps.EstacionServiciosConfig",
+    # (Se agregan abajo con el patrón INSTALLED_APPS += [...])
+]
+
+INSTALLED_APPS += [
+    "modulos.estacion_servicios",
+    "modulos.inventarios",
+    "modulos.facturacion",
 ]
 
 MIDDLEWARE = [

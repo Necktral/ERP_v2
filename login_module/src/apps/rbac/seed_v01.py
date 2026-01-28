@@ -34,6 +34,7 @@ def seed_rbac_v01() -> SeedResult:
         "sales_manager": "Gestión comercial (placeholder).",
         "sales_rep": "Operación ventas (placeholder).",
         "cashier": "Caja (placeholder).",
+        "billing_manager": "Gestión de facturación (kernel).",
         "sync_admin": "Administración de Sync (enroll/revoke) (placeholder).",
 
         # FUEL (Estación de Servicios)
@@ -78,13 +79,40 @@ def seed_rbac_v01() -> SeedResult:
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
         "sync.batch.receive": "Recibir lotes de sync.",
-        # Placeholders de módulos futuros ya existentes en tests
-        "inventory.read": "Lectura inventario (placeholder).",
-        "inventory.write": "Escritura inventario (placeholder).",
-        "clients.read": "Lectura clientes (placeholder).",
-        "clients.write": "Escritura clientes (placeholder).",
-        "reports.view": "Ver reportes (placeholder).",
-        "reports.export": "Exportar reportes (placeholder).",
+        # --- Inventario (kernels) ---
+        "inventory.item.read": "Ver items del inventario.",
+        "inventory.item.create": "Crear items del inventario.",
+        "inventory.item.update": "Actualizar items del inventario.",
+        "inventory.warehouse.create": "Crear almacenes/bodegas.",
+        "inventory.balance.read": "Ver existencias y costo promedio.",
+        "inventory.movement.receive": "Registrar entradas/recepciones de inventario.",
+        "inventory.movement.issue": "Registrar salidas/consumos de inventario.",
+        "inventory.movement.adjust": "Registrar ajustes de inventario.",
+        "inventory.transfer.create": "Registrar transferencias entre almacenes.",
+        "inventory.movement.post": "Registrar/mayorizar movimientos de inventario.",
+        "inventory.adjustment.create": "Crear ajustes de inventario.",
+
+        # --- Facturación (kernels) ---
+        "billing.customer.read": "Ver clientes.",
+        "billing.customer.create": "Crear clientes.",
+        "billing.customer.update": "Actualizar clientes.",
+        "billing.invoice.read": "Ver facturas.",
+        "billing.invoice.create": "Crear facturas (draft).",
+        "billing.invoice.issue": "Emitir facturas.",
+        "billing.invoice.void": "Anular facturas.",
+        "billing.doc.read": "Ver documentos de facturación (kernel).",
+        "billing.doc.create": "Crear documentos de facturación (kernel).",
+        "billing.doc.issue": "Emitir documentos de facturación (kernel).",
+        "billing.doc.void": "Anular documentos de facturación (kernel).",
+
+        # --- Compat / legacy (tests + transición) ---
+        # Nota: se conservan porque varios tests usan estos códigos como canary de RBAC.
+        "inventory.read": "Lectura inventario (legacy/compat).",
+        "inventory.write": "Escritura inventario (legacy/compat).",
+        "clients.read": "Lectura clientes (legacy/compat).",
+        "clients.write": "Escritura clientes (legacy/compat).",
+        "reports.view": "Ver reportes (legacy/compat).",
+        "reports.export": "Exportar reportes (legacy/compat).",
 
         # FUEL (Estación de Servicios)
         "fuel.config.read": "Leer configuración de estación.",
@@ -110,6 +138,24 @@ def seed_rbac_v01() -> SeedResult:
         "fuel.reports.view": "Ver reportes del módulo Estación.",
         "fuel.reports.export": "Exportar reportes del módulo Estación.",
     }
+
+    permissions.update(
+        {
+            # INVENTORY kernel (granular)
+            "inventory.item.create": "Crear ítems de inventario.",
+            "inventory.warehouse.create": "Crear almacenes.",
+            "inventory.movement.receive": "Registrar entradas.",
+            "inventory.movement.issue": "Registrar salidas.",
+            "inventory.movement.adjust": "Registrar ajustes.",
+            "inventory.transfer.create": "Registrar transferencias.",
+            "inventory.balance.read": "Ver balances.",
+            # BILLING kernel
+            "billing.doc.create": "Crear documentos (draft).",
+            "billing.doc.read": "Ver documentos.",
+            "billing.doc.issue": "Emitir documentos.",
+            "billing.doc.void": "Anular documentos.",
+        }
+    )
 
     role_to_perms = {
         "company_admin": [
@@ -141,6 +187,31 @@ def seed_rbac_v01() -> SeedResult:
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
+            # Inventario (granular)
+            "inventory.item.read",
+            "inventory.item.create",
+            "inventory.item.update",
+            "inventory.warehouse.create",
+            "inventory.balance.read",
+            "inventory.movement.receive",
+            "inventory.movement.issue",
+            "inventory.movement.adjust",
+            "inventory.transfer.create",
+            "inventory.movement.post",
+            "inventory.adjustment.create",
+            # Facturación (granular)
+            "billing.customer.read",
+            "billing.customer.create",
+            "billing.customer.update",
+            "billing.invoice.read",
+            "billing.invoice.create",
+            "billing.invoice.issue",
+            "billing.invoice.void",
+            "billing.doc.read",
+            "billing.doc.create",
+            "billing.doc.issue",
+            "billing.doc.void",
+            # Compat
             "inventory.read",
             "inventory.write",
             "clients.read",
@@ -154,6 +225,27 @@ def seed_rbac_v01() -> SeedResult:
             "hr.employee.read",
             "hr.employee.update",
             "hr.assignment.read",
+            # Inventario (granular)
+            "inventory.item.read",
+            "inventory.item.create",
+            "inventory.item.update",
+            "inventory.warehouse.create",
+            "inventory.balance.read",
+            "inventory.movement.receive",
+            "inventory.movement.issue",
+            "inventory.movement.adjust",
+            "inventory.transfer.create",
+            "inventory.movement.post",
+            "inventory.adjustment.create",
+            # Facturación (lectura + draft)
+            "billing.customer.read",
+            "billing.invoice.read",
+            "billing.invoice.create",
+            "billing.doc.read",
+            "billing.doc.create",
+            "billing.doc.issue",
+            "billing.doc.void",
+            # Compat
             "inventory.read",
             "inventory.write",
             "clients.read",
@@ -189,11 +281,48 @@ def seed_rbac_v01() -> SeedResult:
             "audit.read",
             "reports.view",
         ],
-        "warehouse_manager": ["inventory.read", "inventory.write"],
-        "warehouse_operator": ["inventory.read"],
-        "sales_manager": ["clients.read", "clients.write", "reports.view"],
-        "sales_rep": ["clients.read"],
-        "cashier": ["reports.view"],
+        "warehouse_manager": [
+            "inventory.item.read",
+            "inventory.item.create",
+            "inventory.item.update",
+            "inventory.movement.post",
+            "inventory.adjustment.create",
+            # Compat
+            "inventory.read",
+            "inventory.write",
+        ],
+        "warehouse_operator": [
+            "inventory.item.read",
+            "inventory.movement.post",
+            # Compat
+            "inventory.read",
+        ],
+        "sales_manager": [
+            "billing.customer.read",
+            "billing.customer.create",
+            "billing.customer.update",
+            "billing.invoice.read",
+            "billing.invoice.create",
+            "billing.invoice.issue",
+            "billing.invoice.void",
+            # Compat
+            "clients.read",
+            "clients.write",
+            "reports.view",
+        ],
+        "sales_rep": [
+            "billing.customer.read",
+            "billing.invoice.read",
+            "billing.invoice.create",
+            # Compat
+            "clients.read",
+        ],
+        "cashier": [
+            "billing.invoice.read",
+            "billing.invoice.issue",
+            # Compat
+            "reports.view",
+        ],
         "sync_admin": ["sync.device.enroll", "sync.device.revoke"],
 
         # FUEL
@@ -262,6 +391,31 @@ def seed_rbac_v01() -> SeedResult:
             "fuel.reports.view",
         ],
     }
+
+    role_to_perms.update(
+        {
+            "warehouse_manager": [
+                "inventory.item.create",
+                "inventory.warehouse.create",
+                "inventory.movement.receive",
+                "inventory.movement.issue",
+                "inventory.movement.adjust",
+                "inventory.transfer.create",
+                "inventory.balance.read",
+            ],
+            "cashier": [
+                "billing.doc.create",
+                "billing.doc.read",
+                "billing.doc.issue",
+            ],
+            "billing_manager": [
+                "billing.doc.create",
+                "billing.doc.read",
+                "billing.doc.issue",
+                "billing.doc.void",
+            ],
+        }
+    )
 
     roles_created = roles_updated = perms_created = perms_updated = roleperms_created = 0
 
