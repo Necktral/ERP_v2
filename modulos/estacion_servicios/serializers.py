@@ -279,6 +279,10 @@ class SaleCancelIn(serializers.Serializer):
 class SaleOut(serializers.ModelSerializer):
     dispense = DispenseOut()
 
+    billing_doc_id = serializers.IntegerField(read_only=True)
+    inventory_movement_id = serializers.IntegerField(read_only=True)
+    inventory_reversal_movement_id = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = FuelSale
         fields = [
@@ -291,6 +295,9 @@ class SaleOut(serializers.ModelSerializer):
             "total_amount",
             "is_fiscal",
             "created_at",
+            "billing_doc_id",
+            "inventory_movement_id",
+            "inventory_reversal_movement_id",
             "dispense",
             "cancelled_at",
             "cancel_reason",
