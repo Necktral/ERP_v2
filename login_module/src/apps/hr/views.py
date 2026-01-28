@@ -4,10 +4,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.audit.writer import write_event
+from apps.common.api_exceptions import ConflictError
 from apps.common.permissions import rbac_permission
 from apps.iam.models import OrgUnit
 from apps.rbac.models import RoleAssignment
@@ -408,9 +410,9 @@ class EmployeeProvisionUserView(APIView):
         except ValueError as e:
             msg = str(e)
             if "ya tiene un usuario vinculado" in msg:
-                return Response({"detail": msg}, status=status.HTTP_409_CONFLICT)
+                raise ConflictError(detail=msg)
             # Both "no active assignment" and username conflict fall here as 400
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({"detail": msg})
 
 
 class EmployeeResetTempPasswordView(APIView):

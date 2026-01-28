@@ -198,6 +198,48 @@ Un kernel/módulo se considera “integrado” cuando:
 - Deben integrarse con contratos transversales (RBAC, auditoría contractual, scope).
 - Reportes y cierres deben ser reproducibles y auditables.
 
+### F) Contrato transversal: Errores y códigos (API)
+
+1. **Envelope único**
+
+Toda respuesta de error (HTTP >= 400) **DEBE** usar el siguiente formato:
+
+```json
+{
+  "error": {
+    "code": "<STRING>",
+    "http_status": 400,
+    "message": "<STRING>",
+    "details": "<ANY>",
+    "request_id": "<STRING>",
+    "timestamp": "<RFC3339 UTC>"
+  }
+}
+```
+
+2. **request_id (trazabilidad)**
+
+- El backend **DEBE** propagar y devolver `X-Request-Id`.
+- Si el cliente no lo envía, el backend **DEBE** generar uno.
+- `error.request_id` **DEBE** coincidir con el header `X-Request-Id`.
+
+3. **Tabla mínima de códigos (v1)**
+
+- `400`:
+  - `VALIDATION_ERROR` cuando `details` es dict/list (validación)
+  - `BAD_REQUEST` para otros casos
+- `401`: `POLICY_SCOPE_DENIED`
+- `403`: `POLICY_PERMISSION_DENIED`
+- `404`: `NOT_FOUND`
+- `409`: `CONFLICT`
+- `429`: `RATE_LIMITED`
+- `5xx`: `INTERNAL_ERROR`
+
+4. **Regla de compatibilidad**
+
+- `details` puede contener estructuras legacy (por ejemplo, `{ "detail": "..." }` o errores de serializer).
+- El consumidor debe leer `error.message` para texto humano y `error.details` para diagnóstico.
+
 ## Estado actual en este repo (resumen)
 
 - Implementado: ORG/HR/RBAC + auditoría contractual.
@@ -217,3 +259,4 @@ Si vas a modificar este documento: mantener la versión y agregar un changelog b
 ## Changelog
 
 - 2026-01-28: Se completó la sección normativa (Kernels) con el texto contractual completo.
+- 2026-01-28: Se agregó el contrato transversal de errores API (envelope + `X-Request-Id`).

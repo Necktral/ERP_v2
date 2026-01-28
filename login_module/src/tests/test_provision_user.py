@@ -89,4 +89,4 @@ def test_provision_user_no_assignment_fails():
 
     response = client.post(url, payload, format="json")
     assert response.status_code == 400
-    assert "no tiene ninguna asignación activa" in response.data["detail"]
+    assert "no tiene ninguna asignación activa" in response.data["error"]["message"]

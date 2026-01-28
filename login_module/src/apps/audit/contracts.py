@@ -109,6 +109,13 @@ ALLOWED_REASON_CODES: set[str] = {
     "POLICY_PERMISSION_DENIED",
     "POLICY_SCOPE_DENIED",
 
+    # Contrato de errores API (genéricos)
+    "BAD_REQUEST",
+    "VALIDATION_ERROR",
+    "NOT_FOUND",
+    "CONFLICT",
+    "INTERNAL_ERROR",
+
     # FUEL (operación)
     "SHIFT_CLOSED",
     "VOID_NOT_ALLOWED",

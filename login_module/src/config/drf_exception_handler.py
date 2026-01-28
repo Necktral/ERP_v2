@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
+from django.conf import settings
+from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied, Throttled
 from rest_framework.views import exception_handler as drf_exception_handler
 
@@ -23,6 +27,56 @@ def _subject_for_request(request):
     return ("SESSION", "", None)
 
 
+def _utc_timestamp_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _extract_message(details) -> str:
+    if isinstance(details, dict):
+        detail = details.get("detail")
+        if isinstance(detail, str) and detail.strip():
+            return detail
+        return "Solicitud inválida."
+    if isinstance(details, list):
+        return "Solicitud inválida."
+    if isinstance(details, str) and details.strip():
+        return details
+    return "Solicitud inválida."
+
+
+def _error_code_for(*, exc, status_code: int | None, details) -> str:
+    if status_code == 401:
+        return "POLICY_SCOPE_DENIED"
+    if status_code == 403:
+        return "POLICY_PERMISSION_DENIED"
+    if status_code == 404:
+        return "NOT_FOUND"
+    if status_code == 409:
+        return "CONFLICT"
+    if status_code == 429:
+        return "RATE_LIMITED"
+    if status_code == 400:
+        # DRF ValidationError suele serializar a dict/list
+        return "VALIDATION_ERROR" if isinstance(details, (dict, list)) else "BAD_REQUEST"
+    if status_code and status_code >= 500:
+        return "INTERNAL_ERROR"
+    return "ERROR"
+
+
+def _build_error_envelope(*, request, status_code: int, exc, details) -> dict:
+    request_id = getattr(request, "request_id", None) if request is not None else None
+    return {
+        "error": {
+            "code": _error_code_for(exc=exc, status_code=status_code, details=details),
+            "http_status": int(status_code),
+            "message": _extract_message(details),
+            "details": details,
+            "request_id": request_id or "",
+            "timestamp": _utc_timestamp_iso(),
+        }
+    }
+
+
 def custom_exception_handler(exc, context):
     """
     Ruta A (contractual EAU):
@@ -30,14 +84,31 @@ def custom_exception_handler(exc, context):
     - Incluye required_permission si la view lo inyecta en request.required_permission
     """
     response = drf_exception_handler(exc, context)
-    if response is None:
-        return response
-
     request = (context or {}).get("request")
+
+    # Fallback prod-safe para excepciones no manejadas por DRF
+    if response is None:
+        if settings.DEBUG:
+            return None
+        envelope = _build_error_envelope(request=request, status_code=500, exc=exc, details={"detail": "Error interno."})
+        return Response(envelope, status=500)
+
     status_code = getattr(response, "status_code", None)
 
     # Solo auditamos estados de denegación (authz/authn/rate-limit)
     if status_code not in (401, 403, 429):
+        # Igual normalizamos el formato de error
+        if isinstance(getattr(response, "data", None), dict) and "error" in response.data:
+            return response
+
+        details = getattr(response, "data", None)
+        if status_code is not None and int(status_code) >= 400:
+            response.data = _build_error_envelope(
+                request=request,
+                status_code=int(status_code),
+                exc=exc,
+                details=details,
+            )
         return response
 
     # Mapping contractual
@@ -80,5 +151,18 @@ def custom_exception_handler(exc, context):
     )
     if request is not None:
         setattr(request, "_audit_access_denied_written", True)
+
+    # Envelope contractual
+    if isinstance(getattr(response, "data", None), dict) and "error" in response.data:
+        return response
+
+    details = getattr(response, "data", None)
+    if status_code is not None and int(status_code) >= 400:
+        response.data = _build_error_envelope(
+            request=request,
+            status_code=int(status_code),
+            exc=exc,
+            details=details,
+        )
 
     return response

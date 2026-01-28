@@ -86,6 +86,12 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-device-ts",
     "x-device-nonce",
     "x-device-signature",
+    "x-request-id",
+]
+
+# Permite que el frontend lea el request id devuelto por el backend
+CORS_EXPOSE_HEADERS = [
+    "X-Request-Id",
 ]
 
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
@@ -138,6 +144,7 @@ INSTALLED_APPS += [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.request_id.RequestIdMiddleware",
     # CORS lo más arriba posible (antes de CommonMiddleware y WhiteNoise)
     "corsheaders.middleware.CorsMiddleware",
     # WhiteNoise sirve estáticos (útil incluso en dev si lo deseas)
@@ -151,6 +158,7 @@ MIDDLEWARE = [
     # Axes al final (recomendación oficial)
     "axes.middleware.AxesMiddleware",
     "apps.audit.middleware.AuditAccessDeniedMiddleware",
+    "config.middleware.api_error_envelope.ApiErrorEnvelopeMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
