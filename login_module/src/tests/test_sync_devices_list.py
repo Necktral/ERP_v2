@@ -78,5 +78,5 @@ def test_sync_devices_list_denied_without_permission_is_audited():
         path="/api/sync/devices/",
         method="GET",
     ).latest("timestamp_server")
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "sync.device.revoke"

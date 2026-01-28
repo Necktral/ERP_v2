@@ -10,6 +10,11 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - `compose.yaml`: entorno Docker (backend + Postgres)
 - `system_wis/`: entorno virtual Python (dev)
 
+## Documentación
+
+- Índice: [docs/README.md](docs/README.md)
+- Operación (negocio): [docs/operacion/README.md](docs/operacion/README.md)
+
 ## 🚀 Inicio rápido (Docker)
 
 1. Configura variables

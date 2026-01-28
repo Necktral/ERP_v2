@@ -198,7 +198,7 @@ Un kernel/módulo se considera “integrado” cuando:
 - Deben integrarse con contratos transversales (RBAC, auditoría contractual, scope).
 - Reportes y cierres deben ser reproducibles y auditables.
 
-### F) Contrato transversal: Errores y códigos (API)
+### F) Contrato transversal: Errores y códigos (API) — v1.0
 
 1. **Envelope único**
 
@@ -208,9 +208,10 @@ Toda respuesta de error (HTTP >= 400) **DEBE** usar el siguiente formato:
 {
   "error": {
     "code": "<STRING>",
-    "http_status": 400,
+    "http_status": 422,
     "message": "<STRING>",
-    "details": "<ANY>",
+    "details": { "<OBJECT>": "..." },
+    "retryable": false,
     "request_id": "<STRING>",
     "timestamp": "<RFC3339 UTC>"
   }
@@ -223,22 +224,60 @@ Toda respuesta de error (HTTP >= 400) **DEBE** usar el siguiente formato:
 - Si el cliente no lo envía, el backend **DEBE** generar uno.
 - `error.request_id` **DEBE** coincidir con el header `X-Request-Id`.
 
-3. **Tabla mínima de códigos (v1)**
+3. **retryable (reintento)**
 
-- `400`:
-  - `VALIDATION_ERROR` cuando `details` es dict/list (validación)
-  - `BAD_REQUEST` para otros casos
-- `401`: `POLICY_SCOPE_DENIED`
-- `403`: `POLICY_PERMISSION_DENIED`
+- `error.retryable` **DEBE** ser `true` solo cuando el cliente puede reintentar sin cambios semánticos.
+- En v1.0 se define como:
+  - `true` para `429` (rate limit) y `503` (service unavailable)
+  - `false` en el resto
+
+4. **Regla de `details`**
+
+- `error.details` **DEBE** ser siempre un objeto JSON.
+- Para validaciones (`422`):
+  - `details.fields`: mapa `campo -> [mensajes]`
+  - `details.non_field_errors`: lista de mensajes generales
+
+Ejemplo de validación:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "http_status": 422,
+    "message": "Validación fallida.",
+    "details": {
+      "fields": { "email": ["Formato inválido."] },
+      "non_field_errors": []
+    },
+    "retryable": false,
+    "request_id": "...",
+    "timestamp": "..."
+  }
+}
+```
+
+5. **Tabla de códigos (v1.0)**
+
+- `400`: `BAD_REQUEST`
+- `401`:
+  - `AUTH_UNAUTHENTICATED` (falta credencial)
+  - `AUTH_INVALID_TOKEN` (token inválido)
+  - `AUTH_TOKEN_EXPIRED` (token expirado)
+- `403`:
+  - `RBAC_FORBIDDEN` (permiso faltante)
+  - `SCOPE_FORBIDDEN` (scope/tenant incorrecto)
 - `404`: `NOT_FOUND`
 - `409`: `CONFLICT`
+- `422`: `VALIDATION_ERROR`
 - `429`: `RATE_LIMITED`
+- `503`: `SERVICE_UNAVAILABLE`
 - `5xx`: `INTERNAL_ERROR`
 
-4. **Regla de compatibilidad**
+6. **Hints de diagnóstico (opcionales)**
 
-- `details` puede contener estructuras legacy (por ejemplo, `{ "detail": "..." }` o errores de serializer).
-- El consumidor debe leer `error.message` para texto humano y `error.details` para diagnóstico.
+- `RBAC_FORBIDDEN` puede incluir `details.missing_permissions`.
+- `SCOPE_FORBIDDEN` puede incluir `details.required_scope` y `details.effective_scope`.
 
 ## Estado actual en este repo (resumen)
 

@@ -90,5 +90,5 @@ def test_rbac_roles_list_denied_without_permission_audited():
         method="GET",
     ).latest("timestamp_server")
 
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "rbac.roles.read"

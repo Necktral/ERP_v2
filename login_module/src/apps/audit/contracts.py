@@ -103,11 +103,18 @@ ALLOWED_REASON_CODES: set[str] = {
     # Tokens
     "TOKEN_INVALID",
     "TOKEN_EXPIRED",
+    # Contrato de errores API (auth)
+    "AUTH_UNAUTHENTICATED",
+    "AUTH_INVALID_TOKEN",
+    "AUTH_TOKEN_EXPIRED",
     # Seguridad
     "RATE_LIMITED",
     # Authorization / policy
     "POLICY_PERMISSION_DENIED",
     "POLICY_SCOPE_DENIED",
+    # Contrato de errores API (authz)
+    "RBAC_FORBIDDEN",
+    "SCOPE_FORBIDDEN",
 
     # Contrato de errores API (genéricos)
     "BAD_REQUEST",
@@ -115,6 +122,7 @@ ALLOWED_REASON_CODES: set[str] = {
     "NOT_FOUND",
     "CONFLICT",
     "INTERNAL_ERROR",
+    "SERVICE_UNAVAILABLE",
 
     # FUEL (operación)
     "SHIFT_CLOSED",

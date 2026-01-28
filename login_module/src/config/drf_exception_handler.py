@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from django.conf import settings
 from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed, NotAuthenticated, PermissionDenied, Throttled
+from rest_framework.exceptions import (
+    AuthenticationFailed,
+    NotAuthenticated,
+    PermissionDenied,
+    Throttled,
+    ValidationError,
+)
 from rest_framework.views import exception_handler as drf_exception_handler
 
+from config.error_envelope import build_error_envelope
 from apps.audit.writer import write_event
 
 
@@ -27,56 +32,6 @@ def _subject_for_request(request):
     return ("SESSION", "", None)
 
 
-def _utc_timestamp_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _extract_message(details) -> str:
-    if isinstance(details, dict):
-        detail = details.get("detail")
-        if isinstance(detail, str) and detail.strip():
-            return detail
-        return "Solicitud inválida."
-    if isinstance(details, list):
-        return "Solicitud inválida."
-    if isinstance(details, str) and details.strip():
-        return details
-    return "Solicitud inválida."
-
-
-def _error_code_for(*, exc, status_code: int | None, details) -> str:
-    if status_code == 401:
-        return "POLICY_SCOPE_DENIED"
-    if status_code == 403:
-        return "POLICY_PERMISSION_DENIED"
-    if status_code == 404:
-        return "NOT_FOUND"
-    if status_code == 409:
-        return "CONFLICT"
-    if status_code == 429:
-        return "RATE_LIMITED"
-    if status_code == 400:
-        # DRF ValidationError suele serializar a dict/list
-        return "VALIDATION_ERROR" if isinstance(details, (dict, list)) else "BAD_REQUEST"
-    if status_code and status_code >= 500:
-        return "INTERNAL_ERROR"
-    return "ERROR"
-
-
-def _build_error_envelope(*, request, status_code: int, exc, details) -> dict:
-    request_id = getattr(request, "request_id", None) if request is not None else None
-    return {
-        "error": {
-            "code": _error_code_for(exc=exc, status_code=status_code, details=details),
-            "http_status": int(status_code),
-            "message": _extract_message(details),
-            "details": details,
-            "request_id": request_id or "",
-            "timestamp": _utc_timestamp_iso(),
-        }
-    }
-
-
 def custom_exception_handler(exc, context):
     """
     Ruta A (contractual EAU):
@@ -90,10 +45,15 @@ def custom_exception_handler(exc, context):
     if response is None:
         if settings.DEBUG:
             return None
-        envelope = _build_error_envelope(request=request, status_code=500, exc=exc, details={"detail": "Error interno."})
+        envelope = build_error_envelope(request=request, status_code=500, exc=exc, details={"detail": "Error interno."})
         return Response(envelope, status=500)
 
     status_code = getattr(response, "status_code", None)
+
+    # Contrato: validaciones deben responder como 422
+    if isinstance(exc, ValidationError) and status_code == 400:
+        response.status_code = 422
+        status_code = 422
 
     # Solo auditamos estados de denegación (authz/authn/rate-limit)
     if status_code not in (401, 403, 429):
@@ -103,7 +63,7 @@ def custom_exception_handler(exc, context):
 
         details = getattr(response, "data", None)
         if status_code is not None and int(status_code) >= 400:
-            response.data = _build_error_envelope(
+            response.data = build_error_envelope(
                 request=request,
                 status_code=int(status_code),
                 exc=exc,
@@ -111,16 +71,26 @@ def custom_exception_handler(exc, context):
             )
         return response
 
-    # Mapping contractual
+    # Mapping contractual (auditoría)
     if isinstance(exc, (NotAuthenticated, AuthenticationFailed)):
-        reason_code = "POLICY_SCOPE_DENIED"
+        # Diferenciar cuando sea posible para trazabilidad
+        if isinstance(exc, NotAuthenticated):
+            reason_code = "AUTH_UNAUTHENTICATED"
+        else:
+            msg = str(getattr(exc, "detail", "") or "").lower()
+            reason_code = "AUTH_TOKEN_EXPIRED" if ("expired" in msg or "expir" in msg) else "AUTH_INVALID_TOKEN"
     elif isinstance(exc, PermissionDenied):
-        reason_code = "POLICY_PERMISSION_DENIED"
+        if request is not None and getattr(request, "required_permission", ""):
+            reason_code = "RBAC_FORBIDDEN"
+        elif request is not None and getattr(request, "required_scope", None):
+            reason_code = "SCOPE_FORBIDDEN"
+        else:
+            reason_code = "RBAC_FORBIDDEN"
     elif isinstance(exc, Throttled):
         reason_code = "RATE_LIMITED"
     else:
         # Fallback por status
-        reason_code = "RATE_LIMITED" if status_code == 429 else "POLICY_SCOPE_DENIED"
+        reason_code = "RATE_LIMITED" if status_code == 429 else "AUTH_UNAUTHENTICATED"
 
     # Detalle (sin filtrar secretos; DRF detail suele ser seguro)
     try:
@@ -130,6 +100,7 @@ def custom_exception_handler(exc, context):
         detail = ""
 
     required_perm = getattr(request, "required_permission", "") if request else ""
+    required_scope = getattr(request, "required_scope", None) if request else None
 
     subject_type, subject_id, actor = _subject_for_request(request)
 
@@ -139,6 +110,8 @@ def custom_exception_handler(exc, context):
     }
     if required_perm:
         metadata["required_permission"] = required_perm
+    if required_scope is not None:
+        metadata["required_scope"] = required_scope
 
     write_event(
         request=request,
@@ -158,7 +131,7 @@ def custom_exception_handler(exc, context):
 
     details = getattr(response, "data", None)
     if status_code is not None and int(status_code) >= 400:
-        response.data = _build_error_envelope(
+        response.data = build_error_envelope(
             request=request,
             status_code=int(status_code),
             exc=exc,

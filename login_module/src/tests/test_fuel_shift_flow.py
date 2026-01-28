@@ -180,5 +180,5 @@ def test_fuel_open_shift_twice_denied_by_constraint():
         {},
         format="json",
     )
-    assert r2.status_code == 400
+    assert r2.status_code == 422
     assert "turno abierto" in (r2.data.get("error", {}).get("message") or "").lower()

@@ -112,7 +112,7 @@ def test_org_create_branch_denied_without_create_permission():
         path="/api/org/branches/",
         method="POST",
     ).latest("timestamp_server")
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "org.branch.create"
 
 

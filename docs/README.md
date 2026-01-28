@@ -16,6 +16,11 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - [ADDENDUM_OFFLINE_FIRST_v1.0.md](ADDENDUM_OFFLINE_FIRST_v1.0.md) — Reglas offline-first (sync, idempotencia y auditoría).
 - [FUTURAS_MEJORAS.md](FUTURAS_MEJORAS.md) — Roadmap de mejoras futuras (técnicas y de producto).
 
+## Documentación operacional
+
+- [operacion/README.md](operacion/README.md) — Playbooks y plantillas para operar el negocio.
+- [operacion/import_export/README.md](operacion/import_export/README.md) — Pack operativo Import/Export & Sourcing (B2B).
+
 ## CI / QA
 
 - CI principal (QA Gates 1–3): `.github/workflows/qa-ci.yml`

@@ -32,7 +32,7 @@ def test_403_creates_auth_access_denied_with_required_permission_and_scope():
         method="GET",
     ).latest("timestamp_server")
 
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "inventory.read"
     assert ev.metadata.get("required_scope", {}).get("company_id") == company.id
     assert ev.metadata.get("effective_scope", {}).get("company_id") == company.id

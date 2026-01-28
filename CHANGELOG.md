@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Docs (Operación):** pack operativo Import/Export & Sourcing (empresa + plantillas: RFQ, landed cost, checklist, términos).
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/revoke-access/` + evento de auditoría `HR_EMPLOYEE_ACCESS_REVOKED` + acción UI en empleados.
 - **Infra PROD:** `compose.prod.yaml` (backend+db+web), Nginx SPA + proxy `/api/`, `.env.prod.example` y Dockerfiles PROD (backend y web).

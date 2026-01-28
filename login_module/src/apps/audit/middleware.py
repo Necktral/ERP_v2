@@ -48,9 +48,14 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
 
         # Mapping contractual (códigos estándar para consumo externo)
         if status_code == 401:
-            reason_code = "POLICY_SCOPE_DENIED"
+            reason_code = "AUTH_UNAUTHENTICATED"
         elif status_code == 403:
-            reason_code = "POLICY_PERMISSION_DENIED"
+            if getattr(request, "required_permission", ""):
+                reason_code = "RBAC_FORBIDDEN"
+            elif getattr(request, "required_scope", None):
+                reason_code = "SCOPE_FORBIDDEN"
+            else:
+                reason_code = "RBAC_FORBIDDEN"
         else:
             reason_code = "RATE_LIMITED"
 

@@ -68,7 +68,7 @@ def test_positions_post_denied_without_create_permission():
         method="POST",
     ).latest("timestamp_server")
 
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "hr.position.create"
     assert ev.metadata.get("required_scope", {}).get("company_id") == company.id
     assert ev.metadata.get("effective_scope", {}).get("company_id") == company.id
@@ -93,7 +93,7 @@ def test_positions_get_denied_without_read_permission():
         method="GET",
     ).latest("timestamp_server")
 
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "RBAC_FORBIDDEN"
     assert ev.metadata.get("required_permission") == "hr.position.read"
     assert ev.metadata.get("required_scope", {}).get("company_id") == company.id
 

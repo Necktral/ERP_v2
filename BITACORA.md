@@ -1,3 +1,23 @@
+## 2026-01-28 — Pack operativo Import/Export (empresa + plantillas)
+
+### Contexto
+
+Se incorpora documentación operacional para aterrizar una empresa de **Import/Export & Sourcing B2B** con pipeline, riesgos y plan 0–90 días, junto con plantillas reutilizables.
+
+### Cambios principales
+
+- **Docs (Operación):** se crea la sección `docs/operacion/`.
+- **Pack Import/Export:** documento maestro con definición operativa, modelos de ingresos, matriz de riesgos y plan 0–90.
+- **Plantillas:** RFQ, cotización landed cost, checklist documental y términos (cliente/proveedor).
+
+### Archivos
+
+- `docs/operacion/README.md`
+- `docs/operacion/import_export/EMPRESA_IMPORT_EXPORT_v1.0.md`
+- `docs/operacion/import_export/templates/` (plantillas v1.0)
+
+---
+
 ## 2026-01-23 — MVP módulo Estación de Servicios (FUEL): turnos + despachos + ventas + cancelación
 
 ### Contexto

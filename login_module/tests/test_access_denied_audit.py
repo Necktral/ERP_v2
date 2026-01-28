@@ -14,7 +14,7 @@ def test_401_not_authenticated_creates_auth_access_denied_event():
     ev = AuditEvent.objects.filter(event_type="AUTH_ACCESS_DENIED").latest("timestamp_server")
     assert ev.module == "AUTH"
     assert ev.schema_version == 1
-    assert ev.reason_code == "POLICY_SCOPE_DENIED"
+    assert ev.reason_code == "AUTH_UNAUTHENTICATED"
     assert ev.path == "/api/auth/me/"
     assert ev.method == "GET"
     assert ev.event_hash is not None and len(ev.event_hash) == 64

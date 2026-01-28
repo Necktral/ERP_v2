@@ -32,7 +32,7 @@ def test_context_requires_company_header_and_denies_without_membership():
     assert r2.status_code == 403
 
     ev = AuditEvent.objects.filter(event_type="AUTH_ACCESS_DENIED", path="/api/iam/context/").latest("timestamp_server")
-    assert ev.reason_code == "POLICY_PERMISSION_DENIED"
+    assert ev.reason_code == "SCOPE_FORBIDDEN"
     assert ev.metadata.get("required_scope", {}).get("company_id") == c2.id
 
 
