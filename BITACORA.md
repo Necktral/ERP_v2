@@ -1,3 +1,16 @@
+## 2026-01-28 — Ajustes documentación Import/Export (índice templates)
+
+### Contexto
+
+Se realizan ajustes menores para mejorar la navegación y consistencia del pack operativo Import/Export.
+
+### Cambios principales
+
+- Se agrega índice de templates en `docs/operacion/import_export/templates/README.md`.
+- Se corrigen placeholders de firma en la plantilla de proveedor.
+
+---
+
 ## 2026-01-28 — Pack operativo Import/Export (empresa + plantillas)
 
 ### Contexto

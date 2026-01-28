@@ -14,6 +14,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 ## Índices
 
 - [Importación / Exportación (Import-Export & Sourcing)](import_export/README.md)
+- [Templates Import/Export](import_export/templates/README.md)
 
 ## Reglas
 

@@ -20,6 +20,9 @@ Tu “producto real” es reducir incertidumbre del comprador y del proveedor me
 - Documento maestro:
   - [EMPRESA_IMPORT_EXPORT_v1.0.md](EMPRESA_IMPORT_EXPORT_v1.0.md)
 
+- Índice de templates:
+  - [templates/README.md](templates/README.md)
+
 - Plantillas operativas:
   - [RFQ_v1.0.md](templates/RFQ_v1.0.md)
   - [COTIZACION_LANDED_COST_v1.0.md](templates/COTIZACION_LANDED_COST_v1.0.md)

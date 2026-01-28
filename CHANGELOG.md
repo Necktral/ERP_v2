@@ -21,6 +21,7 @@
 
 ### Changed
 
+- **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
 - **FUEL (Backend):** `GET /api/fuel/health/` queda público (sin auth) para monitoreo.
 
 ## [2026-01-13] - Release
