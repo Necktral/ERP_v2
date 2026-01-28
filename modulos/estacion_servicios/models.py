@@ -165,6 +165,29 @@ class FuelSale(models.Model):
 
     is_fiscal = models.BooleanField(default=False)  # preparado para el futuro
 
+    # Integración Fuel -> Billing -> Inventory
+    billing_doc = models.ForeignKey(
+        "facturacion.BillingDocument",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="fuel_sales",
+    )
+    inventory_movement = models.ForeignKey(
+        "inventarios.StockMovement",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="fuel_sales",
+    )
+    inventory_reversal_movement = models.ForeignKey(
+        "inventarios.StockMovement",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="fuel_sales_reversals",
+    )
+
     class Meta:
         indexes = [
             models.Index(fields=["company", "branch", "created_at"]),

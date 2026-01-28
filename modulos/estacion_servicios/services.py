@@ -38,6 +38,49 @@ MONEY_Q = Decimal("0.01")
 VOLUME_Q = Decimal("0.0001")
 
 
+def _fuel_inventory_sku(product: str) -> str:
+    return f"FUEL-{str(product).upper()}"
+
+
+def _fuel_inventory_name(product: str) -> str:
+    return f"Fuel {str(product).title()}"
+
+
+def _get_or_create_fuel_warehouse(*, company, branch):
+    from modulos.inventarios.models import Warehouse
+
+    wh = Warehouse.objects.filter(company=company, branch=branch, code="FUEL").first()
+    if wh:
+        return wh
+    try:
+        return Warehouse.objects.create(company=company, branch=branch, name="Fuel", code="FUEL", is_active=True)
+    except IntegrityError:
+        # Carrera concurrente: si otro proceso lo creó, lo tomamos.
+        wh2 = Warehouse.objects.filter(company=company, branch=branch, code="FUEL").first()
+        if wh2:
+            return wh2
+        raise
+
+
+def _get_or_create_fuel_item(*, request, company, actor_user, product: str):
+    from modulos.inventarios.models import InventoryItem
+    from modulos.inventarios.services import create_item
+
+    sku = _fuel_inventory_sku(product)
+    item = InventoryItem.objects.filter(company=company, sku=sku).first()
+    if item:
+        return item
+    # Fuel siempre emite/consume en litros canónicos.
+    return create_item(
+        request=request,
+        company=company,
+        actor_user=actor_user,
+        sku=sku,
+        name=_fuel_inventory_name(product),
+        uom="LITER",
+    )
+
+
 def _money(x: Decimal) -> Decimal:
     return x.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
@@ -543,6 +586,56 @@ def create_sale(
         is_fiscal=bool(is_fiscal),
     )
 
+    # Integración Fuel -> Billing -> Inventory (transaccional)
+    # Decisión: no bloqueamos venta por stock (allow_negative=True) para no detener operación.
+    from modulos.inventarios.services import post_issue
+    from modulos.facturacion.services import create_draft, issue_doc
+    from modulos.facturacion.models import DocType
+
+    warehouse = _get_or_create_fuel_warehouse(company=company, branch=branch)
+    item = _get_or_create_fuel_item(request=request, company=company, actor_user=actor_user, product=dispense.product)
+
+    inv_res = post_issue(
+        request=request,
+        actor=actor_user,
+        warehouse_id=int(warehouse.id),
+        item_id=int(item.id),
+        qty=dispense.liters,
+        allow_negative=True,
+        idempotency_key=f"fuel:sale:{sale.id}:issue",
+        note=f"Fuel sale {sale.id} ({dispense.product})",
+        source_module="FUEL",
+        source_type="SALE",
+        source_id=str(sale.id),
+    )
+
+    bill_res = create_draft(
+        request=request,
+        actor=actor_user,
+        doc_type=DocType.INVOICE,
+        series="FUEL",
+        currency="NIO",
+        customer_name=sale.customer_name,
+        customer_ref=sale.customer_ref,
+        is_fiscal=bool(sale.is_fiscal),
+        lines=[
+            {
+                "description": f"Fuel {dispense.product}",
+                "quantity": dispense.liters,
+                "unit_price": dispense.unit_price,
+                "tax_rate": Decimal("0.0000"),
+                "inventory_item_id": int(item.id),
+            }
+        ],
+        idempotency_key=f"fuel:sale:{sale.id}",
+    )
+
+    issue_doc(request=request, actor=actor_user, doc_id=bill_res.doc_id, apply_inventory=False)
+
+    sale.billing_doc_id = int(bill_res.doc_id)
+    sale.inventory_movement_id = int(inv_res.movement_id)
+    sale.save(update_fields=["billing_doc", "inventory_movement"])
+
     write_event(
         request=request,
         module="FUEL",
@@ -556,6 +649,8 @@ def create_sale(
             "amount": str(sale.total_amount),
             "sale_type": sale_type,
             "payment_method": payment_method,
+            "billing_doc_id": sale.billing_doc_id,
+            "inventory_movement_id": sale.inventory_movement_id,
         },
         metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
     )
@@ -567,11 +662,52 @@ def cancel_sale(*, request=None, sale: FuelSale, actor_user, reason: str = "") -
     if sale.status != FuelSaleStatus.ACTIVE:
         raise ValidationError({"detail": "Venta ya está anulada."})
 
+    # Reversa de integración (si aplica)
+    if request is not None:
+        if sale.billing_doc_id:
+            from modulos.facturacion.services import void_doc
+
+            void_doc(
+                request=request,
+                actor=actor_user,
+                doc_id=int(sale.billing_doc_id),
+                reason=reason or "VOID",
+            )
+
+        if sale.inventory_movement_id and not sale.inventory_reversal_movement_id:
+            from decimal import Decimal as _D
+
+            from modulos.inventarios.models import StockMovement
+            from modulos.inventarios.services import post_receive
+
+            mov = StockMovement.objects.get(id=int(sale.inventory_movement_id))
+            qty = _D("0") - _D(mov.qty_delta)
+
+            rev = post_receive(
+                request=request,
+                actor=actor_user,
+                warehouse_id=int(mov.warehouse_id),
+                item_id=int(mov.item_id),
+                qty=qty,
+                unit_cost=_D(mov.unit_cost),
+                idempotency_key=f"fuel:sale:{sale.id}:reverse",
+                note=f"Reverse fuel sale {sale.id}",
+            )
+            sale.inventory_reversal_movement_id = int(rev.movement_id)
+
     sale.status = FuelSaleStatus.CANCELLED
     sale.cancelled_by = actor_user
     sale.cancelled_at = timezone.now()
     sale.cancel_reason = reason or ""
-    sale.save(update_fields=["status", "cancelled_by", "cancelled_at", "cancel_reason"])
+    sale.save(
+        update_fields=[
+            "status",
+            "cancelled_by",
+            "cancelled_at",
+            "cancel_reason",
+            "inventory_reversal_movement",
+        ]
+    )
 
     write_event(
         request=request,
