@@ -267,6 +267,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "600/min",
+        "auth_login": "20/min",
         "auth_sensitive": "10/min",
         "sync_batch": "30/min",
         "admin_writes": "60/min",

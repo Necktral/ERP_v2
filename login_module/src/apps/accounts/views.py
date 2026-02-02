@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.audit.writer import write_event
+from config.throttling import AuthLoginRateThrottle
 
 from apps.iam.models import AdminGrant, OrgUnit, UserMembership
 from apps.iam.selectors import build_acl_snapshot
@@ -43,6 +44,7 @@ def _extract_login_reason_code(serializer_errors) -> str:
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthLoginRateThrottle]
 
     def post(self, request):
         # Axes usa request.POST para extraer el username. En JSON, request.POST viene vacío.
