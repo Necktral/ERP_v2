@@ -72,9 +72,9 @@ def error_code_for(*, status_code: int, exc: Exception | None = None, request=No
 
     if sc == 403:
         # Distinguir RBAC vs Scope por señales del request
-        if request is not None and getattr(request, "required_permission", ""):
+        if request is not None and getattr(request, "required_permission", False):
             return "RBAC_FORBIDDEN"
-        if request is not None and getattr(request, "required_scope", None):
+        if request is not None and getattr(request, "required_scope", False):
             return "SCOPE_FORBIDDEN"
         return "RBAC_FORBIDDEN"
 

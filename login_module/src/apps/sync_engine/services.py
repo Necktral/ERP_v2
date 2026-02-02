@@ -19,7 +19,7 @@ import logging
 
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -505,15 +505,15 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
         logger = logging.getLogger(__name__)
         try:
             res = handler(ctx, payload) or {}
-            refs = res.get("refs", {}) or {}
-            warnings = res.get("warnings", []) or []
+            refs: dict[str, Any] = dict(res.get("refs", {}) or {})
+            warnings: list[str] = list(res.get("warnings", []) or [])
         except SyncRejectError as e:
             # Rechazo controlado: negocio / contrato, NO internal error.
             reason = str(e.reason_code)
-            details = dict(e.details or {})
+            details: dict[str, Any] = dict(e.details or {})
 
             row.result_status = AppliedCommand.ResultStatus.REJECTED
-            row.error = {"reason": reason, **details}
+            row.error = cast(dict[str, Any], {"reason": reason, **details})
             row.save(update_fields=["result_status", "error"])
 
             write_event(
@@ -534,14 +534,14 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
                 },
             )
 
-            out = {"command_id": str(command_id), "status": "REJECTED", "reason": reason}
+            out: dict[str, Any] = {"command_id": str(command_id), "status": "REJECTED", "reason": reason}
             if details:
                 out["details"] = details
             return out
         except Exception as e:
             logger.error(f"[SYNC_ENGINE][process_command] ERROR: {repr(e)}")
             row.result_status = AppliedCommand.ResultStatus.REJECTED
-            row.error = {"reason": "SYNC_INTERNAL_ERROR", "exception": str(e)}
+            row.error = cast(dict[str, Any], {"reason": "SYNC_INTERNAL_ERROR", "exception": str(e)})
             row.save(update_fields=["result_status", "error"])
             write_event(
                 request=request,
@@ -560,7 +560,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
         row.result_status = AppliedCommand.ResultStatus.APPLIED
         row.applied_at = timezone.now()
         row.result_ref = refs
-        row.error = {}
+        row.error = cast(dict[str, Any], {})
         row.save(update_fields=["result_status", "applied_at", "result_ref", "error"])
 
         # Actualizar last_accepted_sequence (tolerante por defecto)
@@ -588,7 +588,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             },
         )
 
-        out = {"command_id": str(command_id), "status": "APPLIED", "refs": refs}
+        out: dict[str, Any] = {"command_id": str(command_id), "status": "APPLIED", "refs": refs}
         if warnings:
             out["warnings"] = warnings
         return out

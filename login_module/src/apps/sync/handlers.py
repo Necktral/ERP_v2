@@ -66,7 +66,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
 
     handler = HANDLERS.get(cmd.type)
     if not handler:
-        response = {"status": "ERROR", "error": f"UNKNOWN_COMMAND_TYPE: {cmd.type}"}
+        response: Dict[str, Any] = {"status": "ERROR", "error": f"UNKNOWN_COMMAND_TYPE: {cmd.type}"}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,
@@ -79,7 +79,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
 
     try:
         payload_response = handler(device, cmd)
-        response = {"status": "OK", "data": payload_response}
+        response: Dict[str, Any] = {"status": "OK", "data": payload_response}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,
@@ -90,7 +90,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
         )
         return response
     except Exception as e:
-        response = {"status": "ERROR", "error": str(e)}
+        response: Dict[str, Any] = {"status": "ERROR", "error": str(e)}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,
