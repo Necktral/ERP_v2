@@ -64,9 +64,10 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
             raise CommandError("IDEMPOTENCY_CONFLICT: command_id reused with different payload")
         return existing.response_json
 
+    response: Dict[str, Any]
     handler = HANDLERS.get(cmd.type)
     if not handler:
-        response: Dict[str, Any] = {"status": "ERROR", "error": f"UNKNOWN_COMMAND_TYPE: {cmd.type}"}
+        response = {"status": "ERROR", "error": f"UNKNOWN_COMMAND_TYPE: {cmd.type}"}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,
@@ -79,7 +80,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
 
     try:
         payload_response = handler(device, cmd)
-        response: Dict[str, Any] = {"status": "OK", "data": payload_response}
+        response = {"status": "OK", "data": payload_response}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,
@@ -90,7 +91,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
         )
         return response
     except Exception as e:
-        response: Dict[str, Any] = {"status": "ERROR", "error": str(e)}
+        response = {"status": "ERROR", "error": str(e)}
         AppliedCommand.objects.create(
             device=device,
             command_id=cmd.command_id,

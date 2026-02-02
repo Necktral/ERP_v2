@@ -588,7 +588,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             },
         )
 
-        out: dict[str, Any] = {"command_id": str(command_id), "status": "APPLIED", "refs": refs}
+        out = {"command_id": str(command_id), "status": "APPLIED", "refs": refs}
         if warnings:
             out["warnings"] = warnings
         return out
