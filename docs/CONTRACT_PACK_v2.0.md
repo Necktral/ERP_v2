@@ -20,6 +20,25 @@ Referencias:
 - **POST /api/sync/batch/** con `protocol_version = "2"`.
 - Endpoints legacy (`/api/sync-hmac/batch/` y rutas v1) son **wrappers** que traducen a v2 y no contienen lógica de negocio.
 
+### 1.1) Estado de implementación (sync_engine actual)
+
+En el backend actual (`apps.sync_engine`), el endpoint expuesto **/api/sync/batch/** procesa un batch con firma **por comando** (Ed25519). El request esperado por el core es:
+
+- `batch_id` (UUID)
+- `device_id` (UUID) — header `X-Device-Id` tiene prioridad
+- `sent_at` (ISO8601, opcional)
+- `commands` (lista)
+
+Cada comando usa:
+
+- `command_id`, `command_type`
+- `company_id`, `branch_id`
+- `occurred_at`, `sequence`
+- `payload`, `payload_hash`, `prev_hash`
+- `signature` (firma Ed25519 por comando)
+
+El esquema **request-level** con `protocol_version/ts/nonce/auth` aplica a wrappers legacy y aún no está integrado en el core `sync_engine`.
+
 ---
 
 ## 2) Request v2 (schema obligatorio)
