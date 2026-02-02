@@ -16,7 +16,7 @@ from .serializers import (
     InvoiceCreateIn,
     InvoiceOut,
 )
-from .services import create_draft, create_invoice, issue_doc, void_doc
+from .services import BillingError, create_draft, create_invoice, issue_doc, void_doc
 
 
 class HealthView(APIView):
@@ -35,19 +35,21 @@ class DocCreateView(APIView):
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
         v = s.validated_data
-
-        out = create_draft(
-            request=request,
-            actor=request.user,
-            doc_type=v["doc_type"],
-            series=v.get("series") or "A",
-            currency=v.get("currency") or "NIO",
-            customer_name=v.get("customer_name") or "",
-            customer_ref=v.get("customer_ref") or "",
-            is_fiscal=bool(v.get("is_fiscal", False)),
-            lines=v["lines"],
-            idempotency_key=v.get("idempotency_key") or "",
-        )
+        try:
+            out = create_draft(
+                request=request,
+                actor=request.user,
+                doc_type=v["doc_type"],
+                series=v.get("series") or "A",
+                currency=v.get("currency") or "NIO",
+                customer_name=v.get("customer_name") or "",
+                customer_ref=v.get("customer_ref") or "",
+                is_fiscal=bool(v.get("is_fiscal", False)),
+                lines=v["lines"],
+                idempotency_key=v.get("idempotency_key") or "",
+            )
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": out.doc_id}, status=status.HTTP_201_CREATED)
 
 
@@ -105,13 +107,15 @@ class DocIssueView(APIView):
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
         v = s.validated_data
-
-        out = issue_doc(
-            request=request,
-            actor=request.user,
-            doc_id=doc_id,
-            apply_inventory=bool(v.get("apply_inventory", False)),
-        )
+        try:
+            out = issue_doc(
+                request=request,
+                actor=request.user,
+                doc_id=doc_id,
+                apply_inventory=bool(v.get("apply_inventory", False)),
+            )
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_200_OK)
 
 
@@ -123,13 +127,15 @@ class DocVoidView(APIView):
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
         v = s.validated_data
-
-        out = void_doc(
-            request=request,
-            actor=request.user,
-            doc_id=doc_id,
-            reason=v.get("reason") or "VOID",
-        )
+        try:
+            out = void_doc(
+                request=request,
+                actor=request.user,
+                doc_id=doc_id,
+                reason=v.get("reason") or "VOID",
+            )
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_200_OK)
 
 
@@ -139,7 +145,10 @@ class BillingHealthView(APIView):
 
     def get(self, request):
         # compat legacy
-        return Response({"ok": True, "module": "billing"})
+        resp = Response({"ok": True, "module": "billing"})
+        resp["X-Deprecated"] = "true"
+        resp["X-Deprecation-Notice"] = "Use /api/billing/health/ (legacy será retirado en v1.1)"
+        return resp
 
 
 class InvoiceCreateView(APIView):
@@ -148,14 +157,19 @@ class InvoiceCreateView(APIView):
     def post(self, request):
         ser = InvoiceCreateIn(data=request.data)
         ser.is_valid(raise_exception=True)
+        try:
+            inv = create_invoice(
+                request=request,
+                company=request.company,
+                branch=request.branch,
+                actor_user=request.user,
+                customer_name=ser.validated_data["customer_name"],
+                total_amount=ser.validated_data["total_amount"],
+            )
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        inv = create_invoice(
-            request=request,
-            company=request.company,
-            branch=request.branch,
-            actor_user=request.user,
-            customer_name=ser.validated_data["customer_name"],
-            total_amount=ser.validated_data["total_amount"],
-        )
-
-        return Response(InvoiceOut(inv).data, status=status.HTTP_201_CREATED)
+        resp = Response(InvoiceOut(inv).data, status=status.HTTP_201_CREATED)
+        resp["X-Deprecated"] = "true"
+        resp["X-Deprecation-Notice"] = "Use /api/billing/docs/ (legacy será retirado en v1.1)"
+        return resp

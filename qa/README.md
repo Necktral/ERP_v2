@@ -6,6 +6,19 @@ Este directorio contiene artefactos de QA que complementan los tests unitarios/i
 
 El Makefile incluye un runner para CI/local que genera reportes en `qa/reports/`:
 
+## Cobertura (Gate 2): alcance y criterio de éxito
+
+**Alcance (scope):** el reporte de coverage usa `.coveragerc` y está filtrado a `src/apps/sync_engine`.
+Eso significa que el **TOTAL** del reporte corresponde **solo** a ese módulo, no al backend completo.
+
+**Criterio de éxito recomendado (verificable):**
+
+- Cobertura del scope definido **≥ 98%** (o **≥ 99%** si el objetivo es más estricto).
+- `make qa-ci-gate2` y `make qa-ci-gate3` pasan sin errores.
+- Sin regresión: no bajar la cobertura del scope ni en archivos tocados.
+
+Si el KPI es “backend completo”, hay que **ampliar o ajustar** el `source` en `.coveragerc` y recalcular el %.
+
 - Recomendado (DB limpia, reproducible):
 
   ```bash

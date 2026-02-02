@@ -6,6 +6,11 @@ Fecha: 2026-02-01
 
 La cobertura total reportada por Gate 2 es **85%**. La caída proviene de dos factores principales:
 
+> **Nota de alcance (anti‑malinterpretación):**
+> si el runner **respeta `.coveragerc`**, el reporte queda **filtrado a `src/apps/sync_engine`**
+> y el **TOTAL** refleja **solo ese módulo** (no el backend completo).
+> Si el runner **no** aplica el rcfile, el TOTAL sí es global.
+
 1. **Cobertura aplicada a módulos fuera del objetivo** (migraciones, admin, urls, views, etc.).
 2. **Ramas defensivas no ejercitadas** en `sync_engine` (errores, paths raros, verificación de firma y fallos de persistencia).
 

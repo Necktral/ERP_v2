@@ -284,6 +284,58 @@ def test_process_command_payload_hash_mismatch():
 
 
 @pytest.mark.django_db
+def test_process_command_with_warnings():
+    company, branch = _mk_scope()
+    device, priv = _device_with_key(company, branch)
+    req = _request(company, branch)
+
+    warn_type = f"WARN_{uuid.uuid4().hex}"
+
+    @register(warn_type)
+    def _warn(_ctx, _payload):
+        return {"warnings": ["low_stock"]}
+
+    cmd = _build_command(
+        priv=priv,
+        command_id=str(uuid.uuid4()),
+        command_type=warn_type,
+        company_id=company.id,
+        branch_id=branch.id,
+        payload={"x": 1},
+    )
+
+    policy = SyncPolicy(max_commands_per_batch=10, max_payload_bytes=1000, max_device_clock_skew_seconds=3600, seq_tolerant=True)
+    out = process_command(request=req, actor_user=None, device=device, cmd=cmd, policy=policy)
+    assert out["status"] == "APPLIED"
+    assert out["warnings"] == ["low_stock"]
+
+
+@pytest.mark.django_db
+def test_process_command_canon_json_error_rejected(monkeypatch):
+    company, branch = _mk_scope()
+    device, priv = _device_with_key(company, branch)
+    req = _request(company, branch)
+
+    cmd = _build_command(
+        priv=priv,
+        command_id=str(uuid.uuid4()),
+        command_type="DEMO_PING",
+        company_id=company.id,
+        branch_id=branch.id,
+        payload={"ping": True},
+    )
+
+    def _boom(_payload):
+        raise ValueError("bad json")
+
+    monkeypatch.setattr(sync_services, "canon_json", _boom)
+
+    policy = SyncPolicy(max_commands_per_batch=10, max_payload_bytes=1000, max_device_clock_skew_seconds=3600, seq_tolerant=True)
+    out = process_command(request=req, actor_user=None, device=device, cmd=cmd, policy=policy)
+    assert out["reason"] == "SYNC_INVALID_SIGNATURE"
+
+
+@pytest.mark.django_db
 def test_process_command_invalid_signature_and_unknown_handler():
     company, branch = _mk_scope()
     device, priv = _device_with_key(company, branch)
@@ -406,6 +458,80 @@ def test_process_command_duplicate_and_mismatch():
     )
     out = process_command(request=req, actor_user=None, device=device, cmd=cmd_bad, policy=policy)
     assert out["reason"] == "SYNC_PAYLOAD_MISMATCH"
+
+
+@pytest.mark.django_db
+def test_process_command_integrity_error_paths(monkeypatch):
+    company, branch = _mk_scope()
+    device, priv = _device_with_key(company, branch)
+    req = _request(company, branch)
+
+    payload = {"ping": True}
+    payload_hash = sha256_hex(canon_json(payload))
+    cmd_id = uuid.uuid4()
+
+    existing = AppliedCommand.objects.create(
+        command_id=cmd_id,
+        device=device,
+        company=company,
+        branch=branch,
+        command_type="DEMO_PING",
+        occurred_at=timezone.now(),
+        sequence=1,
+        payload_hash=payload_hash,
+        prev_hash="",
+        result_status=AppliedCommand.ResultStatus.APPLIED,
+        result_ref={"pong": True},
+        error={},
+    )
+
+    class _FakeSelect:
+        def __init__(self, row):
+            self._row = row
+
+        def filter(self, *args, **kwargs):
+            class _FakeFilter:
+                def first(self_inner):
+                    return None
+
+            return _FakeFilter()
+
+        def get(self, *args, **kwargs):
+            return self._row
+
+    def _raise_integrity(*_args, **_kwargs):
+        raise IntegrityError("forced")
+
+    monkeypatch.setattr(AppliedCommand.objects, "select_for_update", lambda *args, **kwargs: _FakeSelect(existing))
+    monkeypatch.setattr(AppliedCommand.objects, "create", _raise_integrity)
+
+    cmd = _build_command(
+        priv=priv,
+        command_id=str(cmd_id),
+        command_type="DEMO_PING",
+        company_id=company.id,
+        branch_id=branch.id,
+        payload=payload,
+        payload_hash=payload_hash,
+    )
+
+    policy = SyncPolicy(max_commands_per_batch=10, max_payload_bytes=1000, max_device_clock_skew_seconds=3600, seq_tolerant=True)
+    out = process_command(request=req, actor_user=None, device=device, cmd=cmd, policy=policy)
+    assert out["status"] == "DUPLICATE"
+
+    existing.payload_hash = "other"
+    existing.save(update_fields=["payload_hash"])
+
+    cmd_bad = _build_command(
+        priv=priv,
+        command_id=str(cmd_id),
+        command_type="DEMO_PING",
+        company_id=company.id,
+        branch_id=branch.id,
+        payload={"ping": False},
+    )
+    out_bad = process_command(request=req, actor_user=None, device=device, cmd=cmd_bad, policy=policy)
+    assert out_bad["reason"] == "SYNC_PAYLOAD_MISMATCH"
 
 
 @pytest.mark.django_db
@@ -615,5 +741,29 @@ def test_reject_with_db_handles_exception(monkeypatch):
         prev_hash="",
         reason="SYNC_INVALID_SIGNATURE",
         details={},
+    )
+    assert out["reason"] == "SYNC_INVALID_SIGNATURE"
+
+
+@pytest.mark.django_db
+def test_reject_with_db_successful_write():
+    company, branch = _mk_scope()
+    device, _ = _device_with_key(company, branch)
+    req = _request(company, branch)
+
+    out = sync_services._reject_with_db(
+        request=req,
+        actor_user=None,
+        device=device,
+        command_id=uuid.uuid4(),
+        company_id=company.id,
+        branch_id=branch.id,
+        command_type="DEMO_PING",
+        occurred_at=timezone.now(),
+        sequence=1,
+        payload_hash="hash1",
+        prev_hash="",
+        reason="SYNC_INVALID_SIGNATURE",
+        details={"detail": "x"},
     )
     assert out["reason"] == "SYNC_INVALID_SIGNATURE"

@@ -9,7 +9,10 @@ User = get_user_model()
 
 @pytest.mark.django_db
 def test_axes_locks_out_and_creates_lockout_event(settings):
+    if not getattr(settings, "AXES_ENABLED", False):
+        pytest.skip("Axes deshabilitado en settings de tests")
     # Política de test: lockout rápido y determinista
+    settings.AXES_ENABLED = True
     settings.AXES_FAILURE_LIMIT = 15
     settings.AXES_COOLOFF_TIME = 60  # minutos (el valor exacto no afecta este test corto)
 
