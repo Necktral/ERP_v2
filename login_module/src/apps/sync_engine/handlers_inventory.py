@@ -12,6 +12,18 @@ from .errors import SyncRejectError
 from .registry import HandlerResult, register
 
 
+CANONICAL_COMMANDS: dict[str, str] = {
+    "INVENTORY_MOVEMENT_RECEIVE": "INVENTORY.MOVEMENT.RECEIVE",
+    "INVENTORY.MOVEMENT.RECEIVE": "INVENTORY.MOVEMENT.RECEIVE",
+    "INVENTORY_MOVEMENT_ISSUE": "INVENTORY.MOVEMENT.ISSUE",
+    "INVENTORY.MOVEMENT.ISSUE": "INVENTORY.MOVEMENT.ISSUE",
+    "INVENTORY_MOVEMENT_ADJUST": "INVENTORY.MOVEMENT.ADJUST",
+    "INVENTORY.MOVEMENT.ADJUST": "INVENTORY.MOVEMENT.ADJUST",
+    "INVENTORY_TRANSFER": "INVENTORY.TRANSFER",
+    "INVENTORY.TRANSFER": "INVENTORY.TRANSFER",
+}
+
+
 def _require_int(payload: dict[str, Any], key: str) -> int:
     v = payload.get(key, None)
     if v is None:
@@ -77,11 +89,27 @@ def _map_inventory_error(err: Exception) -> SyncRejectError:
         return SyncRejectError("INVENTORY_INVALID_SCOPE", {"detail": str(err)})
     if "warehouse inválido" in msg:
         return SyncRejectError("INVENTORY_INVALID_SCOPE", {"detail": str(err)})
+    if "item inválido" in msg:
+        return SyncRejectError("INVENTORY_INVALID_SCOPE", {"detail": str(err)})
     if "from_warehouse_id" in msg and "to_warehouse_id" in msg:
         return SyncRejectError("INVENTORY_SCHEMA_INVALID", {"detail": str(err)})
     if "qty debe ser" in msg or "unit_cost" in msg:
         return SyncRejectError("INVENTORY_SCHEMA_INVALID", {"detail": str(err)})
     return SyncRejectError("INVENTORY_SCHEMA_INVALID", {"detail": str(err)})
+
+
+def _canonical_command_type(command_type: str) -> str:
+    return CANONICAL_COMMANDS.get(command_type, command_type)
+
+
+def _namespaced_idempotency_key(
+    *, command_type: str, company_id: int, branch_id: int | None, raw_key: str
+) -> str:
+    if not raw_key:
+        return ""
+    canonical = _canonical_command_type(command_type)
+    branch_value = "" if branch_id is None else str(branch_id)
+    return f"{canonical}:{company_id}:{branch_value}:{raw_key}"
 
 
 def _movement_matches(
@@ -109,6 +137,7 @@ def _movement_matches(
 def _ensure_idempotency_match(
     *,
     company_id: int,
+    branch_id: int | None,
     idempotency_key: str,
     movement_type: str,
     warehouse_id: int,
@@ -118,7 +147,10 @@ def _ensure_idempotency_match(
 ) -> None:
     if not idempotency_key:
         return
-    existing = StockMovement.objects.filter(company_id=company_id, idempotency_key=idempotency_key).first()
+    qs = StockMovement.objects.filter(company_id=company_id, idempotency_key=idempotency_key)
+    if branch_id is not None:
+        qs = qs.filter(branch_id=branch_id)
+    existing = qs.first()
     if not existing:
         return
     if _movement_matches(
@@ -153,16 +185,23 @@ def handle_inventory_receive(ctx: dict[str, Any], payload: dict[str, Any]) -> Ha
 
     note = _optional_str(payload, "note")
     explicit_idempotency = _optional_str(payload, "idempotency_key")
+    scoped_idempotency = _namespaced_idempotency_key(
+        command_type=str(ctx.get("command_type") or ""),
+        company_id=company_id,
+        branch_id=int(branch_id),
+        raw_key=explicit_idempotency,
+    )
     _ensure_idempotency_match(
         company_id=company_id,
-        idempotency_key=explicit_idempotency,
+        branch_id=int(branch_id),
+        idempotency_key=scoped_idempotency,
         movement_type=MovementType.RECEIVE,
         warehouse_id=warehouse_id,
         item_id=item_id,
         qty_delta=inv_services._q_qty(qty),
         unit_cost=inv_services._q_cost(unit_cost),
     )
-    idempotency_key = explicit_idempotency or str(ctx["command_id"])
+    idempotency_key = scoped_idempotency or str(ctx["command_id"])
 
     try:
         res = inv_services.post_receive(
@@ -204,15 +243,22 @@ def handle_inventory_issue(ctx: dict[str, Any], payload: dict[str, Any]) -> Hand
 
     note = _optional_str(payload, "note")
     explicit_idempotency = _optional_str(payload, "idempotency_key")
+    scoped_idempotency = _namespaced_idempotency_key(
+        command_type=str(ctx.get("command_type") or ""),
+        company_id=company_id,
+        branch_id=int(branch_id),
+        raw_key=explicit_idempotency,
+    )
     _ensure_idempotency_match(
         company_id=company_id,
-        idempotency_key=explicit_idempotency,
+        branch_id=int(branch_id),
+        idempotency_key=scoped_idempotency,
         movement_type=MovementType.ISSUE,
         warehouse_id=warehouse_id,
         item_id=item_id,
         qty_delta=inv_services._q_qty(Decimal("0") - qty),
     )
-    idempotency_key = explicit_idempotency or str(ctx["command_id"])
+    idempotency_key = scoped_idempotency or str(ctx["command_id"])
 
     try:
         res = inv_services.post_issue(
@@ -253,14 +299,21 @@ def handle_inventory_adjust(ctx: dict[str, Any], payload: dict[str, Any]) -> Han
 
     note = _optional_str(payload, "note")
     explicit_idempotency = _optional_str(payload, "idempotency_key")
+    scoped_idempotency = _namespaced_idempotency_key(
+        command_type=str(ctx.get("command_type") or ""),
+        company_id=company_id,
+        branch_id=int(branch_id),
+        raw_key=explicit_idempotency,
+    )
     _ensure_idempotency_match(
         company_id=company_id,
-        idempotency_key=explicit_idempotency,
+        branch_id=int(branch_id),
+        idempotency_key=scoped_idempotency,
         movement_type=MovementType.ADJUST,
         warehouse_id=warehouse_id,
         item_id=item_id,
     )
-    idempotency_key = explicit_idempotency or str(ctx["command_id"])
+    idempotency_key = scoped_idempotency or str(ctx["command_id"])
 
     try:
         res = inv_services.post_adjust(
@@ -301,15 +354,22 @@ def handle_inventory_transfer(ctx: dict[str, Any], payload: dict[str, Any]) -> H
 
     note = _optional_str(payload, "note")
     explicit_idempotency = _optional_str(payload, "idempotency_key")
+    scoped_idempotency = _namespaced_idempotency_key(
+        command_type=str(ctx.get("command_type") or ""),
+        company_id=company_id,
+        branch_id=int(branch_id),
+        raw_key=explicit_idempotency,
+    )
     _ensure_idempotency_match(
         company_id=company_id,
-        idempotency_key=explicit_idempotency,
+        branch_id=int(branch_id),
+        idempotency_key=scoped_idempotency,
         movement_type=MovementType.TRANSFER_OUT,
         warehouse_id=from_warehouse_id,
         item_id=item_id,
         qty_delta=inv_services._q_qty(Decimal("0") - qty),
     )
-    idempotency_key = explicit_idempotency or str(ctx["command_id"])
+    idempotency_key = scoped_idempotency or str(ctx["command_id"])
 
     try:
         res = inv_services.post_transfer(

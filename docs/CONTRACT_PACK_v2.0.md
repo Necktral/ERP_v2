@@ -276,6 +276,11 @@ Definir el **kernel de inventario** como fuente de verdad, con reglas invariante
 - **Pipeline (sync):** firma, scope, límites, skew, schema de comando ⇒ `SYNC_*`.
 - **Negocio (inventario):** reglas de movimiento/stock ⇒ `INVENTORY_*`.
 
+**Frontera de scope:**
+
+- `SYNC_FORBIDDEN_SCOPE`: el dispositivo/usuario **no tiene derecho** a operar ese `company_id/branch_id` (pipeline).
+- `INVENTORY_INVALID_SCOPE`: el scope es válido, pero el payload apunta a entidades fuera del scope (warehouse/item fuera de branch/company, etc.).
+
 ### Resultado de handler (contrato)
 
 - `APPLIED` con `refs` estables.
@@ -321,6 +326,12 @@ Reglas adicionales:
 
 - Paginación **obligatoria** (cursor/seek preferible, offset aceptable con límites).
 - Orden estable y límite máximo definido para evitar lecturas masivas.
+
+### Precisión decimal y redondeo
+
+- `qty` y `qty_on_hand`: **string decimal** con escala fija (4 decimales).
+- `unit_cost` y `avg_cost`: **string decimal** con escala fija (6 decimales).
+- Redondeo: **half-up** (ROUND_HALF_UP) en backend.
 
 ### Respuesta paginada (forma canónica)
 

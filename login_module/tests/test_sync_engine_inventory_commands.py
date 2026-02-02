@@ -107,6 +107,76 @@ def _setup_inventory_device():
     }
 
 
+def _setup_inventory_device_company_scope():
+    company, branch = _mk_scope()
+    branch2 = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B2", parent=company)
+    user = User.objects.create_user(username=f"u_sync_inv_co_{uuid.uuid4().hex[:6]}", password="x")
+
+    c1 = _client_with_perms(
+        user=user,
+        company=company,
+        branch=branch,
+        perms=[
+            "sync.device.enroll",
+            "inventory.warehouse.create",
+            "inventory.item.create",
+            "inventory.balance.read",
+        ],
+    )
+
+    r = c1.post("/api/inventory/warehouses/", {"name": "Main", "code": "M"}, format="json")
+    assert r.status_code == 201
+    wh1_id = r.data["id"]
+
+    r = c1.post("/api/inventory/items/", {"sku": "DIESEL", "name": "Diesel", "uom": "LITER"}, format="json")
+    assert r.status_code == 201
+    item_id = r.data["id"]
+
+    c2 = _client_with_perms(
+        user=user,
+        company=company,
+        branch=branch2,
+        perms=[
+            "sync.device.enroll",
+            "inventory.warehouse.create",
+            "inventory.item.create",
+            "inventory.balance.read",
+        ],
+    )
+    r = c2.post("/api/inventory/warehouses/", {"name": "Aux", "code": "A"}, format="json")
+    assert r.status_code == 201
+    wh2_id = r.data["id"]
+
+    r = c1.post("/api/sync/enrollment/challenges/", {"expires_in_minutes": 10}, format="json")
+    assert r.status_code == 201
+    code = r.data["enrollment_code"]
+
+    priv = Ed25519PrivateKey.generate()
+    pub = priv.public_key().public_bytes_raw()
+
+    device_client = APIClient()
+    r2 = device_client.post(
+        "/api/sync/enroll/",
+        {"enrollment_code": code, "public_key_b64": _b64(pub), "label": "Tablet"},
+        format="json",
+    )
+    assert r2.status_code == 201
+    device_id = r2.data["device_id"]
+
+    return {
+        "company": company,
+        "branch": branch,
+        "branch2": branch2,
+        "client": c1,
+        "device_client": device_client,
+        "device_id": device_id,
+        "priv": priv,
+        "warehouse_id": wh1_id,
+        "warehouse_id_other": wh2_id,
+        "item_id": item_id,
+    }
+
+
 def _build_command(
     *,
     priv: Ed25519PrivateKey,
@@ -380,6 +450,38 @@ def test_sync_inventory_invalid_scope_rejected():
     assert rr.status_code == 200
     assert rr.data["results"][0]["status"] == "REJECTED"
     assert rr.data["results"][0]["reason"] == "SYNC_FORBIDDEN_SCOPE"
+
+
+@pytest.mark.django_db
+def test_sync_inventory_invalid_scope_entity_rejected():
+    env = _setup_inventory_device_company_scope()
+    company = env["company"]
+    branch = env["branch"]
+    device_client = env["device_client"]
+    device_id = env["device_id"]
+    priv = env["priv"]
+    wh_other = env["warehouse_id_other"]
+    item_id = env["item_id"]
+
+    occurred = occurred_at_canonical(timezone.now())
+    payload = {"warehouse_id": wh_other, "item_id": item_id, "qty": "1.0000", "unit_cost": "1.000000"}
+
+    cmd = _build_command(
+        priv=priv,
+        command_id=str(uuid.uuid4()),
+        command_type="INVENTORY_MOVEMENT_RECEIVE",
+        company_id=company.id,
+        branch_id=branch.id,
+        occurred_at=occurred,
+        sequence=1,
+        payload=payload,
+    )
+
+    batch = _build_batch(priv=priv, device_id=device_id, commands=[cmd])
+    rr = device_client.post("/api/sync/batch/", batch, format="json", HTTP_X_DEVICE_ID=device_id)
+    assert rr.status_code == 200
+    assert rr.data["results"][0]["status"] == "REJECTED"
+    assert rr.data["results"][0]["reason"] == "INVENTORY_INVALID_SCOPE"
 
 
 @pytest.mark.django_db
