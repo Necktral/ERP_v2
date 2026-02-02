@@ -22,6 +22,10 @@ class JsonFormatter(logging.Formatter):
             "msg": record.getMessage(),
             "request_id": getattr(record, "request_id", ""),
         }
+        for key in ("path", "method", "status_code", "duration_ms", "actor_type", "actor_id"):
+            value = getattr(record, key, None)
+            if value is not None:
+                payload[key] = value
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)

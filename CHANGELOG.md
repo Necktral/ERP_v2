@@ -18,6 +18,9 @@
 - **FUEL (Tests):** test de flujo (turno → despacho → venta → cierre) + constraint de turno único.
 - **RBAC:** roles `fuel_*` y permisos `fuel.*` en `seed_rbac_v01`.
 - **Auditoría (contrato):** extensión del contrato con `event_type`, `reason_code` y `subject_type` para FUEL.
+- **Observabilidad (Backend):** middleware de logging por request en `/api/*` con `request_id` y latencia.
+- **Observabilidad (Backend):** logging estructurado JSON con metadatos de request y actor.
+- **Seguridad (Backend):** `throttle_scope` en endpoints sensibles de auth y bootstrap.
 
 ### Changed
 

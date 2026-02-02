@@ -68,6 +68,11 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
+        "apps.observability": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "apps.audit": {
             "handlers": ["console"],
             "level": "DEBUG",
@@ -155,6 +160,7 @@ INSTALLED_APPS += [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "config.middleware.request_id.RequestIdMiddleware",
+    "config.middleware.request_logging.RequestLoggingMiddleware",
     # CORS lo más arriba posible (antes de CommonMiddleware y WhiteNoise)
     "corsheaders.middleware.CorsMiddleware",
     # WhiteNoise sirve estáticos (útil incluso en dev si lo deseas)

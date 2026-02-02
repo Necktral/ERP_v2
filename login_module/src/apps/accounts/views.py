@@ -93,6 +93,7 @@ class LoginView(APIView):
 
 class RefreshView(TokenRefreshView):
     permission_classes = (AllowAny,)  # type: ignore[assignment]
+    throttle_scope = "auth_sensitive"
 
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
@@ -123,6 +124,7 @@ class RefreshView(TokenRefreshView):
 class LogoutView(APIView):
     # Seguridad: evita que un tercero pueda invalidar refresh ajenos (DoS por blacklist).
     permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_sensitive"
 
     def post(self, request):
         refresh = request.data.get("refresh")
@@ -198,6 +200,7 @@ class BootstrapStatusView(APIView):
 
 class BootstrapInitView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "admin_writes"
 
     def post(self, request):
         # contrato: solo se permite cuando no hay usuarios
@@ -236,6 +239,7 @@ class BootstrapInitView(APIView):
 
 class BootstrapOrgView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "admin_writes"
 
     def post(self, request):
         s = BootstrapOrgSerializer(data=request.data)
@@ -339,6 +343,7 @@ class BootstrapOrgView(APIView):
 
 class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_sensitive"
 
     def post(self, request):
         s = PasswordChangeSerializer(data=request.data)

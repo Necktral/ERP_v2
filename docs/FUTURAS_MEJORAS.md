@@ -36,13 +36,13 @@ Capturar mejoras futuras del sistema (técnicas y de producto) para que queden *
 
 3. **Observabilidad mínima**
 
-- Correlación por request (`request_id`) y logging estructurado.
-- Métricas básicas: latencias por endpoint, tasa de 401/403, tasa de 5xx.
+- ✅ Implementado (2026-02-02): correlación por request (`request_id`) y logging estructurado.
+- ⏳ Pendiente: métricas básicas (latencias por endpoint, tasa de 401/403, tasa de 5xx).
 
 4. **Hardening de seguridad**
 
-- Rotación/gestión de secretos (AUDIT_HMAC_KEY, claves de firma, etc.).
-- Rate limiting coherente en endpoints sensibles.
+- ✅ Implementado (2026-02-02): rate limiting coherente en endpoints sensibles.
+- ⏳ Pendiente: rotación/gestión de secretos (AUDIT_HMAC_KEY, claves de firma, etc.).
 
 ### B) Mediano plazo (1–3 meses)
 
