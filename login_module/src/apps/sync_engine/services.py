@@ -30,11 +30,14 @@ from rest_framework.exceptions import PermissionDenied
 from apps.audit.writer import write_event
 from apps.iam.models import OrgUnit
 
+from .errors import SyncRejectError
 from .models import AppliedCommand, Device, SyncReceipt
 from .registry import get_handler
 
 # Import por side-effect: registra handlers demo en el registry.
 from . import handlers_demo as _handlers_demo  # noqa: F401
+# Import por side-effect: registra handlers inventory en el registry.
+from . import handlers_inventory as _handlers_inventory  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,
@@ -504,6 +507,37 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             res = handler(ctx, payload) or {}
             refs = res.get("refs", {}) or {}
             warnings = res.get("warnings", []) or []
+        except SyncRejectError as e:
+            # Rechazo controlado: negocio / contrato, NO internal error.
+            reason = str(e.reason_code)
+            details = dict(e.details or {})
+
+            row.result_status = AppliedCommand.ResultStatus.REJECTED
+            row.error = {"reason": reason, **details}
+            row.save(update_fields=["result_status", "error"])
+
+            write_event(
+                request=request,
+                event_type="SYNC_COMMAND_REJECTED",
+                reason_code=reason,
+                actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
+                subject_type="DEVICE",
+                subject_id=str(device.id),
+                device_id=str(device.id),
+                offline_mode=True,
+                metadata={
+                    "command_id": str(command_id),
+                    "command_type": command_type,
+                    "company_id": company_id,
+                    "branch_id": branch_id,
+                    **details,
+                },
+            )
+
+            out = {"command_id": str(command_id), "status": "REJECTED", "reason": reason}
+            if details:
+                out["details"] = details
+            return out
         except Exception as e:
             logger.error(f"[SYNC_ENGINE][process_command] ERROR: {repr(e)}")
             row.result_status = AppliedCommand.ResultStatus.REJECTED
