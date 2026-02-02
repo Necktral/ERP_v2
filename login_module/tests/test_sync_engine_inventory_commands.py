@@ -12,7 +12,7 @@ from apps.audit.models import AuditEvent
 from apps.iam.models import OrgUnit, UserMembership
 from apps.rbac.models import Permission, Role, RoleAssignment, RolePermission
 from apps.sync_engine.signing import build_command_signing_message, canon_json, occurred_at_canonical, sha256_hex
-from apps.sync_engine.v2 import build_string_to_sign, strip_signature_for_sign
+import apps.sync_engine.handlers_inventory as _handlers_inventory  # noqa: F401
 
 
 def _b64(b: bytes) -> str:
@@ -20,12 +20,6 @@ def _b64(b: bytes) -> str:
 
 
 def _sign(priv: Ed25519PrivateKey, *, msg: bytes) -> str:
-    return _b64(priv.sign(msg))
-
-
-def _sign_v2(priv: Ed25519PrivateKey, *, ts: int, nonce: str, body: dict) -> str:
-    body_for_sign = strip_signature_for_sign(body)
-    msg = build_string_to_sign(ts=ts, nonce=nonce, body_for_sign=body_for_sign)
     return _b64(priv.sign(msg))
 
 
@@ -139,32 +133,25 @@ def _build_command(
     sig = _sign(priv, msg=msg)
     return {
         "command_id": command_id,
-        "type": command_type,
-        "scope": {"company_id": company_id, "branch_id": branch_id},
+        "command_type": command_type,
+        "company_id": company_id,
+        "branch_id": branch_id,
         "occurred_at": occurred_at,
         "sequence": sequence,
         "payload": payload,
         "payload_hash": payload_hash,
         "prev_hash": prev_hash,
-        "command_sig": sig,
+        "signature": sig,
     }
 
 
 def _build_batch(*, priv: Ed25519PrivateKey, device_id: str, commands: list[dict]):
-    ts = int(timezone.now().timestamp())
-    nonce = f"nonce-{uuid.uuid4().hex[:8]}"
-    batch = {
-        "protocol_version": "2",
-        "device_id": device_id,
-        "ts": ts,
-        "nonce": nonce,
-        "auth": {"scheme": "ed25519", "signature": ""},
+    return {
         "batch_id": str(uuid.uuid4()),
+        "device_id": device_id,
         "sent_at": timezone.now().isoformat(),
-        "batch": commands,
+        "commands": commands,
     }
-    batch["auth"]["signature"] = _sign_v2(priv, ts=ts, nonce=nonce, body=batch)
-    return batch
 
 
 def _balance_qty(data: dict) -> str:
@@ -224,74 +211,28 @@ def test_sync_batch_inventory_receive_issue_applies_and_updates_stock():
 
     occurred = occurred_at_canonical(timezone.now())
 
-    # Command 1: RECEIVE
-    cmd1 = str(uuid.uuid4())
-    payload1 = {"warehouse_id": wh_id, "item_id": item_id, "qty": "10.0000", "unit_cost": "1.250000"}
-    h1 = sha256_hex(canon_json(payload1))
-    msg1 = build_command_signing_message(
-        command_id=cmd1,
+    cmd1 = _build_command(
+        priv=priv,
+        command_id=str(uuid.uuid4()),
         command_type="INVENTORY_MOVEMENT_RECEIVE",
         company_id=company.id,
         branch_id=branch.id,
         occurred_at=occurred,
         sequence=1,
-        payload_hash=h1,
-        prev_hash="",
+        payload={"warehouse_id": wh_id, "item_id": item_id, "qty": "10.0000", "unit_cost": "1.250000"},
     )
-    sig1 = _sign(priv, msg=msg1)
-
-    # Command 2: ISSUE
-    cmd2 = str(uuid.uuid4())
-    payload2 = {"warehouse_id": wh_id, "item_id": item_id, "qty": "2.0000"}
-    h2 = sha256_hex(canon_json(payload2))
-    msg2 = build_command_signing_message(
-        command_id=cmd2,
+    cmd2 = _build_command(
+        priv=priv,
+        command_id=str(uuid.uuid4()),
         command_type="INVENTORY_MOVEMENT_ISSUE",
         company_id=company.id,
         branch_id=branch.id,
         occurred_at=occurred,
         sequence=2,
-        payload_hash=h2,
-        prev_hash="",
+        payload={"warehouse_id": wh_id, "item_id": item_id, "qty": "2.0000"},
     )
-    sig2 = _sign(priv, msg=msg2)
 
-    ts = int(timezone.now().timestamp())
-    nonce = "nonce-v2-inv"
-    batch = {
-        "protocol_version": "2",
-        "device_id": device_id,
-        "ts": ts,
-        "nonce": nonce,
-        "auth": {"scheme": "ed25519", "signature": ""},
-        "batch_id": str(uuid.uuid4()),
-        "sent_at": timezone.now().isoformat(),
-        "batch": [
-            {
-                "command_id": cmd1,
-                "type": "INVENTORY_MOVEMENT_RECEIVE",
-                "scope": {"company_id": company.id, "branch_id": branch.id},
-                "occurred_at": occurred,
-                "sequence": 1,
-                "payload": payload1,
-                "payload_hash": h1,
-                "prev_hash": "",
-                "command_sig": sig1,
-            },
-            {
-                "command_id": cmd2,
-                "type": "INVENTORY_MOVEMENT_ISSUE",
-                "scope": {"company_id": company.id, "branch_id": branch.id},
-                "occurred_at": occurred,
-                "sequence": 2,
-                "payload": payload2,
-                "payload_hash": h2,
-                "prev_hash": "",
-                "command_sig": sig2,
-            },
-        ],
-    }
-    batch["auth"]["signature"] = _sign_v2(priv, ts=ts, nonce=nonce, body=batch)
+    batch = _build_batch(priv=priv, device_id=device_id, commands=[cmd1, cmd2])
 
     rr = device_client.post("/api/sync/batch/", batch, format="json", HTTP_X_DEVICE_ID=device_id)
     assert rr.status_code == 200
@@ -507,7 +448,7 @@ def test_sync_inventory_invalid_signature_rejected():
         sequence=1,
         payload=payload,
     )
-    cmd["command_sig"] = "AAAA"  # firma inválida
+    cmd["signature"] = "AAAA"  # firma inválida
 
     batch = _build_batch(priv=priv, device_id=device_id, commands=[cmd])
     rr = device_client.post("/api/sync/batch/", batch, format="json", HTTP_X_DEVICE_ID=device_id)
