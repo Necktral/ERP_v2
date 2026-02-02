@@ -288,6 +288,7 @@ class SyncBatchView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_scope = "sync_batch"
 
     def post(self, request):
         ser = SyncBatchIn(data=request.data)

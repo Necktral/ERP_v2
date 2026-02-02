@@ -5,6 +5,10 @@ import os
 import uuid
 
 import pytest
+from django.conf import settings
+from django.core.cache import cache
+from django.test import override_settings
+from rest_framework.settings import api_settings
 from django.utils import timezone
 from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
@@ -74,7 +78,9 @@ def test_sync_batch_bad_signature_rejected():
         HTTP_X_DEVICE_SIGNATURE="invalidsig==",
     )
     assert res.status_code == 401
-    assert res.json()["error"] == "BAD_SIGNATURE"
+    payload = res.json()
+    assert payload["error"]["code"] == "AUTH_UNAUTHENTICATED"
+    assert payload["error"]["message"] == "BAD_SIGNATURE"
 
 
 @pytest.mark.django_db
@@ -118,7 +124,9 @@ def test_sync_batch_replay_nonce_rejected():
         HTTP_X_DEVICE_SIGNATURE=sig,
     )
     assert r2.status_code == 401
-    assert r2.json()["error"] == "REPLAY_DETECTED"
+    payload = r2.json()
+    assert payload["error"]["code"] == "AUTH_UNAUTHENTICATED"
+    assert payload["error"]["message"] == "REPLAY_DETECTED"
 
 
 @pytest.mark.django_db
@@ -176,3 +184,98 @@ def test_idempotency_same_command_id_returns_cached(monkeypatch):
     assert r2.status_code == 200
 
     assert calls["n"] == 1  # el handler solo corre una vez por command_id
+
+
+@pytest.mark.django_db
+def test_sync_batch_missing_headers_envelope_and_request_id():
+    client = APIClient()
+
+    res = client.post("/api/sync-hmac/batch/", data={}, format="json")
+
+    assert res.status_code == 400
+    payload = res.json()
+    assert payload["error"]["code"] == "BAD_REQUEST"
+    assert payload["error"]["message"] == "MISSING_HEADERS"
+    assert res["X-Request-Id"] == payload["error"]["request_id"]
+
+
+@pytest.mark.django_db
+def test_sync_batch_invalid_request_id_sanitized():
+    client = APIClient()
+
+    res = client.post(
+        "/api/sync-hmac/batch/",
+        data={},
+        format="json",
+        HTTP_X_REQUEST_ID="bad\nvalue",
+    )
+
+    assert res.status_code == 400
+    assert res["X-Request-Id"] != "bad\nvalue"
+
+
+@pytest.mark.django_db
+def test_sync_batch_throttling_enveloped():
+    override = {
+        **settings.REST_FRAMEWORK,
+        "DEFAULT_THROTTLE_CLASSES": (
+            "rest_framework.throttling.AnonRateThrottle",
+            "rest_framework.throttling.UserRateThrottle",
+            "rest_framework.throttling.ScopedRateThrottle",
+            "config.throttling.DeviceScopedRateThrottle",
+        ),
+        "DEFAULT_THROTTLE_RATES": {
+            "anon": "1000/min",
+            "user": "1000/min",
+            "sync_batch": "1/min",
+        },
+    }
+
+    with override_settings(REST_FRAMEWORK=override):
+        cache.clear()
+        api_settings.reload()
+
+        client = APIClient()
+
+        secret = base64.b64encode(os.urandom(32)).decode("utf-8")
+        device = DeviceEnrollment.objects.create(secret_b64=secret, device_name="t1")
+
+        body = {"commands": [{"command_id": str(uuid.uuid4()), "type": "PING", "payload": {}}]}
+        raw = JSONRenderer().render(body)
+
+        ts = int(timezone.now().timestamp())
+        nonce1 = "nonce-throttle-1"
+        sig1 = hmac_signature_b64(secret, canonical_string(ts, nonce1, raw))
+
+        url = "/api/sync-hmac/batch/"
+
+        r1 = client.post(
+            url,
+            data=body,
+            format="json",
+            HTTP_X_DEVICE_ID=str(device.id),
+            HTTP_X_DEVICE_TS=str(ts),
+            HTTP_X_DEVICE_NONCE=nonce1,
+            HTTP_X_DEVICE_SIGNATURE=sig1,
+        )
+        assert r1.status_code == 200
+
+        nonce2 = "nonce-throttle-2"
+        sig2 = hmac_signature_b64(secret, canonical_string(ts, nonce2, raw))
+
+        r2 = client.post(
+            url,
+            data=body,
+            format="json",
+            HTTP_X_DEVICE_ID=str(device.id),
+            HTTP_X_DEVICE_TS=str(ts),
+            HTTP_X_DEVICE_NONCE=nonce2,
+            HTTP_X_DEVICE_SIGNATURE=sig2,
+        )
+        assert r2.status_code == 429
+        payload = r2.json()
+        assert payload["error"]["code"] == "RATE_LIMITED"
+        assert r2["X-Request-Id"] == payload["error"]["request_id"]
+
+    cache.clear()
+    api_settings.reload()

@@ -279,6 +279,20 @@ Ejemplo de validación:
 - `RBAC_FORBIDDEN` puede incluir `details.missing_permissions`.
 - `SCOPE_FORBIDDEN` puede incluir `details.required_scope` y `details.effective_scope`.
 
+### G) Seguridad operativa: rotación de secretos y throttling
+
+1. **Rotación de secretos (política técnica)**
+
+- El backend **DEBE** soportar modo dual durante la rotación (clave actual + clave previa).
+- La ventana de rotación **DEBE** estar definida y ser auditable.
+- Debe existir un procedimiento de rollback (volver a clave previa) sin downtime.
+
+2. **Throttling (rate limit) coherente**
+
+- La API **DEBE** aplicar límites globales mínimos (anon/user) y límites por endpoint sensible.
+- Endpoints de alto costo (auth/sync/admin writes/heavy reads) **DEBEN** usar scopes dedicados.
+- Respuestas 429 **DEBEN** usar el envelope contractual y `retryable=true`.
+
 ## Estado actual en este repo (resumen)
 
 - Implementado: ORG/HR/RBAC + auditoría contractual.

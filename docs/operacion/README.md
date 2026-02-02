@@ -15,6 +15,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 
 - [Importación / Exportación (Import-Export & Sourcing)](import_export/README.md)
 - [Templates Import/Export](import_export/templates/README.md)
+- [Rotación de secretos](ROTACION_SECRETOS_v1.0.md)
 
 ## Reglas
 

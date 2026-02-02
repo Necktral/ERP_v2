@@ -21,6 +21,7 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 
 - [operacion/README.md](operacion/README.md) — Playbooks y plantillas para operar el negocio.
 - [operacion/import_export/README.md](operacion/import_export/README.md) — Pack operativo Import/Export & Sourcing (B2B).
+- [operacion/ROTACION_SECRETOS_v1.0.md](operacion/ROTACION_SECRETOS_v1.0.md) — Runbook de rotación de secretos.
 
 ## CI / QA
 
