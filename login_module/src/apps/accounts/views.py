@@ -386,6 +386,7 @@ class PasswordChangeView(APIView):
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "me_read"
 
     def get(self, request):
         payload = MeSerializer.from_user(request.user)
@@ -395,6 +396,7 @@ class MeView(APIView):
 # --- ACL Snapshot endpoint ---
 class MeACLView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "me_acl_read"
 
     def get(self, request):
         return Response(build_acl_snapshot(request.user), status=status.HTTP_200_OK)

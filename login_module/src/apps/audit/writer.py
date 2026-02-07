@@ -109,6 +109,7 @@ def write_event(
     partition_key = _chain_partition_key(request)
     metadata = metadata or {}
     metadata.setdefault("_chain_partition", partition_key)
+    metadata.setdefault("request_id", getattr(request, "request_id", "") if request is not None else "")
     base_req = getattr(request, "_request", request)
     company = getattr(base_req, "company", None) or getattr(request, "company", None)
     branch = getattr(base_req, "branch", None) or getattr(request, "branch", None)
@@ -116,6 +117,16 @@ def write_event(
         metadata["company_id"] = str(company.id)
     if branch and "branch_id" not in metadata:
         metadata["branch_id"] = str(branch.id)
+
+    ctx = getattr(base_req, "ctx", None) or getattr(request, "ctx", None)
+    if ctx and "ctx" not in metadata:
+        metadata["ctx"] = {
+            "request_id": getattr(ctx, "request_id", "") or "",
+            "company_id": getattr(ctx, "company_id", None),
+            "branch_id": getattr(ctx, "branch_id", None),
+            "data_company_id": getattr(ctx, "data_company_id", None),
+            "data_branch_id": getattr(ctx, "data_branch_id", None),
+        }
     before_snapshot = before_snapshot or {}
     after_snapshot = after_snapshot or {}
 

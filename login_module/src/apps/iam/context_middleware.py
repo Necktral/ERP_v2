@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from django.http import JsonResponse
 
+from apps.iam.context import attach_request_context
 from apps.iam.models import OrgUnit, UserMembership
 
 
@@ -108,5 +109,13 @@ class OrgContextMiddleware:
         # Inyectar contexto para vistas
         setattr(request, "company", company)
         setattr(request, "branch", branch)
+
+        attach_request_context(
+            request,
+            company=company,
+            branch=branch,
+            data_company=company,
+            data_branch=branch,
+        )
 
         return self.get_response(request)

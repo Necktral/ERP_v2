@@ -13,7 +13,7 @@ from django.utils import timezone
 from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
 
-from apps.sync.models import DeviceEnrollment
+from apps.sync.models import DeviceEnrollment, DeviceRequestNonce
 from apps.sync.signing import canonical_string, hmac_signature_b64
 
 
@@ -81,6 +81,7 @@ def test_sync_batch_bad_signature_rejected():
     payload = res.json()
     assert payload["error"]["code"] == "AUTH_UNAUTHENTICATED"
     assert payload["error"]["message"] == "BAD_SIGNATURE"
+    assert DeviceRequestNonce.objects.filter(device=device).count() == 0
 
 
 @pytest.mark.django_db

@@ -77,7 +77,17 @@ class SyncBatchView(APIView):
                 reason="UNKNOWN_OR_INACTIVE_DEVICE",
             )
 
-        # 3) Anti-replay nonce
+        # 3) Firma
+        raw_body = request.body or b""
+        canonical = canonical_string(ts=ts, nonce=nonce, raw_body=raw_body)
+        if not verify_hmac_signature(device.secret_b64, canonical, sig):
+            return self._error_response(
+                request,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                reason="BAD_SIGNATURE",
+            )
+
+        # 4) Anti-replay nonce
         try:
             # Usamos savepoint para que un nonce duplicado no rompa la transacción del request.
             with transaction.atomic():
@@ -88,16 +98,6 @@ class SyncBatchView(APIView):
                 request,
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 reason="REPLAY_DETECTED",
-            )
-
-        # 4) Firma
-        raw_body = request.body or b""
-        canonical = canonical_string(ts=ts, nonce=nonce, raw_body=raw_body)
-        if not verify_hmac_signature(device.secret_b64, canonical, sig):
-            return self._error_response(
-                request,
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                reason="BAD_SIGNATURE",
             )
 
         # 5) Parse + apply

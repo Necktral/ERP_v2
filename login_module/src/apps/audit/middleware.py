@@ -96,6 +96,16 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
         if intercompany:
             metadata["intercompany"] = intercompany
 
+        ctx = getattr(request, "ctx", None)
+        if ctx is not None:
+            metadata["ctx"] = {
+                "request_id": getattr(ctx, "request_id", "") or "",
+                "company_id": getattr(ctx, "company_id", None),
+                "branch_id": getattr(ctx, "branch_id", None),
+                "data_company_id": getattr(ctx, "data_company_id", None),
+                "data_branch_id": getattr(ctx, "data_branch_id", None),
+            }
+
         write_event(
             request=request,
             event_type="AUTH_ACCESS_DENIED",

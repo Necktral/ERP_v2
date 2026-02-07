@@ -16,6 +16,7 @@ from __future__ import annotations
 from rest_framework.exceptions import NotFound, ParseError, PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from apps.iam.context import attach_request_context
 from apps.iam.models import OrgUnit, UserMembership
 
 
@@ -197,6 +198,14 @@ class JWTAuthWithOrgContext(JWTAuthentication):
             setattr(request, "intercompany", intercompany_meta)
             if raw is not None:
                 setattr(raw, "intercompany", intercompany_meta)
+
+        attach_request_context(
+            request,
+            company=company,
+            branch=branch,
+            data_company=data_company,
+            data_branch=data_branch,
+        )
 
         return (user, token)
 
