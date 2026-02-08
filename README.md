@@ -19,7 +19,8 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 - Auth cookie opcional via `AUTH_TOKEN_TRANSPORT` + CSRF en modo cookie.
 - Auditoria con redaccion y reason codes nuevos (`TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`).
-- QA Gates 1-3: `qa-ci-fresh` OK; Gate 3 (k6) en ajuste por rate limit en `/auth/me` y `/auth/me/acl` (overrides QA via env).
+- QA Gates 1-3: `qa-ci-fresh` OK; Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl`.
+- Nota QA: los overrides de throttling deben estar en `.env` (el backend usa `env_file` en Docker Compose).
 
 ## 🚀 Inicio rápido (Docker)
 

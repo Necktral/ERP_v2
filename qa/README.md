@@ -147,15 +147,25 @@ Defaults del Gate 3 (overrideables en `make`):
 ### Overrides QA (throttles)
 
 Si Gate 3 falla por 429 bajo k6 (un solo usuario con alto RPS), el cuello suele ser
-`UserRateThrottle`. Para QA puedes subirlo por env sin tocar defaults de codigo.
+`UserRateThrottle` o los scopes `me_read`/`me_acl_read`. Para QA puedes subirlos por env
+sin tocar defaults de codigo.
+
+Nota importante (Docker Compose): el backend lee variables desde `.env` por `env_file`.
+Si exportas variables en el shell pero no las agregas a `.env`, **no** llegan al contenedor
+y el throttle sigue en los valores por defecto.
 
 Ejemplo (solo QA/local):
 
 ```bash
 DRF_THROTTLE_USER=120000/min \
 DRF_THROTTLE_AUTH_LOGIN=1200/min \
+DRF_THROTTLE_ME_READ=60000/min \
+DRF_THROTTLE_ME_ACL_READ=60000/min \
 make qa-gate3
 ```
+
+Para que el override aplique en el backend, agrega esas variables a `.env` local antes
+de correr `make qa-gate3`.
 
 Ejemplo para subir exigencia:
 

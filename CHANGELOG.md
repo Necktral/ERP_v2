@@ -25,11 +25,13 @@
 - **Observabilidad (Backend):** middleware de logging por request en `/api/*` con `request_id` y latencia.
 - **Observabilidad (Backend):** logging estructurado JSON con metadatos de request y actor.
 - **Seguridad (Backend):** `throttle_scope` en endpoints sensibles de auth y bootstrap.
+- **QA (Backend):** overrides por env para `me_read` y `me_acl_read`.
+- **Docs (QA):** troubleshooting de Gate 3 por throttling y uso de `.env` en Docker Compose.
 
 ### Changed
 
 - **Auth (Backend):** refresh/logout con scopes `auth_refresh` y `auth_logout`.
-- **QA:** Gates 1-3 pasan en `qa-ci-fresh`; Gate 3 (k6) requiere overrides QA para throttles de `/auth/me` y `/auth/me/acl`.
+- **QA:** Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl` si los overrides no llegan al contenedor (compose usa `.env`).
 - **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
 - **FUEL (Backend):** `GET /api/fuel/health/` queda público (sin auth) para monitoreo.
 

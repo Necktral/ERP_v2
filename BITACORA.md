@@ -16,7 +16,8 @@ Cierre operativo de Etapa 2 con cambios de seguridad, auditoria y QA determinist
 
 - `make qa-ci-fresh` OK (static scan, ruff, mypy, lint/typecheck, pytest, audit integrity).
 - Gate 3 (k6) falla por rate limit en `/api/auth/me/` y `/api/auth/me/acl/`.
-- Ajuste QA via env para Gate 3 (sin tocar defaults): overrides de throttles por entorno.
+- Root cause: overrides de throttling pasados por shell no llegan al contenedor (compose usa `.env`).
+- Ajuste QA via env: `DRF_THROTTLE_ME_READ`/`DRF_THROTTLE_ME_ACL_READ` y docs actualizados.
 
 ### Archivos/Areas
 

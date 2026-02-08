@@ -85,11 +85,17 @@ docker run --rm -i --network host \
 
 ### Overrides QA (throttles)
 
-Si ves 429 bajo k6, normalmente es el limite global de `UserRateThrottle`. Para QA:
+Si ves 429 bajo k6, normalmente es el limite global de `UserRateThrottle` o los scopes
+`me_read`/`me_acl_read`. Para QA:
+
+Nota importante (Docker Compose): el backend carga `.env` via `env_file`. Si las variables
+no estan en `.env`, el contenedor usa defaults y el override no aplica.
 
 ```bash
 DRF_THROTTLE_USER=120000/min \
 DRF_THROTTLE_AUTH_LOGIN=1200/min \
+DRF_THROTTLE_ME_READ=60000/min \
+DRF_THROTTLE_ME_ACL_READ=60000/min \
 make qa-load-stress
 ```
 

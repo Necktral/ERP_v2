@@ -46,6 +46,8 @@ env = environ.Env(
     DRF_THROTTLE_AUTH_LOGIN=(str, "20/min"),
     DRF_THROTTLE_AUTH_REFRESH=(str, "60/min"),
     DRF_THROTTLE_AUTH_LOGOUT=(str, "60/min"),
+    DRF_THROTTLE_ME_READ=(str, "60/min"),
+    DRF_THROTTLE_ME_ACL_READ=(str, "30/min"),
 )
 
 if ENV_FILE.exists():
@@ -295,8 +297,8 @@ REST_FRAMEWORK = {
         "auth_sensitive": "10/min",
         "auth_refresh": env("DRF_THROTTLE_AUTH_REFRESH"),
         "auth_logout": env("DRF_THROTTLE_AUTH_LOGOUT"),
-        "me_read": "60/min",
-        "me_acl_read": "30/min",
+        "me_read": env("DRF_THROTTLE_ME_READ"),
+        "me_acl_read": env("DRF_THROTTLE_ME_ACL_READ"),
         "context_read": "60/min",
         "sync_batch": "30/min",
         "admin_writes": "60/min",
