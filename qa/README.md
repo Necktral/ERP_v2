@@ -144,6 +144,19 @@ Defaults del Gate 3 (overrideables en `make`):
 - `STRESS_LOGIN_RATE_TARGET=5` (logins/seg)
 - `STRESS_SUSTAIN=60s`
 
+### Overrides QA (throttles)
+
+Si Gate 3 falla por 429 bajo k6 (un solo usuario con alto RPS), el cuello suele ser
+`UserRateThrottle`. Para QA puedes subirlo por env sin tocar defaults de codigo.
+
+Ejemplo (solo QA/local):
+
+```bash
+DRF_THROTTLE_USER=120000/min \
+DRF_THROTTLE_AUTH_LOGIN=1200/min \
+make qa-gate3
+```
+
 Ejemplo para subir exigencia:
 
 ```bash

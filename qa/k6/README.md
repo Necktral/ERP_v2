@@ -83,6 +83,16 @@ docker run --rm -i --network host \
   grafana/k6 run - < qa/k6/auth_stress.js
 ```
 
+### Overrides QA (throttles)
+
+Si ves 429 bajo k6, normalmente es el limite global de `UserRateThrottle`. Para QA:
+
+```bash
+DRF_THROTTLE_USER=120000/min \
+DRF_THROTTLE_AUTH_LOGIN=1200/min \
+make qa-load-stress
+```
+
 ### Un solo comando (Makefile)
 
 En Linux puedes usar:
