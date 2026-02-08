@@ -20,15 +20,25 @@ declare module 'vue' {
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api';
+const AUTH_TRANSPORT = import.meta.env.VITE_AUTH_TRANSPORT || 'header';
+const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || 'nt_csrf';
+
+function readCookie(name: string): string | null {
+  const m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+  const value = m?.[2];
+  return value ? decodeURIComponent(value) : null;
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 25_000,
+  withCredentials: AUTH_TRANSPORT === 'cookie',
 });
 
 export const authApi = axios.create({
   baseURL: API_BASE_URL,
   timeout: 25_000,
+  withCredentials: AUTH_TRANSPORT === 'cookie',
 });
 
 // Endpoints exentos de contexto (no requieren X-Company-Id)
@@ -73,9 +83,17 @@ export default boot(({ app, router }) => {
     const path = getPath(config);
 
     // Auth header
-    if (auth.accessToken) {
+    if (AUTH_TRANSPORT === 'header' && auth.accessToken) {
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${auth.accessToken}`;
+    }
+
+    if (AUTH_TRANSPORT === 'cookie') {
+      const csrf = readCookie(CSRF_COOKIE_NAME);
+      if (csrf) {
+        config.headers = config.headers ?? {};
+        config.headers['X-CSRF-Token'] = csrf;
+      }
     }
 
     // Context headers (solo si no es endpoint exento)
@@ -115,7 +133,9 @@ export default boot(({ app, router }) => {
 
           // Reintentar request con token nuevo
           original.headers = original.headers ?? {};
-          if (auth.accessToken) original.headers.Authorization = `Bearer ${auth.accessToken}`;
+          if (AUTH_TRANSPORT === 'header' && auth.accessToken) {
+            original.headers.Authorization = `Bearer ${auth.accessToken}`;
+          }
 
           return api.request(original);
         } catch (e) {

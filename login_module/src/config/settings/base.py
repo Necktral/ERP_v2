@@ -11,6 +11,7 @@ NOTA:
 # (AXES_* se define abajo en formato correcto con timedelta)
 
 from datetime import timedelta
+from typing import cast
 from pathlib import Path
 import sys
 
@@ -32,6 +33,19 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
+    AUTH_TOKEN_TRANSPORT=(str, "header"),
+    AUTH_COOKIE_ACCESS_NAME=(str, "nt_access"),
+    AUTH_COOKIE_REFRESH_NAME=(str, "nt_refresh"),
+    AUTH_COOKIE_CSRF_NAME=(str, "nt_csrf"),
+    AUTH_COOKIE_SECURE=(bool, False),
+    AUTH_COOKIE_SAMESITE=(str, "Lax"),
+    AUTH_COOKIE_DOMAIN=(str, ""),
+    AUTH_COOKIE_PATH=(str, "/"),
+    DRF_THROTTLE_ANON=(str, "60/min"),
+    DRF_THROTTLE_USER=(str, "600/min"),
+    DRF_THROTTLE_AUTH_LOGIN=(str, "20/min"),
+    DRF_THROTTLE_AUTH_REFRESH=(str, "60/min"),
+    DRF_THROTTLE_AUTH_LOGOUT=(str, "60/min"),
 )
 
 if ENV_FILE.exists():
@@ -102,12 +116,15 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-device-nonce",
     "x-device-signature",
     "x-request-id",
+    "x-csrf-token",
 ]
 
 # Permite que el frontend lea el request id devuelto por el backend
 CORS_EXPOSE_HEADERS = [
     "X-Request-Id",
 ]
+
+CORS_ALLOW_CREDENTIALS = env("AUTH_TOKEN_TRANSPORT") == "cookie"
 
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
@@ -168,6 +185,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "config.middleware.cookie_csrf.CookieJwtCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -271,10 +289,12 @@ REST_FRAMEWORK = {
         "config.throttling.DeviceScopedRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "60/min",
-        "user": "600/min",
-        "auth_login": "20/min",
+        "anon": env("DRF_THROTTLE_ANON"),
+        "user": env("DRF_THROTTLE_USER"),
+        "auth_login": env("DRF_THROTTLE_AUTH_LOGIN"),
         "auth_sensitive": "10/min",
+        "auth_refresh": env("DRF_THROTTLE_AUTH_REFRESH"),
+        "auth_logout": env("DRF_THROTTLE_AUTH_LOGOUT"),
         "me_read": "60/min",
         "me_acl_read": "30/min",
         "context_read": "60/min",
@@ -322,3 +342,18 @@ CONTENT_SECURITY_POLICY = {
         "style-src": ("'self'",),
     }
 }
+
+AUTH_TOKEN_TRANSPORT = env("AUTH_TOKEN_TRANSPORT")
+AUTH_COOKIE_ACCESS_NAME = env("AUTH_COOKIE_ACCESS_NAME")
+AUTH_COOKIE_REFRESH_NAME = env("AUTH_COOKIE_REFRESH_NAME")
+AUTH_COOKIE_CSRF_NAME = env("AUTH_COOKIE_CSRF_NAME")
+AUTH_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=not DEBUG)
+AUTH_COOKIE_SAMESITE = env("AUTH_COOKIE_SAMESITE")
+AUTH_COOKIE_DOMAIN = env("AUTH_COOKIE_DOMAIN") or None
+AUTH_COOKIE_PATH = env("AUTH_COOKIE_PATH")
+
+_access_lifetime = cast(timedelta, SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"])
+_refresh_lifetime = cast(timedelta, SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"])
+AUTH_COOKIE_ACCESS_MAX_AGE = int(_access_lifetime.total_seconds())
+AUTH_COOKIE_REFRESH_MAX_AGE = int(_refresh_lifetime.total_seconds())
+AUTH_COOKIE_CSRF_MAX_AGE = AUTH_COOKIE_REFRESH_MAX_AGE

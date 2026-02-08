@@ -57,6 +57,10 @@ def retryable_for(status_code: int) -> bool:
 
 
 def error_code_for(*, status_code: int, exc: Exception | None = None, request=None) -> str:
+    if request is not None:
+        override = getattr(request, "error_code_override", None)
+        if override:
+            return str(override)
     sc = int(status_code)
 
     if sc == 401:

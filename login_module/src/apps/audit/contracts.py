@@ -102,6 +102,9 @@ ALLOWED_REASON_CODES: set[str] = {
     # Tokens
     "TOKEN_INVALID",
     "TOKEN_EXPIRED",
+    "TOKEN_MISMATCH",
+    "INVALID_OLD_PASSWORD",
+    "CSRF_FAILED",
     # Contrato de errores API (auth)
     "AUTH_UNAUTHENTICATED",
     "AUTH_INVALID_TOKEN",

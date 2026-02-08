@@ -8,6 +8,8 @@ import { useContextStore } from 'src/stores/context.store';
 type LoginResponse = { access: string; refresh: string };
 type RefreshResponse = { access: string; refresh?: string };
 
+const AUTH_TRANSPORT = import.meta.env.VITE_AUTH_TRANSPORT || 'header';
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     hydrated: false as boolean,
@@ -32,12 +34,16 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAuthenticated: (s) => Boolean(s.accessToken && s.refreshToken),
+    isAuthenticated: (s) => (AUTH_TRANSPORT === 'cookie' ? s.status === 'authenticated' : Boolean(s.accessToken && s.refreshToken)),
   },
 
   actions: {
     initFromStorage() {
       if (this.hydrated) return;
+      if (AUTH_TRANSPORT === 'cookie') {
+        this.hydrated = true;
+        return;
+      }
       const t = readTokens();
       this.accessToken = t.access;
       this.refreshToken = t.refresh;
@@ -47,10 +53,16 @@ export const useAuthStore = defineStore('auth', {
 
     async login(username: string, password: string) {
       const { data } = await authApi.post<LoginResponse>('/auth/login/', { username, password });
-      this.accessToken = data.access;
-      this.refreshToken = data.refresh;
-      this.status = 'authenticated';
-      writeTokens({ access: data.access, refresh: data.refresh });
+      if (AUTH_TRANSPORT === 'cookie') {
+        this.accessToken = null;
+        this.refreshToken = null;
+        this.status = 'authenticated';
+      } else {
+        this.accessToken = data.access;
+        this.refreshToken = data.refresh;
+        this.status = 'authenticated';
+        writeTokens({ access: data.access, refresh: data.refresh });
+      }
 
       // Fetch user details immediately to check flags
       await this.fetchMe();
@@ -92,6 +104,11 @@ export const useAuthStore = defineStore('auth', {
 
     async refresh() {
       const currentRefresh = this.refreshToken;
+      if (AUTH_TRANSPORT === 'cookie') {
+        await authApi.post('/auth/refresh/', {});
+        this.status = 'authenticated';
+        return;
+      }
       if (!currentRefresh) throw new Error('No refresh token available');
 
       // lock: si ya hay refresh en progreso, esperar el mismo
@@ -124,14 +141,23 @@ export const useAuthStore = defineStore('auth', {
       const refresh = this.refreshToken;
       const access = this.accessToken;
 
-      // limpiar stores primero para cortar UI rápido
+      // limpiar stores primero para cortar UI rapido
       this.hardClearLocal();
+
+      if (AUTH_TRANSPORT === 'cookie') {
+        try {
+          await authApi.post('/auth/logout/', {});
+        } catch {
+          // intencional: no bloqueamos el logout local
+        }
+        return;
+      }
 
       // y luego intentar avisar al backend (si falla, no pasa nada)
       if (refresh && access) {
         try {
           // Usamos authApi pero inyectamos el header manualmente
-          // (porque hardClearLocal ya borró el token del store)
+          // (porque hardClearLocal ya borro el token del store)
           await authApi.post(
             '/auth/logout/',
             { refresh },

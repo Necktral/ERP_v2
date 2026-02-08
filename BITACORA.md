@@ -1,3 +1,34 @@
+## 2026-02-08 — Etapa 2 (seguridad elite) + QA Gates
+
+### Contexto
+
+Cierre operativo de Etapa 2 con cambios de seguridad, auditoria y QA determinista.
+
+### Cambios principales
+
+- **Auth (Backend):** modo cookie opcional (AUTH_TOKEN_TRANSPORT) + refresh/logout con scopes `auth_refresh` y `auth_logout`.
+- **CSRF (Backend):** middleware para cookies con override de error y reason_code.
+- **Auditoria:** redaccion de metadata/snapshots + reason codes nuevos (`TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`).
+- **Frontend:** soporte cookie transport + CSRF header desde cookie + `withCredentials`.
+- **Nginx:** headers de seguridad y rate limits por ruta.
+
+### QA / Gates
+
+- `make qa-ci-fresh` OK (static scan, ruff, mypy, lint/typecheck, pytest, audit integrity).
+- Gate 3 (k6) falla por rate limit en `/api/auth/me/` y `/api/auth/me/acl/`.
+- Ajuste QA via env para Gate 3 (sin tocar defaults): overrides de throttles por entorno.
+
+### Archivos/Areas
+
+- `login_module/src/apps/accounts/views.py`
+- `login_module/src/apps/audit/contracts.py`
+- `login_module/src/apps/audit/writer.py`
+- `login_module/src/config/settings/base.py`
+- `frontend/src/boot/axios.ts`
+- `docker/nginx/default.conf`
+
+---
+
 ## 2026-01-28 — Ajustes documentación Import/Export (índice templates)
 
 ### Contexto

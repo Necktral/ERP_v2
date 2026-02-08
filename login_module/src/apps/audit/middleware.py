@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from django.utils.deprecation import MiddlewareMixin
 
+from apps.audit.contracts import validate_reason_code
 from apps.audit.writer import write_event
 
 
@@ -46,18 +47,28 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
         if getattr(request, "_audit_access_denied_written", False):
             return response
 
+        reason_code = None
+        override = getattr(request, "audit_reason_code_override", None)
+        if override:
+            try:
+                validate_reason_code(str(override))
+                reason_code = str(override)
+            except Exception:
+                reason_code = None
+
         # Mapping contractual (códigos estándar para consumo externo)
-        if status_code == 401:
-            reason_code = "AUTH_UNAUTHENTICATED"
-        elif status_code == 403:
-            if getattr(request, "required_permission", ""):
-                reason_code = "RBAC_FORBIDDEN"
-            elif getattr(request, "required_scope", None):
-                reason_code = "SCOPE_FORBIDDEN"
+        if reason_code is None:
+            if status_code == 401:
+                reason_code = "AUTH_UNAUTHENTICATED"
+            elif status_code == 403:
+                if getattr(request, "required_permission", ""):
+                    reason_code = "RBAC_FORBIDDEN"
+                elif getattr(request, "required_scope", None):
+                    reason_code = "SCOPE_FORBIDDEN"
+                else:
+                    reason_code = "RBAC_FORBIDDEN"
             else:
-                reason_code = "RBAC_FORBIDDEN"
-        else:
-            reason_code = "RATE_LIMITED"
+                reason_code = "RATE_LIMITED"
 
         # Actor/subject
         user = getattr(request, "user", None)

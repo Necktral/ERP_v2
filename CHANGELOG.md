@@ -4,6 +4,10 @@
 
 ### Added
 
+- **Seguridad (Backend):** modo cookie opcional (`AUTH_TOKEN_TRANSPORT`) + middleware CSRF para cookies.
+- **Auditoria (Backend):** redaccion de metadata/snapshots y reason codes `TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`.
+- **Frontend:** soporte de cookie transport (CSRF header desde cookie + `withCredentials`).
+- **Nginx:** hardening de headers de seguridad + rate limits por ruta (auth/api).
 - **Docs (Operación):** pack operativo Import/Export & Sourcing (empresa + plantillas: RFQ, landed cost, checklist, términos).
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/revoke-access/` + evento de auditoría `HR_EMPLOYEE_ACCESS_REVOKED` + acción UI en empleados.
@@ -24,6 +28,8 @@
 
 ### Changed
 
+- **Auth (Backend):** refresh/logout con scopes `auth_refresh` y `auth_logout`.
+- **QA:** Gates 1-3 pasan en `qa-ci-fresh`; Gate 3 (k6) requiere overrides QA para throttles de `/auth/me` y `/auth/me/acl`.
 - **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
 - **FUEL (Backend):** `GET /api/fuel/health/` queda público (sin auth) para monitoreo.
 

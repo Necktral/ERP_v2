@@ -13,6 +13,7 @@ Contrato:
 
 from __future__ import annotations
 
+from django.conf import settings
 from rest_framework.exceptions import NotFound, ParseError, PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -45,7 +46,15 @@ class JWTAuthWithOrgContext(JWTAuthentication):
     def authenticate(self, request):
         auth_result = super().authenticate(request)
         if auth_result is None:
-            return None
+            if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") != "cookie":
+                return None
+            cookie_name = getattr(settings, "AUTH_COOKIE_ACCESS_NAME", "nt_access")
+            raw = request.COOKIES.get(cookie_name)
+            if not raw:
+                return None
+            validated_token = self.get_validated_token(raw)
+            user = self.get_user(validated_token)
+            auth_result = (user, validated_token)
 
         user, token = auth_result
 

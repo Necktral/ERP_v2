@@ -31,6 +31,7 @@ from .contracts import (
     validate_subject,
 )
 from .models import AuditChainHeadV2, AuditEvent
+from .redaction import sanitize_metadata, sanitize_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +128,9 @@ def write_event(
             "data_company_id": getattr(ctx, "data_company_id", None),
             "data_branch_id": getattr(ctx, "data_branch_id", None),
         }
-    before_snapshot = before_snapshot or {}
-    after_snapshot = after_snapshot or {}
+    before_snapshot = sanitize_snapshot(before_snapshot or {})
+    after_snapshot = sanitize_snapshot(after_snapshot or {})
+    metadata = sanitize_metadata(metadata)
 
     ts: datetime = timezone.now()
 

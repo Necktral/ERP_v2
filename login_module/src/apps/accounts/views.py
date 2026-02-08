@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import QueryDict
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -5,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.audit.writer import write_event
@@ -16,6 +18,7 @@ from apps.org.models import BranchProfile, CompanyProfile
 from apps.rbac.models import Role, RoleAssignment
 from apps.rbac.seed_v01 import seed_rbac_v01
 
+from .cookies import clear_auth_cookies, set_auth_cookies
 from .serializers import (
     LoginSerializer,
     MeSerializer,
@@ -82,6 +85,11 @@ class LoginView(APIView):
             metadata={"username": user.username},
         )
 
+        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+            response = Response({"ok": True}, status=status.HTTP_200_OK)
+            set_auth_cookies(response, access=str(refresh.access_token), refresh=str(refresh))
+            return response
+
         return Response(
             {
                 "access": str(refresh.access_token),
@@ -93,9 +101,51 @@ class LoginView(APIView):
 
 class RefreshView(TokenRefreshView):
     permission_classes = (AllowAny,)  # type: ignore[assignment]
-    throttle_scope = "auth_sensitive"
+    throttle_scope = "auth_refresh"
 
     def post(self, request, *args, **kwargs):
+        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+            refresh_cookie = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
+            if not refresh_cookie:
+                write_event(
+                    request=request,
+                    event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                    reason_code="TOKEN_INVALID",
+                    actor_user=None,
+                    subject_type="SESSION",
+                    subject_id="",
+                    metadata={"stage": "refresh", "detail": "missing_refresh_cookie"},
+                )
+                return Response({"detail": "refresh es requerido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+            serializer = TokenRefreshSerializer(data={"refresh": refresh_cookie})
+            if not serializer.is_valid():
+                write_event(
+                    request=request,
+                    event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                    reason_code="TOKEN_INVALID",
+                    actor_user=None,
+                    subject_type="SESSION",
+                    subject_id="",
+                    metadata={"stage": "refresh", "detail": "invalid_refresh_cookie"},
+                )
+                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+
+            access = serializer.validated_data["access"]
+            new_refresh = serializer.validated_data.get("refresh") or refresh_cookie
+            response = Response({"ok": True}, status=status.HTTP_200_OK)
+            set_auth_cookies(response, access=access, refresh=new_refresh)
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH",
+                reason_code="",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh"},
+            )
+            return response
+
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == 200:
@@ -124,10 +174,12 @@ class RefreshView(TokenRefreshView):
 class LogoutView(APIView):
     # Seguridad: evita que un tercero pueda invalidar refresh ajenos (DoS por blacklist).
     permission_classes = [IsAuthenticated]
-    throttle_scope = "auth_sensitive"
+    throttle_scope = "auth_logout"
 
     def post(self, request):
         refresh = request.data.get("refresh")
+        if not refresh and getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+            refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
         if not refresh:
             write_event(
                 request=request,
@@ -178,7 +230,10 @@ class LogoutView(APIView):
             subject_id=str(request.user.id),
             metadata={"stage": "logout"},
         )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+            clear_auth_cookies(response)
+        return response
 
 
 class BootstrapStatusView(APIView):

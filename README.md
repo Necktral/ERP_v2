@@ -15,6 +15,12 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Índice: [docs/README.md](docs/README.md)
 - Operación (negocio): [docs/operacion/README.md](docs/operacion/README.md)
 
+## Estado Etapa 2 (2026-02-08)
+
+- Auth cookie opcional via `AUTH_TOKEN_TRANSPORT` + CSRF en modo cookie.
+- Auditoria con redaccion y reason codes nuevos (`TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`).
+- QA Gates 1-3: `qa-ci-fresh` OK; Gate 3 (k6) en ajuste por rate limit en `/auth/me` y `/auth/me/acl` (overrides QA via env).
+
 ## 🚀 Inicio rápido (Docker)
 
 1. Configura variables
