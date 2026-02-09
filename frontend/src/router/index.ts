@@ -55,7 +55,12 @@ export default route(function () {
       return true;
     }
 
-    // 1) Si requiere auth y no hay sesión → login
+    // 1) Si requiere auth, asegurar sesión por cookies antes de decidir
+    if (!auth.isAuthenticated) {
+      await auth.ensureSession();
+    }
+
+    // 1.1) Si requiere auth y no hay sesión → login
     if (!auth.isAuthenticated) {
       if (to.path !== '/login') return { path: '/login' };
       return true;

@@ -1,12 +1,15 @@
 from django.conf import settings
+from django.core import signing
 from django.http import QueryDict
+from django.utils import timezone
+from datetime import datetime, timezone as dt_timezone
+import pyotp
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.audit.writer import write_event
@@ -19,15 +22,50 @@ from apps.rbac.models import Role, RoleAssignment
 from apps.rbac.seed_v01 import seed_rbac_v01
 
 from .cookies import clear_auth_cookies, set_auth_cookies
+from .models import RefreshTokenSession
 from .serializers import (
     LoginSerializer,
     MeSerializer,
     BootstrapInitSerializer,
     BootstrapOrgSerializer,
     PasswordChangeSerializer,
+    TwoFactorSetupConfirmSerializer,
+    TwoFactorVerifySerializer,
 )
 
 User = get_user_model()
+
+
+def _token_jti(token: RefreshToken) -> str:
+    return str(token.get("jti", ""))
+
+
+def _token_expiry(token: RefreshToken):
+    exp = token.get("exp", None)
+    if exp is None:
+        return None
+    return datetime.fromtimestamp(int(exp), tz=dt_timezone.utc)
+
+
+def _persist_refresh_token(*, token: RefreshToken, user, request) -> RefreshTokenSession:
+    jti = _token_jti(token)
+    expires_at = _token_expiry(token) or timezone.now()
+    ip = request.META.get("REMOTE_ADDR") if request is not None else None
+    ua = (request.META.get("HTTP_USER_AGENT", "") if request is not None else "") or ""
+    return RefreshTokenSession.objects.create(
+        user=user,
+        jti=jti,
+        expires_at=expires_at,
+        ip_address=ip,
+        user_agent=ua[:256],
+    )
+
+
+def _revoke_refresh_session(session: RefreshTokenSession, *, replaced_by_jti: str | None = None) -> None:
+    session.revoked_at = timezone.now()
+    session.last_used_at = timezone.now()
+    session.replaced_by_jti = replaced_by_jti or ""
+    session.save(update_fields=["revoked_at", "last_used_at", "replaced_by_jti"])
 
 
 def _extract_login_reason_code(serializer_errors) -> str:
@@ -45,14 +83,44 @@ def _extract_login_reason_code(serializer_errors) -> str:
     return "INVALID_CREDENTIALS"
 
 
+def _request_auth_transport(request) -> str:
+    override = request.headers.get("X-Auth-Transport") or request.query_params.get("auth_transport")
+    if override in ("header", "cookie"):
+        return override
+    return getattr(settings, "AUTH_TOKEN_TRANSPORT", "header")
+
+
+def _is_admin_user(user) -> bool:
+    return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _totp_for_user(user):
+    return pyotp.TOTP(user.totp_secret)
+
+
+def _sign_2fa_challenge(*, user_id: int) -> str:
+    signer = signing.TimestampSigner(salt="auth-2fa")
+    return signer.sign(str(user_id))
+
+
+def _unsign_2fa_challenge(challenge: str) -> int | None:
+    signer = signing.TimestampSigner(salt="auth-2fa")
+    try:
+        value = signer.unsign(challenge, max_age=settings.TOTP_CHALLENGE_TTL)
+        return int(value)
+    except Exception:
+        return None
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthLoginRateThrottle]
 
     def post(self, request):
+        transport = _request_auth_transport(request)
         # Axes usa request.POST para extraer el username. En JSON, request.POST viene vacío.
         qd = QueryDict("", mutable=True)
-        qd.update({"username": request.data.get("username", "")})
+        qd.update({"username": request.data.get("username") or request.data.get("email") or ""})
         request._request.POST = qd  # compatibilidad Axes
 
         serializer = LoginSerializer(data=request.data, context={"request": request})
@@ -70,7 +138,25 @@ class LoginView(APIView):
             return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
 
         user = serializer.validated_data["user"]
+
+        if _is_admin_user(user) and user.totp_enabled:
+            challenge = _sign_2fa_challenge(user_id=user.id)
+            write_event(
+                request=request,
+                event_type="AUTH_2FA_CHALLENGE",
+                reason_code="TOTP_REQUIRED",
+                actor_user=user,
+                subject_type="USER",
+                subject_id=str(user.id),
+                metadata={"stage": "login"},
+            )
+            return Response(
+                {"2fa_required": True, "challenge": challenge},
+                status=status.HTTP_202_ACCEPTED,
+            )
+
         refresh = RefreshToken.for_user(user)
+        _persist_refresh_token(token=refresh, user=user, request=request)
 
         # Nota: must_change_password se evalúa en /me y el frontend redirige a /password-change
         # No alteramos tokens aquí.
@@ -85,7 +171,7 @@ class LoginView(APIView):
             metadata={"username": user.username},
         )
 
-        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+        if transport == "cookie":
             response = Response({"ok": True}, status=status.HTTP_200_OK)
             set_auth_cookies(response, access=str(refresh.access_token), refresh=str(refresh))
             return response
@@ -104,7 +190,9 @@ class RefreshView(TokenRefreshView):
     throttle_scope = "auth_refresh"
 
     def post(self, request, *args, **kwargs):
-        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+        transport = _request_auth_transport(request)
+        refresh_token = None
+        if transport == "cookie":
             refresh_cookie = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
             if not refresh_cookie:
                 write_event(
@@ -118,23 +206,94 @@ class RefreshView(TokenRefreshView):
                 )
                 return Response({"detail": "refresh es requerido."}, status=status.HTTP_401_UNAUTHORIZED)
 
-            serializer = TokenRefreshSerializer(data={"refresh": refresh_cookie})
-            if not serializer.is_valid():
-                write_event(
-                    request=request,
-                    event_type="AUTH_TOKEN_REFRESH_FAILURE",
-                    reason_code="TOKEN_INVALID",
-                    actor_user=None,
-                    subject_type="SESSION",
-                    subject_id="",
-                    metadata={"stage": "refresh", "detail": "invalid_refresh_cookie"},
-                )
-                return Response(serializer.errors, status=status.HTTP_401_UNAUTHORIZED)
+            refresh_token = refresh_cookie
+        else:
+            refresh_token = request.data.get("refresh")
 
-            access = serializer.validated_data["access"]
-            new_refresh = serializer.validated_data.get("refresh") or refresh_cookie
+        if not refresh_token:
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "detail": "missing_refresh"},
+            )
+            return Response({"detail": "refresh es requerido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            token = RefreshToken(refresh_token)
+        except Exception:
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "detail": "invalid_refresh"},
+            )
+            return Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        token_user_id = token.get("user_id")
+        if not token_user_id:
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "detail": "missing_user_id"},
+            )
+            return Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        user = User.objects.filter(id=token_user_id, is_active=True).first()
+        if not user:
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "detail": "user_inactive"},
+            )
+            return Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        jti = _token_jti(token)
+        session = RefreshTokenSession.objects.filter(
+            jti=jti,
+            user=user,
+            revoked_at__isnull=True,
+        ).first()
+        if not session or (session.expires_at and session.expires_at <= timezone.now()):
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "detail": "session_revoked_or_missing"},
+            )
+            return Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        new_refresh = RefreshToken.for_user(user)
+        _persist_refresh_token(token=new_refresh, user=user, request=request)
+        _revoke_refresh_session(session, replaced_by_jti=_token_jti(new_refresh))
+        try:
+            token.blacklist()
+        except Exception:
+            pass
+
+        access = new_refresh.access_token
+        new_refresh_str = str(new_refresh)
+
+        if transport == "cookie":
             response = Response({"ok": True}, status=status.HTTP_200_OK)
-            set_auth_cookies(response, access=access, refresh=new_refresh)
+            set_auth_cookies(response, access=str(access), refresh=new_refresh_str)
             write_event(
                 request=request,
                 event_type="AUTH_TOKEN_REFRESH",
@@ -146,29 +305,23 @@ class RefreshView(TokenRefreshView):
             )
             return response
 
-        response = super().post(request, *args, **kwargs)
+        write_event(
+            request=request,
+            event_type="AUTH_TOKEN_REFRESH",
+            reason_code="",
+            actor_user=None,
+            subject_type="SESSION",
+            subject_id="",
+            metadata={"stage": "refresh"},
+        )
 
-        if response.status_code == 200:
-            write_event(
-                request=request,
-                event_type="AUTH_TOKEN_REFRESH",
-                reason_code="",
-                actor_user=None,
-                subject_type="SESSION",
-                subject_id="",
-                metadata={"stage": "refresh"},
-            )
-        else:
-            write_event(
-                request=request,
-                event_type="AUTH_TOKEN_REFRESH_FAILURE",
-                reason_code="TOKEN_INVALID",
-                actor_user=None,
-                subject_type="SESSION",
-                subject_id="",
-                metadata={"stage": "refresh"},
-            )
-        return response
+        return Response(
+            {
+                "access": str(access),
+                "refresh": new_refresh_str,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class LogoutView(APIView):
@@ -177,8 +330,9 @@ class LogoutView(APIView):
     throttle_scope = "auth_logout"
 
     def post(self, request):
+        transport = _request_auth_transport(request)
         refresh = request.data.get("refresh")
-        if not refresh and getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+        if transport == "cookie":
             refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
         if not refresh:
             write_event(
@@ -208,6 +362,10 @@ class LogoutView(APIView):
                 )
                 return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
 
+            jti = _token_jti(token)
+            session = RefreshTokenSession.objects.filter(jti=jti, user=request.user, revoked_at__isnull=True).first()
+            if session:
+                _revoke_refresh_session(session)
             token.blacklist()
         except Exception:
             write_event(
@@ -231,9 +389,200 @@ class LogoutView(APIView):
             metadata={"stage": "logout"},
         )
         response = Response(status=status.HTTP_204_NO_CONTENT)
-        if getattr(settings, "AUTH_TOKEN_TRANSPORT", "header") == "cookie":
+        if transport == "cookie":
             clear_auth_cookies(response)
         return response
+
+
+class TwoFactorSetupView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_sensitive"
+
+    def post(self, request):
+        user = request.user
+        if not _is_admin_user(user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        if user.totp_enabled:
+            return Response({"detail": "2FA ya habilitado."}, status=status.HTTP_409_CONFLICT)
+
+        secret = pyotp.random_base32()
+        user.totp_secret = secret
+        user.totp_enabled = False
+        user.totp_confirmed_at = None
+        user.save(update_fields=["totp_secret", "totp_enabled", "totp_confirmed_at"])
+
+        totp = pyotp.TOTP(secret)
+        otpauth = totp.provisioning_uri(name=user.username, issuer_name=settings.TOTP_ISSUER)
+
+        write_event(
+            request=request,
+            event_type="AUTH_2FA_SETUP_STARTED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"stage": "2fa_setup"},
+        )
+
+        return Response(
+            {"secret": secret, "otpauth_uri": otpauth},
+            status=status.HTTP_200_OK,
+        )
+
+
+class TwoFactorConfirmView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_sensitive"
+
+    def post(self, request):
+        user = request.user
+        if not _is_admin_user(user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not user.totp_secret:
+            return Response({"detail": "2FA no inicializado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        s = TwoFactorSetupConfirmSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = _totp_for_user(user)
+        ok = totp.verify(s.validated_data["code"], valid_window=settings.TOTP_VALID_WINDOW)
+        if not ok:
+            write_event(
+                request=request,
+                event_type="AUTH_2FA_FAILED",
+                reason_code="TOTP_INVALID",
+                actor_user=user,
+                subject_type="USER",
+                subject_id=str(user.id),
+                metadata={"stage": "2fa_confirm"},
+            )
+            return Response({"detail": "Código inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.totp_enabled = True
+        user.totp_confirmed_at = timezone.now()
+        user.save(update_fields=["totp_enabled", "totp_confirmed_at"])
+
+        write_event(
+            request=request,
+            event_type="AUTH_2FA_ENABLED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"stage": "2fa_confirm"},
+        )
+
+        return Response({"ok": True}, status=status.HTTP_200_OK)
+
+
+class TwoFactorVerifyView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "auth_sensitive"
+
+    def post(self, request):
+        s = TwoFactorVerifySerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user_id = _unsign_2fa_challenge(s.validated_data["challenge"])
+        if not user_id:
+            return Response({"detail": "Challenge inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(id=user_id, is_active=True).first()
+        if not user or not _is_admin_user(user) or not user.totp_enabled:
+            return Response({"detail": "Challenge inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = _totp_for_user(user)
+        ok = totp.verify(s.validated_data["code"], valid_window=settings.TOTP_VALID_WINDOW)
+        if not ok:
+            write_event(
+                request=request,
+                event_type="AUTH_2FA_FAILED",
+                reason_code="TOTP_INVALID",
+                actor_user=user,
+                subject_type="USER",
+                subject_id=str(user.id),
+                metadata={"stage": "2fa_verify"},
+            )
+            return Response({"detail": "Código inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        refresh = RefreshToken.for_user(user)
+        _persist_refresh_token(token=refresh, user=user, request=request)
+
+        write_event(
+            request=request,
+            event_type="AUTH_2FA_VERIFIED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"stage": "2fa_verify"},
+        )
+
+        transport = _request_auth_transport(request)
+        if transport == "cookie":
+            response = Response({"ok": True}, status=status.HTTP_200_OK)
+            set_auth_cookies(response, access=str(refresh.access_token), refresh=str(refresh))
+            return response
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class TwoFactorDisableView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "auth_sensitive"
+
+    def post(self, request):
+        user = request.user
+        if not _is_admin_user(user):
+            return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        s = TwoFactorSetupConfirmSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.totp_enabled or not user.totp_secret:
+            return Response({"detail": "2FA no habilitado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        totp = _totp_for_user(user)
+        ok = totp.verify(s.validated_data["code"], valid_window=settings.TOTP_VALID_WINDOW)
+        if not ok:
+            write_event(
+                request=request,
+                event_type="AUTH_2FA_FAILED",
+                reason_code="TOTP_INVALID",
+                actor_user=user,
+                subject_type="USER",
+                subject_id=str(user.id),
+                metadata={"stage": "2fa_disable"},
+            )
+            return Response({"detail": "Código inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.totp_enabled = False
+        user.totp_secret = ""
+        user.totp_confirmed_at = None
+        user.save(update_fields=["totp_enabled", "totp_secret", "totp_confirmed_at"])
+
+        write_event(
+            request=request,
+            event_type="AUTH_2FA_DISABLED",
+            reason_code="OK",
+            actor_user=user,
+            subject_type="USER",
+            subject_id=str(user.id),
+            metadata={"stage": "2fa_disable"},
+        )
+
+        return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
 class BootstrapStatusView(APIView):

@@ -33,6 +33,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/LoginPage.vue'),
         meta: { requiresAuth: false },
       },
+      {
+        path: '2fa',
+        component: () => import('pages/TwoFactorPage.vue'),
+        meta: { requiresAuth: false },
+      },
     ],
   },
 
@@ -109,6 +114,14 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           requiresContext: true,
           requiredPermissions: ['audit.read'],
+        },
+      },
+      {
+        path: 'settings/2fa',
+        component: () => import('pages/TwoFactorSetupPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: false,
         },
       },
       {

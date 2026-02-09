@@ -11,12 +11,25 @@ User = get_user_model()
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    username = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_null=True)
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         request = self.context.get("request")
-        user = authenticate(request=request, username=attrs["username"], password=attrs["password"])
+        username = (attrs.get("username") or "").strip()
+        email = (attrs.get("email") or "").strip()
+
+        if not username and email:
+            user_by_email = User.objects.filter(email=email).first()
+            if user_by_email is None:
+                raise serializers.ValidationError("Credenciales inválidas.", code="invalid_credentials")
+            username = user_by_email.username
+
+        if not username:
+            raise serializers.ValidationError({"username": "Requerido"})
+
+        user = authenticate(request=request, username=username, password=attrs["password"])
         if user is None:
             raise serializers.ValidationError("Credenciales inválidas.", code="invalid_credentials")
         if not user.is_active:
@@ -71,6 +84,15 @@ class PasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({"confirm_password": "No coincide"})
         password_validation.validate_password(newp)
         return attrs
+
+
+class TwoFactorSetupConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField()
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    challenge = serializers.CharField()
+    code = serializers.CharField()
 
 
 class MeSerializer(serializers.Serializer):

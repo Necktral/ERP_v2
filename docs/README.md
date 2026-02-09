@@ -29,6 +29,7 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 
 - CI principal (QA Gates 1–3): `.github/workflows/qa-ci.yml`
 - Snapshot/reporting: `.github/workflows/pm-snapshot.yml`
+- Security CI (blocking): `.github/workflows/security-ci.yml`
 
 ## Reglas
 

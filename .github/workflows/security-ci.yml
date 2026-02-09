@@ -1,0 +1,113 @@
+name: Security CI (Blocking)
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+concurrency:
+  group: security-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/prod.txt
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Dependency scan (pip-audit)
+        run: |
+          pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o qa_pip_audit.json
+          python - <<'PY'
+          import json
+          import sys
+
+          data = json.load(open('qa_pip_audit.json', 'r', encoding='utf-8'))
+          def severity_score(vuln):
+              sev = vuln.get('severity') or []
+              for entry in sev:
+                  score = entry.get('score') if isinstance(entry, dict) else None
+                  try:
+                      return float(score)
+                  except (TypeError, ValueError):
+                      continue
+              return 0.0
+
+          def is_high_or_critical(vuln):
+              score = severity_score(vuln)
+              return score >= 7.0
+
+          failures = []
+          for dep in data.get('dependencies', []):
+              for vuln in dep.get('vulns', []):
+                  fix_versions = vuln.get('fix_versions') or []
+                  if fix_versions and is_high_or_critical(vuln):
+                      failures.append((dep.get('name'), vuln.get('id'), fix_versions))
+
+          if failures:
+              print('Blocking vulnerabilities with fixes available:')
+              for name, vid, fixes in failures:
+                  print(f'- {name} {vid} fix_versions={fixes}')
+              sys.exit(2)
+          print('pip-audit OK: no high/critical with fix available')
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependency scan (npm audit)
+        working-directory: frontend
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+          npm audit --json > ../qa_npm_audit.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('../qa_npm_audit.json', 'utf8'));
+          const vulns = data.vulnerabilities || {};
+
+          const failures = [];
+          for (const [name, info] of Object.entries(vulns)) {
+              const severity = info.severity || '';
+              const fix = info.fixAvailable;
+              const hasFix = !!fix && fix !== false;
+              if ((severity === 'high' || severity === 'critical') && hasFix) {
+                  failures.push({ name, severity, fix });
+              }
+          }
+
+          if (failures.length > 0) {
+              console.error('Blocking vulnerabilities with fixes available:');
+              for (const f of failures) {
+                  console.error(`- ${f.name} severity=${f.severity} fix=${JSON.stringify(f.fix)}`);
+              }
+              process.exit(2);
+          }
+          console.log('npm audit OK: no high/critical with fix available');
+          NODE

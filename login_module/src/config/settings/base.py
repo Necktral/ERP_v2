@@ -33,7 +33,7 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
-    AUTH_TOKEN_TRANSPORT=(str, "header"),
+    AUTH_TOKEN_TRANSPORT=(str, "cookie"),
     AUTH_COOKIE_ACCESS_NAME=(str, "nt_access"),
     AUTH_COOKIE_REFRESH_NAME=(str, "nt_refresh"),
     AUTH_COOKIE_CSRF_NAME=(str, "nt_csrf"),
@@ -48,6 +48,10 @@ env = environ.Env(
     DRF_THROTTLE_AUTH_LOGOUT=(str, "60/min"),
     DRF_THROTTLE_ME_READ=(str, "60/min"),
     DRF_THROTTLE_ME_ACL_READ=(str, "30/min"),
+    DJANGO_CSP_CONNECT_SRC=(list, ["http://localhost:8000", "http://127.0.0.1:8000"]),
+    TOTP_ISSUER=(str, "Necktral"),
+    TOTP_CHALLENGE_TTL=(int, 300),
+    TOTP_VALID_WINDOW=(int, 1),
 )
 
 if ENV_FILE.exists():
@@ -105,6 +109,10 @@ LOGGING = {
 # CORS / CSRF para PWA
 CORS_ALLOWED_ORIGINS = env("DJANGO_CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = env("DJANGO_CSRF_TRUSTED_ORIGINS")
+CSP_CONNECT_SRC_LIST = env("DJANGO_CSP_CONNECT_SRC")
+TOTP_ISSUER = env("TOTP_ISSUER")
+TOTP_CHALLENGE_TTL = env("TOTP_CHALLENGE_TTL")
+TOTP_VALID_WINDOW = env("TOTP_VALID_WINDOW")
 
 from corsheaders.defaults import default_headers
 
@@ -178,6 +186,7 @@ INSTALLED_APPS += [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "config.middleware.request_id.RequestIdMiddleware",
     "config.middleware.request_logging.RequestLoggingMiddleware",
     # CORS lo más arriba posible (antes de CommonMiddleware y WhiteNoise)
@@ -252,9 +261,13 @@ PASSWORD_HASHERS = [
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": "apps.accounts.password_validators.PasswordComplexityValidator",
+        "OPTIONS": {"min_length": 10, "min_classes": 3},
+    },
 ]
 
 
@@ -342,6 +355,22 @@ CONTENT_SECURITY_POLICY = {
         "default-src": ("'self'",),
         "script-src": ("'self'",),
         "style-src": ("'self'",),
+        "object-src": ("'none'",),
+        "base-uri": ("'self'",),
+        "frame-ancestors": ("'none'",),
+        "form-action": ("'self'",),
+    }
+}
+
+CONTENT_SECURITY_POLICY_REPORT_ONLY = {
+    "DIRECTIVES": {
+        "default-src": ("'self'",),
+        "script-src": ("'self'",),
+        "style-src": ("'self'",),
+        "connect-src": tuple(["'self'"] + list(CSP_CONNECT_SRC_LIST)),
+        "img-src": ("'self'", "data:"),
+        "font-src": ("'self'", "data:"),
+        "report-uri": ("/api/csp/report/",),
     }
 }
 

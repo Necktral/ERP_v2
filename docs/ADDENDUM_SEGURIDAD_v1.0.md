@@ -25,17 +25,20 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 
 ## Debilidades de seguridad identificadas
 
-1. **Tokens JWT en almacenamiento web (`localStorage`) – riesgo XSS.**
-   - Los tokens de sesion se guardan en `localStorage` y se envian como `Authorization: Bearer <token>`.
-   - Un XSS podria leer `localStorage` y robar tokens.
+1. **Tokens JWT en almacenamiento web (`localStorage`) – riesgo XSS (historico).**
+
+- Antes: tokens en `localStorage` con `Authorization: Bearer <token>`.
+- Estado actual: mitigado con cookies HttpOnly + CSRF; el frontend ya no persiste tokens.
 
 2. **HTTPS/HSTS no forzado por configuracion base.**
    - En settings base se observa `SECURE_SSL_REDIRECT = False` y `SECURE_HSTS_SECONDS = 0`.
    - Si en produccion no se habilita HTTPS/HSTS en el terminador TLS, hay riesgo de MITM.
 
 3. **Politica CSP presente pero incompleta.**
-   - Existe CSP basica, pero faltan directivas de hardening y hay `unsafe-inline` en estilos.
-   - Mitiga parcialmente, pero deja vectores abiertos.
+
+- Estado actual: CSP base en modo enforce (default/script/style/object/base-uri/frame-ancestors/form-action).
+- Report-only activo para `connect-src`, `img-src`, `font-src` con endpoint de reportes.
+- Falta endurecer y remover `unsafe-inline` donde aplique.
 
 4. **Auditoria con posible sobre-exposicion de datos sensibles.**
    - Los snapshots de auditoria pueden contener PII o datos sensibles si no se filtran.
@@ -47,6 +50,15 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 - **HTTPS/HSTS desactivado en dev:** se asume terminacion TLS en Nginx o balanceador en prod.
 - **CSP parcial:** se implemento un minimo viable para evitar romper la UI durante desarrollo.
 - **Auditoria exhaustiva:** se priorizo trazabilidad e integridad (firma HMAC), con filtrado pendiente.
+
+## Estado actual (2026-02-08)
+
+- Autenticacion por cookies HttpOnly + CSRF en SPA; sin tokens en `localStorage`.
+- CSP base enforce + report-only para `connect-src` (endpoint `/api/csp/report/`).
+- Refresh tokens persistidos y revocables por sesion (rotacion y blacklist).
+- Politica de contrasenas reforzada (longitud + complejidad).
+- 2FA TOTP para cuentas admin con setup y QR.
+- Security CI blocking: gitleaks + pip-audit + npm audit.
 
 ## Riesgos pendientes (a confirmar)
 
@@ -66,7 +78,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
    - Objetivo: minimizar ejecucion de codigo no autorizado en el cliente.
    - Acciones:
      - Auditar el frontend en busca de `v-html` o render HTML crudo.
-     - Fortalecer CSP con `base-uri 'none'`, `object-src 'none'`, `frame-ancestors 'none'`, `connect-src` limitado.
+     - Fortalecer CSP con `base-uri 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `connect-src` limitado.
      - Eliminar `unsafe-inline` donde sea posible (usar nonces/hashes si aplica).
    - DoD:
      - No hay `v-html` ni HTML crudo sin sanitizar.
@@ -124,7 +136,19 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
    - Riesgos:
      - Falsos positivos en scanning; ajustar reglas.
 
-6. **Contrato unificado de errores API**
+6. **Migracion de autenticacion (cookies HttpOnly + CSRF)**
+   - Objetivo: eliminar tokens accesibles por JS y reducir impacto de XSS en browser.
+   - Acciones:
+     - Usar cookies HttpOnly como transporte primario en browser.
+     - Mantener header para clientes no-browser bajo demanda.
+     - Validar CSRF en mutaciones cuando el transporte sea cookie.
+   - DoD:
+     - Login/refresh/logout operan con cookies en SPA.
+     - No hay tokens en `localStorage`.
+   - Riesgos:
+     - CORS/CSRF mal configurados pueden romper el flujo en prod.
+
+7. **Contrato unificado de errores API**
    - Objetivo: errores consistentes y seguros para frontend.
    - Acciones:
      - Definir envelope `{code, message, details, request_id}`.
@@ -136,7 +160,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
    - Riesgos:
      - Cambio coordinado backend/frontend para evitar regresiones.
 
-7. **Observabilidad minima (errores, logs, trazabilidad)**
+8. **Observabilidad minima (errores, logs, trazabilidad)**
    - Objetivo: diagnosticar incidentes y correlacionar requests.
    - Acciones:
      - Integrar Sentry (backend + frontend).
@@ -150,18 +174,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 
 ### B) Mediano plazo (1–3 meses)
 
-1. **Refactor de autenticacion: cookies HttpOnly o BFF**
-   - Objetivo: eliminar tokens accesibles por JS.
-   - Acciones:
-     - Opcion A: cookies HttpOnly + CSRF bien configurado.
-     - Opcion B: BFF con sesion manejada en backend.
-   - DoD:
-     - Flujo login/refresh/logout estable sin `localStorage`.
-     - Documentacion del nuevo flujo.
-   - Riesgos:
-     - Complejidad de CSRF y CORS; probar en staging.
-
-2. **Pruebas frontend y E2E**
+1. **Pruebas frontend y E2E**
    - Objetivo: prevenir regresiones en auth, permisos y flujos criticos.
    - Acciones:
      - Unit/component tests (Vitest/Jest).
@@ -171,7 +184,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
    - Riesgos:
      - Fragilidad de tests si la UI cambia frecuentemente.
 
-3. **CI/CD con despliegue reproducible**
+2. **CI/CD con despliegue reproducible**
    - Objetivo: releases trazables, rollback rapido y despliegue confiable.
    - Acciones:
      - Build -> tag -> push de imagenes Docker.
@@ -182,7 +195,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
    - Riesgos:
      - Configuracion de secrets y permisos en CI.
 
-4. **Supply chain y dependencias**
+3. **Supply chain y dependencias**
    - Objetivo: reducir riesgos de librerias vulnerables.
    - Acciones:
      - Dependabot o equivalente.

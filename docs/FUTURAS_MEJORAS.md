@@ -42,7 +42,12 @@ Capturar mejoras futuras del sistema (técnicas y de producto) para que queden *
 4. **Hardening de seguridad**
 
 - ✅ Implementado (2026-02-02): rate limiting coherente en endpoints sensibles.
-- ⏳ Pendiente: rotación/gestión de secretos (AUDIT_HMAC_KEY, claves de firma, etc.).
+- ✅ Implementado (2026-02-08): cookies HttpOnly + CSRF en SPA (sin `localStorage`).
+- ✅ Implementado (2026-02-08): CSP base enforce + report-only con endpoint de reportes.
+- ✅ Implementado (2026-02-08): refresh tokens persistidos + revocacion por sesion.
+- ✅ Implementado (2026-02-08): 2FA TOTP para admins.
+- ✅ Implementado (2026-02-08): Security CI blocking (gitleaks, pip-audit, npm audit).
+- ⏳ Pendiente: rotacion/gestion de secretos (AUDIT_HMAC_KEY, claves de firma, etc.).
 
 ### B) Mediano plazo (1–3 meses)
 

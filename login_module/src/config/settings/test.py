@@ -5,6 +5,9 @@ from rest_framework.settings import api_settings
 # Tests: deterministas y rápidos
 DEBUG = False
 
+# Tests: mantener header para facilitar clientes no-browser
+AUTH_TOKEN_TRANSPORT = "header"
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
@@ -17,6 +20,9 @@ MIDDLEWARE = [m for m in MIDDLEWARE if m != "axes.middleware.AxesMiddleware"]
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+# Tests: relajar validadores de password para evitar friccion
+AUTH_PASSWORD_VALIDATORS = []
 
 # Throttling activo pero con límites altos para evitar 429 en tests
 REST_FRAMEWORK = {

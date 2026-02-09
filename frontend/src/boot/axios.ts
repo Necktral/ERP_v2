@@ -20,7 +20,7 @@ declare module 'vue' {
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api';
-const AUTH_TRANSPORT = import.meta.env.VITE_AUTH_TRANSPORT || 'header';
+const AUTH_TRANSPORT = 'cookie';
 const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || 'nt_csrf';
 
 function readCookie(name: string): string | null {
@@ -82,12 +82,6 @@ export default boot(({ app, router }) => {
 
     const path = getPath(config);
 
-    // Auth header
-    if (AUTH_TRANSPORT === 'header' && auth.accessToken) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${auth.accessToken}`;
-    }
-
     if (AUTH_TRANSPORT === 'cookie') {
       const csrf = readCookie(CSRF_COOKIE_NAME);
       if (csrf) {
@@ -131,12 +125,7 @@ export default boot(({ app, router }) => {
         try {
           await auth.refresh();
 
-          // Reintentar request con token nuevo
-          original.headers = original.headers ?? {};
-          if (AUTH_TRANSPORT === 'header' && auth.accessToken) {
-            original.headers.Authorization = `Bearer ${auth.accessToken}`;
-          }
-
+          // Reintentar request (cookies ya viajan automaticamente)
           return api.request(original);
         } catch (e) {
           // Refresh falló → logout duro y llevar a login

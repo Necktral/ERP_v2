@@ -31,6 +31,12 @@ Se ejecutan verificaciones adicionales con salida en el resumen del job y en art
 
 Estos pasos **no bloquean** el merge; son informativos y requieren revisión manual ante hallazgos.
 
+## Security CI (blocking)
+
+Existe un workflow separado que **si bloquea** merges cuando hay vulnerabilidades altas/criticas con fix disponible:
+
+- `.github/workflows/security-ci.yml`
+
 ## Recomendación operativa
 
 - Si hay hallazgos `CRITICAL` o `HIGH`, revisa manualmente antes de merge.

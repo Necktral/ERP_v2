@@ -10,6 +10,10 @@ from .views import (
     BootstrapInitView,
     BootstrapOrgView,
     PasswordChangeView,
+    TwoFactorSetupView,
+    TwoFactorConfirmView,
+    TwoFactorVerifyView,
+    TwoFactorDisableView,
 )
 
 urlpatterns = [
@@ -24,4 +28,9 @@ urlpatterns = [
     path("bootstrap/org/", BootstrapOrgView.as_view(), name="auth-bootstrap-org"),
     # Password change (forzado)
     path("password/", PasswordChangeView.as_view(), name="auth-password-change"),
+    # 2FA (TOTP)
+    path("2fa/enable/", TwoFactorSetupView.as_view(), name="auth-2fa-enable"),
+    path("2fa/confirm/", TwoFactorConfirmView.as_view(), name="auth-2fa-confirm"),
+    path("2fa/verify/", TwoFactorVerifyView.as_view(), name="auth-2fa-verify"),
+    path("2fa/disable/", TwoFactorDisableView.as_view(), name="auth-2fa-disable"),
 ]
