@@ -344,7 +344,8 @@ class LogoutView(APIView):
                 subject_id="",
                 metadata={"stage": "logout", "detail": "missing_refresh"},
             )
-            return Response({"detail": "refresh es requerido."}, status=status.HTTP_400_BAD_REQUEST)
+            # Logout idempotente/best-effort: aunque falte refresh, el cliente ya debe considerarse deslogueado.
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         try:
             token = RefreshToken(refresh)
@@ -360,6 +361,7 @@ class LogoutView(APIView):
                     subject_id="",
                     metadata={"stage": "logout", "detail": "refresh_owner_mismatch"},
                 )
+                # No blacklistear refresh ajeno; responder 403 para señalizar el riesgo.
                 return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
 
             jti = _token_jti(token)
@@ -377,7 +379,8 @@ class LogoutView(APIView):
                 subject_id="",
                 metadata={"stage": "logout", "detail": "invalid_refresh"},
             )
-            return Response({"detail": "refresh inválido."}, status=status.HTTP_400_BAD_REQUEST)
+            # Idempotente: refresh expirado/corrupto no debe bloquear el logout local.
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         write_event(
             request=request,
