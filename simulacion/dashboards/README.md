@@ -8,7 +8,6 @@ Este paquete ejecuta una simulacion realista del flujo de autenticacion en modo 
 - Verificar tolerancia a errores y casos negativos
 - Probar rotacion de refresh y logout idempotente
 - Confirmar robustez frente a tokens invalidos
-- **Auditoría de Seguridad**: Detectar vulnerabilidades de Replay Attack (2FA) y persistencia de cookies.
 
 ## Contenido
 

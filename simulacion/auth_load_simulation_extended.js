@@ -21,6 +21,26 @@ const ADMIN_2FA_SLEEP = Number(__ENV.ADMIN_2FA_SLEEP || 15);
 const TRANSPORT_COOKIE = "cookie";
 const TRANSPORT_HEADER = "header";
 
+// Helper to check if response clears critical auth cookies
+function checkCookiesCleared(res) {
+  const setCookies = res.headers["Set-Cookie"];
+  if (!setCookies) return false;
+
+  // Normalize to string array (k6 can return string or array)
+  const headers = Array.isArray(setCookies) ? setCookies : [setCookies];
+
+  // We check for nt_access and nt_refresh being cleared (Max-Age=0 or Expires in past)
+  const targets = ["nt_access", "nt_refresh"];
+  const isCleared = (name) =>
+    headers.some(
+      (h) =>
+        h.includes(`${name}=`) &&
+        (h.includes("Max-Age=0") || h.includes("Expires=Thu, 01 Jan 1970")),
+    );
+
+  return targets.every(isCleared);
+}
+
 function share(vus, ratio, minVal) {
   const computed = Math.floor(vus * ratio);
   return Math.max(minVal, computed);
@@ -31,7 +51,13 @@ export const options = {
     cookie_flow: {
       executor: "constant-vus",
       exec: "cookieLoginFlow",
-      vus: share(TOTAL_VUS, 0.4, 1),
+      vus: share(TOTAL_VUS, 0.3, 1),
+      duration: DURATION,
+    },
+    cookie_logout_idempotent: {
+      executor: "constant-vus",
+      exec: "cookieIdempotentLogoutFlow",
+      vus: share(TOTAL_VUS, 0.1, 1),
       duration: DURATION,
     },
     admin_2fa: {
@@ -70,6 +96,8 @@ export const options = {
     "http_req_duration{scenario:cookie_flow,name:auth_logout_cookie}": [
       "p(95)<450",
     ],
+    "http_req_duration{scenario:cookie_logout_idempotent,name:auth_logout_cookie_invalid}":
+      ["p(95)<450"],
     "http_req_duration{scenario:admin_2fa,name:auth_2fa_verify}": ["p(95)<700"],
     "http_req_duration{scenario:refresh_rotation,name:auth_refresh_header}": [
       "p(95)<400",
@@ -241,14 +269,14 @@ function refreshCookie(csrfToken) {
   });
 }
 
-function logoutCookie(csrfToken) {
+function logoutCookie(csrfToken, tags) {
   return http.post(`${BASE_URL}/auth/logout/`, JSON.stringify({}), {
     headers: {
       "Content-Type": "application/json",
       "X-Auth-Transport": TRANSPORT_COOKIE,
       "X-CSRF-Token": csrfToken || "",
     },
-    tags: { name: "auth_logout_cookie" },
+    tags: tags || { name: "auth_logout_cookie" },
   });
 }
 
@@ -321,9 +349,44 @@ export function cookieLoginFlow() {
   const logoutRes = logoutCookie(csrfToken);
   check(logoutRes, {
     "logout cookie 204": (r) => r && r.status === 204,
+    "logout cookie cleared": (r) => checkCookiesCleared(r),
   });
 
   sleep(ADMIN_2FA_SLEEP);
+}
+
+export function cookieIdempotentLogoutFlow() {
+  const jar = http.cookieJar();
+  clearJar(jar);
+
+  const loginRes = loginCookie(USER_USERNAME, USER_PASSWORD);
+  check(loginRes, {
+    "login cookie 200": (r) => r && r.status === 200,
+  });
+
+  const csrfToken = getCookieValue(jar, CSRF_COOKIE_NAME);
+  if (!csrfToken) {
+    sleep(0.2);
+    return;
+  }
+
+  // Corrupt the refresh cookie in the jar to simulate invalid token
+  // Note: we can't easily 'modify' a cookie in the jar directly in k6 without overwriting it.
+  // We overwrite it with an invalid value.
+  jar.set(ROOT_URL, "nt_refresh", "invalid_refresh_token_value", {
+    secure: false, // assuming local dev env behaves this way or matches setup
+    path: "/",
+  });
+
+  const logoutRes = logoutCookie(csrfToken, {
+    name: "auth_logout_cookie_invalid",
+  });
+  check(logoutRes, {
+    "logout invalid cookie 204": (r) => r && r.status === 204,
+    "logout invalid cookie cleared": (r) => checkCookiesCleared(r),
+  });
+
+  sleep(Number(__ENV.SLEEP || 0.2));
 }
 
 export function adminTwoFaFlow() {
@@ -353,6 +416,9 @@ export function adminTwoFaFlow() {
     "2fa verify 200": (r) => r && r.status === 200,
   });
 
+  // Replay Attack Test: Try to reuse the same challenge/code
+  // We explicitly strip cookies to simulate a replay from a different context/browser/tool
+  // and to avoid CSRF 403 failure masking the logic check.
   const replayRes = http.post(
     `${BASE_URL}/auth/2fa/verify/`,
     JSON.stringify({ challenge, code }),
@@ -360,6 +426,7 @@ export function adminTwoFaFlow() {
       headers: {
         "Content-Type": "application/json",
         "X-Auth-Transport": TRANSPORT_COOKIE,
+        Cookie: "", // Ensure no cookies are sent
       },
       responseCallback: http.expectedStatuses(400),
       tags: { name: "auth_2fa_verify" },

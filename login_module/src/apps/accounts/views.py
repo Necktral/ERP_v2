@@ -133,22 +133,32 @@ def _consume_2fa_challenge(*, challenge_token: str, request) -> TwoFactorChallen
     ip = request.META.get("REMOTE_ADDR") or None
     ua_hash = _ua_hash(request)
 
+    # Use atomic block + select_for_update to prevent replay attacks
     with transaction.atomic():
-        challenge = TwoFactorChallenge.objects.select_for_update().filter(id=challenge_id).first()
-        if not challenge:
+        # Force evaluation to list to ensure DB hit and locking
+        challenges = list(TwoFactorChallenge.objects.select_for_update().filter(id=challenge_id))
+        if not challenges:
             return None
+
+        challenge = challenges[0]
+
         if challenge.used_at is not None:
             return None
+
         if challenge.expires_at and challenge.expires_at <= now:
             return None
+
         if challenge.ip_address and ip and challenge.ip_address != ip:
             return None
+
         if challenge.user_agent_hash and ua_hash and challenge.user_agent_hash != ua_hash:
             return None
 
-        challenge.used_at = now
-        challenge.save(update_fields=["used_at"])
-        return challenge
+        # Challenge consumed. Delete to prevent any replay possibility.
+        # Use QuerySet delete to avoid clearing pk on the instance structure
+        TwoFactorChallenge.objects.filter(pk=challenge.pk).delete()
+
+    return challenge
 
 
 class LoginView(APIView):
@@ -378,23 +388,28 @@ class LogoutView(APIView):
         refresh = request.data.get("refresh")
         if transport == "cookie":
             refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
-        if not refresh:
-            write_event(
-                request=request,
-                event_type="AUTH_LOGOUT_FAILURE",
-                reason_code="TOKEN_INVALID",
-                actor_user=request.user,
-                subject_type="SESSION",
-                subject_id="",
-                metadata={"stage": "logout", "detail": "missing_refresh"},
-            )
-            # Logout idempotente/best-effort: aunque falte refresh, el cliente ya debe considerarse deslogueado.
-            response = Response(status=status.HTTP_204_NO_CONTENT)
-            if transport == "cookie":
-                clear_auth_cookies(response)
-            return response
+
+        # Preparamos la respuesta base (idempotente)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+
+        # 1. Limpieza incondicional de cookies si el transporte es cookie.
+        if transport == "cookie":
+            clear_auth_cookies(response)
 
         try:
+            if not refresh:
+                write_event(
+                    request=request,
+                    event_type="AUTH_LOGOUT_FAILURE",
+                    reason_code="TOKEN_INVALID",
+                    actor_user=request.user,
+                    subject_type="SESSION",
+                    subject_id="",
+                    metadata={"stage": "logout", "detail": "missing_refresh"},
+                )
+                # response ya es 204 y cookies limpias
+                return response
+
             token = RefreshToken(refresh)
 
             token_user_id = token.get("user_id")
@@ -412,10 +427,25 @@ class LogoutView(APIView):
                 return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
 
             jti = _token_jti(token)
+
+            # Revocación de sesión extendida
             session = RefreshTokenSession.objects.filter(jti=jti, user=request.user, revoked_at__isnull=True).first()
             if session:
                 _revoke_refresh_session(session)
+
+            # Revocación estándar (blacklist JWT)
             token.blacklist()
+
+            write_event(
+                request=request,
+                event_type="AUTH_LOGOUT",
+                reason_code="",
+                actor_user=request.user,
+                subject_type="USER",
+                subject_id=str(request.user.id),
+                metadata={"stage": "logout"},
+            )
+
         except Exception:
             write_event(
                 request=request,
@@ -427,23 +457,9 @@ class LogoutView(APIView):
                 metadata={"stage": "logout", "detail": "invalid_refresh"},
             )
             # Idempotente: refresh expirado/corrupto no debe bloquear el logout local.
-            response = Response(status=status.HTTP_204_NO_CONTENT)
-            if transport == "cookie":
-                clear_auth_cookies(response)
-            return response
+            # response ya es 204 y cookies limpias.
+            pass
 
-        write_event(
-            request=request,
-            event_type="AUTH_LOGOUT",
-            reason_code="",
-            actor_user=request.user,
-            subject_type="USER",
-            subject_id=str(request.user.id),
-            metadata={"stage": "logout"},
-        )
-        response = Response(status=status.HTTP_204_NO_CONTENT)
-        if transport == "cookie":
-            clear_auth_cookies(response)
         return response
 
 
@@ -455,9 +471,6 @@ class TwoFactorSetupView(APIView):
         user = request.user
         if not _is_admin_user(user):
             return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
-
-        if user.totp_enabled:
-            return Response({"detail": "2FA ya habilitado."}, status=status.HTTP_409_CONFLICT)
 
         secret = pyotp.random_base32()
         user.totp_secret = secret

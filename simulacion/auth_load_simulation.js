@@ -249,6 +249,10 @@ export function twoFaCookieCycle() {
   sleep(Number(__ENV.SLEEP || 0.2));
 }
 
+export default function () {
+  basicCookieCycle();
+}
+
 export function basicCookieCycle() {
   const jar = http.cookieJar();
   if (typeof jar.clear === "function") {

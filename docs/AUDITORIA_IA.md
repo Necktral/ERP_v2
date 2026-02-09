@@ -31,6 +31,15 @@ Se ejecutan verificaciones adicionales con salida en el resumen del job y en art
 
 Estos pasos **no bloquean** el merge; son informativos y requieren revisión manual ante hallazgos.
 
+## Herramientas de Auditoría Activa
+
+Además de la revisión estática, el repositorio incluye herramientas de **auditoría dinámica** de seguridad:
+
+- **Simulación de Carga/Ataque (k6)**:
+  - Ubicación: `simulacion/auth_load_simulation_extended.js`.
+  - Vectores probados: Replay Attacks en 2FA, Idempotencia de Logout, Validaciones de Tokens.
+  - Ejecución: `./simulacion/run_simulation.sh`.
+
 ## Security CI (blocking)
 
 Existe un workflow separado que **si bloquea** merges cuando hay vulnerabilidades altas/criticas con fix disponible:

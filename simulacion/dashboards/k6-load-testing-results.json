@@ -35,6 +35,10 @@
       },
       "hiddenSeries": false,
       "id": 2,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-k6"
+      },
       "legend": {
         "avg": false,
         "current": false,
@@ -144,7 +148,11 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 0
+       datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-k6"
+      },
+      " "y": 0
       },
       "hiddenSeries": false,
       "id": 3,
@@ -261,6 +269,10 @@
       },
       "hiddenSeries": false,
       "id": 4,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-k6"
+      },
       "legend": {
         "avg": false,
         "current": false,

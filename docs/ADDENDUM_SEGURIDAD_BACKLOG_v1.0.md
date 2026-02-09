@@ -6,7 +6,7 @@ Estado: **Backlog ejecutable (vivo)**
 
 Este backlog traduce el corto plazo del addendum a issues/epicas listas para carga.
 
-## Estado actual (2026-02-08)
+## Estado actual (2026-02-09)
 
 - ✅ Autenticacion por cookies HttpOnly + CSRF en SPA (sin `localStorage`).
 - ✅ CSP base enforce + report-only para `connect-src` con endpoint de reportes.
@@ -14,6 +14,8 @@ Este backlog traduce el corto plazo del addendum a issues/epicas listas para car
 - ✅ Politica de contrasenas reforzada (longitud + complejidad).
 - ✅ 2FA TOTP para admins (setup + confirmacion + QR).
 - ✅ Security CI blocking (gitleaks, pip-audit, npm audit).
+- ✅ Logout idempotente: limpieza segura de cookies ante tokens inválidos.
+- ✅ Anti-Replay en 2FA: challenge de un solo uso validado y expirado.
 
 ---
 

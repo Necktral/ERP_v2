@@ -79,8 +79,9 @@ jobs:
 
       - name: Run k6 load test
         run: |
-          mkdir -p qa/reports
-          docker run --rm -v "$PWD/qa/reports:/reports" \
+          mkdir -p simulacion/reports
+          docker run --rm -v "$PWD/simulacion/reports:/reports" \
+            -v "$PWD/simulacion:/simulacion" \
             --network erp_crm_default \
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
@@ -89,30 +90,27 @@ jobs:
             -e USER_USERNAME=k6_user \
             -e USER_PASSWORD=Pass12345__Strong \
             -e CSRF_COOKIE_NAME=nt_csrf \
-            -e VUS_WARMUP=2 \
-            -e VUS_TARGET=6 \
-            -e SUSTAIN=30s \
-            -e BASIC_RATE=3 \
-            -e BASIC_DURATION=40s \
-            grafana/k6 run -o json=/reports/auth_load_results.json - < qa/k6/auth_load_simulation.js
+            -e VUS=10 \
+            -e DURATION=40s \
+            grafana/k6 run -o json=/reports/auth_load_results.json /simulacion/auth_load_simulation_extended.js
 
       - name: Upload k6 results artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: auth-load-metrics
-          path: qa/reports/auth_load_results.json
+          path: simulacion/reports/auth_load_results.json
 
       - name: Upload backend logs
         if: always()
-        run: docker compose logs backend > qa/reports/backend.log
+        run: docker compose logs backend > simulacion/reports/backend.log
 
       - name: Upload backend log artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-log
-          path: qa/reports/backend.log
+          path: simulacion/reports/backend.log
 
       - name: Tear down services
         if: always()

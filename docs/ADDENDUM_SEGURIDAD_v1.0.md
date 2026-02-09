@@ -57,10 +57,11 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 - CSP base enforce + report-only para `connect-src` (endpoint `/api/csp/report/`).
 - Refresh tokens persistidos y revocables por sesion (rotacion y blacklist).
 - Politica de contrasenas reforzada (longitud + complejidad).
-- 2FA TOTP para cuentas admin con setup y QR.
+- 2FA TOTP para cuentas admin con setup y QR (Anti-Replay garantizado).
 - Security CI blocking: gitleaks + pip-audit + npm audit.
 - Observabilidad basica: `X-Request-Id`, Sentry opcional y `/api/metrics/`.
 - Auditoria con keyring (`AUDIT_HMAC_KEYS`) para rotacion segura de firmas.
+- Logout idempotente con limpieza segura de cookies (incluso ante tokens corruptos).
 
 ## Riesgos pendientes (a confirmar)
 

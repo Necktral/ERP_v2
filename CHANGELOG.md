@@ -48,6 +48,8 @@
 ### Fixed
 
 - **Tests (Backend):** `test_axes_lockout` se habilita sin skip forzado.
+- **Seguridad (Backend):** 2FA Anti-Replay endurecido con bloqueo pesimista (`select_for_update`) y eliminación inmediata del challenge tras consumo.
+- **Seguridad (Backend):** `LogoutView` limpia cookies incondicionalmente al usar transporte `cookie`, garantizando idempotencia incluso con tokens inválidos.
 
 ## [2026-01-13] - Release
 
