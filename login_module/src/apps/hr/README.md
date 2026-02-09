@@ -124,6 +124,11 @@ Desde la versión 2026-01, el sistema permite provisionar acceso a empleados dir
 
 - Nuevo permiso: `iam.users.create` para controlar quién puede provisionar usuarios desde HR.
 
+## Paginación en listados
+
+- Listados HR soportan `limit` y `offset`.
+- Respuesta estándar: `{ count, limit, offset, results }`.
+
 ---
 
-Actualizado al 2026-01-05.
+Actualizado al 2026-02-09.

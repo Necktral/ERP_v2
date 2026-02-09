@@ -15,11 +15,13 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Índice: [docs/README.md](docs/README.md)
 - Operación (negocio): [docs/operacion/README.md](docs/operacion/README.md)
 
-## Estado Etapa 2 (2026-02-08)
+## Estado Etapa 2 (2026-02-09)
 
 - Auth cookie opcional via `AUTH_TOKEN_TRANSPORT` + CSRF en modo cookie.
-- Auditoria con redaccion y reason codes nuevos (`TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`).
-- QA Gates 1-3: `qa-ci-fresh` OK; Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl`.
+- 2FA admin con challenge one-time (anti-replay por IP/UA).
+- Auditoria con firma HMAC por keyring (`AUDIT_HMAC_KEYS`) y `signature_key_id`.
+- Observabilidad basica: `request_id`, Sentry opcional y endpoint `/api/metrics/`.
+- Paginacion en listados ORG/HR/RBAC (`limit/offset` + `count/limit/offset/results`).
 - Nota QA: los overrides de throttling deben estar en `.env` (el backend usa `env_file` en Docker Compose).
 
 ## 🚀 Inicio rápido (Docker)
@@ -226,12 +228,16 @@ Artefactos generados:
   cd frontend
   npm run lint
   ```
-- Tests: actualmente `npm run test` es un placeholder.
+- Tests (Vitest):
+  ```bash
+  cd frontend
+  npm run test
+  ```
 
 ## Auditoría (contrato)
 
 - Los eventos de auditoría se emiten con `module=AUTH` y `schema_version=1`.
-- Para trazabilidad: se encadenan hashes y se firma con HMAC.
+- Trazabilidad: hashes encadenados + firma HMAC con keyring (`AUDIT_HMAC_KEYS`) y `signature_key_id`.
 
 ### FUEL (Estación de Servicios)
 
@@ -273,6 +279,8 @@ cat pm_snapshot.md
 
 ### ORG (Organización)
 
+- Todos los listados soportan `limit/offset` y responden `count/limit/offset/results`.
+
 - `GET /api/org/company/profile/` — Ver perfil de la empresa (requiere permiso: org.company.read)
 - `PUT /api/org/company/profile/` — Actualizar perfil de la empresa (requiere permiso: org.company.update)
 - `GET /api/org/companies/` — Listar compañías accesibles por membresía (requiere permiso: org.company.read)
@@ -282,6 +290,8 @@ cat pm_snapshot.md
 - `PATCH /api/org/branches/{branch_id}/` — Actualizar sucursal (requiere permiso: org.branch.update)
 
 ### HR (Recursos Humanos)
+
+- Todos los listados soportan `limit/offset` y responden `count/limit/offset/results`.
 
 - `GET /api/hr/positions/` — Listar puestos
 - `POST /api/hr/positions/` — Crear puesto
@@ -356,6 +366,8 @@ Guías de organización:
 - `tests/test_seed_rbac_v01_command.py`: Valida comando seed_rbac_v01, creación de permisos y evento de auditoría.
 - `tests/test_bootstrap_company_command.py`: Valida robustez, idempotencia y grants correctos del comando bootstrap_company.
 - `tests/test_org_endpoints_audit.py`: Valida permisos RBAC por método en endpoints ORG y la trazabilidad/auditoría contractual de operaciones clave.
+- `tests/test_2fa_challenge.py`: Valida challenge 2FA one-time y anti-replay.
+- `tests/test_pagination_list_endpoints.py`: Valida paginación en listados ORG/HR/RBAC.
 
 ## Permisos y roles
 
@@ -381,4 +393,4 @@ Guías de organización:
 
 ---
 
-Actualizado: 2026-01-20.
+Actualizado: 2026-02-09.

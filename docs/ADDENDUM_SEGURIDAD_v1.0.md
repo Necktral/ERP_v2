@@ -51,7 +51,7 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 - **CSP parcial:** se implemento un minimo viable para evitar romper la UI durante desarrollo.
 - **Auditoria exhaustiva:** se priorizo trazabilidad e integridad (firma HMAC), con filtrado pendiente.
 
-## Estado actual (2026-02-08)
+## Estado actual (2026-02-09)
 
 - Autenticacion por cookies HttpOnly + CSRF en SPA; sin tokens en `localStorage`.
 - CSP base enforce + report-only para `connect-src` (endpoint `/api/csp/report/`).
@@ -59,6 +59,8 @@ Este plan surge de un debate interno sobre **excelencia tecnica vs. riesgo siste
 - Politica de contrasenas reforzada (longitud + complejidad).
 - 2FA TOTP para cuentas admin con setup y QR.
 - Security CI blocking: gitleaks + pip-audit + npm audit.
+- Observabilidad basica: `X-Request-Id`, Sentry opcional y `/api/metrics/`.
+- Auditoria con keyring (`AUDIT_HMAC_KEYS`) para rotacion segura de firmas.
 
 ## Riesgos pendientes (a confirmar)
 

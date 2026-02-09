@@ -24,12 +24,14 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - [operacion/README.md](operacion/README.md) — Playbooks y plantillas para operar el negocio.
 - [operacion/import_export/README.md](operacion/import_export/README.md) — Pack operativo Import/Export & Sourcing (B2B).
 - [operacion/ROTACION_SECRETOS_v1.0.md](operacion/ROTACION_SECRETOS_v1.0.md) — Runbook de rotación de secretos.
+- [operacion/CD_DEPLOY_v1.0.md](operacion/CD_DEPLOY_v1.0.md) — Deploy continuo en VPS con Docker Compose.
 
 ## CI / QA
 
 - CI principal (QA Gates 1–3): `.github/workflows/qa-ci.yml`
 - Snapshot/reporting: `.github/workflows/pm-snapshot.yml`
 - Security CI (blocking): `.github/workflows/security-ci.yml`
+- Simulación de carga auth (k6): `.github/workflows/auth-load-simulation.yml`
 
 ## Reglas
 

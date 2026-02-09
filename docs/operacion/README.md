@@ -1,7 +1,7 @@
 # Documentación Operacional
 
 Versión: v1.0  
-Fecha: 2026-01-28  
+Fecha: 2026-02-09  
 Estado: **Guía operativa (viva)**
 
 ## Propósito
@@ -16,6 +16,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Importación / Exportación (Import-Export & Sourcing)](import_export/README.md)
 - [Templates Import/Export](import_export/templates/README.md)
 - [Rotación de secretos](ROTACION_SECRETOS_v1.0.md)
+- [CD Deploy (VPS + Docker Compose)](CD_DEPLOY_v1.0.md)
 
 ## Reglas
 
@@ -26,3 +27,4 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 ## Changelog
 
 - 2026-01-28: Creación de documentación operacional (estructura base + pack Import/Export).
+- 2026-02-09: Se agrega guía CD Deploy (VPS + Docker Compose).

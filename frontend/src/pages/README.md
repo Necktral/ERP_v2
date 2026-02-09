@@ -45,6 +45,7 @@ docker compose exec backend python src/manage.py migrate --noinput
 - `/api/auth/bootstrap/init/` — Crea el admin inicial.
 - `/api/auth/bootstrap/org/` — Crea la estructura Holding/Empresa/Sucursal.
 - `/api/auth/password/` — Forzado de cambio de contraseña.
+- `/api/metrics/` — Métricas básicas (solo staff/superuser).
 
 ### 6. Variables de entorno principales (.env)
 
@@ -69,3 +70,7 @@ El ciclo de vida completo se gestiona con Docker Compose. No es necesario instal
 
 - [frontend/README.md](frontend/README.md): detalles de la consola Quasar
 - [compose.yaml](compose.yaml): configuración de servicios
+
+---
+
+Actualizado: 2026-02-09
