@@ -133,6 +133,7 @@ export const useAuthStore = defineStore('auth', {
       // limpiar stores primero para cortar UI rapido
       this.hardClearLocal();
       try {
+        // Best-effort: avisar al backend aunque no haya refresh en el cliente.
         await authApi.post('/auth/logout/', {});
       } catch {
         // intencional: no bloqueamos el logout local
