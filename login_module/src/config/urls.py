@@ -39,6 +39,8 @@ urlpatterns = [
     path("api/sync-hmac/", include("apps.sync.urls")),
     # Auditoría
     path("api/audit/", include("apps.audit.urls")),
+    # Observabilidad
+    path("api/metrics/", include("apps.common.urls")),
     # ORG
     path("api/org/", include("apps.org.urls")),
     # HR

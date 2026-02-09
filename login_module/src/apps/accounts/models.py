@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -41,4 +43,27 @@ class RefreshTokenSession(models.Model):
         indexes = [
             models.Index(fields=["user", "revoked_at"]),
             models.Index(fields=["expires_at"]),
+        ]
+
+
+class TwoFactorChallenge(models.Model):
+    """One-time challenge para 2FA (anti-replay)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="two_factor_challenges",
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent_hash = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        app_label = "accounts"
+        indexes = [
+            models.Index(fields=["user", "expires_at"]),
+            models.Index(fields=["used_at"]),
         ]

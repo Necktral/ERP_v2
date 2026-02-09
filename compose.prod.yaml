@@ -17,6 +17,7 @@ services:
       retries: 30
 
   backend:
+    image: ${IMAGE_REGISTRY:-ghcr.io/necktral}/necktral-backend:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/backend.Dockerfile.prod
@@ -47,6 +48,7 @@ services:
       retries: 30
 
   web:
+    image: ${IMAGE_REGISTRY:-ghcr.io/necktral}/necktral-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/web.Dockerfile

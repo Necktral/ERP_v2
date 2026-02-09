@@ -49,6 +49,12 @@ env = environ.Env(
     DRF_THROTTLE_ME_READ=(str, "60/min"),
     DRF_THROTTLE_ME_ACL_READ=(str, "30/min"),
     DJANGO_CSP_CONNECT_SRC=(list, ["http://localhost:8000", "http://127.0.0.1:8000"]),
+    AUDIT_HMAC_KEYS=(str, ""),
+    SENTRY_DSN=(str, ""),
+    SENTRY_ENVIRONMENT=(str, "dev"),
+    SENTRY_TRACES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_PROFILES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_RELEASE=(str, ""),
     TOTP_ISSUER=(str, "Necktral"),
     TOTP_CHALLENGE_TTL=(int, 300),
     TOTP_VALID_WINDOW=(int, 1),
@@ -137,6 +143,12 @@ CORS_EXPOSE_HEADERS = [
 CORS_ALLOW_CREDENTIALS = env("AUTH_TOKEN_TRANSPORT") == "cookie"
 
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
+AUDIT_HMAC_KEYS = env("AUDIT_HMAC_KEYS")
+SENTRY_DSN = env("SENTRY_DSN")
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT")
+SENTRY_TRACES_SAMPLE_RATE = env("SENTRY_TRACES_SAMPLE_RATE")
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE")
+SENTRY_RELEASE = env("SENTRY_RELEASE")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
 AUDIT_MODULE_NAME = "AUTH"
 AUDIT_SCHEMA_VERSION = 1
@@ -307,7 +319,7 @@ REST_FRAMEWORK = {
         "anon": env("DRF_THROTTLE_ANON"),
         "user": env("DRF_THROTTLE_USER"),
         "auth_login": env("DRF_THROTTLE_AUTH_LOGIN"),
-        "auth_sensitive": "10/min",
+        "auth_sensitive": env("DRF_THROTTLE_AUTH_SENSITIVE", default="10/min"),
         "auth_refresh": env("DRF_THROTTLE_AUTH_REFRESH"),
         "auth_logout": env("DRF_THROTTLE_AUTH_LOGOUT"),
         "me_read": env("DRF_THROTTLE_ME_READ"),
@@ -327,6 +339,21 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
 }
+
+# Observabilidad (Sentry)
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        release=SENTRY_RELEASE or None,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
+        send_default_pii=False,
+        integrations=[DjangoIntegration()],
+    )
 
 # CORS / CSRF para PWA
 CORS_ALLOWED_ORIGINS = env("DJANGO_CORS_ALLOWED_ORIGINS")

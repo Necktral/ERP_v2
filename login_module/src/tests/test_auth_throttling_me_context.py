@@ -1,4 +1,5 @@
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test.utils import override_settings
 from rest_framework.settings import api_settings
@@ -13,6 +14,7 @@ User = get_user_model()
 @pytest.mark.django_db
 @override_settings(
     REST_FRAMEWORK={
+        **settings.REST_FRAMEWORK,
         "DEFAULT_THROTTLE_CLASSES": (
             "rest_framework.throttling.AnonRateThrottle",
             "rest_framework.throttling.UserRateThrottle",
@@ -36,7 +38,7 @@ User = get_user_model()
 def test_me_and_context_throttling_scopes():
     api_settings.reload()
     SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
-    user = User.objects.create_user(username="th_user", password="Pass12345__Strong")
+    user = User.objects.create_superuser(username="th_user", password="Pass12345__Strong")
 
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="HOLDING", code="")
     company = OrgUnit.objects.create(

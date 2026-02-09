@@ -94,6 +94,7 @@ class EmploymentAssignment(models.Model):
         app_label = "hr"
         indexes = [
             models.Index(fields=["employee", "is_active"]),
+            models.Index(fields=["employee", "is_active", "started_at"]),
             models.Index(fields=["position", "is_active"]),
             models.Index(fields=["branch", "is_active"]),
         ]

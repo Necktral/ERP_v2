@@ -30,6 +30,7 @@ from .contracts import (
     validate_reason_code,
     validate_subject,
 )
+from .keyring import get_active_audit_hmac_key
 from .models import AuditChainHeadV2, AuditEvent
 from .redaction import sanitize_metadata, sanitize_snapshot
 
@@ -68,9 +69,8 @@ def _sha256_hex(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
-def _hmac_hex(message_hex: str) -> str:
-    key = settings.AUDIT_HMAC_KEY.encode("utf-8")
-    return hmac.new(key, message_hex.encode("utf-8"), hashlib.sha256).hexdigest()
+def _hmac_hex(message_hex: str, *, key: str) -> str:
+    return hmac.new(key.encode("utf-8"), message_hex.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def write_event(
@@ -197,9 +197,11 @@ def write_event(
         payload["event_id"] = str(ev.event_id)
         canonical = _canon_json(payload)
         event_hash = _sha256_hex(canonical)
-        signature = _hmac_hex(event_hash)
+        key_id, key = get_active_audit_hmac_key()
+        signature = _hmac_hex(event_hash, key=key)
         ev.event_hash = event_hash
         ev.signature = signature
+        ev.signature_key_id = key_id
         ev.save()
         head.last_event_hash = event_hash
         head.save(update_fields=["last_event_hash", "updated_at"])

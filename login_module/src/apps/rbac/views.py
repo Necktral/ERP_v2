@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
+from apps.common.pagination import get_limit_offset, paginate_queryset
 from apps.common.permissions import rbac_permission
 from .models import Role, Permission
 
@@ -14,12 +15,16 @@ class RoleListView(APIView):
     """
 
     permission_classes = [rbac_permission("rbac.roles.read")]
+    throttle_scope = "heavy_reads"
 
     def get(self, request):
         include_inactive = request.query_params.get("include_inactive") == "1"
         qs = Role.objects.all().order_by("name")
         if not include_inactive:
             qs = qs.filter(is_active=True)
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
 
         results = [
             {
@@ -28,9 +33,12 @@ class RoleListView(APIView):
                 "description": getattr(r, "description", "") or "",
                 "is_active": bool(getattr(r, "is_active", True)),
             }
-            for r in qs
+            for r in rows
         ]
-        return Response({"count": len(results), "results": results}, status=status.HTTP_200_OK)
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": results},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PermissionListView(APIView):
@@ -39,12 +47,16 @@ class PermissionListView(APIView):
     """
 
     permission_classes = [rbac_permission("rbac.permissions.read")]
+    throttle_scope = "heavy_reads"
 
     def get(self, request):
         include_inactive = request.query_params.get("include_inactive") == "1"
         qs = Permission.objects.all().order_by("code")
         if not include_inactive:
             qs = qs.filter(is_active=True)
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
 
         results = [
             {
@@ -53,9 +65,12 @@ class PermissionListView(APIView):
                 "description": getattr(p, "description", "") or "",
                 "is_active": bool(getattr(p, "is_active", True)),
             }
-            for p in qs
+            for p in rows
         ]
-        return Response({"count": len(results), "results": results}, status=status.HTTP_200_OK)
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": results},
+            status=status.HTTP_200_OK,
+        )
 
 
 # --- Demo contractual ---
@@ -66,6 +81,7 @@ class InventoryReadDemoView(APIView):
     """
 
     permission_classes = [rbac_permission("inventory.read")]
+    throttle_scope = "heavy_reads"
 
     def get(self, request):
         return Response({"ok": True, "required_permission": "inventory.read"})

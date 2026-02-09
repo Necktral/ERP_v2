@@ -26,6 +26,7 @@ class OrgUnit(models.Model):
         indexes = [
             models.Index(fields=["unit_type", "is_active"]),
             models.Index(fields=["parent", "unit_type"]),
+            models.Index(fields=["parent", "unit_type", "name"]),
         ]
 
     def clean(self):

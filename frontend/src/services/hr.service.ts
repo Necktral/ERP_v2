@@ -19,6 +19,27 @@ export type EmployeeAssignmentRow = {
 };
 import { api } from 'src/boot/axios';
 
+type PaginatedResponse<T> = {
+  count: number;
+  limit: number;
+  offset: number;
+  results: T[];
+};
+
+type ListParams = {
+  limit?: number;
+  offset?: number;
+};
+
+function buildListQuery(params?: ListParams): string {
+  if (!params) return '';
+  const qs = new URLSearchParams();
+  if (typeof params.limit === 'number') qs.set('limit', String(params.limit));
+  if (typeof params.offset === 'number') qs.set('offset', String(params.offset));
+  const out = qs.toString();
+  return out ? `?${out}` : '';
+}
+
 export type PositionRow = {
   id: number;
   name: string;
@@ -39,9 +60,10 @@ export type EmployeeRow = {
   has_active_assignment?: boolean;
   active_assignments?: EmployeeActiveAssignmentSummary[];
 };
-export async function listEmployeeAssignments(employeeId: number) {
-  const { data } = await api.get<EmployeeAssignmentRow[]>(
-    `/hr/employees/${employeeId}/assignments/`,
+export async function listEmployeeAssignments(employeeId: number, params?: ListParams) {
+  const qs = buildListQuery(params);
+  const { data } = await api.get<PaginatedResponse<EmployeeAssignmentRow>>(
+    `/hr/employees/${employeeId}/assignments/${qs}`,
   );
   return data;
 }
@@ -51,8 +73,9 @@ export type PositionRoleMapItem = {
   scope_mode: 'BRANCH' | 'COMPANY';
 };
 
-export async function listPositions() {
-  const { data } = await api.get<PositionRow[]>('/hr/positions/');
+export async function listPositions(params?: ListParams) {
+  const qs = buildListQuery(params);
+  const { data } = await api.get<PaginatedResponse<PositionRow>>(`/hr/positions/${qs}`);
   return data;
 }
 
@@ -74,8 +97,9 @@ export async function setPositionRoleMaps(positionId: number, maps: PositionRole
   return data.ok;
 }
 
-export async function listEmployees() {
-  const { data } = await api.get<EmployeeRow[]>('/hr/employees/');
+export async function listEmployees(params?: ListParams) {
+  const qs = buildListQuery(params);
+  const { data } = await api.get<PaginatedResponse<EmployeeRow>>(`/hr/employees/${qs}`);
   return data;
 }
 

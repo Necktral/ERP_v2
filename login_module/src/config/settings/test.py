@@ -8,6 +8,9 @@ DEBUG = False
 # Tests: mantener header para facilitar clientes no-browser
 AUTH_TOKEN_TRANSPORT = "header"
 
+# Tests: permitir host por defecto de APIClient
+ALLOWED_HOSTS = list(ALLOWED_HOSTS) + ["testserver"]
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
@@ -31,6 +34,8 @@ REST_FRAMEWORK = {
         "anon": "10000/min",
         "user": "10000/min",
         "auth_login": "10000/min",
+        "auth_refresh": "10000/min",
+        "auth_logout": "10000/min",
         "auth_sensitive": "10000/min",
         "me_read": "10000/min",
         "me_acl_read": "10000/min",

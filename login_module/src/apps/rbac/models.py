@@ -64,6 +64,9 @@ class RoleAssignment(models.Model):
 class Role(models.Model):
     class Meta:
         app_label = "rbac"
+        indexes = [
+            models.Index(fields=["is_active", "name"]),
+        ]
     name = models.CharField(max_length=64, unique=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -75,6 +78,9 @@ class Role(models.Model):
 class Permission(models.Model):
     class Meta:
         app_label = "rbac"
+        indexes = [
+            models.Index(fields=["is_active", "code"]),
+        ]
     code = models.CharField(max_length=128, unique=True)  # ejemplo: "inventory.read"
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)

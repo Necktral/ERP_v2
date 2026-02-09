@@ -42,6 +42,12 @@ class RequestIdMiddleware:
 
         setattr(request, "request_id", request_id)
         token = _request_id_var.set(request_id)
+        try:
+            import sentry_sdk
+
+            sentry_sdk.set_tag("request_id", request_id)
+        except Exception:
+            pass
 
         try:
             response = self.get_response(request)

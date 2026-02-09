@@ -1,8 +1,12 @@
+import hashlib
+import uuid
+from datetime import datetime, timezone as dt_timezone
+
 from django.conf import settings
 from django.core import signing
+from django.db import transaction
 from django.http import QueryDict
 from django.utils import timezone
-from datetime import datetime, timezone as dt_timezone
 import pyotp
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -22,7 +26,7 @@ from apps.rbac.models import Role, RoleAssignment
 from apps.rbac.seed_v01 import seed_rbac_v01
 
 from .cookies import clear_auth_cookies, set_auth_cookies
-from .models import RefreshTokenSession
+from .models import RefreshTokenSession, TwoFactorChallenge
 from .serializers import (
     LoginSerializer,
     MeSerializer,
@@ -98,18 +102,53 @@ def _totp_for_user(user):
     return pyotp.TOTP(user.totp_secret)
 
 
-def _sign_2fa_challenge(*, user_id: int) -> str:
+def _ua_hash(request) -> str:
+    ua = (request.META.get("HTTP_USER_AGENT", "") or "").strip()
+    if not ua:
+        return ""
+    return hashlib.sha256(ua.encode("utf-8")).hexdigest()
+
+
+def _issue_2fa_challenge(*, user, request) -> str:
+    expires_at = timezone.now() + timezone.timedelta(seconds=int(settings.TOTP_CHALLENGE_TTL))
+    challenge = TwoFactorChallenge.objects.create(
+        user=user,
+        expires_at=expires_at,
+        ip_address=(request.META.get("REMOTE_ADDR") or None),
+        user_agent_hash=_ua_hash(request),
+    )
     signer = signing.TimestampSigner(salt="auth-2fa")
-    return signer.sign(str(user_id))
+    return signer.sign(str(challenge.id))
 
 
-def _unsign_2fa_challenge(challenge: str) -> int | None:
+def _consume_2fa_challenge(*, challenge_token: str, request) -> TwoFactorChallenge | None:
     signer = signing.TimestampSigner(salt="auth-2fa")
     try:
-        value = signer.unsign(challenge, max_age=settings.TOTP_CHALLENGE_TTL)
-        return int(value)
+        raw = signer.unsign(challenge_token, max_age=settings.TOTP_CHALLENGE_TTL)
+        challenge_id = uuid.UUID(str(raw))
     except Exception:
         return None
+
+    now = timezone.now()
+    ip = request.META.get("REMOTE_ADDR") or None
+    ua_hash = _ua_hash(request)
+
+    with transaction.atomic():
+        challenge = TwoFactorChallenge.objects.select_for_update().filter(id=challenge_id).first()
+        if not challenge:
+            return None
+        if challenge.used_at is not None:
+            return None
+        if challenge.expires_at and challenge.expires_at <= now:
+            return None
+        if challenge.ip_address and ip and challenge.ip_address != ip:
+            return None
+        if challenge.user_agent_hash and ua_hash and challenge.user_agent_hash != ua_hash:
+            return None
+
+        challenge.used_at = now
+        challenge.save(update_fields=["used_at"])
+        return challenge
 
 
 class LoginView(APIView):
@@ -140,7 +179,7 @@ class LoginView(APIView):
         user = serializer.validated_data["user"]
 
         if _is_admin_user(user) and user.totp_enabled:
-            challenge = _sign_2fa_challenge(user_id=user.id)
+            challenge = _issue_2fa_challenge(user=user, request=request)
             write_event(
                 request=request,
                 event_type="AUTH_2FA_CHALLENGE",
@@ -204,7 +243,9 @@ class RefreshView(TokenRefreshView):
                     subject_id="",
                     metadata={"stage": "refresh", "detail": "missing_refresh_cookie"},
                 )
-                return Response({"detail": "refresh es requerido."}, status=status.HTTP_401_UNAUTHORIZED)
+                response = Response({"detail": "refresh es requerido."}, status=status.HTTP_401_UNAUTHORIZED)
+                clear_auth_cookies(response)
+                return response
 
             refresh_token = refresh_cookie
         else:
@@ -234,7 +275,10 @@ class RefreshView(TokenRefreshView):
                 subject_id="",
                 metadata={"stage": "refresh", "detail": "invalid_refresh"},
             )
-            return Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+            response = Response({"detail": "refresh inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+            if transport == "cookie":
+                clear_auth_cookies(response)
+            return response
 
         token_user_id = token.get("user_id")
         if not token_user_id:
@@ -345,7 +389,10 @@ class LogoutView(APIView):
                 metadata={"stage": "logout", "detail": "missing_refresh"},
             )
             # Logout idempotente/best-effort: aunque falte refresh, el cliente ya debe considerarse deslogueado.
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            response = Response(status=status.HTTP_204_NO_CONTENT)
+            if transport == "cookie":
+                clear_auth_cookies(response)
+            return response
 
         try:
             token = RefreshToken(refresh)
@@ -380,7 +427,10 @@ class LogoutView(APIView):
                 metadata={"stage": "logout", "detail": "invalid_refresh"},
             )
             # Idempotente: refresh expirado/corrupto no debe bloquear el logout local.
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            response = Response(status=status.HTTP_204_NO_CONTENT)
+            if transport == "cookie":
+                clear_auth_cookies(response)
+            return response
 
         write_event(
             request=request,
@@ -490,11 +540,14 @@ class TwoFactorVerifyView(APIView):
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user_id = _unsign_2fa_challenge(s.validated_data["challenge"])
-        if not user_id:
+        challenge = _consume_2fa_challenge(
+            challenge_token=s.validated_data["challenge"],
+            request=request,
+        )
+        if not challenge:
             return Response({"detail": "Challenge inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.filter(id=user_id, is_active=True).first()
+        user = User.objects.filter(id=challenge.user_id, is_active=True).first()
         if not user or not _is_admin_user(user) or not user.totp_enabled:
             return Response({"detail": "Challenge inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -590,6 +643,7 @@ class TwoFactorDisableView(APIView):
 
 class BootstrapStatusView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "heavy_reads"
 
     def get(self, request):
         has_user = User.objects.exists()

@@ -1,0 +1,119 @@
+name: Auth Load Simulation
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 3 * * 0"
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      ADMIN_TOTP_SECRET: ${{ secrets.ADMIN_TOTP_SECRET }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Docker Compose version
+        run: docker compose version
+
+      - name: Write .env for compose
+        run: |
+          cat > .env << 'EOF'
+          DJANGO_DEBUG=True
+          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          AUTH_TOKEN_TRANSPORT=cookie
+          AUTH_COOKIE_SECURE=False
+          DRF_THROTTLE_ANON=6000/min
+          DRF_THROTTLE_USER=6000/min
+          DRF_THROTTLE_AUTH_LOGIN=1200/min
+          DRF_THROTTLE_AUTH_REFRESH=1200/min
+          DRF_THROTTLE_AUTH_LOGOUT=1200/min
+          DRF_THROTTLE_ME_READ=6000/min
+          DRF_THROTTLE_ME_ACL_READ=6000/min
+          AUTH_SIM_ADMIN_USERNAME=k6_admin
+          AUTH_SIM_ADMIN_EMAIL=k6_admin@test.com
+          AUTH_SIM_ADMIN_PASSWORD=Pass12345__Strong
+          AUTH_SIM_ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }}
+          AUTH_SIM_ADMIN_2FA=1
+          AUTH_SIM_USER_USERNAME=k6_user
+          AUTH_SIM_USER_EMAIL=k6_user@test.com
+          AUTH_SIM_USER_PASSWORD=Pass12345__Strong
+          EOF
+
+      - name: Start backend and db services
+        run: |
+          docker compose down -v --remove-orphans || true
+          USE_GUNICORN=1 GUNICORN_WORKERS=4 docker compose up -d db backend
+
+      - name: Wait for backend readiness
+        run: |
+          for i in {1..30}; do
+            status=$(docker inspect -f '{{.State.Health.Status}}' erpcrm_backend || echo "error")
+            if [ "$status" = "healthy" ]; then
+              echo "Backend is healthy"
+              break
+            fi
+            echo "Waiting for backend health... ($i/30)"
+            sleep 2
+          done
+          if [ "$status" != "healthy" ]; then
+            echo "Backend not healthy in time"
+            docker compose logs backend
+            exit 1
+          fi
+
+      - name: Run database migrations
+        run: docker compose exec -T backend python src/manage.py migrate --noinput
+
+      - name: Seed test users for load
+        run: docker compose exec -T backend python src/manage.py seed_auth_users
+
+      - name: Run k6 load test
+        run: |
+          mkdir -p qa/reports
+          docker run --rm -v "$PWD/qa/reports:/reports" \
+            --network erp_crm_default \
+            -e BASE_URL=http://backend:8000/api \
+            -e ADMIN_USERNAME=k6_admin \
+            -e ADMIN_PASSWORD=Pass12345__Strong \
+            -e ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }} \
+            -e USER_USERNAME=k6_user \
+            -e USER_PASSWORD=Pass12345__Strong \
+            -e CSRF_COOKIE_NAME=nt_csrf \
+            -e VUS_WARMUP=2 \
+            -e VUS_TARGET=6 \
+            -e SUSTAIN=30s \
+            -e BASIC_RATE=3 \
+            -e BASIC_DURATION=40s \
+            grafana/k6 run -o json=/reports/auth_load_results.json - < qa/k6/auth_load_simulation.js
+
+      - name: Upload k6 results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-load-metrics
+          path: qa/reports/auth_load_results.json
+
+      - name: Upload backend logs
+        if: always()
+        run: docker compose logs backend > qa/reports/backend.log
+
+      - name: Upload backend log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: qa/reports/backend.log
+
+      - name: Tear down services
+        if: always()
+        run: docker compose down -v

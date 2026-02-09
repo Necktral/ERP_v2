@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import time
 
+from config.metrics import record_request
+
 
 class RequestLoggingMiddleware:
     """Log de inicio/fin para /api con request_id y duración."""
@@ -22,10 +24,12 @@ class RequestLoggingMiddleware:
         except Exception:
             duration_ms = int((time.monotonic() - start) * 1000)
             self._log(request, status_code=500, duration_ms=duration_ms, is_error=True)
+            record_request(request, status_code=500, duration_ms=duration_ms)
             raise
 
         duration_ms = int((time.monotonic() - start) * 1000)
         self._log(request, status_code=getattr(response, "status_code", None), duration_ms=duration_ms)
+        record_request(request, status_code=getattr(response, "status_code", None), duration_ms=duration_ms)
         return response
 
     def _log(self, request, *, status_code: int | None, duration_ms: int, is_error: bool = False) -> None:
