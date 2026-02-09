@@ -5,6 +5,7 @@
 ### Added
 
 - **Seguridad (Backend):** modo cookie opcional (`AUTH_TOKEN_TRANSPORT`) + middleware CSRF para cookies.
+- **QA:** Correccion de tests de integracion 2FA y mejoras de tipado estatico.
 - **Auditoria (Backend):** redaccion de metadata/snapshots y reason codes `TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`.
 - **Frontend:** soporte de cookie transport (CSRF header desde cookie + `withCredentials`).
 - **Nginx:** hardening de headers de seguridad + rate limits por ruta (auth/api).
@@ -27,6 +28,11 @@
 - **Seguridad (Backend):** `throttle_scope` en endpoints sensibles de auth y bootstrap.
 - **QA (Backend):** overrides por env para `me_read` y `me_acl_read`.
 - **Docs (QA):** troubleshooting de Gate 3 por throttling y uso de `.env` en Docker Compose.
+- **Paginación (Backend):** helper común limit/offset + respuesta estándar `{count, limit, offset, results}` en listados ORG/HR/RBAC/SYNC.
+- **Índices (DB):** índices en OrgUnit, EmploymentAssignment, Role/Permission con migraciones.
+- **CD (CI/CD):** workflow de despliegue con build/push a GHCR y deploy via SSH.
+- **Docs (Operación):** guía `CD_DEPLOY_v1.0.md` y actualización de índice operativa.
+- **Tests (Backend):** cobertura para listados paginados y anti-replay 2FA.
 
 ### Changed
 
@@ -34,6 +40,14 @@
 - **QA:** Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl` si los overrides no llegan al contenedor (compose usa `.env`).
 - **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
 - **FUEL (Backend):** `GET /api/fuel/health/` queda público (sin auth) para monitoreo.
+- **Frontend:** paginación server-side en ORG/HR + servicios con `limit/offset` + `AppDataTable` pasa eventos/attrs.
+- **Auth (Backend):** challenge 2FA one-time (DB-backed) con consumo atómico y binding suave.
+- **Auth (Backend):** logout/refresh en cookie-mode limpian cookies en rutas idempotentes de error.
+- **Infra PROD:** `compose.prod.yaml` usa imágenes con tags de release.
+
+### Fixed
+
+- **Tests (Backend):** `test_axes_lockout` se habilita sin skip forzado.
 
 ## [2026-01-13] - Release
 

@@ -1,3 +1,78 @@
+## 2026-02-09 — WS5 paginación/indexes + WS6 CD + hardening 2FA/cookies
+
+### Contexto
+
+Se completa WS5 (paginación + índices) y WS6 (pipeline CD), y se endurece 2FA con challenge one-time y limpieza robusta de cookies en auth.
+
+### Cambios principales
+
+- **Paginación (Backend):** helper limit/offset + respuesta estándar en listados ORG/HR/RBAC/SYNC.
+- **Índices (DB):** índices en OrgUnit, EmploymentAssignment y Role/Permission con migraciones.
+- **Frontend:** paginación server-side en páginas ORG/HR, servicios con `limit/offset`, `AppDataTable` con eventos/attrs.
+- **CD (CI/CD):** workflow de despliegue a GHCR + SSH, tags en `compose.prod.yaml` y docs operativas.
+- **Auth (Backend):** challenge 2FA one-time (DB-backed) + consumo atómico + binding suave.
+- **Auth (Backend):** logout/refresh en cookie-mode limpian cookies en rutas idempotentes de error.
+- **Tests (Backend):** nuevos tests de listados paginados y anti-replay 2FA.
+- **QA:** `test_axes_lockout` vuelve a ejecutarse (sin skip).
+
+### QA / Gates
+
+- Último pytest completo (antes del hardening 2FA): `143 passed` con `DJANGO_SETTINGS_MODULE=config.settings.test`.
+- Cambios 2FA/cookies no se han revalidado aún con suite completa.
+- CI en PR #2: **QA CI (Gates 1–3) = failure**, **Security CI (Blocking) = failure**.
+
+### Archivos/Areas
+
+- `login_module/src/apps/common/pagination.py`
+- `login_module/src/apps/org/views.py`
+- `login_module/src/apps/hr/views.py`
+- `login_module/src/apps/rbac/views.py`
+- `login_module/src/apps/sync_engine/views.py`
+- `login_module/src/apps/iam/models.py`
+- `login_module/src/apps/hr/models.py`
+- `login_module/src/apps/rbac/models.py`
+- `login_module/src/apps/accounts/models.py`
+- `login_module/src/apps/accounts/views.py`
+- `login_module/src/apps/accounts/migrations/0006_two_factor_challenge.py`
+- `frontend/src/pages/OrgCompaniesPage.vue`
+- `frontend/src/pages/OrgBranchesPage.vue`
+- `frontend/src/pages/HrEmployeesPage.vue`
+- `frontend/src/pages/HrPositionsPage.vue`
+- `frontend/src/services/hr.service.ts`
+- `frontend/src/services/org.service.ts`
+- `frontend/src/services/rbac.service.ts`
+- `frontend/src/ui/AppDataTable.vue`
+- `.github/workflows/cd.yml`
+- `compose.prod.yaml`
+- `docs/operacion/CD_DEPLOY_v1.0.md`
+- `docs/operacion/README.md`
+- `login_module/tests/test_2fa_challenge.py`
+- `login_module/tests/test_pagination_list_endpoints.py`
+
+## 2026-02-09 — Fixes QA 2FA & Linting
+
+### Contexto
+
+Se abordan los fallos de CI detectados en PR #2, especificamente en los tests de integracion de 2FA y verificaciones de tipado estatico.
+
+### Cambios
+
+- **Tests (Backend):** Actualizado `test_2fa_challenge.py` para manejar correctamente el formato de respuesta "Error Envelope" en fallos de validacion (400 Bad Request).
+- **Calidad (Code):**
+  - Correccion de imports no utilizados en `throttling.py` (Ruff).
+  - Ajuste de tipos en `metrics.py` y `seed_auth_users.py` (Mypy).
+- **QA:** Validacion exitosa local de `audit_verify_chain` (Integridad) y `test_axes_lockout` (Seguridad).
+
+### Estado
+
+- **Gate 2 (Tests):** `test_2fa_challenge` pasando.
+- **Gate 3 (Audit):** Integro.
+- **Linting:** Clean.
+
+- `login_module/tests/test_axes_lockout.py`
+
+---
+
 ## 2026-02-08 — Etapa 2 (seguridad elite) + QA Gates
 
 ### Contexto
