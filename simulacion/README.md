@@ -26,6 +26,32 @@ Este paquete ejecuta una simulacion realista del flujo de autenticacion en modo 
 - DB disponible (puede estar vacia)
 - k6 local o contenedor grafana/k6
 
+## Ejecución Automatizada con Monitorización en Tiempo Real
+
+Para ejecutar la simulación con visualización en Grafana sin configuración manual:
+
+```bash
+./simulacion/run_simulation.sh
+```
+
+Esto:
+
+1. Levantará Grafana (puerto 3000) e InfluxDB automáticamente.
+2. Ejecutará el script de k6 conectado a la red de contenedores.
+3. Enviará métricas en tiempo real al dashboard preconfigurado.
+
+**Acceso al Dashboard:**
+
+- URL: [http://localhost:3000](http://localhost:3000)
+- Dashboard: "K6 Load Testing Results" (Carpeta General)
+
+### Personalización
+
+```bash
+# Ejecutar script extendido con mas carga
+./simulacion/run_simulation.sh auth_load_simulation_extended.js 20 60s
+```
+
 ## Preparacion del entorno (DB vacia)
 
 1. Bajar todo y limpiar volumenes:

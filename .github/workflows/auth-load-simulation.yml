@@ -2,6 +2,8 @@ name: Auth Load Simulation
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: ["master", "main", "feat/*"]
   schedule:
     - cron: "0 3 * * 0"
 
@@ -79,8 +81,8 @@ jobs:
 
       - name: Run k6 load test
         run: |
-          mkdir -p qa/reports
-          docker run --rm -v "$PWD/qa/reports:/reports" \
+          mkdir -p simulacion/reports
+          docker run --rm -v "$PWD/simulacion:/simulacion" \
             --network erp_crm_default \
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
@@ -94,18 +96,18 @@ jobs:
             -e SUSTAIN=30s \
             -e BASIC_RATE=3 \
             -e BASIC_DURATION=40s \
-            grafana/k6 run -o json=/reports/auth_load_results.json - < qa/k6/auth_load_simulation.js
+            grafana/k6 run -o json=/simulacion/reports/auth_load_results.json /simulacion/auth_load_simulation.js
 
       - name: Upload k6 results artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: auth-load-metrics
-          path: qa/reports/auth_load_results.json
+          path: simulacion/reports/
 
       - name: Upload backend logs
         if: always()
-        run: docker compose logs backend > qa/reports/backend.log
+        run: docker compose logs backend > simulacion/reports/backend.log
 
       - name: Upload backend log artifact
         if: always()
