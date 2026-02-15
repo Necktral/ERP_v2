@@ -96,6 +96,12 @@ async function onSubmit() {
 
   try {
     await auth.login(username.value.trim(), password.value);
+
+    if (auth.isTwoFactorRequired) {
+      await router.replace('/login/2fa');
+      return;
+    }
+
     await acl.loadAcl();
 
     // Autoselección si viene recomendación

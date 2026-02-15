@@ -14,6 +14,12 @@ Requisitos:
 Si no tienes credenciales conocidas (o tu entorno no está "fresh"), crea un usuario dedicado para carga:
 
 ```bash
+docker compose exec -T backend python src/manage.py seed_auth_users
+```
+
+O bien crea un usuario manual:
+
+```bash
 docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong');
 setattr(u, 'must_change_password', False); u.save()"
 ```
@@ -81,6 +87,24 @@ docker run --rm -i --network host \
   -e VUS_TARGET=20 -e SUSTAIN=30s \
   -e COOLDOWN=10s \
   grafana/k6 run - < qa/k6/auth_stress.js
+```
+
+### Overrides QA (throttles)
+
+Si ves 429 bajo k6, normalmente es el limite global de `UserRateThrottle` o los scopes
+`me_read`/`me_acl_read`. Para QA:
+
+Nota importante (Docker Compose): el backend carga `.env` via `env_file`. Si las variables
+no estan en `.env`, el contenedor usa defaults y el override no aplica.
+
+```bash
+DRF_THROTTLE_USER=120000/min \
+DRF_THROTTLE_AUTH_LOGIN=1200/min \
+DRF_THROTTLE_AUTH_REFRESH=1200/min \
+DRF_THROTTLE_AUTH_LOGOUT=1200/min \
+DRF_THROTTLE_ME_READ=60000/min \
+DRF_THROTTLE_ME_ACL_READ=60000/min \
+make qa-load-stress
 ```
 
 ### Un solo comando (Makefile)

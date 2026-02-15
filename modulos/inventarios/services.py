@@ -66,6 +66,20 @@ def _get_or_create_balance_locked(*, company: OrgUnit, branch: OrgUnit, warehous
     return StockBalance.objects.create(company=company, branch=branch, warehouse=warehouse, item=item)
 
 
+def _get_warehouse_locked(*, company: OrgUnit, branch: OrgUnit, warehouse_id: int) -> Warehouse:
+    try:
+        return Warehouse.objects.select_for_update().get(id=warehouse_id, company=company, branch=branch)
+    except Warehouse.DoesNotExist:
+        raise ValueError("warehouse inválido")
+
+
+def _get_item_or_error(*, company: OrgUnit, item_id: int) -> InventoryItem:
+    try:
+        return InventoryItem.objects.get(id=item_id, company=company)
+    except InventoryItem.DoesNotExist:
+        raise ValueError("item inválido")
+
+
 def _idempotent_movement_existing(*, company: OrgUnit, idempotency_key: str) -> StockMovement | None:
     if not idempotency_key:
         return None
@@ -101,8 +115,8 @@ def post_receive(
                 return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
             return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
-        warehouse = Warehouse.objects.select_for_update().get(id=warehouse_id, company=company, branch=branch)
-        item = InventoryItem.objects.get(id=item_id, company=company)
+        warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
+        item = _get_item_or_error(company=company, item_id=item_id)
         bal = _get_or_create_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item)
 
         total_cost = _q_cost(qty * unit_cost)
@@ -182,8 +196,8 @@ def post_issue(
                 return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
             return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
-        warehouse = Warehouse.objects.select_for_update().get(id=warehouse_id, company=company, branch=branch)
-        item = InventoryItem.objects.get(id=item_id, company=company)
+        warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
+        item = _get_item_or_error(company=company, item_id=item_id)
         bal = _get_or_create_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item)
 
         if not allow_negative and bal.qty_on_hand < qty:
@@ -262,8 +276,8 @@ def post_adjust(
                 return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
             return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
-        warehouse = Warehouse.objects.select_for_update().get(id=warehouse_id, company=company, branch=branch)
-        item = InventoryItem.objects.get(id=item_id, company=company)
+        warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
+        item = _get_item_or_error(company=company, item_id=item_id)
         bal = _get_or_create_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item)
 
         delta = _q_qty(new_qty_on_hand - bal.qty_on_hand)
@@ -344,7 +358,7 @@ def post_transfer(
         if from_warehouse_id not in wh_map or to_warehouse_id not in wh_map:
             raise ValueError("warehouse inválido")
 
-        item = InventoryItem.objects.get(id=item_id, company=company)
+        item = _get_item_or_error(company=company, item_id=item_id)
         from_wh = wh_map[from_warehouse_id]
         to_wh = wh_map[to_warehouse_id]
 

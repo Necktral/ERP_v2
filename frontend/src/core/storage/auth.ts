@@ -6,18 +6,15 @@ export type StoredTokens = {
 };
 
 export function readTokens(): StoredTokens {
-  return {
-    access: localStorage.getItem(STORAGE_KEYS.AUTH_ACCESS),
-    refresh: localStorage.getItem(STORAGE_KEYS.AUTH_REFRESH),
-  };
+  return { access: null, refresh: null };
 }
 
-export function writeTokens(tokens: { access: string; refresh: string }) {
-  localStorage.setItem(STORAGE_KEYS.AUTH_ACCESS, tokens.access);
-  localStorage.setItem(STORAGE_KEYS.AUTH_REFRESH, tokens.refresh);
+export function writeTokens() {
+  // No-op: el frontend usa cookies HttpOnly (no almacena JWT en storage).
 }
 
 export function clearTokens() {
+  // Limpia residuos de sesiones legacy basadas en storage.
   localStorage.removeItem(STORAGE_KEYS.AUTH_ACCESS);
   localStorage.removeItem(STORAGE_KEYS.AUTH_REFRESH);
 }

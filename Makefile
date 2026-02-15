@@ -73,7 +73,7 @@ qa-backend-mypy:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini login_module/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
 
 qa-backend-tests:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && coverage run -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && coverage run --rcfile /app/login_module/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/login_module/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/login_module/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
 qa-audit-integrity:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && python manage.py audit_verify_chain --seed-minimal --format json --output /app/$(QA_REPORTS_DIR)/audit_integrity.json"

@@ -8,39 +8,10 @@ NOTA:
 """
 
 
-# --- Logging para depuración de auditoría y lockout ---
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "[{levelname}] {asctime} {name}: {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {
-        "apps.audit": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-        "apps.accounts": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-    },
-}
 # (AXES_* se define abajo en formato correcto con timedelta)
 
 from datetime import timedelta
+from typing import cast
 from pathlib import Path
 import sys
 
@@ -62,6 +33,31 @@ env = environ.Env(
     DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     DJANGO_CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
+    AUTH_TOKEN_TRANSPORT=(str, "cookie"),
+    AUTH_COOKIE_ACCESS_NAME=(str, "nt_access"),
+    AUTH_COOKIE_REFRESH_NAME=(str, "nt_refresh"),
+    AUTH_COOKIE_CSRF_NAME=(str, "nt_csrf"),
+    AUTH_COOKIE_SECURE=(bool, False),
+    AUTH_COOKIE_SAMESITE=(str, "Lax"),
+    AUTH_COOKIE_DOMAIN=(str, ""),
+    AUTH_COOKIE_PATH=(str, "/"),
+    DRF_THROTTLE_ANON=(str, "60/min"),
+    DRF_THROTTLE_USER=(str, "600/min"),
+    DRF_THROTTLE_AUTH_LOGIN=(str, "20/min"),
+    DRF_THROTTLE_AUTH_REFRESH=(str, "60/min"),
+    DRF_THROTTLE_AUTH_LOGOUT=(str, "60/min"),
+    DRF_THROTTLE_ME_READ=(str, "60/min"),
+    DRF_THROTTLE_ME_ACL_READ=(str, "30/min"),
+    DJANGO_CSP_CONNECT_SRC=(list, ["http://localhost:8000", "http://127.0.0.1:8000"]),
+    AUDIT_HMAC_KEYS=(str, ""),
+    SENTRY_DSN=(str, ""),
+    SENTRY_ENVIRONMENT=(str, "dev"),
+    SENTRY_TRACES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_PROFILES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_RELEASE=(str, ""),
+    TOTP_ISSUER=(str, "Necktral"),
+    TOTP_CHALLENGE_TTL=(int, 300),
+    TOTP_VALID_WINDOW=(int, 1),
 )
 
 if ENV_FILE.exists():
@@ -71,9 +67,58 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 
+# --- Logging (request_id obligatorio) ---
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {"()": "config.logging_utils.RequestIdFilter"},
+    },
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name}: {message} (request_id={request_id})",
+            "style": "{",
+        },
+        "json": {"()": "config.logging_utils.JsonFormatter"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "json" if not DEBUG else "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "apps.observability": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.audit": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "apps.accounts": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
+
 # CORS / CSRF para PWA
 CORS_ALLOWED_ORIGINS = env("DJANGO_CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = env("DJANGO_CSRF_TRUSTED_ORIGINS")
+CSP_CONNECT_SRC_LIST = env("DJANGO_CSP_CONNECT_SRC")
+TOTP_ISSUER = env("TOTP_ISSUER")
+TOTP_CHALLENGE_TTL = env("TOTP_CHALLENGE_TTL")
+TOTP_VALID_WINDOW = env("TOTP_VALID_WINDOW")
 
 from corsheaders.defaults import default_headers
 
@@ -87,6 +132,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "x-device-nonce",
     "x-device-signature",
     "x-request-id",
+    "x-csrf-token",
 ]
 
 # Permite que el frontend lea el request id devuelto por el backend
@@ -94,7 +140,15 @@ CORS_EXPOSE_HEADERS = [
     "X-Request-Id",
 ]
 
+CORS_ALLOW_CREDENTIALS = env("AUTH_TOKEN_TRANSPORT") == "cookie"
+
 AUDIT_HMAC_KEY = env("AUDIT_HMAC_KEY")
+AUDIT_HMAC_KEYS = env("AUDIT_HMAC_KEYS")
+SENTRY_DSN = env("SENTRY_DSN")
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT")
+SENTRY_TRACES_SAMPLE_RATE = env("SENTRY_TRACES_SAMPLE_RATE")
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE")
+SENTRY_RELEASE = env("SENTRY_RELEASE")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
 AUDIT_MODULE_NAME = "AUTH"
 AUDIT_SCHEMA_VERSION = 1
@@ -144,7 +198,9 @@ INSTALLED_APPS += [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "config.middleware.request_id.RequestIdMiddleware",
+    "config.middleware.request_logging.RequestLoggingMiddleware",
     # CORS lo más arriba posible (antes de CommonMiddleware y WhiteNoise)
     "corsheaders.middleware.CorsMiddleware",
     # WhiteNoise sirve estáticos (útil incluso en dev si lo deseas)
@@ -152,6 +208,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "config.middleware.cookie_csrf.CookieJwtCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -216,9 +273,13 @@ PASSWORD_HASHERS = [
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": "apps.accounts.password_validators.PasswordComplexityValidator",
+        "OPTIONS": {"min_length": 10, "min_classes": 3},
+    },
 ]
 
 
@@ -248,6 +309,26 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+        "config.throttling.DeviceScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("DRF_THROTTLE_ANON"),
+        "user": env("DRF_THROTTLE_USER"),
+        "auth_login": env("DRF_THROTTLE_AUTH_LOGIN"),
+        "auth_sensitive": env("DRF_THROTTLE_AUTH_SENSITIVE", default="10/min"),
+        "auth_refresh": env("DRF_THROTTLE_AUTH_REFRESH"),
+        "auth_logout": env("DRF_THROTTLE_AUTH_LOGOUT"),
+        "me_read": env("DRF_THROTTLE_ME_READ"),
+        "me_acl_read": env("DRF_THROTTLE_ME_ACL_READ"),
+        "context_read": "60/min",
+        "sync_batch": "30/min",
+        "admin_writes": "60/min",
+        "heavy_reads": "60/min",
+    },
 }
 
 # SimpleJWT
@@ -258,6 +339,21 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
 }
+
+# Observabilidad (Sentry)
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        release=SENTRY_RELEASE or None,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
+        send_default_pii=False,
+        integrations=[DjangoIntegration()],
+    )
 
 # CORS / CSRF para PWA
 CORS_ALLOWED_ORIGINS = env("DJANGO_CORS_ALLOWED_ORIGINS")
@@ -286,5 +382,36 @@ CONTENT_SECURITY_POLICY = {
         "default-src": ("'self'",),
         "script-src": ("'self'",),
         "style-src": ("'self'",),
+        "object-src": ("'none'",),
+        "base-uri": ("'self'",),
+        "frame-ancestors": ("'none'",),
+        "form-action": ("'self'",),
     }
 }
+
+CONTENT_SECURITY_POLICY_REPORT_ONLY = {
+    "DIRECTIVES": {
+        "default-src": ("'self'",),
+        "script-src": ("'self'",),
+        "style-src": ("'self'",),
+        "connect-src": tuple(["'self'"] + list(CSP_CONNECT_SRC_LIST)),
+        "img-src": ("'self'", "data:"),
+        "font-src": ("'self'", "data:"),
+        "report-uri": ("/api/csp/report/",),
+    }
+}
+
+AUTH_TOKEN_TRANSPORT = env("AUTH_TOKEN_TRANSPORT")
+AUTH_COOKIE_ACCESS_NAME = env("AUTH_COOKIE_ACCESS_NAME")
+AUTH_COOKIE_REFRESH_NAME = env("AUTH_COOKIE_REFRESH_NAME")
+AUTH_COOKIE_CSRF_NAME = env("AUTH_COOKIE_CSRF_NAME")
+AUTH_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=not DEBUG)
+AUTH_COOKIE_SAMESITE = env("AUTH_COOKIE_SAMESITE")
+AUTH_COOKIE_DOMAIN = env("AUTH_COOKIE_DOMAIN") or None
+AUTH_COOKIE_PATH = env("AUTH_COOKIE_PATH")
+
+_access_lifetime = cast(timedelta, SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"])
+_refresh_lifetime = cast(timedelta, SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"])
+AUTH_COOKIE_ACCESS_MAX_AGE = int(_access_lifetime.total_seconds())
+AUTH_COOKIE_REFRESH_MAX_AGE = int(_refresh_lifetime.total_seconds())
+AUTH_COOKIE_CSRF_MAX_AGE = AUTH_COOKIE_REFRESH_MAX_AGE

@@ -59,7 +59,16 @@ En PROD, Nginx sirve la SPA y proxyea `/api/` hacia el backend.
 ## Auditoría contractual
 
 - Todos los endpoints de escritura emiten eventos de auditoría con `reason_code` y `event_type` permitido por contrato.
-- Integridad: encadenado por hash y firmado con HMAC (`AUDIT_HMAC_KEY` en PROD).
+- Integridad: encadenado por hash y firmado con HMAC (keyring `AUDIT_HMAC_KEYS` o fallback `AUDIT_HMAC_KEY`).
+- Los eventos nuevos guardan `signature_key_id` para rotación segura.
+
+## Observabilidad (Sentry + métricas)
+
+- Sentry es opcional. Se activa configurando `SENTRY_DSN` en `.env`.
+- Variables útiles: `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`, `SENTRY_RELEASE`.
+- Métricas básicas: `GET /api/metrics/` (solo staff/superuser). Requiere auth y contexto (`X-Company-Id`).
+- En desarrollo, `testserver` debe estar en `DJANGO_ALLOWED_HOSTS` para pruebas con `APIClient`.
+- Todas las respuestas incluyen `X-Request-Id` para trazabilidad.
 
 Guías de organización:
 
@@ -73,6 +82,11 @@ El comando valida:
 
 - `signature` (HMAC-SHA256 sobre `event_hash`)
 - consistencia del encadenamiento por partición (`prev_event_hash` + `AuditChainHeadV2`)
+
+## Paginación en listados
+
+- Listados ORG/HR/RBAC soportan `limit` y `offset`.
+- Respuesta estándar: `{ count, limit, offset, results }`.
 
 ## FUEL (Estación de Servicios)
 
@@ -175,6 +189,14 @@ docker compose exec -T backend python manage.py audit_verify_chain
   - Membership y RoleAssignment también se reactivan si estaban off.
   - Validado por el test: `tests/test_bootstrap_company_command.py`.
 
+## Simulación de carga (auth)
+
+- Seed determinista de usuarios para k6:
+  ```bash
+  docker compose exec -T backend python src/manage.py seed_auth_users
+  ```
+- Guía completa: [../simulacion/README.md](../simulacion/README.md)
+
 ## Auditoría contractual
 
 - Todos los endpoints de escritura generan eventos en apps.audit con reason_code y event_type según contrato.
@@ -218,4 +240,4 @@ Guías de organización:
 
 ---
 
-Actualizado: 2026-01-23.
+Actualizado: 2026-02-09.

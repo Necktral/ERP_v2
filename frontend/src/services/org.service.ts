@@ -1,5 +1,26 @@
 import { api } from 'src/boot/axios';
 
+type PaginatedResponse<T> = {
+  count: number;
+  limit: number;
+  offset: number;
+  results: T[];
+};
+
+type ListParams = {
+  limit?: number;
+  offset?: number;
+};
+
+function buildListQuery(params?: ListParams): string {
+  if (!params) return '';
+  const qs = new URLSearchParams();
+  if (typeof params.limit === 'number') qs.set('limit', String(params.limit));
+  if (typeof params.offset === 'number') qs.set('offset', String(params.offset));
+  const out = qs.toString();
+  return out ? `?${out}` : '';
+}
+
 export type CompanyRow = {
   id: number;
   name: string;
@@ -59,9 +80,10 @@ export async function getCompanyProfile() {
   return data;
 }
 
-export async function listCompanies() {
-  const { data } = await api.get<{ results: CompanyRow[] }>('/org/companies/');
-  return data.results;
+export async function listCompanies(params?: ListParams) {
+  const qs = buildListQuery(params);
+  const { data } = await api.get<PaginatedResponse<CompanyRow>>(`/org/companies/${qs}`);
+  return data;
 }
 
 export async function createCompany(payload: CreateCompanyPayload) {
@@ -74,9 +96,10 @@ export async function updateCompanyProfile(payload: Partial<CompanyProfile>) {
   return data;
 }
 
-export async function listBranches() {
-  const { data } = await api.get<{ results: BranchRow[] }>('/org/branches/');
-  return data.results;
+export async function listBranches(params?: ListParams) {
+  const qs = buildListQuery(params);
+  const { data } = await api.get<PaginatedResponse<BranchRow>>(`/org/branches/${qs}`);
+  return data;
 }
 
 export async function createBranch(payload: CreateBranchPayload) {

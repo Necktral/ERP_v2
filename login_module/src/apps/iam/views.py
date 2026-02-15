@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 class ContextEchoView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "context_read"
 
     def get(self, request):
         company = getattr(request, "company", None)

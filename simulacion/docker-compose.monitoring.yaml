@@ -1,0 +1,33 @@
+services:
+  influxdb:
+    image: influxdb:1.8
+    container_name: k6_influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+    networks:
+      - necktral_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: k6_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+    volumes:
+      - ./grafana-dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./grafana-datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./dashboards:/var/lib/grafana/dashboards
+    networks:
+      - necktral_net
+    depends_on:
+      - influxdb
+
+networks:
+  necktral_net:
+    external: true
+    name: erp_crm_default # Trying to attach to project network, might need adjustment based on main compose

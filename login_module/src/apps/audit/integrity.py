@@ -17,9 +17,9 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any, Iterable
 
-from django.conf import settings
 from django.db.models import QuerySet
 
+from .keyring import get_audit_hmac_keyring
 from .models import AuditChainHeadV2, AuditEvent
 
 
@@ -31,9 +31,8 @@ def _sha256_hex(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
-def _hmac_hex(message_hex: str) -> str:
-    key = settings.AUDIT_HMAC_KEY.encode("utf-8")
-    return hmac.new(key, message_hex.encode("utf-8"), hashlib.sha256).hexdigest()
+def _hmac_hex(message_hex: str, *, key: str) -> str:
+    return hmac.new(key.encode("utf-8"), message_hex.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -97,6 +96,8 @@ def verify_events(events: Iterable[AuditEvent]) -> AuditIntegrityReport:
     errors: list[AuditIntegrityError] = []
     events_scanned = 0
     partitions: set[str] = set()
+    keyring = get_audit_hmac_keyring()
+    key_map = {kid: key for kid, key in keyring}
 
     for ev in events:
         events_scanned += 1
@@ -130,8 +131,28 @@ def verify_events(events: Iterable[AuditEvent]) -> AuditIntegrityReport:
                 )
             )
 
-        expected_sig = _hmac_hex(expected_hash)
         got_sig = (ev.signature or "")
+        signature_ok = False
+        expected_sig = None
+
+        if ev.signature_key_id:
+            key = key_map.get(ev.signature_key_id)
+            if key:
+                expected_sig = _hmac_hex(expected_hash, key=key)
+                signature_ok = got_sig == expected_sig
+
+        if not signature_ok:
+            for kid, key in keyring:
+                candidate = _hmac_hex(expected_hash, key=key)
+                if got_sig == candidate:
+                    signature_ok = True
+                    if expected_sig is None:
+                        expected_sig = candidate
+                    break
+
+        if expected_sig is None and keyring:
+            expected_sig = _hmac_hex(expected_hash, key=keyring[0][1])
+
         if not got_sig:
             errors.append(
                 AuditIntegrityError(
@@ -143,7 +164,7 @@ def verify_events(events: Iterable[AuditEvent]) -> AuditIntegrityReport:
                     got=got_sig,
                 )
             )
-        elif got_sig != expected_sig:
+        elif not signature_ok:
             errors.append(
                 AuditIntegrityError(
                     partition_key=pk,

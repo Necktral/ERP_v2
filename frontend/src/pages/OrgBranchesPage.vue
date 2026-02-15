@@ -27,6 +27,8 @@
         :loading="loading"
         :rows-per-page-options="[10, 20, 50, 0]"
         :filter="filter"
+        :pagination="pagination"
+        @request="onRequest"
       >
         <template #toolbar>
           <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
@@ -145,6 +147,11 @@ const errorMsg = ref<string | null>(null);
 
 const filter = ref('');
 const rows = ref<BranchRow[]>([]);
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
 
 const columns: QTableColumn[] = [
   { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
@@ -156,16 +163,34 @@ const columns: QTableColumn[] = [
   { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
 ];
 
-async function load() {
+function computeLimit(rowsPerPage: number) {
+  return rowsPerPage === 0 ? 200 : rowsPerPage;
+}
+
+async function load(page = pagination.value.page, rowsPerPage = pagination.value.rowsPerPage) {
   loading.value = true;
   errorMsg.value = null;
   try {
-    rows.value = await listBranches();
+    const limit = computeLimit(rowsPerPage);
+    const offset = (page - 1) * limit;
+    const data = await listBranches({ limit, offset });
+    rows.value = data.results;
+    pagination.value = {
+      ...pagination.value,
+      page,
+      rowsPerPage,
+      rowsNumber: data.count,
+    };
   } catch (e: unknown) {
     errorMsg.value = extractErrorMessage(e);
   } finally {
     loading.value = false;
   }
+}
+
+function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  const { page, rowsPerPage } = props.pagination;
+  load(page, rowsPerPage);
 }
 
 onMounted(load);

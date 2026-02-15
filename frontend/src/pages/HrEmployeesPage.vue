@@ -31,6 +31,8 @@
         :loading="loading"
         :rows-per-page-options="[10, 20, 50, 0]"
         :filter="filter"
+        :pagination="pagination"
+        @request="onRequest"
       >
         <template #toolbar>
           <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
@@ -577,6 +579,11 @@ const loading = ref(false);
 const saving = ref(false);
 const errorMsg = ref<string | null>(null);
 const rows = ref<EmployeeRow[]>([]);
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
 
 const filter = ref('');
 
@@ -609,16 +616,34 @@ const canProvision = computed(
 );
 const canProvisionUser = computed(() => canProvision.value && canUpdate.value);
 
-async function load() {
+function computeLimit(rowsPerPage: number) {
+  return rowsPerPage === 0 ? 200 : rowsPerPage;
+}
+
+async function load(page = pagination.value.page, rowsPerPage = pagination.value.rowsPerPage) {
   loading.value = true;
   errorMsg.value = null;
   try {
-    rows.value = await listEmployees();
+    const limit = computeLimit(rowsPerPage);
+    const offset = (page - 1) * limit;
+    const data = await listEmployees({ limit, offset });
+    rows.value = data.results;
+    pagination.value = {
+      ...pagination.value,
+      page,
+      rowsPerPage,
+      rowsNumber: data.count,
+    };
   } catch (e: unknown) {
     errorMsg.value = extractErrorMessage(e);
   } finally {
     loading.value = false;
   }
+}
+
+function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  const { page, rowsPerPage } = props.pagination;
+  load(page, rowsPerPage);
 }
 onMounted(load);
 
@@ -731,8 +756,8 @@ async function openAssign(e: EmployeeRow) {
   branchesLoading.value = true;
 
   try {
-    const positions: PositionRow[] = await listPositions();
-    positionOptions.value = positions.map((p) => ({
+    const positionsData = await listPositions({ limit: 200, offset: 0 });
+    positionOptions.value = positionsData.results.map((p) => ({
       label: `${p.name} (${p.code || '-'})`,
       value: p.id,
     }));
@@ -743,8 +768,11 @@ async function openAssign(e: EmployeeRow) {
   }
 
   try {
-    const branches = await listBranches();
-    branchOptions.value = branches.map((b) => ({ label: `${b.name} (${b.code})`, value: b.id }));
+    const branchesData = await listBranches({ limit: 200, offset: 0 });
+    branchOptions.value = branchesData.results.map((b) => ({
+      label: `${b.name} (${b.code})`,
+      value: b.id,
+    }));
   } catch (err: unknown) {
     // Si no tienes org.branch.read, igual puedes asignar sin branch_id o ingresarlo manual (más adelante si lo quieres)
     // Aquí solo informamos.

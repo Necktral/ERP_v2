@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.audit.writer import write_event
+from apps.common.pagination import get_limit_offset, paginate_queryset
 from apps.common.permissions import rbac_permission
 from apps.iam.models import OrgUnit
 
@@ -34,6 +35,7 @@ class EnrollmentChallengeCreateView(APIView):
     """
 
     permission_classes = [rbac_permission("sync.device.enroll")]
+    throttle_scope = "admin_writes"
 
     def post(self, request):
         ser = EnrollmentChallengeCreateIn(data=request.data)
@@ -107,6 +109,7 @@ class DeviceEnrollView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_scope = "auth_sensitive"
 
     def post(self, request):
         ser = DeviceEnrollIn(data=request.data)
@@ -192,6 +195,7 @@ class DeviceRevokeView(APIView):
     """
 
     permission_classes = [rbac_permission("sync.device.revoke")]
+    throttle_scope = "admin_writes"
 
     def post(self, request, device_id: str):
         company = getattr(request, "company", None)
@@ -227,6 +231,7 @@ class DeviceListView(APIView):
     """
 
     permission_classes = [rbac_permission("sync.device.revoke")]
+    throttle_scope = "heavy_reads"
 
     def get(self, request):
         company = getattr(request, "company", None)
@@ -248,20 +253,8 @@ class DeviceListView(APIView):
                 pass
             qs = qs.filter(filt)
 
-        try:
-            limit = int(request.query_params.get("limit") or 50)
-        except Exception:
-            limit = 50
-        try:
-            offset = int(request.query_params.get("offset") or 0)
-        except Exception:
-            offset = 0
-
-        limit = max(1, min(limit, 200))
-        offset = max(0, offset)
-
-        total = qs.count()
-        rows = qs[offset : offset + limit]
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
 
         results = [
             {
@@ -288,6 +281,7 @@ class SyncBatchView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_scope = "sync_batch"
 
     def post(self, request):
         ser = SyncBatchIn(data=request.data)

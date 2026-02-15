@@ -57,6 +57,10 @@ def retryable_for(status_code: int) -> bool:
 
 
 def error_code_for(*, status_code: int, exc: Exception | None = None, request=None) -> str:
+    if request is not None:
+        override = getattr(request, "error_code_override", None)
+        if override:
+            return str(override)
     sc = int(status_code)
 
     if sc == 401:
@@ -72,9 +76,9 @@ def error_code_for(*, status_code: int, exc: Exception | None = None, request=No
 
     if sc == 403:
         # Distinguir RBAC vs Scope por señales del request
-        if request is not None and getattr(request, "required_permission", ""):
+        if request is not None and getattr(request, "required_permission", False):
             return "RBAC_FORBIDDEN"
-        if request is not None and getattr(request, "required_scope", None):
+        if request is not None and getattr(request, "required_scope", False):
             return "SCOPE_FORBIDDEN"
         return "RBAC_FORBIDDEN"
 
@@ -124,7 +128,9 @@ def message_for(*, code: str, details: Any) -> str:
 
 def details_for(*, code: str, details: Any, request=None) -> dict:
     if code == "VALIDATION_ERROR":
-        return _validation_details(details)
+        obj = _validation_details(details)
+        _inject_context(obj, request)
+        return obj
 
     obj = _as_object(details)
 
@@ -147,8 +153,40 @@ def details_for(*, code: str, details: Any, request=None) -> dict:
                 "branch_id": getattr(effective_branch, "id", None),
             },
         )
-
+    _inject_context(obj, request)
     return obj
+
+
+def _inject_context(target: dict, request=None) -> None:
+    if request is None:
+        return
+
+    ctx = getattr(request, "ctx", None)
+    if ctx is None:
+        ctx = getattr(getattr(request, "_request", None), "ctx", None)
+
+    if ctx is not None:
+        target.setdefault(
+            "context",
+            {
+                "company_id": getattr(ctx, "company_id", None),
+                "branch_id": getattr(ctx, "branch_id", None),
+                "data_company_id": getattr(ctx, "data_company_id", None),
+                "data_branch_id": getattr(ctx, "data_branch_id", None),
+            },
+        )
+        return
+
+    company = getattr(request, "company", None)
+    branch = getattr(request, "branch", None)
+    if company or branch:
+        target.setdefault(
+            "context",
+            {
+                "company_id": getattr(company, "id", None),
+                "branch_id": getattr(branch, "id", None),
+            },
+        )
 
 
 def build_error_envelope(*, request, status_code: int, exc: Exception | None = None, details: Any = None) -> dict:

@@ -267,6 +267,8 @@ def void_doc(
 
         if doc.status == DocStatus.VOIDED:
             return {"ok": True, "already_voided": True}
+        if doc.status == DocStatus.DRAFT:
+            raise BillingError("cannot void a draft document")
 
         before = {"status": doc.status, "void_reason": doc.void_reason}
 

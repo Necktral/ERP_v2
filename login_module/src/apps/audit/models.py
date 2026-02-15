@@ -77,6 +77,7 @@ class AuditEvent(models.Model):
     prev_event_hash = models.CharField(max_length=64, blank=True, default="")
     event_hash = models.CharField(max_length=64, null=True, blank=True)
     signature = models.CharField(max_length=64, null=True, blank=True)
+    signature_key_id = models.CharField(max_length=32, blank=True, default="")
 
     class Meta:
         app_label = "audit"

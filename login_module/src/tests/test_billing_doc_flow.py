@@ -86,3 +86,81 @@ def test_billing_create_issue_void_audited():
     assert AuditEvent.objects.filter(module="BILLING", event_type="BILLING_DOC_CREATED").count() >= 1
     assert AuditEvent.objects.filter(module="BILLING", event_type="BILLING_DOC_ISSUED").count() >= 1
     assert AuditEvent.objects.filter(module="BILLING", event_type="BILLING_DOC_VOIDED").count() >= 1
+
+
+@pytest.mark.django_db
+def test_billing_doc_cannot_void_draft():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="u3", password="x")
+    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
+
+    c = _client_with_perms(
+        user,
+        company,
+        branch,
+        ["billing.doc.create", "billing.doc.void"],
+    )
+
+    r = c.post(
+        "/api/billing/docs/",
+        {
+            "doc_type": "INVOICE",
+            "series": "A",
+            "currency": "NIO",
+            "customer_name": "Cliente 2",
+            "is_fiscal": False,
+            "idempotency_key": "b2",
+            "lines": [
+                {"description": "Servicio", "quantity": "1.0000", "unit_price": "50.000000", "tax_rate": "0.1500"},
+            ],
+        },
+        format="json",
+    )
+    assert r.status_code == 201
+    doc_id = r.data["id"]
+
+    r = c.post(f"/api/billing/docs/{doc_id}/void/", {"reason": "No emitido"}, format="json")
+    assert r.status_code == 400
+    assert "draft" in r.data["error"]["message"]
+
+
+@pytest.mark.django_db
+def test_billing_doc_issue_idempotent():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="u4", password="x")
+    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
+
+    c = _client_with_perms(
+        user,
+        company,
+        branch,
+        ["billing.doc.create", "billing.doc.issue"],
+    )
+
+    r = c.post(
+        "/api/billing/docs/",
+        {
+            "doc_type": "INVOICE",
+            "series": "A",
+            "currency": "NIO",
+            "customer_name": "Cliente 3",
+            "is_fiscal": False,
+            "idempotency_key": "b3",
+            "lines": [
+                {"description": "Servicio", "quantity": "1.0000", "unit_price": "25.000000", "tax_rate": "0.1500"},
+            ],
+        },
+        format="json",
+    )
+    assert r.status_code == 201
+    doc_id = r.data["id"]
+
+    r1 = c.post(f"/api/billing/docs/{doc_id}/issue/", {"apply_inventory": False}, format="json")
+    assert r1.status_code == 200
+    assert r1.data["ok"] is True
+
+    r2 = c.post(f"/api/billing/docs/{doc_id}/issue/", {"apply_inventory": False}, format="json")
+    assert r2.status_code == 200
+    assert r2.data.get("already_issued") is True

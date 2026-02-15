@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Seguridad (Backend):** modo cookie opcional (`AUTH_TOKEN_TRANSPORT`) + middleware CSRF para cookies.
+- **QA:** Correccion de tests de integracion 2FA y mejoras de tipado estatico.
+- **Auditoria (Backend):** redaccion de metadata/snapshots y reason codes `TOKEN_MISMATCH`, `INVALID_OLD_PASSWORD`, `CSRF_FAILED`.
+- **Frontend:** soporte de cookie transport (CSRF header desde cookie + `withCredentials`).
+- **Nginx:** hardening de headers de seguridad + rate limits por ruta (auth/api).
 - **Docs (Operación):** pack operativo Import/Export & Sourcing (empresa + plantillas: RFQ, landed cost, checklist, términos).
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/reset-temp-password/` + evento de auditoría `HR_EMPLOYEE_TEMP_PASSWORD_RESET` + acción UI en empleados.
 - **HR (Backend/Frontend):** endpoint `POST /api/hr/employees/<id>/revoke-access/` + evento de auditoría `HR_EMPLOYEE_ACCESS_REVOKED` + acción UI en empleados.
@@ -18,11 +23,33 @@
 - **FUEL (Tests):** test de flujo (turno → despacho → venta → cierre) + constraint de turno único.
 - **RBAC:** roles `fuel_*` y permisos `fuel.*` en `seed_rbac_v01`.
 - **Auditoría (contrato):** extensión del contrato con `event_type`, `reason_code` y `subject_type` para FUEL.
+- **Observabilidad (Backend):** middleware de logging por request en `/api/*` con `request_id` y latencia.
+- **Observabilidad (Backend):** logging estructurado JSON con metadatos de request y actor.
+- **Seguridad (Backend):** `throttle_scope` en endpoints sensibles de auth y bootstrap.
+- **QA (Backend):** overrides por env para `me_read` y `me_acl_read`.
+- **Docs (QA):** troubleshooting de Gate 3 por throttling y uso de `.env` en Docker Compose.
+- **Paginación (Backend):** helper común limit/offset + respuesta estándar `{count, limit, offset, results}` en listados ORG/HR/RBAC/SYNC.
+- **Índices (DB):** índices en OrgUnit, EmploymentAssignment, Role/Permission con migraciones.
+- **CD (CI/CD):** workflow de despliegue con build/push a GHCR y deploy via SSH.
+- **Docs (Operación):** guía `CD_DEPLOY_v1.0.md` y actualización de índice operativa.
+- **Tests (Backend):** cobertura para listados paginados y anti-replay 2FA.
 
 ### Changed
 
+- **Auth (Backend):** refresh/logout con scopes `auth_refresh` y `auth_logout`.
+- **QA:** Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl` si los overrides no llegan al contenedor (compose usa `.env`).
 - **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
 - **FUEL (Backend):** `GET /api/fuel/health/` queda público (sin auth) para monitoreo.
+- **Frontend:** paginación server-side en ORG/HR + servicios con `limit/offset` + `AppDataTable` pasa eventos/attrs.
+- **Auth (Backend):** challenge 2FA one-time (DB-backed) con consumo atómico y binding suave.
+- **Auth (Backend):** logout/refresh en cookie-mode limpian cookies en rutas idempotentes de error.
+- **Infra PROD:** `compose.prod.yaml` usa imágenes con tags de release.
+
+### Fixed
+
+- **Tests (Backend):** `test_axes_lockout` se habilita sin skip forzado.
+- **Seguridad (Backend):** 2FA Anti-Replay endurecido con bloqueo pesimista (`select_for_update`) y eliminación inmediata del challenge tras consumo.
+- **Seguridad (Backend):** `LogoutView` limpia cookies incondicionalmente al usar transporte `cookie`, garantizando idempotencia incluso con tokens inválidos.
 
 ## [2026-01-13] - Release
 

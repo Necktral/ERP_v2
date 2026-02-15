@@ -22,6 +22,8 @@
           row-key="id"
           :loading="loading"
           :rows-per-page-options="[10, 20, 50, 0]"
+          :pagination="pagination"
+          @request="onRequest"
         >
           <template #body-cell-actions="props">
             <q-td :props="props">
@@ -163,6 +165,11 @@ const loading = ref(false);
 const saving = ref(false);
 const errorMsg = ref<string | null>(null);
 const rows = ref<PositionRow[]>([]);
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
 
 const columns: QTableColumn[] = [
   { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
@@ -185,16 +192,34 @@ const canRoleMap = computed(() => {
   );
 });
 
-async function load() {
+function computeLimit(rowsPerPage: number) {
+  return rowsPerPage === 0 ? 200 : rowsPerPage;
+}
+
+async function load(page = pagination.value.page, rowsPerPage = pagination.value.rowsPerPage) {
   loading.value = true;
   errorMsg.value = null;
   try {
-    rows.value = await listPositions();
+    const limit = computeLimit(rowsPerPage);
+    const offset = (page - 1) * limit;
+    const data = await listPositions({ limit, offset });
+    rows.value = data.results;
+    pagination.value = {
+      ...pagination.value,
+      page,
+      rowsPerPage,
+      rowsNumber: data.count,
+    };
   } catch (e: unknown) {
     errorMsg.value = extractErrorMessage(e);
   } finally {
     loading.value = false;
   }
+}
+
+function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  const { page, rowsPerPage } = props.pagination;
+  load(page, rowsPerPage);
 }
 
 onMounted(load);
@@ -280,8 +305,8 @@ async function openRoleMap(p: PositionRow) {
 
   rolesLoading.value = true;
   try {
-    const roles = await listRoles(false);
-    roleOptions.value = roles.map((r) => ({ label: r.name, value: r.id }));
+    const rolesData = await listRoles({ includeInactive: false, limit: 200, offset: 0 });
+    roleOptions.value = rolesData.results.map((r) => ({ label: r.name, value: r.id }));
   } catch (e: unknown) {
     roleError.value = extractErrorMessage(e);
   } finally {

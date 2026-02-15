@@ -26,6 +26,12 @@ django-axes==8.1.0
 # Cabeceras CSP (endurecimiento de seguridad, especialmente si sirves algo web)
 django-csp==4.0
 
+# TOTP (2FA)
+pyotp==2.9.0
+
+# Observabilidad (errores)
+sentry-sdk==1.45.0
+
 # Static files (admin, y despliegue simple sin nginx al inicio)
 whitenoise==6.11.0
 

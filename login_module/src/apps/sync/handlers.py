@@ -64,6 +64,7 @@ def apply_command_idempotent(device: DeviceEnrollment, cmd: Command) -> Dict[str
             raise CommandError("IDEMPOTENCY_CONFLICT: command_id reused with different payload")
         return existing.response_json
 
+    response: Dict[str, Any]
     handler = HANDLERS.get(cmd.type)
     if not handler:
         response = {"status": "ERROR", "error": f"UNKNOWN_COMMAND_TYPE: {cmd.type}"}

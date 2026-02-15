@@ -7,7 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.audit.writer import write_event
+from apps.common.pagination import get_limit_offset, paginate_list, paginate_queryset
 from apps.common.permissions import rbac_permission
+from apps.common.throttling import MethodThrottleScopeMixin
 from apps.iam.models import AdminGrant, OrgUnit, UserMembership
 from apps.iam.selectors import get_accessible_companies
 from apps.rbac.models import RoleAssignment
@@ -21,13 +23,18 @@ from .serializers import (
 )
 
 
-class CompanyListCreateView(APIView):
+class CompanyListCreateView(MethodThrottleScopeMixin, APIView):
     """
     Holding → Companies (multi-company).
     Permisos por método:
       - GET  -> org.company.read
       - POST -> org.company.create
     """
+
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "POST": "admin_writes",
+    }
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -37,9 +44,11 @@ class CompanyListCreateView(APIView):
         return [rbac_permission("org.company.read")()]
 
     def get(self, request):
-        qs = get_accessible_companies(request.user)
+        companies = get_accessible_companies(request.user)
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_list(companies, limit=limit, offset=offset)
         out = []
-        for c in qs:
+        for c in rows:
             prof = getattr(c, "company_profile", None)
             out.append(
                 {
@@ -51,7 +60,10 @@ class CompanyListCreateView(APIView):
                     "tax_id": getattr(prof, "tax_id", ""),
                 }
             )
-        return Response({"results": out}, status=status.HTTP_200_OK)
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": out},
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         with transaction.atomic():
@@ -166,12 +178,17 @@ class CompanyListCreateView(APIView):
             return Response({"id": new_company.id}, status=status.HTTP_201_CREATED)
 
 
-class BranchListCreateView(APIView):
+class BranchListCreateView(MethodThrottleScopeMixin, APIView):
     """
     Permisos por método (robusto):
       - GET  -> org.branch.read
       - POST -> org.branch.create
     """
+
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "POST": "admin_writes",
+    }
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -184,8 +201,10 @@ class BranchListCreateView(APIView):
     def get(self, request):
         company: OrgUnit = request.company
         qs = OrgUnit.objects.filter(parent=company, unit_type=OrgUnit.UnitType.BRANCH).order_by("name")
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
         data = []
-        for b in qs:
+        for b in rows:
             prof = getattr(b, "branch_profile", None)
             data.append(
                 {
@@ -198,7 +217,10 @@ class BranchListCreateView(APIView):
                     "email": getattr(prof, "email", ""),
                 }
             )
-        return Response({"results": data}, status=status.HTTP_200_OK)
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": data},
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         company: OrgUnit = request.company
@@ -236,6 +258,7 @@ class BranchListCreateView(APIView):
 
 class BranchDetailView(APIView):
     permission_classes = [rbac_permission("org.branch.update")]
+    throttle_scope = "admin_writes"
 
     def patch(self, request, branch_id: int):
         company: OrgUnit = request.company
@@ -280,7 +303,11 @@ class BranchDetailView(APIView):
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
-class CompanyProfileView(APIView):
+class CompanyProfileView(MethodThrottleScopeMixin, APIView):
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "PUT": "admin_writes",
+    }
     def get_permissions(self):
         # Separar ver vs editar
         if self.request.method == "GET":

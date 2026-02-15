@@ -75,6 +75,8 @@ def test_billing_invoice_create_writes_audit_event():
     )
     assert resp.status_code == 201
     assert resp.data["status"] == "DRAFT"
+    assert resp["X-Deprecated"] == "true"
+    assert "legacy" in resp["X-Deprecation-Notice"]
 
     assert AuditEvent.objects.filter(module="BILLING", event_type="BILLING_INVOICE_CREATED").exists()
 

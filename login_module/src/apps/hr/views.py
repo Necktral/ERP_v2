@@ -10,7 +10,9 @@ from rest_framework.views import APIView
 
 from apps.audit.writer import write_event
 from apps.common.api_exceptions import ConflictError
+from apps.common.pagination import get_limit_offset, paginate_queryset
 from apps.common.permissions import rbac_permission
+from apps.common.throttling import MethodThrottleScopeMixin
 from apps.iam.models import OrgUnit
 from apps.rbac.models import RoleAssignment
 
@@ -42,6 +44,7 @@ class EmployeeAssignmentEndView(APIView):
     """
 
     permission_classes = [rbac_permission("hr.assignment.end")]
+    throttle_scope = "admin_writes"
 
     def post(self, request, employee_id: int, assignment_id: int):
         company: OrgUnit = request.company
@@ -55,7 +58,11 @@ class EmployeeAssignmentEndView(APIView):
 User = get_user_model()
 
 
-class PositionListCreateView(APIView):
+class PositionListCreateView(MethodThrottleScopeMixin, APIView):
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "POST": "admin_writes",
+    }
     def get_permissions(self):
         if self.request.method == "POST":
             return [rbac_permission("hr.position.create")()]
@@ -64,8 +71,13 @@ class PositionListCreateView(APIView):
     def get(self, request):
         company: OrgUnit = request.company
         qs = JobPosition.objects.filter(company=company).order_by("name")
-        data = [{"id": p.id, "name": p.name, "code": p.code, "is_active": p.is_active} for p in qs]
-        return Response(data, status=status.HTTP_200_OK)
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        data = [{"id": p.id, "name": p.name, "code": p.code, "is_active": p.is_active} for p in rows]
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": data},
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         company: OrgUnit = request.company
@@ -89,6 +101,7 @@ class PositionListCreateView(APIView):
 
 class PositionDetailView(APIView):
     permission_classes = [rbac_permission("hr.position.update")]
+    throttle_scope = "admin_writes"
 
     def patch(self, request, position_id: int):
         company: OrgUnit = request.company
@@ -122,6 +135,7 @@ class PositionDetailView(APIView):
 
 class PositionRoleMapUpdateView(APIView):
     permission_classes = [rbac_permission("hr.position.roles.update")]
+    throttle_scope = "admin_writes"
 
     def put(self, request, position_id: int):
         company: OrgUnit = request.company
@@ -159,7 +173,11 @@ class PositionRoleMapUpdateView(APIView):
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
-class EmployeeListCreateView(APIView):
+class EmployeeListCreateView(MethodThrottleScopeMixin, APIView):
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "POST": "admin_writes",
+    }
     def get_permissions(self):
         if self.request.method == "POST":
             return [rbac_permission("hr.employee.create")()]
@@ -172,14 +190,15 @@ class EmployeeListCreateView(APIView):
             .select_related("position", "branch")
             .order_by("-started_at", "-id")
         )
-        qs = (
-            Employee.objects.filter(company=company)
-            .select_related("linked_user")
-            .prefetch_related(Prefetch("assignments", queryset=active_asg_qs, to_attr="active_assignments"))
-            .order_by("id")
+        base_qs = Employee.objects.filter(company=company).order_by("id")
+        limit, offset = get_limit_offset(request)
+        total = base_qs.count()
+        qs = base_qs.select_related("linked_user").prefetch_related(
+            Prefetch("assignments", queryset=active_asg_qs, to_attr="active_assignments")
         )
+        rows = qs[offset : offset + limit]
         out = []
-        for e in qs:
+        for e in rows:
             actives = getattr(e, "active_assignments", []) or []
             out.append(
                 {
@@ -206,7 +225,7 @@ class EmployeeListCreateView(APIView):
                     ],
                 }
             )
-        return Response(out)
+        return Response({"count": total, "limit": limit, "offset": offset, "results": out})
 
     def post(self, request):
         company: OrgUnit = request.company
@@ -246,6 +265,7 @@ class EmployeeListCreateView(APIView):
 
 class EmployeeDetailView(APIView):
     permission_classes = [rbac_permission("hr.employee.update")]
+    throttle_scope = "admin_writes"
 
     def patch(self, request, employee_id: int):
         company: OrgUnit = request.company
@@ -316,7 +336,11 @@ class EmployeeDetailView(APIView):
 
 
 # Vista combinada para listar y crear asignaciones de empleado
-class EmployeeAssignmentListCreateView(APIView):
+class EmployeeAssignmentListCreateView(MethodThrottleScopeMixin, APIView):
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "POST": "admin_writes",
+    }
     def get_permissions(self):
         if self.request.method == "POST":
             return [rbac_permission("hr.assignment.create")()]
@@ -330,8 +354,10 @@ class EmployeeAssignmentListCreateView(APIView):
             .select_related("position", "branch")
             .order_by("-is_active", "-started_at", "-id")
         )
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
         data = []
-        for a in qs:
+        for a in rows:
             data.append(
                 {
                     "id": a.id,
@@ -344,7 +370,10 @@ class EmployeeAssignmentListCreateView(APIView):
                     "ended_at": a.ended_at.isoformat() if a.ended_at else None,
                 }
             )
-        return Response(data, status=status.HTTP_200_OK)
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": data},
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request, employee_id: int):
         company: OrgUnit = request.company
@@ -388,6 +417,7 @@ class EmployeeProvisionUserView(APIView):
         rbac_permission("iam.users.create"),
         rbac_permission("hr.employee.update"),
     ]
+    throttle_scope = "admin_writes"
 
     def post(self, request, employee_id: int):
         company: OrgUnit = request.company
@@ -422,6 +452,7 @@ class EmployeeResetTempPasswordView(APIView):
     """
 
     permission_classes = [rbac_permission("iam.users.create"), rbac_permission("hr.employee.update")]
+    throttle_scope = "admin_writes"
 
     def post(self, request, employee_id: int):
         company = request.company
@@ -458,6 +489,7 @@ class EmployeeRevokeAccessView(APIView):
     """
 
     permission_classes = [rbac_permission("iam.users.create"), rbac_permission("hr.employee.update")]
+    throttle_scope = "admin_writes"
 
     def post(self, request, employee_id: int):
         company = request.company

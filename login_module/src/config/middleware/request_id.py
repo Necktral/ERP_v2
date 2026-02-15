@@ -1,10 +1,25 @@
 from __future__ import annotations
 
+import contextvars
 import re
 import uuid
 
 
-_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+_request_id_var = contextvars.ContextVar("request_id", default="")
+
+
+def get_request_id() -> str:
+    return _request_id_var.get() or ""
+
+
+def _sanitize_request_id(raw: str) -> str:
+    if not raw:
+        return ""
+    cleaned = raw.strip()
+    if not _REQUEST_ID_RE.match(cleaned):
+        return ""
+    return cleaned
 
 
 class RequestIdMiddleware:
@@ -23,14 +38,21 @@ class RequestIdMiddleware:
 
     def __call__(self, request):
         incoming = request.headers.get(self.header_name)
-        if incoming and _REQUEST_ID_RE.match(incoming):
-            request_id = incoming
-        else:
-            request_id = uuid.uuid4().hex
+        request_id = _sanitize_request_id(incoming or "") or uuid.uuid4().hex
 
         setattr(request, "request_id", request_id)
+        token = _request_id_var.set(request_id)
+        try:
+            import sentry_sdk
 
-        response = self.get_response(request)
+            sentry_sdk.set_tag("request_id", request_id)
+        except Exception:
+            pass
+
+        try:
+            response = self.get_response(request)
+        finally:
+            _request_id_var.reset(token)
 
         try:
             response[self.header_name] = request_id

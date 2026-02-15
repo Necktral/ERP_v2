@@ -18,7 +18,7 @@
     <q-separator v-if="title || caption || $slots.toolbar" />
 
     <q-card-section class="q-pa-none">
-      <q-table v-bind="tableProps" :dense="isDense" :class="tablePadClass">
+      <q-table v-bind="tableAttrs" :dense="isDense" :class="tablePadClass">
         <template v-for="name in tableSlotNames" :key="name" #[name]="slotProps">
           <slot :name="name" v-bind="slotProps" />
         </template>
@@ -28,9 +28,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { computed, useAttrs, useSlots } from 'vue';
 import type { QTableProps } from 'quasar';
 import { useUiStore } from 'src/stores/ui.store';
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 interface AppDataTableProps extends QTableProps {
   title?: string;
@@ -38,6 +42,7 @@ interface AppDataTableProps extends QTableProps {
 }
 
 const props = defineProps<AppDataTableProps>();
+const attrs = useAttrs();
 const slots = useSlots();
 const ui = useUiStore();
 
@@ -52,6 +57,11 @@ const tableProps = computed<QTableProps>(() => {
   }
   return out as unknown as QTableProps;
 });
+
+const tableAttrs = computed(() => ({
+  ...attrs,
+  ...tableProps.value,
+}));
 
 // “toolbar” es solo del wrapper; no se lo pasamos a QTable
 const tableSlotNames = computed(() => Object.keys(slots).filter((n) => n !== 'toolbar'));

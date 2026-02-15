@@ -5,7 +5,7 @@
         <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
         <q-badge outline>Read: org.company.read</q-badge>
         <q-badge outline v-if="canCreate">Create: org.company.create</q-badge>
-        <q-badge outline>Count: {{ rows.length }}</q-badge>
+        <q-badge outline>Count: {{ totalRows }}</q-badge>
       </template>
 
       <template #actions>
@@ -24,6 +24,8 @@
         :loading="loading"
         :rows-per-page-options="[10, 20, 50, 0]"
         :filter="filter"
+        :pagination="pagination"
+        @request="onRequest"
       >
         <template #toolbar>
           <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
@@ -157,6 +159,13 @@ const saving = ref(false);
 const errorMsg = ref<string | null>(null);
 const filter = ref('');
 const rows = ref<CompanyRow[]>([]);
+const pagination = ref({
+  page: 1,
+  rowsPerPage: 20,
+  rowsNumber: 0,
+});
+
+const totalRows = computed(() => pagination.value.rowsNumber || rows.value.length);
 
 const columns: QTableColumn[] = [
   { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
@@ -167,16 +176,34 @@ const columns: QTableColumn[] = [
   { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
 ];
 
-async function load() {
+function computeLimit(rowsPerPage: number) {
+  return rowsPerPage === 0 ? 200 : rowsPerPage;
+}
+
+async function load(page = pagination.value.page, rowsPerPage = pagination.value.rowsPerPage) {
   loading.value = true;
   errorMsg.value = null;
   try {
-    rows.value = await listCompanies();
+    const limit = computeLimit(rowsPerPage);
+    const offset = (page - 1) * limit;
+    const data = await listCompanies({ limit, offset });
+    rows.value = data.results;
+    pagination.value = {
+      ...pagination.value,
+      page,
+      rowsPerPage,
+      rowsNumber: data.count,
+    };
   } catch (e: unknown) {
     errorMsg.value = extractErrorMessage(e);
   } finally {
     loading.value = false;
   }
+}
+
+function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
+  const { page, rowsPerPage } = props.pagination;
+  load(page, rowsPerPage);
 }
 
 onMounted(load);

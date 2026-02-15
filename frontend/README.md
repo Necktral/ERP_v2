@@ -72,7 +72,10 @@ npm run dev
   ```bash
   npm run lint
   ```
-- Tests: por ahora `npm run test` no ejecuta suite (placeholder).
+- Tests (Vitest):
+  ```bash
+  npm run test
+  ```
 
 ---
 
@@ -112,7 +115,6 @@ Luego abre http://localhost:3000
 Notas:
 
 - Auditoría ya disponible en la ruta /audit/bitacora (requiere permiso audit.read).
-- Frontend tests: npm run test sigue siendo placeholder.
 
 ---
 
@@ -134,4 +136,4 @@ Nota: si envías email vacío, el backend lo normaliza a `NULL` para evitar conf
 
 ---
 
-Actualizado: 2026-01-10
+Actualizado: 2026-02-09

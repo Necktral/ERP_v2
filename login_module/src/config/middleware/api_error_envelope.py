@@ -5,6 +5,16 @@ import json
 from config.error_envelope import build_error_envelope
 
 
+def _is_error_envelope(data) -> bool:
+    if not isinstance(data, dict):
+        return False
+    err = data.get("error")
+    if not isinstance(err, dict):
+        return False
+    required = {"code", "http_status", "message", "details", "request_id", "timestamp", "retryable"}
+    return required.issubset(err.keys())
+
+
 class ApiErrorEnvelopeMiddleware:
     """Normaliza errores JSON al envelope contractual.
 
@@ -32,7 +42,7 @@ class ApiErrorEnvelopeMiddleware:
         # DRF Response: podemos operar sobre response.data
         if hasattr(response, "data"):
             data = getattr(response, "data", None)
-            if isinstance(data, dict) and "error" in data:
+            if _is_error_envelope(data):
                 return response
             response.data = build_error_envelope(request=request, status_code=status_code, exc=None, details=data)
             if hasattr(response, "render"):
@@ -53,7 +63,7 @@ class ApiErrorEnvelopeMiddleware:
         except Exception:
             return response
 
-        if isinstance(data, dict) and "error" in data:
+        if _is_error_envelope(data):
             return response
 
         envelope = build_error_envelope(request=request, status_code=status_code, exc=None, details=data)
