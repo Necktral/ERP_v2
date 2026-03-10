@@ -63,3 +63,4 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-03-09: F12 avanzada implementada (manifiesto/paridad, determinismo v2, gate unificado y política FX `ALERT|BLOCK`) con runner canónico `qa/run_phase12_go_live.sh`, cron `qa/phase12_cycle.cron.example` y runbook operativo.
 - 2026-03-09: F12 cerrada en staging con PASS (`phase12_go_live_20260309_222629`: 3 periodos cubiertos, SLO/gate PASS y estabilidad 2/2).
 - 2026-03-10: Normalización de publicación GitHub: separación de estado ejecutivo en `docs/contexto_nucleos.md` y exclusión de evidencia masiva del versionado.
+- 2026-03-10: Preparación de publicación release F1-F12: inclusión de artefactos QA de auditoría y reubicación de `etup-git` a evidencia operativa versionada.

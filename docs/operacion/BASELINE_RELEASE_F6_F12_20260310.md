@@ -17,7 +17,16 @@ Publicar backend y documentación de F6-F12 en flujo branch + PR, manteniendo:
 - [x] Rama de release creada.
 - [x] Política de evidencia masiva definida en `.gitignore`.
 - [x] Documento de estado ejecutivo separado de blueprint.
-- [ ] Pre-push de seguridad ejecutado (`gitleaks`, `pip-audit`, `npm audit`).
-- [ ] Validación técnica ejecutada (`manage.py check`, `pytest -q login_module/src`).
+- [x] Pre-push de seguridad ejecutado (`gitleaks`, `pip-audit`, `npm audit`).
+- [x] Validación técnica ejecutada (`manage.py check`, `pytest -q login_module/src`).
 - [ ] Push de rama a `origin`.
 - [ ] PR creado con título de release y checklist de aceptación.
+
+## Resultado de validaciones (2026-03-10)
+
+- `python manage.py check`: PASS
+- `pytest -q login_module/src`: PASS
+- `npm run lint/typecheck/test/build`: PASS
+- `pip-audit` (`requirements/base.txt`, `requirements/prod.txt`): PASS (sin vulnerabilidades)
+- `gitleaks` con `.gitleaks.toml`: FAIL (`48` hallazgos reportados en `qa_gitleaks.json`)
+- `npm audit --json`: WARN/BLOCKER (`2` high sin fix disponible: `@quasar/app-vite`, `serialize-javascript`)

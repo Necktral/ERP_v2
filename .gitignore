@@ -61,6 +61,7 @@ pm_snapshot.md
 # Evidencia operativa pesada (local/CI, no GitHub)
 docs/operacion/evidencia/**
 !docs/operacion/evidencia/.gitkeep
+!docs/operacion/evidencia/etup-git-less-help.txt
 
 # No subir backups
 ERP_CRM_backup_*.tar.gz
