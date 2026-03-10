@@ -33,9 +33,18 @@
 - **CD (CI/CD):** workflow de despliegue con build/push a GHCR y deploy via SSH.
 - **Docs (Operación):** guía `CD_DEPLOY_v1.0.md` y actualización de índice operativa.
 - **Tests (Backend):** cobertura para listados paginados y anti-replay 2FA.
+- **Fase 8 (Producción):** comandos operativos `export_phase8_release_baseline`, `verify_phase8_precutover`, `evaluate_phase8_rollback` y script `qa/run_phase8_go_live.sh` para ejecución controlada.
+- **Runbooks (Operación):** `GO_LIVE_FASE8_PRODUCCION_v1.0.md` con pre-corte, cutover, burn-in de 14 días y rollback formal.
+- **Contabilidad/Gobernanza (Backend):** cierre de fases operativas F9, F10, F11 y F12 en staging con toolchains canónicos y evidencia firmada.
+- **SRE (QA):** runners canónicos `qa/run_phase9_go_live.sh`, `qa/run_phase10_go_live.sh`, `qa/run_phase11_go_live.sh`, `qa/run_phase12_go_live.sh` y plantillas cron asociadas.
 
 ### Changed
 
+- **Seguridad (Supply Chain):** actualización patch-level de dependencias Python (`Django 5.2.12`, `sentry-sdk 1.45.1`, `cryptography 42.0.8`) con cobertura de CVEs reportadas por `pip-audit`.
+- **Seguridad (Secrets):** eliminación de credenciales demo hardcodeadas en tests, scripts de simulación, workflows y documentación operativa; ahora usan variables/placeholder no sensibles.
+- **Security CI:** gitleaks ejecutado con configuración explícita del repo (`.gitleaks.toml`) y política determinista de exclusión para `backend/**` (legado) y `docs/operacion/evidencia/**`.
+- **Documentación:** `docs/contexto_nucleos.md` queda como estado ejecutivo por fases y roadmap; blueprint completo consolidado en `docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md`.
+- **Versionado operativo:** evidencia masiva en `docs/operacion/evidencia/**` pasa a política de no versionado GitHub (artefactos locales/CI con hash).
 - **Auth (Backend):** refresh/logout con scopes `auth_refresh` y `auth_logout`.
 - **QA:** Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl` si los overrides no llegan al contenedor (compose usa `.env`).
 - **Docs (Operación):** índice de templates del pack Import/Export + corrección de placeholders en contrato proveedor.
@@ -50,6 +59,7 @@
 - **Tests (Backend):** `test_axes_lockout` se habilita sin skip forzado.
 - **Seguridad (Backend):** 2FA Anti-Replay endurecido con bloqueo pesimista (`select_for_update`) y eliminación inmediata del challenge tras consumo.
 - **Seguridad (Backend):** `LogoutView` limpia cookies incondicionalmente al usar transporte `cookie`, garantizando idempotencia incluso con tokens inválidos.
+- **Seguridad (Backend):** `POST /api/auth/2fa/verify/` mantiene contrato `400` para replay/challenge inválido en modo cookie incluso con cookies presentes (sin interferencia CSRF/context auth).
 
 ## [2026-01-13] - Release
 
