@@ -18,6 +18,21 @@ class DocStatus(models.TextChoices):
     VOIDED = "VOIDED", "Voided"
 
 
+class FiscalMode(models.TextChoices):
+    NOOP = "NOOP", "Noop"
+    A = "A", "Adapter A"
+    B = "B", "Adapter B"
+
+
+class FiscalStatus(models.TextChoices):
+    NUMBER_RESERVED = "NUMBER_RESERVED", "Number Reserved"
+    ISSUED = "ISSUED", "Issued"
+    PRINTED = "PRINTED", "Printed"
+    FAILED_PRINT = "FAILED_PRINT", "Failed Print"
+    CONTINGENCY = "CONTINGENCY", "Contingency"
+    VOIDED = "VOIDED", "Voided"
+
+
 class BillingSequence(models.Model):
     company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_seq_company")
     branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_seq_branch")
@@ -51,6 +66,16 @@ class BillingDocument(models.Model):
     total = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
 
     is_fiscal = models.BooleanField(default=False)
+    fiscal_mode_resolved = models.CharField(max_length=8, choices=FiscalMode.choices, default=FiscalMode.NOOP)
+    fiscal_status = models.CharField(max_length=24, choices=FiscalStatus.choices, blank=True, default="")
+    fiscal_reference = models.CharField(max_length=96, blank=True, default="")
+    fiscal_evidence_id = models.CharField(max_length=96, blank=True, default="")
+    print_attempt_count = models.PositiveIntegerField(default=0)
+    last_print_error = models.CharField(max_length=255, blank=True, default="")
+    contingency_reason = models.CharField(max_length=255, blank=True, default="")
+    contingency_at = models.DateTimeField(null=True, blank=True)
+    printed_at = models.DateTimeField(null=True, blank=True)
+    fiscal_metadata_json = models.JSONField(default=dict)
 
     idempotency_key = models.CharField(max_length=96, blank=True, default="")
 
@@ -66,6 +91,7 @@ class BillingDocument(models.Model):
             models.Index(fields=["company", "branch", "created_at"]),
             models.Index(fields=["company", "branch", "doc_type", "status", "created_at"]),
             models.Index(fields=["company", "idempotency_key"]),
+            models.Index(fields=["company", "branch", "fiscal_mode_resolved", "fiscal_status"]),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -100,4 +126,58 @@ class BillingLine(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["doc"]),
+        ]
+
+
+class BranchFiscalConfig(models.Model):
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_fiscal_cfg_company")
+    branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_fiscal_cfg_branch")
+    fiscal_mode = models.CharField(max_length=8, choices=FiscalMode.choices, default=FiscalMode.NOOP)
+    adapter_code = models.CharField(max_length=32, blank=True, default="")
+    print_required = models.BooleanField(default=True)
+    strict_integrity = models.BooleanField(default=True)
+    contingency_max_attempts = models.PositiveSmallIntegerField(default=5)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["company", "branch"], name="uniq_bill_fiscal_cfg_company_branch"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "is_active"]),
+        ]
+
+
+class FiscalPrintJob(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        RETRY = "RETRY", "Retry"
+        PRINTED = "PRINTED", "Printed"
+        FAILED = "FAILED", "Failed"
+
+    doc = models.ForeignKey(BillingDocument, on_delete=models.CASCADE, related_name="fiscal_print_jobs")
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_print_jobs_company")
+    branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_print_jobs_branch")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    attempt_count = models.PositiveIntegerField(default=0)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=255, blank=True, default="")
+    idempotency_key = models.CharField(max_length=96, blank=True, default="")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status", "next_attempt_at", "created_at"]),
+            models.Index(fields=["company", "branch", "status", "created_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["doc", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="uniq_bill_print_job_doc_idempotency",
+            ),
         ]

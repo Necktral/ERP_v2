@@ -58,6 +58,12 @@ env = environ.Env(
     TOTP_ISSUER=(str, "Necktral"),
     TOTP_CHALLENGE_TTL=(int, 300),
     TOTP_VALID_WINDOW=(int, 1),
+    FISCAL_ADAPTER_MODE=(str, "NOOP"),
+    FISCAL_ADAPTER_B_PROVIDER=(str, "EMULATED"),
+    FISCAL_ADAPTER_B_HTTP_BASE_URL=(str, ""),
+    FISCAL_ADAPTER_B_HTTP_API_KEY=(str, ""),
+    FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS=(int, 15),
+    FISCAL_ADAPTER_B_HTTP_VERIFY_TLS=(bool, True),
 )
 
 if ENV_FILE.exists():
@@ -158,6 +164,13 @@ USE_TZ = True
 
 LANGUAGE_CODE = "es"
 
+FISCAL_ADAPTER_MODE = env("FISCAL_ADAPTER_MODE")
+FISCAL_ADAPTER_B_PROVIDER = env("FISCAL_ADAPTER_B_PROVIDER")
+FISCAL_ADAPTER_B_HTTP_BASE_URL = env("FISCAL_ADAPTER_B_HTTP_BASE_URL")
+FISCAL_ADAPTER_B_HTTP_API_KEY = env("FISCAL_ADAPTER_B_HTTP_API_KEY")
+FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS = env("FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS")
+FISCAL_ADAPTER_B_HTTP_VERIFY_TLS = env("FISCAL_ADAPTER_B_HTTP_VERIFY_TLS")
+
 INSTALLED_APPS = [
     # Django
     "django.contrib.admin",
@@ -184,6 +197,10 @@ INSTALLED_APPS = [
     "apps.iam.apps.IamConfig",
     "apps.org.apps.OrgConfig",  # <-- NUEVO
     "apps.hr.apps.HrConfig",  # <-- NUEVO
+    "apps.accounting.apps.AccountingConfig",
+    "apps.payments.apps.PaymentsConfig",
+    "apps.cec.apps.CecConfig",
+    "apps.integration.apps.IntegrationConfig",
     "apps.sync_engine",
     "apps.sync.apps.SyncConfig",
     # Módulos de dominio (raíz/modulos)
@@ -194,6 +211,7 @@ INSTALLED_APPS += [
     "modulos.estacion_servicios",
     "modulos.inventarios",
     "modulos.facturacion",
+    "modulos.compras",
 ]
 
 MIDDLEWARE = [

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.audit.writer import write_event
 from apps.iam.models import OrgUnit
+from apps.integration.services import publish_outbox_event
 
 from .models import InventoryItem, MovementType, StockBalance, StockMovement, Warehouse
 
@@ -51,6 +52,19 @@ def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, u
             subject_type="INVENTORY_ITEM",
             subject_id=str(item.id),
             metadata={"sku": sku, "name": name, "uom": uom},
+        )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryItemCreated",
+            payload={
+                "item_id": item.id,
+                "sku": item.sku,
+                "name": item.name,
+                "uom": item.uom,
+            },
+            actor_user=actor_user,
+            company=company,
         )
         return item
 
@@ -163,6 +177,26 @@ def post_receive(
                 "idempotency_key": idempotency_key,
             },
         )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryMovementPosted",
+            payload={
+                "movement_id": mov.id,
+                "movement_type": mov.movement_type,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "unit_cost": str(mov.unit_cost),
+                "total_cost": str(mov.total_cost),
+                "qty_on_hand": str(bal.qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
 
         return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
@@ -249,6 +283,30 @@ def post_issue(
                 "idempotency_key": idempotency_key,
             },
         )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryMovementPosted",
+            payload={
+                "movement_id": mov.id,
+                "movement_type": mov.movement_type,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "unit_cost": str(mov.unit_cost),
+                "total_cost": str(mov.total_cost),
+                "qty_on_hand": str(bal.qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "allow_negative": bool(allow_negative),
+                "source_module": mov.source_module,
+                "source_type": mov.source_type,
+                "source_id": mov.source_id,
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
 
         return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
@@ -319,6 +377,23 @@ def post_adjust(
                 "unit_cost": str(unit_cost),
                 "idempotency_key": idempotency_key,
             },
+        )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryAdjusted",
+            payload={
+                "movement_id": mov.id,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "new_qty_on_hand": str(new_qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
         )
 
         return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
@@ -429,6 +504,26 @@ def post_transfer(
                 "in_movement_id": in_mov.id,
                 "idempotency_key": idempotency_key,
             },
+        )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryTransferCompleted",
+            payload={
+                "from_warehouse_id": from_warehouse_id,
+                "to_warehouse_id": to_warehouse_id,
+                "item_id": item_id,
+                "qty": str(qty),
+                "unit_cost": str(unit_cost),
+                "out_movement_id": out_mov.id,
+                "in_movement_id": in_mov.id,
+                "from_qty_on_hand": str(from_bal.qty_on_hand),
+                "to_qty_on_hand": str(to_bal.qty_on_hand),
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
         )
 
         return {
