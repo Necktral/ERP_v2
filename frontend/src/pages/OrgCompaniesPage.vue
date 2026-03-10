@@ -9,7 +9,7 @@
       </template>
 
       <template #actions>
-        <q-btn flat label="Recargar" :disable="loading" @click="load" />
+        <q-btn flat label="Recargar" :disable="loading" @click="reload" />
         <q-btn v-if="canCreate" color="primary" label="Nueva empresa" @click="openCreate" />
       </template>
     </AppPageHeader>
@@ -203,10 +203,16 @@ async function load(page = pagination.value.page, rowsPerPage = pagination.value
 
 function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   const { page, rowsPerPage } = props.pagination;
-  load(page, rowsPerPage);
+  void load(page, rowsPerPage);
 }
 
-onMounted(load);
+function reload() {
+  void load();
+}
+
+onMounted(() => {
+  void load();
+});
 
 // Create dialog
 const createDialog = ref(false);
