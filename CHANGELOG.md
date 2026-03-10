@@ -37,6 +37,7 @@
 - **Runbooks (Operación):** `GO_LIVE_FASE8_PRODUCCION_v1.0.md` con pre-corte, cutover, burn-in de 14 días y rollback formal.
 - **Contabilidad/Gobernanza (Backend):** cierre de fases operativas F9, F10, F11 y F12 en staging con toolchains canónicos y evidencia firmada.
 - **SRE (QA):** runners canónicos `qa/run_phase9_go_live.sh`, `qa/run_phase10_go_live.sh`, `qa/run_phase11_go_live.sh`, `qa/run_phase12_go_live.sh` y plantillas cron asociadas.
+- **SRE (QA):** runner maestro `qa/run_master_f1_f12_closure.sh` para ejecutar seguridad + recertificación staging + resumen firmado en una sola corrida.
 
 ### Changed
 
@@ -46,6 +47,7 @@
 - **Seguridad (Secrets):** eliminación de credenciales demo hardcodeadas en tests, scripts de simulación, workflows y documentación operativa; ahora usan variables/placeholder no sensibles.
 - **Security CI:** gitleaks ejecutado con configuración explícita del repo (`.gitleaks.toml`) y política determinista de exclusión para `backend/**` (legado) y `docs/operacion/evidencia/**`.
 - **Documentación:** `docs/contexto_nucleos.md` queda como estado ejecutivo por fases y roadmap; blueprint completo consolidado en `docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md`.
+- **Seguridad (Gitleaks):** allowlist mínima para `qa_gitleaks.json` (artefacto generado) y cierre de bug bounty local en `PASS`.
 - **Versionado operativo:** evidencia masiva en `docs/operacion/evidencia/**` pasa a política de no versionado GitHub (artefactos locales/CI con hash).
 - **Auth (Backend):** refresh/logout con scopes `auth_refresh` y `auth_logout`.
 - **QA:** Gate 3 (k6) falla por 429 en `/auth/me` y `/auth/me/acl` si los overrides no llegan al contenedor (compose usa `.env`).

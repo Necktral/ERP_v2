@@ -430,3 +430,19 @@ COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
 YEAR=2026 MONTH=3 \
 ./qa/run_post_f8_phases.sh all
 ```
+
+## Cierre Maestro F1-F12
+
+Runner canónico para cerrar release + seguridad + recertificación staging:
+
+- Script: `qa/run_master_f1_f12_closure.sh`
+- Modos: `precheck`, `security`, `staging`, `summary`, `all`
+- Evidencia: `docs/operacion/evidencia/master_closure_<timestamp>/`
+
+Ejemplo:
+
+```bash
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+YEAR=2026 MONTH=3 \
+./qa/run_master_f1_f12_closure.sh all
+```

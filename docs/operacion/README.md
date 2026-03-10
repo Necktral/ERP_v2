@@ -30,6 +30,8 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Go-Live Fase 10 Procurement 4B (staging)](GO_LIVE_FASE10_PROCUREMENT_v1.0.md)
 - [Go-Live Fase 11 Intercompany Avanzado (staging)](GO_LIVE_FASE11_INTERCOMPANY_AVANZADO_v1.0.md)
 - [Go-Live Fase 12 Cierre Mensual Continuo (staging)](GO_LIVE_FASE12_CIERRE_MENSUAL_CONTINUO_v1.0.md)
+- [Plan maestro F1-F12 + cierre operativo](PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md)
+- [Checklist PR release F1-F12](PR_RELEASE_F1_F12_CHECKLIST.md)
 
 ## Reglas
 
@@ -64,3 +66,4 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-03-09: F12 cerrada en staging con PASS (`phase12_go_live_20260309_222629`: 3 periodos cubiertos, SLO/gate PASS y estabilidad 2/2).
 - 2026-03-10: Normalización de publicación GitHub: separación de estado ejecutivo en `docs/contexto_nucleos.md` y exclusión de evidencia masiva del versionado.
 - 2026-03-10: Preparación de publicación release F1-F12: inclusión de artefactos QA de auditoría y reubicación de `etup-git` a evidencia operativa versionada.
+- 2026-03-10: Se agrega plan maestro de cierre F1-F12 (`PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md`) y checklist de PR release.

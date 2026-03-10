@@ -16,3 +16,10 @@ paths = [
   '''^docs/operacion/evidencia/''',
   '''^/repo/docs/operacion/evidencia/''',
 ]
+
+[[allowlists]]
+description = "Generated root-level security scanner outputs"
+paths = [
+  '''^qa_gitleaks\.json$''',
+  '''^/repo/qa_gitleaks\.json$''',
+]

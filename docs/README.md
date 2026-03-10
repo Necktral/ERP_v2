@@ -33,6 +33,13 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - [operacion/STAGING_FIRST_EJECUCION_TOTAL_v1.0.md](operacion/STAGING_FIRST_EJECUCION_TOTAL_v1.0.md) — Ejecución integral backend de Fase 6/7A/7B en staging.
 - [operacion/MATRIZ_OWNERSHIP_SLA_FASE6_7B_v1.0.md](operacion/MATRIZ_OWNERSHIP_SLA_FASE6_7B_v1.0.md) — Responsables y SLA por alertas críticas del bloque.
 - [operacion/CHECKLIST_PROMOCION_PRODUCCION_FASE6_7B_v1.0.md](operacion/CHECKLIST_PROMOCION_PRODUCCION_FASE6_7B_v1.0.md) — Checklist de promoción a producción (sin ejecución automática).
+- [operacion/GO_LIVE_FASE8_PRODUCCION_v1.0.md](operacion/GO_LIVE_FASE8_PRODUCCION_v1.0.md) — Operación de go-live controlado Fase 8.
+- [operacion/GO_LIVE_FASE9_PROVIDER_v1.0.md](operacion/GO_LIVE_FASE9_PROVIDER_v1.0.md) — Operación de provider fiscal (Fase 9).
+- [operacion/GO_LIVE_FASE10_PROCUREMENT_v1.0.md](operacion/GO_LIVE_FASE10_PROCUREMENT_v1.0.md) — Go-live operativo de procurement 4B.
+- [operacion/GO_LIVE_FASE11_INTERCOMPANY_AVANZADO_v1.0.md](operacion/GO_LIVE_FASE11_INTERCOMPANY_AVANZADO_v1.0.md) — Go-live de intercompany avanzado.
+- [operacion/GO_LIVE_FASE12_CIERRE_MENSUAL_CONTINUO_v1.0.md](operacion/GO_LIVE_FASE12_CIERRE_MENSUAL_CONTINUO_v1.0.md) — Cierre mensual continuo con gate unificado.
+- [operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md](operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md) — Secuencia maestra de cierre release/seguridad/staging y preparación productiva.
+- [operacion/PR_RELEASE_F1_F12_CHECKLIST.md](operacion/PR_RELEASE_F1_F12_CHECKLIST.md) — Checklist para apertura y cierre del PR de release.
 
 ## CI / QA
 
