@@ -15,7 +15,7 @@ QA_FRESH_DB ?= 0
 
 # Credenciales por defecto (ajusta en tu entorno/CI)
 USERNAME ?= k6
-PASSWORD ?= Pass12345__Strong
+PASSWORD ?=
 
 # k6 defaults
 VUS ?= 5
@@ -111,7 +111,8 @@ docker-clean-all:
 	@$(MAKE) docker-clean
 
 qa-load-user:
-	docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong'); setattr(u, 'must_change_password', False); u.save(); print('K6_USER_READY')"
+	@if [ -z "$(PASSWORD)" ]; then echo "Set PASSWORD before running qa-load-user"; exit 1; fi
+	docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('$(PASSWORD)'); setattr(u, 'must_change_password', False); u.save(); print('K6_USER_READY')"
 
 qa-load-smoke:
 	docker run --rm -i --network host \

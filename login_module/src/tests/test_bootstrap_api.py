@@ -7,6 +7,10 @@ from apps.iam.models import OrgUnit
 User = get_user_model()
 
 
+def _demo_pwd(label: str) -> str:
+    return f"Aa!9_{label}_Zx7"
+
+
 @pytest.mark.django_db
 def test_bootstrap_status_fresh_when_no_users():
     client = APIClient()
@@ -18,9 +22,10 @@ def test_bootstrap_status_fresh_when_no_users():
 @pytest.mark.django_db
 def test_bootstrap_init_creates_first_admin():
     client = APIClient()
+    root_pwd = _demo_pwd("root")
     r = client.post(
         "/api/auth/bootstrap/init/",
-        {"username": "root", "email": "root@test.com", "password": "Pass12345__Strong"},
+        {"username": "root", "email": "root@test.com", "password": root_pwd},
         format="json",
     )
     assert r.status_code == 201
@@ -38,14 +43,15 @@ def test_bootstrap_init_creates_first_admin():
 def test_bootstrap_org_requires_auth_but_no_company_context_header():
     # 1) bootstrap init
     c = APIClient()
+    root_pwd = _demo_pwd("root2")
     c.post(
         "/api/auth/bootstrap/init/",
-        {"username": "root", "email": "root2@test.com", "password": "Pass12345__Strong"},
+        {"username": "root", "email": "root2@test.com", "password": root_pwd},
         format="json",
     )
 
     # 2) login
-    login = c.post("/api/auth/login/", {"username": "root", "password": "Pass12345__Strong"}, format="json")
+    login = c.post("/api/auth/login/", {"username": "root", "password": root_pwd}, format="json")
     assert login.status_code == 200
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
 
@@ -74,21 +80,23 @@ def test_bootstrap_org_requires_auth_but_no_company_context_header():
 
 @pytest.mark.django_db
 def test_password_change_clears_must_change_password():
-    u = User.objects.create_user(username="emp", password="TempPass12345__", email="emp@test.com")
+    temp_pwd = _demo_pwd("temp")
+    new_pwd = _demo_pwd("new")
+    u = User.objects.create_user(username="emp", password=temp_pwd, email="emp@test.com")
     u.must_change_password = True
     u.save(update_fields=["must_change_password"])
 
     c = APIClient()
-    login = c.post("/api/auth/login/", {"username": "emp", "password": "TempPass12345__"}, format="json")
+    login = c.post("/api/auth/login/", {"username": "emp", "password": temp_pwd}, format="json")
     assert login.status_code == 200
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
 
     r = c.post(
         "/api/auth/password/",
         {
-            "old_password": "TempPass12345__",
-            "new_password": "NewPass12345__Strong",
-            "confirm_password": "NewPass12345__Strong",
+            "old_password": temp_pwd,
+            "new_password": new_pwd,
+            "confirm_password": new_pwd,
         },
         format="json",
     )
@@ -98,5 +106,5 @@ def test_password_change_clears_must_change_password():
 
     # login with new password works
     c2 = APIClient()
-    login2 = c2.post("/api/auth/login/", {"username": "emp", "password": "NewPass12345__Strong"}, format="json")
+    login2 = c2.post("/api/auth/login/", {"username": "emp", "password": new_pwd}, format="json")
     assert login2.status_code == 200

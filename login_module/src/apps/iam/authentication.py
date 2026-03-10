@@ -35,6 +35,7 @@ class JWTAuthWithOrgContext(JWTAuthentication):
         "/api/auth/login/",
         "/api/auth/refresh/",
         "/api/auth/logout/",
+        "/api/auth/2fa/verify/",
         "/api/auth/me/",
         "/api/auth/me/acl/",
         "/api/auth/bootstrap/",

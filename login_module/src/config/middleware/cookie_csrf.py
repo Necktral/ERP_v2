@@ -4,6 +4,10 @@ from django.conf import settings
 from django.http import JsonResponse
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+EXEMPT_MUTATING_PATH_PREFIXES = (
+    "/api/auth/login",
+    "/api/auth/2fa/verify",
+)
 
 
 class CookieJwtCsrfMiddleware:
@@ -23,8 +27,8 @@ class CookieJwtCsrfMiddleware:
         if request.method in SAFE_METHODS:
             return self.get_response(request)
 
-        # Login se permite sin CSRF (todavia no hay cookie CSRF)
-        if request.path.startswith("/api/auth/login"):
+        # Endpoints publicos de challenge no requieren CSRF.
+        if request.path.startswith(EXEMPT_MUTATING_PATH_PREFIXES):
             return self.get_response(request)
 
         access = request.COOKIES.get(settings.AUTH_COOKIE_ACCESS_NAME)

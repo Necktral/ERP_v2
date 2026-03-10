@@ -101,12 +101,18 @@ def custom_exception_handler(exc, context):
 
     required_perm = getattr(request, "required_permission", "") if request else ""
     required_scope = getattr(request, "required_scope", None) if request else None
+    effective_company = getattr(request, "company", None) if request else None
+    effective_branch = getattr(request, "branch", None) if request else None
 
     subject_type, subject_id, actor = _subject_for_request(request)
 
     metadata = {
         "status_code": status_code,
         "detail": detail,
+        "effective_scope": {
+            "company_id": getattr(effective_company, "id", None),
+            "branch_id": getattr(effective_branch, "id", None),
+        },
     }
     if required_perm:
         metadata["required_permission"] = required_perm

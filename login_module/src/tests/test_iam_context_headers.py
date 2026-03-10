@@ -7,9 +7,14 @@ from apps.iam.models import OrgUnit, UserMembership
 User = get_user_model()
 
 
+def _demo_pwd(label: str) -> str:
+    return f"Aa!9_{label}_Ctx7"
+
+
 @pytest.mark.django_db
 def test_iam_context_requires_company_header():
-    user = User.objects.create_user(username="ctx_user", password="Pass12345__Strong")
+    pwd = _demo_pwd("req")
+    user = User.objects.create_user(username="ctx_user", password=pwd)
 
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="HOLDING", code="")
     company = OrgUnit.objects.create(
@@ -23,7 +28,7 @@ def test_iam_context_requires_company_header():
     client = APIClient()
     login = client.post(
         "/api/auth/login/",
-        {"username": "ctx_user", "password": "Pass12345__Strong"},
+        {"username": "ctx_user", "password": pwd},
         format="json",
     )
     assert login.status_code == 200
@@ -36,7 +41,8 @@ def test_iam_context_requires_company_header():
 
 @pytest.mark.django_db
 def test_iam_context_with_company_header():
-    user = User.objects.create_user(username="ctx_user_ok", password="Pass12345__Strong")
+    pwd = _demo_pwd("ok")
+    user = User.objects.create_user(username="ctx_user_ok", password=pwd)
 
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="HOLDING", code="")
     company = OrgUnit.objects.create(
@@ -56,7 +62,7 @@ def test_iam_context_with_company_header():
     client = APIClient()
     login = client.post(
         "/api/auth/login/",
-        {"username": "ctx_user_ok", "password": "Pass12345__Strong"},
+        {"username": "ctx_user_ok", "password": pwd},
         format="json",
     )
     assert login.status_code == 200
