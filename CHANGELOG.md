@@ -40,6 +40,8 @@
 
 ### Changed
 
+- **Seguridad (Backend):** `cryptography` actualizado a `46.0.5` para cubrir advisories reportados por auditoría.
+- **Seguridad (Frontend):** actualización de toolchain de testing/build (`vitest` y lockfile asociado) para reducir riesgo por cadena `vite/esbuild` en auditorías.
 - **Seguridad (Supply Chain):** actualización patch-level de dependencias Python (`Django 5.2.12`, `sentry-sdk 1.45.1`, `cryptography 42.0.8`) con cobertura de CVEs reportadas por `pip-audit`.
 - **Seguridad (Secrets):** eliminación de credenciales demo hardcodeadas en tests, scripts de simulación, workflows y documentación operativa; ahora usan variables/placeholder no sensibles.
 - **Security CI:** gitleaks ejecutado con configuración explícita del repo (`.gitleaks.toml`) y política determinista de exclusión para `backend/**` (legado) y `docs/operacion/evidencia/**`.
@@ -56,6 +58,7 @@
 
 ### Fixed
 
+- **CI (GitHub Actions):** en `auth-load-simulation.yml` se corrige la ruta de publicación del artifact `backend-log` para apuntar al archivo realmente generado en `simulacion/reports/backend.log`.
 - **Tests (Backend):** `test_axes_lockout` se habilita sin skip forzado.
 - **Seguridad (Backend):** 2FA Anti-Replay endurecido con bloqueo pesimista (`select_for_update`) y eliminación inmediata del challenge tras consumo.
 - **Seguridad (Backend):** `LogoutView` limpia cookies incondicionalmente al usar transporte `cookie`, garantizando idempotencia incluso con tokens inválidos.

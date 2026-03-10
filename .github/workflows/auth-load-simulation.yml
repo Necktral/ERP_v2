@@ -114,7 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-log
-          path: qa/reports/backend.log
+          path: simulacion/reports/backend.log
 
       - name: Tear down services
         if: always()

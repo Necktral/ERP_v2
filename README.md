@@ -24,6 +24,12 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Paginacion en listados ORG/HR/RBAC (`limit/offset` + `count/limit/offset/results`).
 - Nota QA: los overrides de throttling deben estar en `.env` (el backend usa `env_file` en Docker Compose).
 
+## Actualización técnica (2026-03-09)
+
+- Dependencias de seguridad actualizadas: `cryptography==46.0.5`.
+- Pipeline `Auth Load Simulation` corregido: artifact de logs backend ahora se publica desde `simulacion/reports/backend.log`.
+- Frontend: actualización de toolchain de test/build reflejada en `package-lock.json`.
+
 ## 🚀 Inicio rápido (Docker)
 
 1. Configura variables
