@@ -59,14 +59,14 @@ docker compose exec -T backend python src/manage.py seed_auth_users
 O bien crea un usuario manual:
 
 ```bash
-docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong');
+docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('<SET_STRONG_PASSWORD>');
 setattr(u, 'must_change_password', False); u.save()"
 ```
 
 Luego corre k6 con:
 
 - `-e USERNAME=k6`
-- `-e PASSWORD=Pass12345__Strong`
+- `-e PASSWORD=<SET_STRONG_PASSWORD>`
 
 ### Smoke de autenticación + ACL
 
@@ -128,7 +128,7 @@ Ejemplo (Linux, Docker):
 docker run --rm -i --network host \
   -e BASE_URL=http://localhost:8000/api \
   -e USERNAME=k6 \
-  -e PASSWORD=Pass12345__Strong \
+  -e PASSWORD=<SET_STRONG_PASSWORD> \
   -e LOGIN_RATE_TARGET=2 \
   -e VUS_WARMUP=5 -e WARMUP=15s \
   -e VUS_TARGET=20 -e SUSTAIN=30s \
@@ -185,3 +185,248 @@ make qa-gate3 STRESS_VUS_TARGET=75 STRESS_LOGIN_RATE_TARGET=8 STRESS_SUSTAIN=120
 
 - Guía operativa: [simulacion/README.md](../simulacion/README.md)
 - Workflow en GitHub Actions: `.github/workflows/auth-load-simulation.yml`
+
+## F8 Burn-in Operativo
+
+Scripts para sostener F8 (piloto 5/6) durante los 14 días:
+
+- Tick operativo cada 5 minutos: `qa/run_phase8_live_tick.sh`
+- Cierre diario formal + actualización de resumen/hash: `qa/run_phase8_burnin_daily.sh`
+- Guardia calendario (09–22 marzo 2026): `qa/run_phase8_calendar_guard.sh`
+- Reinicio de ventana por fallo diario: `qa/reset_phase8_window.sh`
+- Plantilla cron: `qa/phase8_burnin.cron.example`
+- Calendario flexible (días laborales elegidos): `qa/phase8_work_calendar.example.json`
+
+Hardening SRE integrado en scripts F8:
+
+- Resolución robusta de intérprete (`PYTHON_BIN` -> `python3` -> `python`).
+- Lock anti-solapamiento con `flock` en `live-tick`, `burnin-daily` y `calendar-guard`.
+- Soporte de simulación controlada por fecha con `TODAY_LOCAL` (solo QA/dev).
+
+Ejemplo manual:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+COMPANY_ID=5 BRANCH_ID=6 \
+./qa/run_phase8_live_tick.sh
+
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+./qa/run_phase8_burnin_daily.sh
+
+# Guardia calendario (live tick laboral / cierre diario calendario)
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+PHASE8_START_DATE=2026-03-09 PHASE8_END_DATE=2026-03-22 \
+./qa/run_phase8_calendar_guard.sh daily-close
+```
+
+Smoke controlado por fecha (QA/dev):
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+PHASE8_CALENDAR_FILE=docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_work_calendar.json \
+TODAY_LOCAL=2026-03-16 \
+./qa/run_phase8_calendar_guard.sh daily-close-full
+```
+
+Auto reset de ventana si falla un cierre diario:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+PHASE8_START_DATE=2026-03-09 PHASE8_END_DATE=2026-03-22 \
+PHASE8_AUTO_RESET_ON_FAIL=1 \
+./qa/run_phase8_calendar_guard.sh daily-close
+```
+
+## F9 Provider Go-Live
+
+Runner canónico F9 (carril EMULATED/HTTP):
+
+- `qa/run_phase9_go_live.sh`
+- Modos: `precheck`, `certify`, `cycle`, `gate`, `summary`, `full`
+
+Plantilla cron F9:
+
+- `qa/phase9_cycle.cron.example`
+
+Ejemplo de ejecución completa (EMULATED):
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase9_go_live_<TS> \
+COMPANY_ID=5 BRANCH_ID=6 \
+F9_PROVIDER_MODE=EMULATED \
+./qa/run_phase9_go_live.sh full
+```
+
+Ejemplo de ejecución completa (HTTP):
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase9_go_live_http_<TS> \
+COMPANY_ID=5 BRANCH_ID=6 \
+F9_PROVIDER_MODE=HTTP \
+F9_HTTP_BASE_URL=https://provider.example \
+F9_HTTP_API_KEY=<TOKEN> \
+F9_HTTP_TIMEOUT_SECONDS=15 \
+F9_HTTP_VERIFY_TLS=1 \
+./qa/run_phase9_go_live.sh full
+```
+
+## F10 Procurement Go-Live
+
+Runner canónico F10:
+
+- `qa/run_phase10_go_live.sh`
+- Modos: `precheck`, `certify`, `cycle`, `gate`, `summary`, `full`
+
+Plantilla cron F10:
+
+- `qa/phase10_cycle.cron.example`
+
+Ejemplo de ejecución completa:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase10_go_live_<TS> \
+COMPANY_ID=5 BRANCH_ID=6 \
+./qa/run_phase10_go_live.sh full
+```
+
+## F11 Intercompany Avanzado Go-Live
+
+Runner canónico F11:
+
+- `qa/run_phase11_go_live.sh`
+- Modos: `precheck`, `certify`, `cycle`, `gate`, `summary`, `full`
+
+Plantilla cron F11:
+
+- `qa/phase11_cycle.cron.example`
+
+Ejemplo de ejecución completa:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase11_go_live_<TS> \
+COMPANY_ID=5 BRANCH_ID=6 \
+OPEN_SLA_HOURS=24 DISPUTE_SLA_HOURS=24 \
+./qa/run_phase11_go_live.sh full
+```
+
+## F12 Cierre Mensual Consolidado Continuo Go-Live
+
+Runner canónico F12:
+
+- `qa/run_phase12_go_live.sh`
+- Modos: `precheck`, `certify`, `cycle`, `gate`, `summary`, `full`
+
+Plantilla cron F12:
+
+- `qa/phase12_cycle.cron.example`
+
+Ejemplo de ejecución completa:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase12_go_live_<TS> \
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+REQUIRED_PERIODS=3 FX_BLOCKED_POLICY=ALERT \
+./qa/run_phase12_go_live.sh full
+```
+
+### Calendario flexible de días laborales
+
+Puedes controlar exactamente qué días son laborales completos y qué días son mínimos
+usando `PHASE8_CALENDAR_FILE` con JSON:
+
+- `mode=HYBRID`: habilita selección manual + fallback semanal.
+- `manual_days`: override por fecha (`FULL|MINIMAL|SKIP`).
+- `default_week_profile`: fallback semanal (`monday..sunday`).
+- `required_pass_days`: mínimo de días `PASS` para `verify_phase8_burn_in`.
+- `allow_eventual_close`: habilita cierres eventuales.
+- `accountant_policy`: `ON_DEMAND_FINAL_REQUIRED`.
+
+Ejemplo:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040
+cp qa/phase8_work_calendar.example.json "$OUT_DIR/phase8_work_calendar.json"
+```
+
+Luego ejecuta guardia usando ese calendario:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+PHASE8_CALENDAR_FILE=docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_work_calendar.json \
+./qa/run_phase8_calendar_guard.sh live-tick
+```
+
+Chequeo de modo del día (útil para la revisión 07:50):
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+PHASE8_CALENDAR_FILE=docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_work_calendar.json \
+./qa/run_phase8_calendar_guard.sh day-mode
+```
+
+Modos de cierre diario por calendario híbrido:
+
+- `daily-close-full`: ejecuta cierre solo si el día resolvió `FULL`.
+- `daily-close-minimal`: ejecuta cierre solo si el día resolvió `MINIMAL`.
+- `daily-close`: ejecuta en ambos (`FULL` o `MINIMAL`) para uso manual.
+
+Cierre eventual (aunque el día resuelva `SKIP`), con evidencia obligatoria:
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+PHASE8_CALENDAR_FILE=docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_work_calendar.json \
+EVENTUAL_REASON_CODE=FORCE_MAINTENANCE \
+EVENTUAL_APPROVED_BY=ops.supervisor \
+EVENTUAL_NOTE="Cierre eventual aprobado por mantenimiento crítico del sistema." \
+./qa/run_phase8_calendar_guard.sh eventual-close
+```
+
+Registro de revisión del contador (on-demand) y sign-off final:
+
+```bash
+cd login_module/src
+python3 manage.py record_phase8_accountant_review \
+  --evidence-dir ../../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+  --date 2026-03-09 \
+  --reviewer contador.principal \
+  --status OBSERVED \
+  --summary "Pendiente ajuste por reclasificación de gasto operativo."
+
+python3 manage.py record_phase8_accountant_review \
+  --evidence-dir ../../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+  --date 2026-03-22 \
+  --reviewer contador.principal \
+  --status FINAL_APPROVED \
+  --summary "Sign-off final para cierre F8."
+```
+
+Si un día falla y debes reiniciar ventana (max_failed_days=0):
+
+```bash
+OUT_DIR=docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+REASON=DAILY_GATE_FAILED \
+./qa/reset_phase8_window.sh
+```
+
+## F9-F12 Backend-Only
+
+Orquestador secuencial post-F8 (sin frontend):
+
+- Script: `qa/run_post_f8_phases.sh`
+- Modos: `phase9`, `phase10`, `phase11`, `phase12`, `all`
+- Evidencia: `docs/operacion/evidencia/post_f8_<timestamp>/`
+
+Para operación avanzada de F12 usa preferentemente el runner dedicado:
+
+- `qa/run_phase12_go_live.sh`
+
+Ejemplo:
+
+```bash
+COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+YEAR=2026 MONTH=3 \
+./qa/run_post_f8_phases.sh all
+```

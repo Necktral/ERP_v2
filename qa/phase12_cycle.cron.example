@@ -1,0 +1,23 @@
+# F12 Cierre mensual consolidado continuo - cron ejemplo
+# Timezone operativa
+CRON_TZ=America/Managua
+
+# Ajustar paths/usuario según entorno
+ROOT=/home/necktral/ERP_CRM
+OUT=$ROOT/docs/operacion/evidencia/phase12_go_live_live
+
+# ciclo continuo cada 5 minutos (laboral)
+*/5 8-18 * * 1-5 cd $ROOT && OUT_DIR=$OUT COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+  FX_BLOCKED_POLICY=ALERT $ROOT/qa/run_phase12_go_live.sh cycle >> $OUT/cron_cycle.log 2>&1
+
+# certificación mensual (día 1, 18:10)
+10 18 1 * * cd $ROOT && OUT_DIR=$OUT COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+  FX_BLOCKED_POLICY=ALERT REQUIRED_PERIODS=3 $ROOT/qa/run_phase12_go_live.sh certify >> $OUT/cron_certify.log 2>&1
+
+# gate diario estricto (incluye SLO)
+15 18 * * 1-5 cd $ROOT && OUT_DIR=$OUT COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+  FX_BLOCKED_POLICY=ALERT REQUIRED_PERIODS=3 $ROOT/qa/run_phase12_go_live.sh gate >> $OUT/cron_gate.log 2>&1
+
+# resumen diario (hash + matriz)
+20 18 * * 1-5 cd $ROOT && OUT_DIR=$OUT COMPANY_ID=5 BRANCH_ID=6 PARENT_COMPANY_ID=5 COMPANY_IDS=5 \
+  FX_BLOCKED_POLICY=ALERT REQUIRED_PERIODS=3 $ROOT/qa/run_phase12_go_live.sh summary >> $OUT/cron_summary.log 2>&1

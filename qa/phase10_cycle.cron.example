@@ -1,0 +1,24 @@
+# F10 Procurement 4B Go-Live (staging-first)
+# Instalar con: crontab qa/phase10_cycle.cron.example
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ROOT=/home/necktral/ERP_CRM
+PHASE10_OUT=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase10_go_live_active
+LOCK_ROOT=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase10_go_live_active/.locks
+COMPANY_ID=5
+BRANCH_ID=6
+PYTHON_BIN=python3
+
+# Ciclo operativo (cada 5 minutos, horario laboral)
+*/5 8-18 * * 1-5 OUT_DIR=$PHASE10_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase10_go_live.sh cycle >> $PHASE10_OUT/cron_phase10_cycle.log 2>&1
+
+# Gate diario estricto
+10 18 * * 1-5 OUT_DIR=$PHASE10_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase10_go_live.sh gate >> $PHASE10_OUT/cron_phase10_gate.log 2>&1
+
+# Resumen consolidado diario
+12 18 * * 1-5 OUT_DIR=$PHASE10_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase10_go_live.sh summary >> $PHASE10_OUT/cron_phase10_summary.log 2>&1
