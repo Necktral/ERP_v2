@@ -10,11 +10,11 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 
 ## Documentos actuales
 
-- [ESTANDAR_COMENTARIOS.md](ESTANDAR_COMENTARIOS.md) — Estándar de comentarios en el código.
-
-- [CONTRACT_PACK_v1.0.md](CONTRACT_PACK_v1.0.md) — Guía contractual del sistema (organización de kernels/módulos).
+- [contexto_nucleos.md](contexto_nucleos.md) — Estado ejecutivo por fases, publicación GitHub y roadmap activo.
 - [ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md](ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md) — Blueprint maestro de kernels, CEC, adaptadores fiscales y evolución a GL formal.
-- [contexto_nucleos.md](contexto_nucleos.md) — Estado ejecutivo por fases y roadmap activo (staging-first).
+- [operacion/README.md](operacion/README.md) — Runbooks, toolchains y operación release F1–F12.
+- [CONTRACT_PACK_v1.0.md](CONTRACT_PACK_v1.0.md) — Guía contractual del sistema (organización de kernels/módulos).
+- [ESTANDAR_COMENTARIOS.md](ESTANDAR_COMENTARIOS.md) — Estándar de comentarios en el código.
 - [ADDENDUM_OFFLINE_FIRST_v1.0.md](ADDENDUM_OFFLINE_FIRST_v1.0.md) — Reglas offline-first (sync, idempotencia y auditoría).
 - [ADDENDUM_SEGURIDAD_v1.0.md](ADDENDUM_SEGURIDAD_v1.0.md) — Plan de mejoras de seguridad y robustez.
 - [ADDENDUM_SEGURIDAD_BACKLOG_v1.0.md](ADDENDUM_SEGURIDAD_BACKLOG_v1.0.md) — Backlog ejecutable del addendum de seguridad.
@@ -53,4 +53,5 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - Todo en español.
 - Mantener los documentos cortos, accionables y versionados (título + versión + fecha).
 - Cuando un documento defina reglas/invariantes, enlazar a los módulos relevantes del código (p.ej. auditoría contractual, RBAC, sync engine).
-- No versionar evidencia operativa masiva en Git; solo runbooks, índices y rutas de evidencia.
+- La evidencia operativa masiva vive fuera del versionado normal de GitHub y se consume por rutas/convención en `docs/operacion/evidencia/**`.
+- En Git se mantienen solo runbooks, índices y referencias de evidencia (no dumps masivos).

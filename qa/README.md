@@ -136,6 +136,128 @@ docker run --rm -i --network host \
   grafana/k6 run - < qa/k6/auth_stress.js
 ```
 
+### Gate operacional (Billing + Inventory + Accounting)
+
+Para Fase 4 (perfil SLO balanceado) usa:
+
+```bash
+COMPANY_ID=<COMPANY_ID> \
+BRANCH_ID=<BRANCH_ID> \
+USERNAME=<OPER_USER> \
+PASSWORD=<OPER_PASSWORD> \
+BASE_URL=http://localhost:8000/api \
+./qa/run_operational_performance_gate.sh
+```
+
+Evidencia generada:
+- `snapshot_before.json`
+- `k6_summary.json`
+- `snapshot_after.json`
+- `gate_report.json` + `gate_report.sha256`
+
+### Rollout piloto (Fase 5)
+
+Runner por etapa:
+
+```bash
+COMPANY_ID=<COMPANY_ID> BRANCH_ID=<BRANCH_ID> ./qa/run_operational_pilot_rollout.sh stage1
+COMPANY_ID=<COMPANY_ID> BRANCH_ID=<BRANCH_ID> ./qa/run_operational_pilot_rollout.sh stage2
+COMPANY_ID=<COMPANY_ID> BRANCH_ID=<BRANCH_ID> ATTEMPT_CLOSE=1 ./qa/run_operational_pilot_rollout.sh stage3
+COMPANY_ID=<COMPANY_ID> BRANCH_ID=<BRANCH_ID> ./qa/run_operational_pilot_rollout.sh rollback
+```
+
+### Higiene de cierre F0/F1
+
+```bash
+./qa/run_operational_hygiene_checks.sh
+```
+
+Targets equivalentes de `make`:
+
+```bash
+make qa-operational-hygiene
+make qa-operational-gate COMPANY_ID=<ID> BRANCH_ID=<ID> USERNAME=<USER> PASSWORD=<PASS>
+make qa-operational-pilot-stage1 COMPANY_ID=<ID> BRANCH_ID=<ID>
+make qa-operational-pilot-stage2 COMPANY_ID=<ID> BRANCH_ID=<ID>
+make qa-operational-pilot-stage3 COMPANY_ID=<ID> BRANCH_ID=<ID>
+make qa-operational-pilot-rollback COMPANY_ID=<ID> BRANCH_ID=<ID>
+make qa-operational-go-live COMPANY_ID=<ID> BRANCH_ID=<ID> USERNAME=<USER> PASSWORD=<PASS>
+```
+
+Gate final de go-live (7 días estables por defecto):
+
+```bash
+./qa/run_operational_go_live.sh verify
+```
+
+El gate exige aprobaciones de owner funcional/técnico y signoff final (`FINAL_APPROVED`).
+Registro manual recomendado:
+
+```bash
+python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_FUNCIONAL> --role FUNCTIONAL --status APPROVED --summary "<resumen>"
+python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status APPROVED --summary "<resumen>"
+python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status FINAL_APPROVED --summary "<resumen>"
+```
+
+Excepción auditable por fuerza mayor (día excusado):
+
+```bash
+python login_module/src/manage.py record_operational_go_live_exception \
+  --evidence-dir <RUTA_EVIDENCIA> \
+  --date <YYYY-MM-DD> \
+  --exception-type FORCE_MAJEURE \
+  --status APPROVED \
+  --reported-by <RESPONSABLE_OPERATIVO> \
+  --approved-by <OWNER_APROBADOR> \
+  --summary "<motivo>"
+```
+
+Validación no lineal controlada (opcional):
+
+```bash
+ALLOW_EXCUSED_DAYS=1 MAX_EXCUSED_DAYS=2 MAX_CALENDAR_DAYS=9 \
+./qa/run_operational_go_live.sh verify
+```
+
+Modo automático opcional (solo QA):
+
+```bash
+AUTO_SIGNOFF=1 FUNCTIONAL_REVIEWER=<OWNER_FUNCIONAL> TECHNICAL_REVIEWER=<OWNER_TECNICO> \
+./qa/run_operational_go_live.sh verify
+```
+
+Overrides del gate final (mantener trazabilidad en evidencia):
+
+```bash
+REQUIRED_DAYS=1 \
+MAX_RECONCILIATION_MISMATCH=10 \
+MAX_PENDING_OPERATIONAL=500 \
+./qa/run_operational_go_live.sh verify
+```
+
+Variables soportadas por `run_operational_go_live.sh` para `verify`:
+- `MAX_FAILED_OUTBOX`
+- `MAX_RECONCILIATION_MISMATCH`
+- `MAX_DRAFT_EXCEPTION`
+- `MAX_PENDING_OPERATIONAL`
+- `MAX_FUEL_PENDING`
+- `MAX_FUEL_FAILED`
+- `ALLOW_EXCUSED_DAYS` (`1|0`)
+- `MAX_EXCUSED_DAYS`
+- `MAX_CALENDAR_DAYS` (`0` = sin límite de ventana calendario)
+- `EXCUSED_DAY_PATTERN`
+- `REQUIRE_PERFORMANCE_PASS` (`1|0`)
+- `REQUIRE_OWNER_APPROVALS` (`1|0`)
+- `REQUIRE_FINAL_SIGNOFF` (`1|0`)
+- `REQUIRE_CLOSE_OK` (`1|0`)
+
+Para ejecutar ciclo completo + verificación final:
+
+```bash
+COMPANY_ID=<ID> BRANCH_ID=<ID> USERNAME=<USER> PASSWORD=<PASS> \
+./qa/run_operational_go_live.sh full
+```
+
 ### Un solo comando (Makefile)
 
 Gate 3 completo (recomendado):

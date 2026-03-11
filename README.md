@@ -12,23 +12,30 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 ## Documentación
 
-- Índice: [docs/README.md](docs/README.md)
-- Operación (negocio): [docs/operacion/README.md](docs/operacion/README.md)
+- Estado ejecutivo: [docs/contexto_nucleos.md](docs/contexto_nucleos.md)
+- Blueprint arquitectónico: [docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md](docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md)
+- Runbooks y operación release: [docs/operacion/README.md](docs/operacion/README.md)
+- Índice general: [docs/README.md](docs/README.md)
 
-## Estado Etapa 2 (2026-02-09)
+## Estado Release F1–F12 (2026-03-10)
 
-- Auth cookie opcional via `AUTH_TOKEN_TRANSPORT` + CSRF en modo cookie.
-- 2FA admin con challenge one-time (anti-replay por IP/UA).
-- Auditoria con firma HMAC por keyring (`AUDIT_HMAC_KEYS`) y `signature_key_id`.
-- Observabilidad basica: `request_id`, Sentry opcional y endpoint `/api/metrics/`.
-- Paginacion en listados ORG/HR/RBAC (`limit/offset` + `count/limit/offset/results`).
-- Nota QA: los overrides de throttling deben estar en `.env` (el backend usa `env_file` en Docker Compose).
+- Fases **F1 a F12** implementadas y certificadas en **staging-first** (backend-only).
+- Toolchain operativo y SRE activo para F8–F12 (`qa/run_phase8_go_live.sh` a `qa/run_phase12_go_live.sh`).
+- Cierre maestro y seguridad con evidencia firmada (`bug_bounty_local` + `master_closure` en PASS).
 
-## Actualización técnica (2026-03-09)
+### Qué está cerrado
 
-- Dependencias de seguridad actualizadas: `cryptography==46.0.5`.
-- Pipeline `Auth Load Simulation` corregido: artifact de logs backend ahora se publica desde `simulacion/reports/backend.log`.
-- Frontend: actualización de toolchain de test/build reflejada en `package-lock.json`.
+- F6 Adapter B readiness (staging PASS).
+- F7A GL core + FX (staging PASS).
+- F7B Intercompany + consolidación (staging PASS).
+- F8 Go-live controlado (burn-in 14/14 con sign-off contador PASS).
+- F9/F10/F11/F12 cerradas en staging con gates estrictos.
+
+### Qué falta para producción
+
+- PR de release `release/f6-f12-staging-pass-20260310 -> master` aprobado y mergeado.
+- Cutover productivo de piloto con burn-in operativo y rollback formal.
+- Operación mensual continua F12 en producción con evidencia histórica.
 
 ## 🚀 Inicio rápido (Docker)
 
@@ -327,12 +334,6 @@ cat pm_snapshot.md
   - Responde `409` si el empleado no tiene `linked_user`.
   - Auditoría: `HR_EMPLOYEE_ACCESS_REVOKED` (sin incluir secretos).
 
-### FUEL (Estación de Servicios)
-
-- `GET /api/fuel/health/` — Healthcheck del módulo (requiere sesión/auth)
-
-Nota: el módulo FUEL está inicializado como “base” (scaffolding). El catálogo RBAC incluye roles/permisos `fuel.*` en `seed_rbac_v01`.
-
 ### Nota de compatibilidad (provisionamiento)
 
 - Si tu base de datos ya tenía la columna `accounts_user.is_setup_complete` como NOT NULL, asegúrate de aplicar migraciones: `docker compose exec backend python src/manage.py migrate --noinput`.
@@ -399,4 +400,4 @@ Guías de organización:
 
 ---
 
-Actualizado: 2026-02-09.
+Actualizado: 2026-03-10.

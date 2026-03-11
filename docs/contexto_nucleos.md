@@ -62,12 +62,22 @@ El blueprint arquitectonico completo vive en:
 - Checklist de publicacion activa: `docs/operacion/BASELINE_RELEASE_F6_F12_20260310.md`.
 - Runner maestro de cierre: `qa/run_master_f1_f12_closure.sh`.
 
+## Estado de publicacion GitHub
+
+- Repositorio: `Necktral/Necktral`.
+- Rama activa de publicacion: `release/f6-f12-staging-pass-20260310`.
+- Tag release existente: `release-f1-f12-staging-pass-20260310`.
+- Estado de PR: pendiente de apertura/merge hacia `master` con gates en verde.
+- Ultima actualizacion de este estado: `2026-03-10`.
+
 ## Pendientes para produccion (sin frontend)
 
 - Cierre de seguridad bloqueante en PASS (`bug_bounty_local` sin hallazgos bloqueantes ni leaks activos).
 - Re-certificacion staging pre-produccion con paquete firmado final.
 - Cutover productivo controlado (piloto 1 sucursal) + burn-in 14 dias.
 - Operacion mensual continua F12 en productivo con evidencia historica.
+
+Nota: la siguiente etapa solo avanza despues de merge del release y validacion de gates/CI en verde.
 
 ## Scope y decisiones vigentes
 
