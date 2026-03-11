@@ -1,5 +1,7 @@
 .PHONY: qa-backend-gunicorn qa-backend-runserver \
 	qa-load-user qa-load-reset-axes qa-load-smoke qa-load-stress qa-gate3 \
+	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
+	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
 	qa-backend-ruff qa-backend-mypy qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity \
 	docker-clean docker-clean-all
@@ -31,6 +33,12 @@ STRESS_LOGIN_RATE_START ?= 1
 STRESS_LOGIN_RATE_WARMUP ?= 2
 STRESS_LOGIN_RATE_TARGET ?= 5
 STRESS_SLEEP ?= 0.1
+
+# Operacional Billing/Inventory/Accounting (Fase 4/Fase 5)
+OPER_BILLING_VUS ?= 6
+OPER_INVENTORY_VUS ?= 6
+OPER_POSTING_VUS ?= 1
+OPER_DURATION ?= 2m
 
 qa-load-reset-axes:
 	docker compose exec -T backend python manage.py axes_reset
@@ -148,3 +156,65 @@ qa-gate3:
 	$(MAKE) qa-load-reset-axes
 	$(MAKE) qa-load-smoke VUS=2 DURATION=5s
 	$(MAKE) qa-load-stress
+
+qa-operational-hygiene:
+	./qa/run_operational_hygiene_checks.sh
+
+qa-operational-gate:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "Set COMPANY_ID, BRANCH_ID y PASSWORD antes de qa-operational-gate"; \
+		exit 1; \
+	fi
+	BASE_URL=$(BASE_URL) \
+	COMPANY_ID=$(COMPANY_ID) \
+	BRANCH_ID=$(BRANCH_ID) \
+	USERNAME=$(USERNAME) \
+	PASSWORD=$(PASSWORD) \
+	DURATION=$(OPER_DURATION) \
+	BILLING_VUS=$(OPER_BILLING_VUS) \
+	INVENTORY_VUS=$(OPER_INVENTORY_VUS) \
+	POSTING_VUS=$(OPER_POSTING_VUS) \
+	./qa/run_operational_performance_gate.sh
+
+qa-operational-pilot-stage1:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ]; then \
+		echo "Set COMPANY_ID y BRANCH_ID antes de qa-operational-pilot-stage1"; \
+		exit 1; \
+	fi
+	COMPANY_ID=$(COMPANY_ID) BRANCH_ID=$(BRANCH_ID) ./qa/run_operational_pilot_rollout.sh stage1
+
+qa-operational-pilot-stage2:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ]; then \
+		echo "Set COMPANY_ID y BRANCH_ID antes de qa-operational-pilot-stage2"; \
+		exit 1; \
+	fi
+	COMPANY_ID=$(COMPANY_ID) BRANCH_ID=$(BRANCH_ID) ./qa/run_operational_pilot_rollout.sh stage2
+
+qa-operational-pilot-stage3:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ]; then \
+		echo "Set COMPANY_ID y BRANCH_ID antes de qa-operational-pilot-stage3"; \
+		exit 1; \
+	fi
+	COMPANY_ID=$(COMPANY_ID) BRANCH_ID=$(BRANCH_ID) ATTEMPT_CLOSE=1 ./qa/run_operational_pilot_rollout.sh stage3
+
+qa-operational-pilot-rollback:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ]; then \
+		echo "Set COMPANY_ID y BRANCH_ID antes de qa-operational-pilot-rollback"; \
+		exit 1; \
+	fi
+	COMPANY_ID=$(COMPANY_ID) BRANCH_ID=$(BRANCH_ID) ./qa/run_operational_pilot_rollout.sh rollback
+
+qa-operational-all: qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3
+
+qa-operational-go-live:
+	@if [ -z "$(COMPANY_ID)" ] || [ -z "$(BRANCH_ID)" ] || [ -z "$(PASSWORD)" ]; then \
+		echo "Set COMPANY_ID, BRANCH_ID y PASSWORD antes de qa-operational-go-live"; \
+		exit 1; \
+	fi
+	BASE_URL=$(BASE_URL) \
+	COMPANY_ID=$(COMPANY_ID) \
+	BRANCH_ID=$(BRANCH_ID) \
+	USERNAME=$(USERNAME) \
+	PASSWORD=$(PASSWORD) \
+	REQUIRED_DAYS=$${REQUIRED_DAYS:-7} \
+	./qa/run_operational_go_live.sh full
