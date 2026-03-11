@@ -31,6 +31,7 @@ from .views import (
     JournalEntryListView,
     JournalEntryReverseBatchView,
     JournalEntryReverseView,
+    OperationalReconciliationReportView,
     PnLReportView,
     TrialBalanceReportView,
 )
@@ -51,6 +52,7 @@ urlpatterns = [
     path("reports/general-ledger/", GeneralLedgerReportView.as_view()),
     path("reports/pnl/", PnLReportView.as_view()),
     path("reports/balance-sheet/", BalanceSheetReportView.as_view()),
+    path("reports/operational-reconciliation/", OperationalReconciliationReportView.as_view()),
     path("fx-rates/", FxRateUpsertView.as_view()),
     path("revaluation/run/", FxRevaluationRunView.as_view()),
     path("intercompany/transactions/", IntercompanyTransactionListCreateView.as_view()),

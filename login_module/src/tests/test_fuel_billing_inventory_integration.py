@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from apps.iam.models import OrgUnit, UserMembership
+from apps.integration.models import OutboxEvent
 from apps.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 from modulos.facturacion.models import BillingDocument, DocStatus
@@ -96,8 +97,12 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     )
     assert r.status_code == 201
     sale_id = r.data["id"]
+    flow_correlation_id = str(r.data.get("flow_correlation_id") or "")
     assert r.data.get("billing_doc_id")
     assert r.data.get("inventory_movement_id")
+    assert flow_correlation_id
+    assert r.data["compensation_pending"] is False
+    assert r.data["compensation_attempts"] == 0
 
     dispense = FuelDispense.objects.get(id=dispense_id)
 
@@ -105,12 +110,30 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     assert doc.status == DocStatus.ISSUED
     assert doc.series == "FUEL"
     assert doc.total == dispense.amount_canonical
+    assert doc.source_module == "FUEL"
+    assert doc.source_type == "SALE"
+    assert doc.source_id == str(sale_id)
 
     mov = StockMovement.objects.get(id=int(r.data["inventory_movement_id"]))
     assert mov.source_module == "FUEL"
     assert mov.source_type == "SALE"
     assert mov.source_id == str(sale_id)
     assert mov.qty_delta == (dispense.liters * -1)
+
+    issued_ev = (
+        OutboxEvent.objects.filter(source_module="BILLING", event_type="DocumentIssued")
+        .order_by("-id")
+        .first()
+    )
+    inv_ev = (
+        OutboxEvent.objects.filter(source_module="INVENTORY", event_type="InventoryMovementPosted")
+        .order_by("-id")
+        .first()
+    )
+    assert issued_ev is not None
+    assert inv_ev is not None
+    assert str(issued_ev.correlation_id or "") == flow_correlation_id
+    assert str(inv_ev.correlation_id or "") == flow_correlation_id
 
     wh = Warehouse.objects.get(company=company, branch=branch, code="FUEL")
     item = InventoryItem.objects.get(company=company, sku="FUEL-DIESEL")
@@ -123,6 +146,8 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     assert r.status_code == 200
     assert r.data["status"] == "CANCELLED"
     assert r.data.get("inventory_reversal_movement_id")
+    assert r.data["compensation_pending"] is False
+    assert r.data["compensation_attempts"] >= 1
 
     doc.refresh_from_db()
     assert doc.status == DocStatus.VOIDED

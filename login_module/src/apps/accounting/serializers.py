@@ -114,6 +114,18 @@ class GeneralLedgerRangeIn(ReportRangeIn):
     account_code = serializers.CharField(max_length=32)
 
 
+class OperationalReconciliationIn(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        date_from = attrs.get("date_from")
+        date_to = attrs.get("date_to")
+        if date_from and date_to and date_from > date_to:
+            raise serializers.ValidationError("date_from debe ser menor o igual que date_to.")
+        return attrs
+
+
 class FxRateUpsertIn(serializers.Serializer):
     rate_date = serializers.DateField()
     from_currency = serializers.CharField(max_length=8)

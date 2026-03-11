@@ -8,7 +8,7 @@ from apps.accounting.services import close_fiscal_period
 
 
 class Command(BaseCommand):
-    help = "Cierra periodo fiscal contable con validación de drafts pendientes (Fase 5)."
+    help = "Cierra periodo fiscal contable con gates operativos-contables de reconciliación."
 
     def add_arguments(self, parser):
         parser.add_argument("--company-id", type=int, required=True)
@@ -40,6 +40,7 @@ class Command(BaseCommand):
             "period_id": int(result.period_id),
             "pending_drafts": int(result.pending_drafts),
             "was_already_closed": bool(result.was_already_closed),
+            "force_applied": bool(result.force_applied),
+            "gate_summary": result.gate_summary,
         }
         self.stdout.write(json.dumps(payload, ensure_ascii=False))
-

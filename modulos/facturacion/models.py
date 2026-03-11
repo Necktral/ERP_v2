@@ -48,6 +48,15 @@ class BillingSequence(models.Model):
 
 
 class BillingDocument(models.Model):
+    class AccountingStatus(models.TextChoices):
+        DISABLED = "DISABLED", "Disabled"
+        UNSUPPORTED = "UNSUPPORTED", "Unsupported"
+        PENDING_RULESET = "PENDING_RULESET", "Pending ruleset"
+        PENDING_RULE = "PENDING_RULE", "Pending rule"
+        DRAFT_EXCEPTION = "DRAFT_EXCEPTION", "Draft exception"
+        DRAFT_VALIDATED = "DRAFT_VALIDATED", "Draft validated"
+        POSTED = "POSTED", "Posted"
+
     company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_docs_company")
     branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="bill_docs_branch")
 
@@ -78,6 +87,9 @@ class BillingDocument(models.Model):
     fiscal_metadata_json = models.JSONField(default=dict)
 
     idempotency_key = models.CharField(max_length=96, blank=True, default="")
+    source_module = models.CharField(max_length=32, blank=True, default="")
+    source_type = models.CharField(max_length=64, blank=True, default="")
+    source_id = models.CharField(max_length=64, blank=True, default="")
 
     issued_at = models.DateTimeField(null=True, blank=True)
     voided_at = models.DateTimeField(null=True, blank=True)
@@ -86,12 +98,42 @@ class BillingDocument(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(default=timezone.now)
 
+    accounting_status = models.CharField(
+        max_length=24,
+        choices=AccountingStatus.choices,
+        blank=True,
+        default="",
+    )
+    accounting_error = models.CharField(max_length=255, blank=True, default="")
+    accounting_economic_event = models.ForeignKey(
+        "accounting.EconomicEvent",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="billing_documents",
+    )
+    accounting_journal_draft = models.ForeignKey(
+        "accounting.JournalDraft",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="billing_documents",
+    )
+    accounting_journal_entry = models.ForeignKey(
+        "accounting.JournalEntry",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="billing_documents",
+    )
+
     class Meta:
         indexes = [
             models.Index(fields=["company", "branch", "created_at"]),
             models.Index(fields=["company", "branch", "doc_type", "status", "created_at"]),
             models.Index(fields=["company", "idempotency_key"]),
             models.Index(fields=["company", "branch", "fiscal_mode_resolved", "fiscal_status"]),
+            models.Index(fields=["company", "branch", "accounting_status", "created_at"]),
         ]
         constraints = [
             models.UniqueConstraint(

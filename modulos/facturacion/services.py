@@ -147,6 +147,14 @@ def _fiscal_payload(*, doc: BillingDocument) -> dict:
     }
 
 
+def _source_payload(*, doc: BillingDocument) -> dict:
+    return {
+        "source_module": str(doc.source_module or ""),
+        "source_type": str(doc.source_type or ""),
+        "source_id": str(doc.source_id or ""),
+    }
+
+
 def _assert_fiscal_transition(*, current: str, target: str) -> None:
     if current == target:
         return
@@ -165,6 +173,23 @@ def _set_fiscal_status(doc: BillingDocument, *, target: str) -> None:
 
 def _resolve_config(*, company: OrgUnit, branch: OrgUnit):
     return resolve_fiscal_runtime_config(company=company, branch=branch)
+
+
+def _apply_accounting_link_to_doc(*, doc: BillingDocument, status: str, error: str = "", economic_event_id=None, journal_draft_id=None, journal_entry_id=None) -> None:
+    doc.accounting_status = str(status or "")[:24]
+    doc.accounting_error = str(error or "")[:255]
+    doc.accounting_economic_event_id = int(economic_event_id) if economic_event_id else None
+    doc.accounting_journal_draft_id = int(journal_draft_id) if journal_draft_id else None
+    doc.accounting_journal_entry_id = int(journal_entry_id) if journal_entry_id else None
+    doc.save(
+        update_fields=[
+            "accounting_status",
+            "accounting_error",
+            "accounting_economic_event",
+            "accounting_journal_draft",
+            "accounting_journal_entry",
+        ]
+    )
 
 
 def _set_fiscal_issue_fields(*, doc: BillingDocument, mode: str, reference: str, evidence_id: str, metadata: dict | None) -> None:
@@ -191,6 +216,11 @@ def create_draft(
     is_fiscal: bool,
     lines: list[dict],
     idempotency_key: str = "",
+    source_module: str = "",
+    source_type: str = "",
+    source_id: str = "",
+    correlation_id: str = "",
+    causation_id: str = "",
 ) -> CreateResult:
     company: OrgUnit = request.company
     branch: OrgUnit = request.branch
@@ -224,6 +254,9 @@ def create_draft(
             total=total,
             is_fiscal=bool(is_fiscal),
             idempotency_key=idempotency_key or "",
+            source_module=source_module or "",
+            source_type=source_type or "",
+            source_id=source_id or "",
             created_by=actor,
             fiscal_mode_resolved=FiscalMode.NOOP,
         )
@@ -259,6 +292,9 @@ def create_draft(
                 "total": str(doc.total),
                 "is_fiscal": bool(doc.is_fiscal),
                 "idempotency_key": idempotency_key,
+                "source_module": doc.source_module,
+                "source_type": doc.source_type,
+                "source_id": doc.source_id,
             },
         )
         publish_outbox_event(
@@ -276,10 +312,13 @@ def create_draft(
                 "total": str(doc.total),
                 "is_fiscal": bool(doc.is_fiscal),
                 "idempotency_key": doc.idempotency_key,
+                **_source_payload(doc=doc),
             },
             actor_user=actor,
             company=company,
             branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
         )
 
         return CreateResult(doc.id)
@@ -348,6 +387,8 @@ def issue_doc(
     apply_inventory: bool = False,
     print_after_issue: bool = False,
     idempotency_key: str = "",
+    correlation_id: str = "",
+    causation_id: str = "",
 ) -> dict:
     company: OrgUnit = request.company
     branch: OrgUnit = request.branch
@@ -404,10 +445,12 @@ def issue_doc(
                 request=request,
                 source_module="BILLING",
                 event_type="BILLING.FiscalNumberReserved",
-                payload={"doc_id": doc.id, "number": doc.number, **_fiscal_payload(doc=doc)},
+                payload={"doc_id": doc.id, "number": doc.number, **_fiscal_payload(doc=doc), **_source_payload(doc=doc)},
                 actor_user=actor,
                 company=company,
                 branch=branch,
+                correlation_id=correlation_id or "",
+                causation_id=causation_id or "",
             )
         else:
             doc.save(update_fields=["number", "status", "issued_at"])
@@ -486,7 +529,7 @@ def issue_doc(
                 "fiscal_evidence_id": fiscal_evidence.evidence_id,
             },
         )
-        publish_outbox_event(
+        issued_outbox = publish_outbox_event(
             request=request,
             source_module="BILLING",
             event_type="DocumentIssued",
@@ -508,19 +551,50 @@ def issue_doc(
                 "fiscal_reference": fiscal_issue.reference,
                 "fiscal_evidence_id": fiscal_evidence.evidence_id,
                 "fiscal_status": doc.fiscal_status,
+                **_source_payload(doc=doc),
             },
             actor_user=actor,
             company=company,
             branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
         )
+        accounting_link = None
+        try:
+            from apps.accounting.services import (
+                apply_accounting_link_to_outbox_event,
+                link_operational_event_to_accounting,
+            )
+
+            accounting_link = link_operational_event_to_accounting(
+                outbox_event=issued_outbox,
+                actor_user=actor,
+            )
+            apply_accounting_link_to_outbox_event(outbox_event=issued_outbox, link=accounting_link)
+            _apply_accounting_link_to_doc(
+                doc=doc,
+                status=accounting_link.status,
+                error=accounting_link.error,
+                economic_event_id=accounting_link.economic_event_id,
+                journal_draft_id=accounting_link.journal_draft_id,
+                journal_entry_id=accounting_link.journal_entry_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _apply_accounting_link_to_doc(
+                doc=doc,
+                status=BillingDocument.AccountingStatus.DRAFT_EXCEPTION,
+                error=str(exc),
+            )
         publish_outbox_event(
             request=request,
             source_module="BILLING",
             event_type="BILLING.FiscalDocumentIssued",
-            payload={"doc_id": doc.id, **_fiscal_payload(doc=doc)},
+            payload={"doc_id": doc.id, **_fiscal_payload(doc=doc), **_source_payload(doc=doc)},
             actor_user=actor,
             company=company,
             branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
         )
 
         queued_job_id = None
@@ -535,6 +609,14 @@ def issue_doc(
 
         out = {"ok": True, "doc_id": doc.id, "number": doc.number}
         out.update(_fiscal_payload(doc=doc))
+        out.update(
+            {
+                "accounting_status": doc.accounting_status,
+                "accounting_error": doc.accounting_error,
+                "journal_draft_id": doc.accounting_journal_draft_id,
+                "journal_entry_id": doc.accounting_journal_entry_id,
+            }
+        )
         if queued_job_id is not None:
             out["print_job_id"] = queued_job_id
         return out
@@ -850,6 +932,8 @@ def void_doc(
     actor,
     doc_id: int,
     reason: str,
+    correlation_id: str = "",
+    causation_id: str = "",
 ) -> dict:
     company: OrgUnit = request.company
     branch: OrgUnit = request.branch
@@ -924,7 +1008,7 @@ def void_doc(
                 "fiscal_reference": fiscal_void.reference,
             },
         )
-        publish_outbox_event(
+        voided_outbox = publish_outbox_event(
             request=request,
             source_module="BILLING",
             event_type="DocumentVoided",
@@ -940,13 +1024,48 @@ def void_doc(
                 "fiscal_void_status": fiscal_void.status,
                 "fiscal_reference": fiscal_void.reference,
                 "fiscal_status": doc.fiscal_status,
+                **_source_payload(doc=doc),
             },
             actor_user=actor,
             company=company,
             branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
         )
+        try:
+            from apps.accounting.services import (
+                apply_accounting_link_to_outbox_event,
+                link_operational_event_to_accounting,
+            )
 
-        return {"ok": True, "doc_id": doc.id, "fiscal_status": doc.fiscal_status}
+            accounting_link = link_operational_event_to_accounting(
+                outbox_event=voided_outbox,
+                actor_user=actor,
+            )
+            apply_accounting_link_to_outbox_event(outbox_event=voided_outbox, link=accounting_link)
+            _apply_accounting_link_to_doc(
+                doc=doc,
+                status=accounting_link.status,
+                error=accounting_link.error,
+                economic_event_id=accounting_link.economic_event_id,
+                journal_draft_id=accounting_link.journal_draft_id,
+                journal_entry_id=accounting_link.journal_entry_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _apply_accounting_link_to_doc(
+                doc=doc,
+                status=BillingDocument.AccountingStatus.DRAFT_EXCEPTION,
+                error=str(exc),
+            )
+        return {
+            "ok": True,
+            "doc_id": doc.id,
+            "fiscal_status": doc.fiscal_status,
+            "accounting_status": doc.accounting_status,
+            "accounting_error": doc.accounting_error,
+            "journal_draft_id": doc.accounting_journal_draft_id,
+            "journal_entry_id": doc.accounting_journal_entry_id,
+        }
 
 
 def get_or_update_branch_fiscal_config(

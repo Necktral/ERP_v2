@@ -9,6 +9,35 @@ from django.utils import timezone
 
 from .models import OutboxEvent
 
+OPERATIONAL_ACCOUNTING_CONTRACT_EVENTS = {
+    ("BILLING", "DocumentIssued"),
+    ("BILLING", "DocumentVoided"),
+    ("INVENTORY", "InventoryMovementPosted"),
+    ("INVENTORY", "InventoryAdjusted"),
+    ("INVENTORY", "InventoryTransferCompleted"),
+}
+
+
+def _normalize_operational_contract_payload(*, source_module: str, event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    data = dict(payload or {})
+    if (str(source_module or ""), str(event_type or "")) not in OPERATIONAL_ACCOUNTING_CONTRACT_EVENTS:
+        return data
+
+    # Contrato canónico para reconciliación/gates: campos de fuente y referencias contables siempre presentes.
+    defaults: dict[str, Any] = {
+        "source_module": "",
+        "source_type": "",
+        "source_id": "",
+        "accounting_status": "",
+        "accounting_error": "",
+        "economic_event_id": None,
+        "journal_draft_id": None,
+        "journal_entry_id": None,
+    }
+    for key, default_value in defaults.items():
+        data.setdefault(key, default_value)
+    return data
+
 
 def publish_outbox_event(
     *,
@@ -44,6 +73,12 @@ def publish_outbox_event(
         header_device_id = req_meta.get("HTTP_X_DEVICE_ID", "") or ""
     dev = device_id or header_device_id
 
+    normalized_payload = _normalize_operational_contract_payload(
+        source_module=str(source_module or ""),
+        event_type=str(event_type or ""),
+        payload=payload,
+    )
+
     occurred_at = timezone.now()
     canonical_payload = {
         "schema_version": int(schema_version),
@@ -56,7 +91,7 @@ def publish_outbox_event(
         "actor": {"user_id": getattr(effective_actor, "id", None)},
         "correlation_id": corr,
         "causation_id": cause,
-        "data": payload,
+        "data": normalized_payload,
     }
 
     return OutboxEvent.objects.create(

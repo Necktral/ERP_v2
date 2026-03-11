@@ -43,7 +43,9 @@ class FuelShiftStatus(models.TextChoices):
 
 class FuelSaleStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Activa"
+    COMPENSATING = "COMPENSATING", "Compensando"
     CANCELLED = "CANCELLED", "Anulada"
+    COMPENSATION_FAILED = "COMPENSATION_FAILED", "Compensación fallida"
 
 
 class FuelSaleType(models.TextChoices):
@@ -152,7 +154,12 @@ class FuelSale(models.Model):
 
     total_amount = models.DecimalField(max_digits=14, decimal_places=2)
 
-    status = models.CharField(max_length=16, choices=FuelSaleStatus.choices, default=FuelSaleStatus.ACTIVE)
+    status = models.CharField(max_length=24, choices=FuelSaleStatus.choices, default=FuelSaleStatus.ACTIVE)
+    flow_correlation_id = models.CharField(max_length=96, blank=True, default="", db_index=True)
+    compensation_attempts = models.PositiveIntegerField(default=0)
+    compensation_last_error = models.CharField(max_length=255, blank=True, default="")
+    compensation_next_retry_at = models.DateTimeField(null=True, blank=True)
+    last_compensation_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="fuel_sales_created")
@@ -192,6 +199,7 @@ class FuelSale(models.Model):
         indexes = [
             models.Index(fields=["company", "branch", "created_at"]),
             models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["status", "compensation_next_retry_at", "created_at"]),
         ]
 
 

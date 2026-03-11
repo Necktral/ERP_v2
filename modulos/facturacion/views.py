@@ -149,6 +149,13 @@ class DocDetailView(APIView):
                     "contingency_at": doc.contingency_at,
                     "metadata": doc.fiscal_metadata_json or {},
                 },
+                "accounting": {
+                    "status": doc.accounting_status,
+                    "error": doc.accounting_error,
+                    "economic_event_id": doc.accounting_economic_event_id,
+                    "journal_draft_id": doc.accounting_journal_draft_id,
+                    "journal_entry_id": doc.accounting_journal_entry_id,
+                },
                 "lines": lines,
             },
             status=status.HTTP_200_OK,

@@ -9,18 +9,20 @@ Precedente de dominio:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
-
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
+from uuid import uuid4
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from django.db.models import Sum, Count
+from django.db.models import Q, Sum, Count
 from django.utils.dateparse import parse_datetime, parse_date
 
 from rest_framework.exceptions import ValidationError
 
 from apps.audit.writer import write_event
+from apps.integration.services import publish_outbox_event
 
 from modulos.estacion_servicios.models import (
     FuelDispense,
@@ -36,6 +38,17 @@ from modulos.estacion_servicios.models import (
 
 MONEY_Q = Decimal("0.01")
 VOLUME_Q = Decimal("0.0001")
+COMPENSATION_MAX_ATTEMPTS = 5
+COMPENSATION_BACKOFF_MAX_MINUTES = 60
+
+
+@dataclass(frozen=True)
+class FuelCompensationCycleResult:
+    attempted: int
+    succeeded: int
+    failed: int
+    still_pending: int
+    errors: list[dict[str, str]]
 
 
 def _fuel_inventory_sku(product: str) -> str:
@@ -87,6 +100,68 @@ def _money(x: Decimal) -> Decimal:
 
 def _volume(x: Decimal) -> Decimal:
     return Decimal(x).quantize(VOLUME_Q, rounding=ROUND_HALF_UP)
+
+
+def _next_compensation_retry_at(*, now: datetime, attempt: int):
+    delay = min(2**max(1, int(attempt)), COMPENSATION_BACKOFF_MAX_MINUTES)
+    return now + timedelta(minutes=delay)
+
+
+def _ensure_flow_correlation_id(*, sale: FuelSale) -> str:
+    current = str(sale.flow_correlation_id or "").strip()
+    if current:
+        return current
+    corr = f"fuel-sale-{sale.id}-{uuid4().hex[:12]}"
+    sale.flow_correlation_id = corr
+    sale.save(update_fields=["flow_correlation_id"])
+    return corr
+
+
+def _fuel_outbox_payload(*, sale: FuelSale, reason: str = "", attempt: int | None = None, error: str = "") -> dict:
+    payload = {
+        "sale_id": int(sale.id),
+        "status": str(sale.status),
+        "flow_correlation_id": str(sale.flow_correlation_id or ""),
+        "source_module": "FUEL",
+        "source_type": "SALE",
+        "source_id": str(sale.id),
+        "billing_doc_id": sale.billing_doc_id,
+        "inventory_movement_id": sale.inventory_movement_id,
+        "inventory_reversal_movement_id": sale.inventory_reversal_movement_id,
+    }
+    if reason:
+        payload["reason"] = str(reason)
+    if attempt is not None:
+        payload["attempt"] = int(attempt)
+    if error:
+        payload["error"] = str(error)
+    if sale.compensation_next_retry_at is not None:
+        payload["compensation_next_retry_at"] = sale.compensation_next_retry_at.isoformat()
+    return payload
+
+
+def _publish_fuel_outbox_event(
+    *,
+    request=None,
+    sale: FuelSale,
+    event_type: str,
+    actor_user=None,
+    reason: str = "",
+    attempt: int | None = None,
+    error: str = "",
+    causation_id: str = "",
+):
+    publish_outbox_event(
+        request=request,
+        source_module="FUEL",
+        event_type=event_type,
+        payload=_fuel_outbox_payload(sale=sale, reason=reason, attempt=attempt, error=error),
+        actor_user=actor_user,
+        company=sale.company,
+        branch=sale.branch,
+        correlation_id=str(sale.flow_correlation_id or ""),
+        causation_id=causation_id or str(sale.flow_correlation_id or ""),
+    )
 
 
 def _to_liters(*, volume_entered: Decimal, volume_uom: str) -> Decimal:
@@ -585,6 +660,8 @@ def create_sale(
         created_by=actor_user,
         is_fiscal=bool(is_fiscal),
     )
+    sale.flow_correlation_id = f"fuel-sale-{sale.id}-{uuid4().hex[:12]}"
+    sale.save(update_fields=["flow_correlation_id"])
 
     # Integración Fuel -> Billing -> Inventory (transaccional)
     # Decisión: no bloqueamos venta por stock (allow_negative=True) para no detener operación.
@@ -607,6 +684,8 @@ def create_sale(
         source_module="FUEL",
         source_type="SALE",
         source_id=str(sale.id),
+        correlation_id=sale.flow_correlation_id,
+        causation_id=f"{sale.flow_correlation_id}:inventory-issue",
     )
 
     bill_res = create_draft(
@@ -628,9 +707,21 @@ def create_sale(
             }
         ],
         idempotency_key=f"fuel:sale:{sale.id}",
+        source_module="FUEL",
+        source_type="SALE",
+        source_id=str(sale.id),
+        correlation_id=sale.flow_correlation_id,
+        causation_id=f"{sale.flow_correlation_id}:billing-draft",
     )
 
-    issue_doc(request=request, actor=actor_user, doc_id=bill_res.doc_id, apply_inventory=False)
+    issue_doc(
+        request=request,
+        actor=actor_user,
+        doc_id=bill_res.doc_id,
+        apply_inventory=False,
+        correlation_id=sale.flow_correlation_id,
+        causation_id=f"{sale.flow_correlation_id}:billing-issue",
+    )
 
     sale.billing_doc_id = int(bill_res.doc_id)
     sale.inventory_movement_id = int(inv_res.movement_id)
@@ -651,32 +742,55 @@ def create_sale(
             "payment_method": payment_method,
             "billing_doc_id": sale.billing_doc_id,
             "inventory_movement_id": sale.inventory_movement_id,
+            "flow_correlation_id": sale.flow_correlation_id,
         },
         metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
+    )
+    _publish_fuel_outbox_event(
+        request=request,
+        sale=sale,
+        event_type="FuelSaleCreated",
+        actor_user=actor_user,
+        causation_id=f"{sale.flow_correlation_id}:sale-created",
     )
     return sale
 
 
-@transaction.atomic
-def cancel_sale(*, request=None, sale: FuelSale, actor_user, reason: str = "") -> FuelSale:
-    if sale.status != FuelSaleStatus.ACTIVE:
-        raise ValidationError({"detail": "Venta ya está anulada."})
+def _attempt_sale_compensation(*, request=None, sale: FuelSale, actor_user, reason: str = "") -> FuelSale:
+    from decimal import Decimal as _D
 
-    # Reversa de integración (si aplica)
-    if request is not None:
-        if sale.billing_doc_id:
+    effective_request = request
+    if effective_request is None:
+        class _FuelRequestShim:
+            pass
+
+        effective_request = _FuelRequestShim()
+        effective_request.company = sale.company
+        effective_request.branch = sale.branch
+        effective_request.data = {}
+
+    now = timezone.now()
+    corr = _ensure_flow_correlation_id(sale=sale)
+    attempt = int(sale.compensation_attempts) + 1
+    errors: list[str] = []
+
+    if sale.billing_doc_id:
+        try:
             from modulos.facturacion.services import void_doc
 
             void_doc(
-                request=request,
+                request=effective_request,
                 actor=actor_user,
                 doc_id=int(sale.billing_doc_id),
                 reason=reason or "VOID",
+                correlation_id=corr,
+                causation_id=f"{corr}:cancel:{attempt}:billing-void",
             )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"billing_void:{exc}")
 
-        if sale.inventory_movement_id and not sale.inventory_reversal_movement_id:
-            from decimal import Decimal as _D
-
+    if sale.inventory_movement_id and not sale.inventory_reversal_movement_id:
+        try:
             from modulos.inventarios.models import StockMovement
             from modulos.inventarios.services import post_receive
 
@@ -684,7 +798,7 @@ def cancel_sale(*, request=None, sale: FuelSale, actor_user, reason: str = "") -
             qty = _D("0") - _D(mov.qty_delta)
 
             rev = post_receive(
-                request=request,
+                request=effective_request,
                 actor=actor_user,
                 warehouse_id=int(mov.warehouse_id),
                 item_id=int(mov.item_id),
@@ -692,32 +806,232 @@ def cancel_sale(*, request=None, sale: FuelSale, actor_user, reason: str = "") -
                 unit_cost=_D(mov.unit_cost),
                 idempotency_key=f"fuel:sale:{sale.id}:reverse",
                 note=f"Reverse fuel sale {sale.id}",
+                source_module="FUEL",
+                source_type="SALE_REVERSAL",
+                source_id=str(sale.id),
+                correlation_id=corr,
+                causation_id=f"{corr}:cancel:{attempt}:inventory-reverse",
             )
             sale.inventory_reversal_movement_id = int(rev.movement_id)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"inventory_reverse:{exc}")
+
+    sale.compensation_attempts = int(attempt)
+    sale.last_compensation_at = now
+    if reason:
+        sale.cancel_reason = str(reason)
+
+    if errors:
+        sale.compensation_last_error = "; ".join(errors)[:255]
+        if attempt >= int(COMPENSATION_MAX_ATTEMPTS):
+            sale.status = FuelSaleStatus.COMPENSATION_FAILED
+            sale.compensation_next_retry_at = None
+            sale.save(
+                update_fields=[
+                    "status",
+                    "cancel_reason",
+                    "compensation_attempts",
+                    "compensation_last_error",
+                    "compensation_next_retry_at",
+                    "last_compensation_at",
+                    "inventory_reversal_movement",
+                ]
+            )
+            _publish_fuel_outbox_event(
+                request=request,
+                sale=sale,
+                event_type="FuelSaleCompensationFailed",
+                actor_user=actor_user,
+                reason=sale.cancel_reason,
+                attempt=attempt,
+                error=sale.compensation_last_error,
+                causation_id=f"{corr}:cancel:{attempt}:failed",
+            )
+            return sale
+
+        sale.status = FuelSaleStatus.COMPENSATING
+        sale.compensation_next_retry_at = _next_compensation_retry_at(now=now, attempt=attempt)
+        sale.save(
+            update_fields=[
+                "status",
+                "cancel_reason",
+                "compensation_attempts",
+                "compensation_last_error",
+                "compensation_next_retry_at",
+                "last_compensation_at",
+                "inventory_reversal_movement",
+            ]
+        )
+        _publish_fuel_outbox_event(
+            request=request,
+            sale=sale,
+            event_type="FuelSaleCompensating",
+            actor_user=actor_user,
+            reason=sale.cancel_reason,
+            attempt=attempt,
+            error=sale.compensation_last_error,
+            causation_id=f"{corr}:cancel:{attempt}:pending",
+        )
+        return sale
 
     sale.status = FuelSaleStatus.CANCELLED
     sale.cancelled_by = actor_user
-    sale.cancelled_at = timezone.now()
-    sale.cancel_reason = reason or ""
+    if sale.cancelled_at is None:
+        sale.cancelled_at = now
+    sale.compensation_last_error = ""
+    sale.compensation_next_retry_at = None
     sale.save(
         update_fields=[
             "status",
             "cancelled_by",
             "cancelled_at",
             "cancel_reason",
+            "compensation_attempts",
+            "compensation_last_error",
+            "compensation_next_retry_at",
+            "last_compensation_at",
             "inventory_reversal_movement",
         ]
     )
-
-    write_event(
+    _publish_fuel_outbox_event(
         request=request,
-        module="FUEL",
-        event_type="FUEL_SALE_VOIDED",
-        reason_code="FUEL_OK",
-        subject_type="FUEL_SALE",
-        subject_id=str(sale.id),
+        sale=sale,
+        event_type="FuelSaleCancelled",
         actor_user=actor_user,
-        after_snapshot={"reason": sale.cancel_reason, "status": sale.status},
-        metadata={"company_id": str(sale.company_id), "branch_id": str(sale.branch_id)},
+        reason=sale.cancel_reason,
+        attempt=attempt,
+        causation_id=f"{corr}:cancel:{attempt}:success",
     )
+    if actor_user is not None or request is not None:
+        write_event(
+            request=request,
+            module="FUEL",
+            event_type="FUEL_SALE_VOIDED",
+            reason_code="FUEL_OK",
+            subject_type="FUEL_SALE",
+            subject_id=str(sale.id),
+            actor_user=actor_user,
+            after_snapshot={"reason": sale.cancel_reason, "status": sale.status},
+            metadata={"company_id": str(sale.company_id), "branch_id": str(sale.branch_id)},
+        )
     return sale
+
+
+@transaction.atomic
+def cancel_sale(*, request=None, sale: FuelSale, actor_user, reason: str = "") -> FuelSale:
+    if sale.status == FuelSaleStatus.CANCELLED:
+        return sale
+    if sale.status not in (
+        FuelSaleStatus.ACTIVE,
+        FuelSaleStatus.COMPENSATING,
+        FuelSaleStatus.COMPENSATION_FAILED,
+    ):
+        raise ValidationError({"detail": "Estado de venta inválido para anulación."})
+
+    corr = _ensure_flow_correlation_id(sale=sale)
+    _publish_fuel_outbox_event(
+        request=request,
+        sale=sale,
+        event_type="FuelSaleCancelRequested",
+        actor_user=actor_user,
+        reason=reason or sale.cancel_reason or "",
+        attempt=int(sale.compensation_attempts) + 1,
+        causation_id=f"{corr}:cancel-requested",
+    )
+    return _attempt_sale_compensation(
+        request=request,
+        sale=sale,
+        actor_user=actor_user,
+        reason=reason or sale.cancel_reason or "VOID",
+    )
+
+
+@transaction.atomic
+def retry_sale_compensation(*, request=None, sale: FuelSale, actor_user, reason: str = "") -> FuelSale:
+    if sale.status == FuelSaleStatus.CANCELLED:
+        return sale
+    if sale.status not in (FuelSaleStatus.COMPENSATING, FuelSaleStatus.COMPENSATION_FAILED):
+        raise ValidationError({"detail": "La venta no está en estado reintentable."})
+    corr = _ensure_flow_correlation_id(sale=sale)
+    _publish_fuel_outbox_event(
+        request=request,
+        sale=sale,
+        event_type="FuelSaleCompensationRetried",
+        actor_user=actor_user,
+        reason=reason or sale.cancel_reason or "",
+        attempt=int(sale.compensation_attempts) + 1,
+        causation_id=f"{corr}:retry-requested",
+    )
+    return _attempt_sale_compensation(
+        request=request,
+        sale=sale,
+        actor_user=actor_user,
+        reason=reason or sale.cancel_reason or "VOID",
+    )
+
+
+def run_fuel_compensation_cycle(
+    *,
+    company=None,
+    branch=None,
+    limit: int = 100,
+    include_failed: bool = False,
+    actor_user=None,
+    now=None,
+) -> FuelCompensationCycleResult:
+    clock = now or timezone.now()
+    limit_n = max(1, int(limit))
+
+    due_filter = Q(status=FuelSaleStatus.COMPENSATING) & (
+        Q(compensation_next_retry_at__isnull=True) | Q(compensation_next_retry_at__lte=clock)
+    )
+    if bool(include_failed):
+        due_filter = due_filter | Q(status=FuelSaleStatus.COMPENSATION_FAILED)
+
+    qs = FuelSale.objects.filter(due_filter)
+    if company is not None:
+        qs = qs.filter(company=company)
+    if branch is not None:
+        qs = qs.filter(branch=branch)
+
+    sale_ids = list(qs.order_by("compensation_next_retry_at", "id").values_list("id", flat=True)[:limit_n])
+    attempted = succeeded = failed = still_pending = 0
+    errors: list[dict[str, str]] = []
+
+    for sale_id in sale_ids:
+        attempted += 1
+        try:
+            with transaction.atomic():
+                sale = FuelSale.objects.select_for_update().get(id=int(sale_id))
+                if sale.status not in (FuelSaleStatus.COMPENSATING, FuelSaleStatus.COMPENSATION_FAILED):
+                    continue
+                if (
+                    sale.status == FuelSaleStatus.COMPENSATING
+                    and sale.compensation_next_retry_at is not None
+                    and sale.compensation_next_retry_at > clock
+                ):
+                    still_pending += 1
+                    continue
+                updated = retry_sale_compensation(
+                    request=None,
+                    sale=sale,
+                    actor_user=actor_user,
+                    reason=sale.cancel_reason or "",
+                )
+                if updated.status == FuelSaleStatus.CANCELLED:
+                    succeeded += 1
+                elif updated.status == FuelSaleStatus.COMPENSATING:
+                    still_pending += 1
+                else:
+                    failed += 1
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            errors.append({"sale_id": str(sale_id), "error": str(exc)})
+
+    return FuelCompensationCycleResult(
+        attempted=int(attempted),
+        succeeded=int(succeeded),
+        failed=int(failed),
+        still_pending=int(still_pending),
+        errors=errors,
+    )

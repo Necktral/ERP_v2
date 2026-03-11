@@ -89,6 +89,15 @@ class MovementType(models.TextChoices):
 
 
 class StockMovement(models.Model):
+    class AccountingStatus(models.TextChoices):
+        DISABLED = "DISABLED", "Disabled"
+        UNSUPPORTED = "UNSUPPORTED", "Unsupported"
+        PENDING_RULESET = "PENDING_RULESET", "Pending ruleset"
+        PENDING_RULE = "PENDING_RULE", "Pending rule"
+        DRAFT_EXCEPTION = "DRAFT_EXCEPTION", "Draft exception"
+        DRAFT_VALIDATED = "DRAFT_VALIDATED", "Draft validated"
+        POSTED = "POSTED", "Posted"
+
     company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inv_mov_company")
     branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inv_mov_branch")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="movements")
@@ -107,6 +116,35 @@ class StockMovement(models.Model):
     note = models.CharField(max_length=255, blank=True, default="")
     idempotency_key = models.CharField(max_length=96, blank=True, default="")
 
+    accounting_status = models.CharField(
+        max_length=24,
+        choices=AccountingStatus.choices,
+        blank=True,
+        default="",
+    )
+    accounting_error = models.CharField(max_length=255, blank=True, default="")
+    accounting_economic_event = models.ForeignKey(
+        "accounting.EconomicEvent",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="inventory_movements",
+    )
+    accounting_journal_draft = models.ForeignKey(
+        "accounting.JournalDraft",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="inventory_movements",
+    )
+    accounting_journal_entry = models.ForeignKey(
+        "accounting.JournalEntry",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="inventory_movements",
+    )
+
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -116,6 +154,7 @@ class StockMovement(models.Model):
             models.Index(fields=["company", "branch", "item", "created_at"], name="ix_invmov_item_ca"),
             models.Index(fields=["company", "branch", "warehouse", "created_at"], name="ix_invmov_wh_ca"),
             models.Index(fields=["company", "idempotency_key"], name="ix_invmov_idem"),
+            models.Index(fields=["company", "branch", "accounting_status", "created_at"], name="ix_invmov_acc_st"),
         ]
         constraints = [
             models.UniqueConstraint(

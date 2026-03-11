@@ -171,6 +171,9 @@ def test_accounting_api_happy_path_approve_post_and_close_period():
     assert close_resp.status_code == 200
     assert close_resp.data["status"] == FiscalPeriod.Status.CLOSED
     assert close_resp.data["pending_drafts"] == 0
+    assert close_resp.data["force_applied"] is False
+    assert close_resp.data["gate_summary"]["blocked"] is False
+    assert close_resp.data["gate_summary"]["pending_drafts_count"] == 0
 
     periods_resp = closer_client.get(f"/api/accounting/periods/?year={local_dt.year}")
     assert periods_resp.status_code == 200
@@ -304,6 +307,195 @@ def test_accounting_api_close_period_returns_409_with_pending_drafts():
     assert close_resp.status_code == 409
     assert close_resp.data["error"]["code"] == "CONFLICT"
     assert "drafts pendientes" in close_resp.data["error"]["message"]
+    gate = close_resp.data["error"]["details"]["gate_summary"]
+    assert gate["blocked"] is True
+    assert gate["pending_drafts_count"] >= 1
+
+
+@pytest.mark.django_db
+def test_accounting_api_close_period_force_allows_pending_drafts_only():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["accounting.period.close"],
+    )
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    draft = JournalDraft.objects.get(close_run_id=str(run.run_id))
+    local_dt = timezone.localtime(draft.economic_event.occurred_at)
+
+    close_resp = client.post(
+        "/api/accounting/periods/close/",
+        {"year": local_dt.year, "month": local_dt.month, "force": True},
+        format="json",
+    )
+    assert close_resp.status_code == 200
+    assert close_resp.data["status"] == FiscalPeriod.Status.CLOSED
+    assert close_resp.data["force_applied"] is True
+    assert close_resp.data["gate_summary"]["force_applied"] is True
+    assert close_resp.data["gate_summary"]["pending_drafts_count"] >= 1
+    assert close_resp.data["gate_summary"]["blocked"] is False
+
+
+@pytest.mark.django_db
+def test_accounting_api_close_period_force_still_blocks_failed_outbox():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["accounting.period.close"],
+    )
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    call_command("approve_journal_drafts", run_id=str(run.run_id), company_id=company.id)
+    call_command("post_journal_drafts", run_id=str(run.run_id), company_id=company.id, require_approved=True)
+    draft = JournalDraft.objects.get(close_run_id=str(run.run_id))
+    local_dt = timezone.localtime(draft.economic_event.occurred_at)
+
+    failed = publish_outbox_event(
+        source_module="INVENTORY",
+        event_type="InventoryAdjusted",
+        payload={
+            "movement_id": 801,
+            "movement_type": "ADJUST",
+            "warehouse_id": 1,
+            "item_id": 1,
+            "qty_delta": "1.0000",
+            "new_qty_on_hand": "1.0000",
+            "avg_cost": "1.000000",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+    failed.status = OutboxEvent.Status.FAILED
+    failed.last_error = "dispatch failed"
+    failed.occurred_at = draft.economic_event.occurred_at
+    failed.save(update_fields=["status", "last_error", "occurred_at"])
+
+    close_resp = client.post(
+        "/api/accounting/periods/close/",
+        {"year": local_dt.year, "month": local_dt.month, "force": True},
+        format="json",
+    )
+    assert close_resp.status_code == 409
+    gate = close_resp.data["error"]["details"]["gate_summary"]
+    assert gate["force_applied"] is True
+    assert gate["failed_outbox_count"] >= 1
+    assert "FAILED_OUTBOX" in gate["blocking_reasons"]
+
+
+@pytest.mark.django_db
+def test_accounting_api_close_period_force_blocks_failed_accounting_outbox():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["accounting.period.close"],
+    )
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    call_command("approve_journal_drafts", run_id=str(run.run_id), company_id=company.id)
+    call_command("post_journal_drafts", run_id=str(run.run_id), company_id=company.id, require_approved=True)
+    draft = JournalDraft.objects.get(close_run_id=str(run.run_id))
+    local_dt = timezone.localtime(draft.economic_event.occurred_at)
+
+    failed = OutboxEvent.objects.filter(source_module="ACCOUNTING", event_type="JournalPosted").order_by("-id").first()
+    assert failed is not None
+    failed.status = OutboxEvent.Status.FAILED
+    failed.last_error = "accounting outbox dead-letter"
+    failed.occurred_at = draft.economic_event.occurred_at
+    failed.save(update_fields=["status", "last_error", "occurred_at"])
+
+    close_resp = client.post(
+        "/api/accounting/periods/close/",
+        {"year": local_dt.year, "month": local_dt.month, "force": True},
+        format="json",
+    )
+    assert close_resp.status_code == 409
+    gate = close_resp.data["error"]["details"]["gate_summary"]
+    assert gate["force_applied"] is True
+    assert gate["failed_outbox_count"] >= 1
+    assert "FAILED_OUTBOX" in gate["blocking_reasons"]
+    sample_modules = {str(row.get("source_module")) for row in list(gate.get("failed_outbox_sample") or [])}
+    assert "ACCOUNTING" in sample_modules
+
+
+@pytest.mark.django_db
+def test_accounting_api_close_period_force_blocks_operational_reconciliation_mismatch():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["accounting.period.close"],
+    )
+    event = publish_outbox_event(
+        source_module="BILLING",
+        event_type="DocumentIssued",
+        payload={
+            "doc_id": 8901,
+            "doc_type": "INVOICE",
+            "series": "A",
+            "number": 9,
+            "currency": "NIO",
+            "subtotal": "100.00",
+            "tax_total": "15.00",
+            "total": "115.00",
+            "is_fiscal": True,
+            "fiscal_adapter_mode": "B",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+    local_dt = timezone.localtime(event.occurred_at)
+
+    close_resp = client.post(
+        "/api/accounting/periods/close/",
+        {"year": local_dt.year, "month": local_dt.month, "force": True},
+        format="json",
+    )
+    assert close_resp.status_code == 409
+    gate = close_resp.data["error"]["details"]["gate_summary"]
+    assert gate["reconciliation_mismatch_count"] >= 1
+    assert gate["pending_operational_events_count"] >= 1
+    assert "RECONCILIATION_MISMATCH" in gate["blocking_reasons"]
+    assert "PENDING_OPERATIONAL_EVENTS" in gate["blocking_reasons"]
+
+
+@pytest.mark.django_db
+def test_accounting_api_close_period_force_blocks_draft_exception():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["accounting.period.close"],
+    )
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    draft = JournalDraft.objects.get(close_run_id=str(run.run_id))
+    draft.state = JournalDraft.State.EXCEPTION
+    draft.save(update_fields=["state"])
+    local_dt = timezone.localtime(draft.economic_event.occurred_at)
+
+    close_resp = client.post(
+        "/api/accounting/periods/close/",
+        {"year": local_dt.year, "month": local_dt.month, "force": True},
+        format="json",
+    )
+    assert close_resp.status_code == 409
+    gate = close_resp.data["error"]["details"]["gate_summary"]
+    assert gate["draft_exception_count"] >= 1
+    assert "DRAFT_EXCEPTION" in gate["blocking_reasons"]
 
 
 @pytest.mark.django_db

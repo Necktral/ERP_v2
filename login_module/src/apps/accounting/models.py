@@ -343,6 +343,49 @@ class CompanyAccountingConfig(models.Model):
                 raise ValidationError(f"{field_name} debe pertenecer a la misma company.")
 
 
+class OperationalPostingConfig(models.Model):
+    class PostingMode(models.TextChoices):
+        DISABLED = "DISABLED", "Disabled"
+        ASYNC = "ASYNC", "Async"
+        SYNC = "SYNC", "Sync"
+        HYBRID = "HYBRID", "Hybrid"
+
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="acc_operational_posting_company")
+    branch = models.ForeignKey(
+        OrgUnit,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="acc_operational_posting_branch",
+    )
+    posting_mode = models.CharField(max_length=16, choices=PostingMode.choices, default=PostingMode.HYBRID)
+    enable_billing = models.BooleanField(default=True)
+    enable_inventory = models.BooleanField(default=True)
+    auto_post_on_write = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "accounting"
+        constraints = [
+            models.UniqueConstraint(fields=["company", "branch"], name="uq_acc_operational_posting_scope"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "is_active"]),
+            models.Index(fields=["company", "posting_mode", "is_active"]),
+        ]
+
+    def clean(self):
+        if self.company_id and self.company.unit_type != OrgUnit.UnitType.COMPANY:
+            raise ValidationError("OperationalPostingConfig.company debe ser COMPANY.")
+        if self.branch_id:
+            if self.branch.unit_type != OrgUnit.UnitType.BRANCH:
+                raise ValidationError("OperationalPostingConfig.branch debe ser BRANCH.")
+            if self.branch.parent_id != self.company_id:
+                raise ValidationError("OperationalPostingConfig.branch debe pertenecer a la misma company.")
+
+
 class JournalEntryLine(models.Model):
     journal_entry = models.ForeignKey(JournalEntry, on_delete=models.PROTECT, related_name="lines")
     line_no = models.PositiveIntegerField()

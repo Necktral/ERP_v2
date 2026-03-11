@@ -21,6 +21,18 @@ from .serializers import (
 from .services import create_item, post_adjust, post_issue, post_receive, post_transfer
 
 
+def _movement_post_response(result) -> dict:
+    return {
+        "movement_id": result.movement_id,
+        "qty_on_hand": str(result.qty_on_hand),
+        "avg_cost": str(result.avg_cost),
+        "accounting_status": result.accounting_status,
+        "accounting_error": result.accounting_error,
+        "journal_draft_id": result.accounting_journal_draft_id,
+        "journal_entry_id": result.accounting_journal_entry_id,
+    }
+
+
 class HealthView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -99,10 +111,7 @@ class ReceiveView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class IssueView(APIView):
@@ -128,10 +137,7 @@ class IssueView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class AdjustView(APIView):
@@ -156,10 +162,7 @@ class AdjustView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class TransferView(APIView):

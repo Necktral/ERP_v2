@@ -11,6 +11,7 @@ from apps.common.pagination import get_limit_offset, paginate_queryset
 from apps.common.permissions import rbac_permission
 from apps.integration.services import publish_outbox_event
 from apps.rbac.selectors import get_effective_permissions_for_scope
+from config.error_envelope import build_error_envelope
 
 from .models import (
     ChartOfAccount,
@@ -67,12 +68,14 @@ from .serializers import (
     JournalEntryReverseBatchIn,
     JournalEntryReverseIn,
     ReportRangeIn,
+    OperationalReconciliationIn,
 )
 from .services import (
     AccountingConflictError,
     approve_journal_drafts,
     close_fiscal_period,
     post_journal_drafts,
+    reconcile_operational_vs_accounting,
     reverse_journal_entries_batch,
     reverse_journal_entry,
 )
@@ -416,6 +419,27 @@ class BalanceSheetReportView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(report, status=status.HTTP_200_OK)
+
+
+class OperationalReconciliationReportView(APIView):
+    permission_classes = [rbac_permission("accounting.report.read")]
+
+    def get(self, request):
+        s = OperationalReconciliationIn(data=request.query_params)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        payload = reconcile_operational_vs_accounting(
+            company=request.company,
+            branch=getattr(request, "branch", None),
+            date_from=v.get("date_from"),
+            date_to=v.get("date_to"),
+        )
+        payload["filters"] = {
+            "date_from": str(v.get("date_from") or ""),
+            "date_to": str(v.get("date_to") or ""),
+            "branch_id": getattr(getattr(request, "branch", None), "id", None),
+        }
+        return Response(payload, status=status.HTTP_200_OK)
 
 
 class FxRateUpsertView(APIView):
@@ -1136,6 +1160,15 @@ class FiscalPeriodCloseView(APIView):
                 actor_user=request.user,
             )
         except AccountingConflictError as exc:
+            gate_summary = getattr(exc, "gate_summary", None)
+            if isinstance(gate_summary, dict):
+                envelope = build_error_envelope(
+                    request=request,
+                    status_code=status.HTTP_409_CONFLICT,
+                    exc=exc,
+                    details={"detail": str(exc), "gate_summary": gate_summary},
+                )
+                return Response(envelope, status=status.HTTP_409_CONFLICT)
             raise ConflictError(str(exc)) from exc
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1148,6 +1181,8 @@ class FiscalPeriodCloseView(APIView):
             "period_id": int(result.period_id),
             "pending_drafts": int(result.pending_drafts),
             "was_already_closed": bool(result.was_already_closed),
+            "force_applied": bool(result.force_applied),
+            "gate_summary": result.gate_summary,
         }
         return Response(payload, status=status.HTTP_200_OK)
 

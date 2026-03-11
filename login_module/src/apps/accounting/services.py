@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, time
+from datetime import date, datetime, time, timedelta
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
@@ -25,6 +26,7 @@ from .models import (
     FiscalPeriod,
     JournalDraft,
     JournalEntry,
+    OperationalPostingConfig,
     RevaluationRun,
     PostingRuleSet,
 )
@@ -49,6 +51,15 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
 }
+
+OPERATIONAL_ACCOUNTING_EVENTS = {
+    ("BILLING", "DocumentIssued"),
+    ("BILLING", "DocumentVoided"),
+    ("INVENTORY", "InventoryMovementPosted"),
+    ("INVENTORY", "InventoryAdjusted"),
+    ("INVENTORY", "InventoryTransferCompleted"),
+}
+PERIOD_CLOSE_FAILED_OUTBOX_MODULES = ("BILLING", "INVENTORY", "ACCOUNTING")
 
 
 class AccountingConflictError(ValueError):
@@ -75,8 +86,71 @@ class ShadowProjectionBatchResult:
     failed: int
 
 
+@dataclass(frozen=True)
+class OperationalPostingRuntime:
+    posting_mode: str
+    enable_billing: bool
+    enable_inventory: bool
+    auto_post_on_write: bool
+
+    def allows_module(self, source_module: str) -> bool:
+        if self.posting_mode == OperationalPostingConfig.PostingMode.DISABLED:
+            return False
+        if source_module == "BILLING":
+            return bool(self.enable_billing)
+        if source_module == "INVENTORY":
+            return bool(self.enable_inventory)
+        return False
+
+
+@dataclass(frozen=True)
+class OperationalAccountingLinkResult:
+    status: str
+    economic_event_id: int | None = None
+    journal_draft_id: int | None = None
+    journal_entry_id: int | None = None
+    error: str = ""
+
+
 def _q_money(value: Decimal) -> Decimal:
     return value.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+
+
+def resolve_operational_posting_runtime(*, company, branch=None) -> OperationalPostingRuntime:
+    row = None
+    if branch is not None:
+        row = (
+            OperationalPostingConfig.objects.filter(company=company, branch=branch, is_active=True)
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+    if row is None:
+        row = (
+            OperationalPostingConfig.objects.filter(company=company, branch__isnull=True, is_active=True)
+            .order_by("-updated_at", "-id")
+            .first()
+        )
+
+    if row is not None:
+        mode = str(row.posting_mode or OperationalPostingConfig.PostingMode.HYBRID).upper()
+        if mode not in OperationalPostingConfig.PostingMode.values:
+            mode = OperationalPostingConfig.PostingMode.HYBRID
+        return OperationalPostingRuntime(
+            posting_mode=mode,
+            enable_billing=bool(row.enable_billing),
+            enable_inventory=bool(row.enable_inventory),
+            auto_post_on_write=bool(row.auto_post_on_write),
+        )
+
+    mode = str(getattr(settings, "ACCOUNTING_POSTING_MODE", OperationalPostingConfig.PostingMode.HYBRID) or "").upper()
+    if mode not in OperationalPostingConfig.PostingMode.values:
+        mode = OperationalPostingConfig.PostingMode.HYBRID
+    return OperationalPostingRuntime(
+        posting_mode=mode,
+        enable_billing=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_BILLING", True)),
+        enable_inventory=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_INVENTORY", True)),
+        auto_post_on_write=bool(getattr(settings, "ACCOUNTING_POSTING_AUTO_POST_ON_WRITE", False)),
+    )
 
 
 def _to_decimal(value: Any) -> Decimal:
@@ -212,6 +286,330 @@ def _normalize_operational_event(*, run: CloseRun, outbox_event: OutboxEvent) ->
         },
     }
 
+
+def _normalize_operational_event_for_link(
+    *,
+    outbox_event: OutboxEvent,
+    company,
+    branch,
+) -> dict[str, Any]:
+    payload = outbox_event.payload if isinstance(outbox_event.payload, dict) else {}
+    data = _enrich_event_data(outbox_event, base_data=_event_data(outbox_event))
+    occurred_at = payload.get("occurred_at") or outbox_event.occurred_at.isoformat()
+    return {
+        "source_module": outbox_event.source_module,
+        "event_type": outbox_event.event_type,
+        "schema_version": int(payload.get("schema_version") or outbox_event.schema_version or 1),
+        "contract_version": str(payload.get("contract_version") or "1.0"),
+        "occurred_at": occurred_at,
+        "correlation_id": str(payload.get("correlation_id") or outbox_event.correlation_id or ""),
+        "causation_id": str(payload.get("causation_id") or outbox_event.causation_id or ""),
+        "source_outbox_event_id": str(outbox_event.event_id),
+        "data": data,
+        "scope": {
+            "company_id": company.id,
+            "branch_id": getattr(branch, "id", None),
+        },
+    }
+
+
+def _select_active_rule_set_for_scope(*, company, normalized: dict[str, Any]) -> PostingRuleSet | None:
+    occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+    fiscal_mode = _infer_fiscal_mode(normalized)
+    qs = PostingRuleSet.objects.filter(
+        status=PostingRuleSet.Status.ACTIVE,
+    ).filter(
+        Q(scope_company=company) | Q(scope_company__isnull=True),
+        Q(effective_from__isnull=True) | Q(effective_from__lte=occurred_at),
+        Q(effective_to__isnull=True) | Q(effective_to__gte=occurred_at),
+    )
+
+    if fiscal_mode in (PostingRuleSet.FiscalMode.A, PostingRuleSet.FiscalMode.B):
+        qs = qs.filter(fiscal_mode__in=[fiscal_mode, PostingRuleSet.FiscalMode.BOTH]).annotate(
+            fiscal_rank=Case(
+                When(fiscal_mode=fiscal_mode, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        )
+    else:
+        qs = qs.filter(fiscal_mode=PostingRuleSet.FiscalMode.BOTH).annotate(
+            fiscal_rank=Value(0, output_field=IntegerField())
+        )
+
+    qs = qs.annotate(
+        scope_rank=Case(
+            When(scope_company=company, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    )
+    return qs.order_by("scope_rank", "fiscal_rank", "-version", "-id").first()
+
+
+def _post_single_journal_draft(
+    *,
+    draft: JournalDraft,
+    actor_user=None,
+) -> JournalEntry:
+    if draft.total_debit != draft.total_credit:
+        raise AccountingConflictError("Draft no balanceado (debit != credit).")
+
+    period = _period_for_occurrence(
+        company=draft.economic_event.company,
+        occurred_at=draft.economic_event.occurred_at,
+    )
+    if period.status == FiscalPeriod.Status.CLOSED:
+        raise AccountingConflictError(f"Periodo cerrado: {period.year}-{period.month:02d}.")
+
+    cfg = get_or_create_accounting_config(company=draft.economic_event.company)
+    phase7_enabled = bool(cfg.phase7_enabled)
+    functional_currency = str(cfg.functional_currency or "NIO").upper() or "NIO"
+    entry_date = timezone.localtime(draft.economic_event.occurred_at).date()
+    description = f"{draft.economic_event.source_module}.{draft.economic_event.event_type}"
+
+    entry, created = JournalEntry.objects.get_or_create(
+        draft=draft,
+        defaults={
+            "period": period,
+            "company": draft.economic_event.company,
+            "branch": draft.economic_event.branch,
+            "entry_date": entry_date,
+            "description": description,
+            "debit_total": draft.total_debit,
+            "credit_total": draft.total_credit,
+            "is_posted": True,
+            "posted_at": timezone.now(),
+            "posted_by": actor_user,
+            "metadata": {
+                "close_run_id": draft.close_run_id,
+                "input_manifest_hash": draft.input_manifest_hash,
+                "contract_version": draft.contract_version,
+                "schema_version": int(draft.schema_version),
+                "economic_event_id": int(draft.economic_event_id),
+            },
+        },
+    )
+    if not created:
+        if draft.state != JournalDraft.State.POSTED:
+            draft.state = JournalDraft.State.POSTED
+            draft.posted_at = entry.posted_at
+            draft.save(update_fields=["state", "posted_at"])
+        return entry
+
+    if phase7_enabled:
+        ensure_journal_entry_lines(
+            entry=entry,
+            draft=draft,
+            functional_currency=functional_currency,
+        )
+
+    draft.state = JournalDraft.State.POSTED
+    draft.posted_at = entry.posted_at
+    draft.save(update_fields=["state", "posted_at"])
+
+    publish_outbox_event(
+        source_module="ACCOUNTING",
+        event_type="JournalPosted",
+        payload={
+            "journal_entry_id": entry.id,
+            "journal_draft_id": draft.id,
+            "economic_event_id": draft.economic_event_id,
+            "run_id": draft.close_run_id,
+            "period_year": int(period.year),
+            "period_month": int(period.month),
+            "debit_total": str(entry.debit_total),
+            "credit_total": str(entry.credit_total),
+            "entry_date": str(entry.entry_date),
+        },
+        company=draft.economic_event.company,
+        branch=draft.economic_event.branch,
+        actor_user=actor_user,
+    )
+    return entry
+
+
+def link_operational_event_to_accounting(
+    *,
+    outbox_event: OutboxEvent,
+    actor_user=None,
+) -> OperationalAccountingLinkResult:
+    if (outbox_event.source_module, outbox_event.event_type) not in OPERATIONAL_ACCOUNTING_EVENTS:
+        return OperationalAccountingLinkResult(status="UNSUPPORTED")
+
+    company = outbox_event.company
+    branch = outbox_event.branch
+    if company is None:
+        return OperationalAccountingLinkResult(status="UNSUPPORTED", error="Event sin scope de company.")
+
+    runtime = resolve_operational_posting_runtime(company=company, branch=branch)
+    if not runtime.allows_module(outbox_event.source_module):
+        return OperationalAccountingLinkResult(status="DISABLED")
+
+    normalized = _normalize_operational_event_for_link(outbox_event=outbox_event, company=company, branch=branch)
+    occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+
+    with transaction.atomic():
+        defaults = {
+            "source_module": normalized["source_module"],
+            "event_type": normalized["event_type"],
+            "company": company,
+            "branch": branch,
+            "occurred_at": occurred_at,
+            "contract_version": normalized["contract_version"],
+            "schema_version": int(normalized["schema_version"]),
+            "correlation_id": normalized["correlation_id"],
+            "causation_id": normalized["causation_id"],
+            "payload": normalized,
+            "input_manifest_hash": "",
+            "close_run_id": "",
+            "source_outbox_event_id": outbox_event.event_id,
+        }
+        economic_event, _ = EconomicEvent.objects.get_or_create(
+            company=company,
+            source_outbox_event_id=outbox_event.event_id,
+            defaults=defaults,
+        )
+        if economic_event.payload != normalized:
+            economic_event.payload = normalized
+            economic_event.correlation_id = normalized["correlation_id"]
+            economic_event.causation_id = normalized["causation_id"]
+            economic_event.save(update_fields=["payload", "correlation_id", "causation_id"])
+
+        rule_set = _select_active_rule_set_for_scope(company=company, normalized=normalized)
+        if rule_set is None:
+            seeded_rule_set, _ = seed_posting_rules_v1_for_company(company=company)
+            rule_set = _select_active_rule_set_for_scope(company=company, normalized=normalized)
+            if rule_set is None and seeded_rule_set.status == PostingRuleSet.Status.ACTIVE:
+                # Fallback para primer evento cuando occurred_at queda milisegundos antes de effective_from.
+                rule_set = seeded_rule_set
+        if rule_set is None:
+            return OperationalAccountingLinkResult(
+                status="PENDING_RULESET",
+                economic_event_id=economic_event.id,
+                error="No hay PostingRuleSet ACTIVE para el scope.",
+            )
+
+        matched_rule = _select_rule(rule_set=rule_set, normalized=normalized)
+        if matched_rule is None:
+            return OperationalAccountingLinkResult(
+                status="PENDING_RULE",
+                economic_event_id=economic_event.id,
+                error="No hay regla aplicable para el evento.",
+            )
+
+        lines_json, total_debit, total_credit, line_errors = _build_lines_from_rule(
+            normalized=normalized,
+            rule=matched_rule,
+        )
+        if total_debit != total_credit:
+            line_errors.append("Draft no balanceado: debit != credit.")
+        if not lines_json:
+            line_errors.append("Draft sin líneas contables.")
+
+        draft_defaults = {
+            "state": JournalDraft.State.GENERATED,
+            "contract_version": economic_event.contract_version,
+            "schema_version": economic_event.schema_version,
+            "close_run_id": "",
+            "input_manifest_hash": "",
+            "lines_json": lines_json,
+            "total_debit": total_debit,
+            "total_credit": total_credit,
+            "metadata": {
+                "rule_id": str(matched_rule.get("id") or ""),
+                "rule_set_code": rule_set.code,
+                "rule_set_version": int(rule_set.version),
+                "source_outbox_event_id": str(outbox_event.event_id),
+                "posting_mode": runtime.posting_mode,
+            },
+        }
+        draft, created_draft = JournalDraft.objects.get_or_create(
+            economic_event=economic_event,
+            rule_set=rule_set,
+            defaults=draft_defaults,
+        )
+
+        if not created_draft and draft.state == JournalDraft.State.POSTED and hasattr(draft, "journal_entry"):
+            return OperationalAccountingLinkResult(
+                status="POSTED",
+                economic_event_id=economic_event.id,
+                journal_draft_id=draft.id,
+                journal_entry_id=draft.journal_entry.id,
+            )
+
+        if created_draft or draft.state in (JournalDraft.State.GENERATED, JournalDraft.State.EXCEPTION):
+            draft.lines_json = lines_json
+            draft.total_debit = total_debit
+            draft.total_credit = total_credit
+            draft.metadata = {
+                **(draft.metadata or {}),
+                **draft_defaults["metadata"],
+            }
+
+        if line_errors:
+            draft.state = JournalDraft.State.EXCEPTION
+            draft.validated_at = None
+            draft.save(update_fields=["state", "validated_at", "lines_json", "total_debit", "total_credit", "metadata"])
+            _upsert_validation_result(draft=draft, passed=False, errors=line_errors, is_blocking=True)
+            return OperationalAccountingLinkResult(
+                status="DRAFT_EXCEPTION",
+                economic_event_id=economic_event.id,
+                journal_draft_id=draft.id,
+                error="; ".join(line_errors)[:255],
+            )
+
+        draft.state = JournalDraft.State.VALIDATED
+        draft.validated_at = timezone.now()
+        draft.save(update_fields=["state", "validated_at", "lines_json", "total_debit", "total_credit", "metadata"])
+        _upsert_validation_result(draft=draft, passed=True, errors=[], is_blocking=False)
+
+        journal_entry_id = None
+        status = "DRAFT_VALIDATED"
+        if runtime.auto_post_on_write and runtime.posting_mode in (
+            OperationalPostingConfig.PostingMode.SYNC,
+            OperationalPostingConfig.PostingMode.HYBRID,
+        ):
+            try:
+                entry = _post_single_journal_draft(draft=draft, actor_user=actor_user)
+                journal_entry_id = entry.id
+                status = "POSTED"
+            except (AccountingConflictError, Phase7ValidationError) as exc:
+                status = "DRAFT_EXCEPTION"
+                return OperationalAccountingLinkResult(
+                    status=status,
+                    economic_event_id=economic_event.id,
+                    journal_draft_id=draft.id,
+                    error=str(exc)[:255],
+                )
+
+        return OperationalAccountingLinkResult(
+            status=status,
+            economic_event_id=economic_event.id,
+            journal_draft_id=draft.id,
+            journal_entry_id=journal_entry_id,
+        )
+
+
+def apply_accounting_link_to_outbox_event(
+    *,
+    outbox_event: OutboxEvent,
+    link: OperationalAccountingLinkResult,
+) -> None:
+    payload = outbox_event.payload if isinstance(outbox_event.payload, dict) else {}
+    data = payload.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+    data["accounting_status"] = link.status
+    data["economic_event_id"] = link.economic_event_id
+    data["journal_draft_id"] = link.journal_draft_id
+    data["journal_entry_id"] = link.journal_entry_id
+    if link.error:
+        data["accounting_error"] = link.error
+    payload["data"] = data
+    payload["schema_version"] = int(payload.get("schema_version") or outbox_event.schema_version or 1)
+    outbox_event.payload = payload
+    outbox_event.save(update_fields=["payload"])
 
 def _extract_when_value(*, normalized: dict[str, Any], key: str):
     if "." in key:
@@ -1206,6 +1604,38 @@ class PeriodCloseResult:
     pending_drafts: int
     period_id: int
     was_already_closed: bool
+    gate_summary: dict[str, Any]
+    force_applied: bool
+
+
+@dataclass(frozen=True)
+class PeriodCloseGateEvaluation:
+    pending_drafts_count: int
+    failed_outbox_count: int
+    reconciliation_mismatch_count: int
+    draft_exception_count: int
+    pending_operational_events_count: int
+    force_applied: bool
+    blocked: bool
+    blocking_reasons: list[str]
+    failed_outbox_sample: list[dict[str, Any]]
+    period_start: str
+    period_end: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "pending_drafts_count": int(self.pending_drafts_count),
+            "failed_outbox_count": int(self.failed_outbox_count),
+            "reconciliation_mismatch_count": int(self.reconciliation_mismatch_count),
+            "draft_exception_count": int(self.draft_exception_count),
+            "pending_operational_events_count": int(self.pending_operational_events_count),
+            "force_applied": bool(self.force_applied),
+            "blocked": bool(self.blocked),
+            "blocking_reasons": list(self.blocking_reasons),
+            "failed_outbox_sample": list(self.failed_outbox_sample),
+            "period_start": str(self.period_start),
+            "period_end": str(self.period_end),
+        }
 
 
 @dataclass(frozen=True)
@@ -1236,6 +1666,152 @@ def _period_for_occurrence(*, company, occurred_at) -> FiscalPeriod:
         defaults={"status": FiscalPeriod.Status.OPEN},
     )
     return period
+
+
+def _period_date_bounds(*, year: int, month: int) -> tuple[date, date]:
+    if month < 1 or month > 12:
+        raise ValueError("month debe estar en rango 1..12.")
+    start = date(int(year), int(month), 1)
+    if int(month) == 12:
+        end = date(int(year) + 1, 1, 1) - timedelta(days=1)
+    else:
+        end = date(int(year), int(month) + 1, 1) - timedelta(days=1)
+    return start, end
+
+
+def _period_datetime_bounds(*, date_from: date, date_to: date) -> tuple[datetime, datetime]:
+    tz = timezone.get_current_timezone()
+    dt_from = timezone.make_aware(datetime.combine(date_from, time.min), tz)
+    dt_to = timezone.make_aware(datetime.combine(date_to, time.max), tz)
+    return dt_from, dt_to
+
+
+def _period_close_block_message(*, year: int, month: int, gate: PeriodCloseGateEvaluation) -> str:
+    parts: list[str] = []
+    if gate.pending_drafts_count > 0 and not gate.force_applied:
+        parts.append(f"drafts pendientes={gate.pending_drafts_count}")
+    if gate.failed_outbox_count > 0:
+        parts.append(f"outbox fallido={gate.failed_outbox_count}")
+    if gate.reconciliation_mismatch_count > 0:
+        parts.append(f"descuadres reconciliación={gate.reconciliation_mismatch_count}")
+    if gate.draft_exception_count > 0:
+        parts.append(f"drafts en excepción={gate.draft_exception_count}")
+    if gate.pending_operational_events_count > 0:
+        parts.append(f"eventos operacionales pendientes={gate.pending_operational_events_count}")
+    details = "; ".join(parts) if parts else "gates de cierre no superados"
+    return f"No se puede cerrar periodo {year}-{month:02d}: {details}."
+
+
+def _zero_gate_summary(*, year: int, month: int, force: bool) -> dict[str, Any]:
+    date_from, date_to = _period_date_bounds(year=int(year), month=int(month))
+    return {
+        "pending_drafts_count": 0,
+        "failed_outbox_count": 0,
+        "reconciliation_mismatch_count": 0,
+        "draft_exception_count": 0,
+        "pending_operational_events_count": 0,
+        "force_applied": bool(force),
+        "blocked": False,
+        "blocking_reasons": [],
+        "failed_outbox_sample": [],
+        "period_start": str(date_from),
+        "period_end": str(date_to),
+    }
+
+
+def evaluate_period_close_gates(
+    *,
+    company,
+    year: int,
+    month: int,
+    force: bool = False,
+    max_failed_outbox_sample: int = 20,
+) -> PeriodCloseGateEvaluation:
+    date_from, date_to = _period_date_bounds(year=int(year), month=int(month))
+    dt_from, dt_to = _period_datetime_bounds(date_from=date_from, date_to=date_to)
+
+    pending_states = [
+        JournalDraft.State.GENERATED,
+        JournalDraft.State.VALIDATED,
+        JournalDraft.State.EXCEPTION,
+        JournalDraft.State.APPROVED_FOR_POSTING,
+    ]
+    pending_drafts_count = int(
+        JournalDraft.objects.filter(
+            economic_event__company=company,
+            economic_event__occurred_at__gte=dt_from,
+            economic_event__occurred_at__lte=dt_to,
+            state__in=pending_states,
+        ).count()
+    )
+
+    failed_outbox_qs = OutboxEvent.objects.filter(
+        company=company,
+        source_module__in=list(PERIOD_CLOSE_FAILED_OUTBOX_MODULES),
+        status=OutboxEvent.Status.FAILED,
+        occurred_at__gte=dt_from,
+        occurred_at__lte=dt_to,
+    ).order_by("-occurred_at", "-id")
+    failed_outbox_count = int(failed_outbox_qs.count())
+    failed_outbox_sample = [
+        {
+            "event_id": str(row.event_id),
+            "source_module": str(row.source_module),
+            "event_type": str(row.event_type),
+            "occurred_at": row.occurred_at.isoformat() if row.occurred_at else "",
+            "attempt_count": int(row.attempt_count),
+            "last_error": str(row.last_error or ""),
+        }
+        for row in failed_outbox_qs[: int(max_failed_outbox_sample)]
+    ]
+
+    reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    rec_summary = reconciliation.get("summary", {}) if isinstance(reconciliation, dict) else {}
+    draft_exception_count = int(rec_summary.get("drafts_exception") or 0)
+    pending_operational_events_count = int(rec_summary.get("pending_operational_events") or 0)
+
+    reconciliation_mismatch_count = 0
+    by_event_type = reconciliation.get("by_event_type", []) if isinstance(reconciliation, dict) else []
+    if isinstance(by_event_type, list):
+        for row in by_event_type:
+            if not isinstance(row, dict):
+                continue
+            operational_count = int(row.get("operational_count") or 0)
+            linked_count = int(row.get("linked_count") or 0)
+            operational_amount = _q_money(_to_decimal(row.get("operational_amount")))
+            draft_amount = _q_money(_to_decimal(row.get("draft_amount")))
+            if operational_count != linked_count or operational_amount != draft_amount:
+                reconciliation_mismatch_count += 1
+
+    blocking_reasons: list[str] = []
+    if pending_drafts_count > 0 and not bool(force):
+        blocking_reasons.append("PENDING_DRAFTS")
+    if failed_outbox_count > 0:
+        blocking_reasons.append("FAILED_OUTBOX")
+    if reconciliation_mismatch_count > 0:
+        blocking_reasons.append("RECONCILIATION_MISMATCH")
+    if draft_exception_count > 0:
+        blocking_reasons.append("DRAFT_EXCEPTION")
+    if pending_operational_events_count > 0:
+        blocking_reasons.append("PENDING_OPERATIONAL_EVENTS")
+
+    return PeriodCloseGateEvaluation(
+        pending_drafts_count=int(pending_drafts_count),
+        failed_outbox_count=int(failed_outbox_count),
+        reconciliation_mismatch_count=int(reconciliation_mismatch_count),
+        draft_exception_count=int(draft_exception_count),
+        pending_operational_events_count=int(pending_operational_events_count),
+        force_applied=bool(force),
+        blocked=bool(blocking_reasons),
+        blocking_reasons=blocking_reasons,
+        failed_outbox_sample=failed_outbox_sample,
+        period_start=str(date_from),
+        period_end=str(date_to),
+    )
 
 
 def _posting_candidates_qs(*, company_id: int | None, run_id: str, require_approved: bool):
@@ -1574,6 +2150,7 @@ def close_fiscal_period(
     if month < 1 or month > 12:
         raise ValueError("month debe estar en rango 1..12.")
 
+    gate_block_summary: dict[str, Any] | None = None
     with transaction.atomic():
         period, _ = FiscalPeriod.objects.select_for_update().get_or_create(
             company=company,
@@ -1582,6 +2159,11 @@ def close_fiscal_period(
             defaults={"status": FiscalPeriod.Status.OPEN},
         )
         if period.status == FiscalPeriod.Status.CLOSED:
+            empty_gate = _zero_gate_summary(
+                year=int(year),
+                month=int(month),
+                force=bool(force),
+            )
             return PeriodCloseResult(
                 company_id=int(company.id),
                 year=int(year),
@@ -1590,75 +2172,111 @@ def close_fiscal_period(
                 pending_drafts=0,
                 period_id=int(period.id),
                 was_already_closed=True,
+                gate_summary=empty_gate,
+                force_applied=bool(force),
             )
 
-        pending_states = [
-            JournalDraft.State.GENERATED,
-            JournalDraft.State.VALIDATED,
-            JournalDraft.State.EXCEPTION,
-            JournalDraft.State.APPROVED_FOR_POSTING,
-        ]
-        pending_qs = JournalDraft.objects.filter(
-            economic_event__company=company,
-            economic_event__occurred_at__year=int(year),
-            economic_event__occurred_at__month=int(month),
-            state__in=pending_states,
+        gate_eval = evaluate_period_close_gates(
+            company=company,
+            year=int(year),
+            month=int(month),
+            force=bool(force),
         )
-        pending_count = int(pending_qs.count())
-        if pending_count > 0 and not force:
-            raise AccountingConflictError(f"No se puede cerrar periodo {year}-{month:02d}: drafts pendientes={pending_count}.")
+        gate_summary = gate_eval.as_dict()
+        pending_count = int(gate_eval.pending_drafts_count)
+        if gate_eval.blocked:
+            gate_block_summary = gate_summary
+        else:
+            if actor_user is not None and not bool(allow_same_poster):
+                posted_by_actor = JournalEntry.objects.filter(
+                    company=company,
+                    period=period,
+                    is_posted=True,
+                    posted_by=actor_user,
+                ).exists()
+                if posted_by_actor:
+                    raise AccountingConflictError(
+                        f"SoD: usuario {actor_user.id} no puede cerrar periodo {year}-{month:02d} si posteó asientos en el mismo periodo."
+                    )
+                revaluation_by_actor = RevaluationRun.objects.filter(
+                    company=company,
+                    year=int(year),
+                    month=int(month),
+                    status=RevaluationRun.Status.COMPLETED,
+                    executed_by=actor_user,
+                ).exists()
+                if revaluation_by_actor:
+                    raise AccountingConflictError(
+                        f"SoD: usuario {actor_user.id} no puede cerrar periodo {year}-{month:02d} si ejecutó revaluación FX en el mismo periodo."
+                    )
 
-        if actor_user is not None and not bool(allow_same_poster):
-            posted_by_actor = JournalEntry.objects.filter(
+            period.status = FiscalPeriod.Status.CLOSED
+            period.closed_at = timezone.now()
+            period.closed_by = actor_user
+            period.save(update_fields=["status", "closed_at", "closed_by"])
+
+            publish_outbox_event(
+                source_module="ACCOUNTING",
+                event_type="PeriodClosed",
+                payload={
+                    "company_id": int(company.id),
+                    "year": int(year),
+                    "month": int(month),
+                    "pending_drafts_count": int(pending_count),
+                    "forced": bool(force),
+                    "gate_summary": gate_summary,
+                },
                 company=company,
-                period=period,
-                is_posted=True,
-                posted_by=actor_user,
-            ).exists()
-            if posted_by_actor:
-                raise AccountingConflictError(
-                    f"SoD: usuario {actor_user.id} no puede cerrar periodo {year}-{month:02d} si posteó asientos en el mismo periodo."
-                )
-            revaluation_by_actor = RevaluationRun.objects.filter(
-                company=company,
+                actor_user=actor_user,
+            )
+
+            return PeriodCloseResult(
+                company_id=int(company.id),
                 year=int(year),
                 month=int(month),
-                status=RevaluationRun.Status.COMPLETED,
-                executed_by=actor_user,
-            ).exists()
-            if revaluation_by_actor:
-                raise AccountingConflictError(
-                    f"SoD: usuario {actor_user.id} no puede cerrar periodo {year}-{month:02d} si ejecutó revaluación FX en el mismo periodo."
-                )
+                status=period.status,
+                pending_drafts=int(pending_count),
+                period_id=int(period.id),
+                was_already_closed=False,
+                gate_summary=gate_summary,
+                force_applied=bool(force),
+            )
 
-        period.status = FiscalPeriod.Status.CLOSED
-        period.closed_at = timezone.now()
-        period.closed_by = actor_user
-        period.save(update_fields=["status", "closed_at", "closed_by"])
-
+    if gate_block_summary is not None:
         publish_outbox_event(
             source_module="ACCOUNTING",
-            event_type="PeriodClosed",
+            event_type="PeriodCloseBlocked",
             payload={
                 "company_id": int(company.id),
                 "year": int(year),
                 "month": int(month),
-                "pending_drafts_count": int(pending_count),
-                "forced": bool(force),
+                "gate_summary": gate_block_summary,
             },
             company=company,
             actor_user=actor_user,
         )
-
-        return PeriodCloseResult(
-            company_id=int(company.id),
-            year=int(year),
-            month=int(month),
-            status=period.status,
-            pending_drafts=int(pending_count),
-            period_id=int(period.id),
-            was_already_closed=False,
+        gate_for_msg = PeriodCloseGateEvaluation(
+            pending_drafts_count=int(gate_block_summary.get("pending_drafts_count") or 0),
+            failed_outbox_count=int(gate_block_summary.get("failed_outbox_count") or 0),
+            reconciliation_mismatch_count=int(gate_block_summary.get("reconciliation_mismatch_count") or 0),
+            draft_exception_count=int(gate_block_summary.get("draft_exception_count") or 0),
+            pending_operational_events_count=int(gate_block_summary.get("pending_operational_events_count") or 0),
+            force_applied=bool(gate_block_summary.get("force_applied")),
+            blocked=bool(gate_block_summary.get("blocked")),
+            blocking_reasons=[str(x) for x in gate_block_summary.get("blocking_reasons", [])],
+            failed_outbox_sample=[],
+            period_start=str(gate_block_summary.get("period_start") or ""),
+            period_end=str(gate_block_summary.get("period_end") or ""),
         )
+        exc = AccountingConflictError(
+            _period_close_block_message(
+                year=int(year),
+                month=int(month),
+                gate=gate_for_msg,
+            )
+        )
+        setattr(exc, "gate_summary", gate_block_summary)
+        raise exc
 
 
 def reverse_journal_entry(
@@ -1924,3 +2542,203 @@ def reverse_journal_entries_batch(
         failed=int(failed),
         errors=errors,
     )
+
+
+def reconcile_operational_vs_accounting(
+    *,
+    company,
+    branch=None,
+    date_from=None,
+    date_to=None,
+) -> dict[str, Any]:
+    qs = OutboxEvent.objects.filter(
+        company=company,
+        source_module__in=["BILLING", "INVENTORY"],
+        event_type__in=["DocumentIssued", "DocumentVoided", "InventoryMovementPosted", "InventoryAdjusted", "InventoryTransferCompleted"],
+    )
+    if branch is not None:
+        qs = qs.filter(branch=branch)
+    if date_from is not None:
+        dt_from = timezone.make_aware(datetime.combine(date_from, time.min), timezone.get_current_timezone())
+        qs = qs.filter(occurred_at__gte=dt_from)
+    if date_to is not None:
+        dt_to = timezone.make_aware(datetime.combine(date_to, time.max), timezone.get_current_timezone())
+        qs = qs.filter(occurred_at__lte=dt_to)
+
+    operational_events = list(qs.order_by("occurred_at", "id"))
+    outbox_ids = [ev.event_id for ev in operational_events]
+
+    economic_by_outbox = {
+        row.source_outbox_event_id: row
+        for row in EconomicEvent.objects.filter(company=company, source_outbox_event_id__in=outbox_ids)
+    }
+    drafts_by_event = {
+        row.economic_event_id: row
+        for row in JournalDraft.objects.select_related("economic_event").filter(economic_event_id__in=[ev.id for ev in economic_by_outbox.values()])
+    }
+
+    def _operational_amount(ev: OutboxEvent) -> Decimal:
+        payload = ev.payload if isinstance(ev.payload, dict) else {}
+        data = payload.get("data", {})
+        if not isinstance(data, dict):
+            data = {}
+        if ev.source_module == "BILLING":
+            return abs(_to_decimal(data.get("total")))
+        if ev.event_type == "InventoryTransferCompleted":
+            return abs(_to_decimal(data.get("transfer_total_cost") or (_to_decimal(data.get("qty")) * _to_decimal(data.get("unit_cost")))))
+        return abs(_to_decimal(data.get("total_cost")) or _to_decimal(data.get("adjust_total_cost")))
+
+    by_type: dict[str, dict[str, Any]] = {}
+    pending_outbox: list[dict[str, Any]] = []
+    for ev in operational_events:
+        key = f"{ev.source_module}.{ev.event_type}"
+        row = by_type.setdefault(
+            key,
+            {
+                "source_module": ev.source_module,
+                "event_type": ev.event_type,
+                "operational_count": 0,
+                "linked_count": 0,
+                "posted_count": 0,
+                "draft_exception_count": 0,
+                "operational_amount": "0.00",
+                "draft_amount": "0.00",
+                "posted_amount": "0.00",
+            },
+        )
+        row["operational_count"] += 1
+        op_amount = _operational_amount(ev)
+        row["operational_amount"] = str(_q_money(_to_decimal(row["operational_amount"]) + op_amount))
+
+        eco = economic_by_outbox.get(ev.event_id)
+        if eco is None:
+            pending_outbox.append(
+                {
+                    "outbox_event_id": str(ev.event_id),
+                    "source_module": ev.source_module,
+                    "event_type": ev.event_type,
+                    "occurred_at": ev.occurred_at,
+                }
+            )
+            continue
+
+        row["linked_count"] += 1
+        draft = drafts_by_event.get(eco.id)
+        if draft is None:
+            continue
+        row["draft_amount"] = str(_q_money(_to_decimal(row["draft_amount"]) + _to_decimal(draft.total_debit)))
+        if draft.state == JournalDraft.State.EXCEPTION:
+            row["draft_exception_count"] += 1
+        if draft.state == JournalDraft.State.POSTED and hasattr(draft, "journal_entry"):
+            row["posted_count"] += 1
+            row["posted_amount"] = str(
+                _q_money(_to_decimal(row["posted_amount"]) + _to_decimal(draft.journal_entry.debit_total))
+            )
+
+    draft_qs = JournalDraft.objects.filter(
+        economic_event__company=company,
+        economic_event__source_outbox_event_id__in=outbox_ids,
+    )
+    summary = {
+        "operational_events": len(operational_events),
+        "economic_events_linked": len(economic_by_outbox),
+        "drafts_total": int(draft_qs.count()),
+        "drafts_validated": int(draft_qs.filter(state=JournalDraft.State.VALIDATED).count()),
+        "drafts_exception": int(draft_qs.filter(state=JournalDraft.State.EXCEPTION).count()),
+        "drafts_posted": int(draft_qs.filter(state=JournalDraft.State.POSTED).count()),
+        "pending_operational_events": len(pending_outbox),
+    }
+    return {
+        "summary": summary,
+        "by_event_type": list(by_type.values()),
+        "pending_operational_events": pending_outbox[:200],
+    }
+
+
+def build_operational_monitor_snapshot(
+    *,
+    company,
+    branch=None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> dict[str, Any]:
+    local_today = timezone.localdate()
+    if date_from is None or date_to is None:
+        from_default, to_default = _period_date_bounds(year=int(local_today.year), month=int(local_today.month))
+        date_from = date_from or from_default
+        date_to = date_to or to_default
+
+    dt_from, dt_to = _period_datetime_bounds(date_from=date_from, date_to=date_to)
+
+    failed_qs = OutboxEvent.objects.filter(
+        company=company,
+        source_module__in=list(PERIOD_CLOSE_FAILED_OUTBOX_MODULES),
+        status=OutboxEvent.Status.FAILED,
+        occurred_at__gte=dt_from,
+        occurred_at__lte=dt_to,
+    )
+    if branch is not None:
+        failed_qs = failed_qs.filter(branch=branch)
+
+    failed_by_module = {module: 0 for module in PERIOD_CLOSE_FAILED_OUTBOX_MODULES}
+    for row in failed_qs.values("source_module").annotate(total=Count("id")):
+        module = str(row.get("source_module") or "")
+        if module in failed_by_module:
+            failed_by_module[module] = int(row.get("total") or 0)
+
+    reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        branch=branch,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    fuel_compensation = {
+        "pending_count": 0,
+        "failed_count": 0,
+    }
+    try:
+        from modulos.estacion_servicios.models import FuelSale, FuelSaleStatus
+
+        fuel_qs = FuelSale.objects.filter(
+            company=company,
+            created_at__gte=dt_from,
+            created_at__lte=dt_to,
+        )
+        if branch is not None:
+            fuel_qs = fuel_qs.filter(branch=branch)
+
+        fuel_compensation["pending_count"] = int(
+            fuel_qs.filter(status=FuelSaleStatus.COMPENSATING).count()
+        )
+        fuel_compensation["failed_count"] = int(
+            fuel_qs.filter(status=FuelSaleStatus.COMPENSATION_FAILED).count()
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    gate_summary = None
+    if int(date_from.year) == int(date_to.year) and int(date_from.month) == int(date_to.month):
+        gate_summary = evaluate_period_close_gates(
+            company=company,
+            year=int(date_from.year),
+            month=int(date_from.month),
+            force=False,
+        ).as_dict()
+
+    return {
+        "generated_at": timezone.now().isoformat(),
+        "company_id": int(company.id),
+        "branch_id": int(branch.id) if branch is not None else None,
+        "period": {
+            "date_from": str(date_from),
+            "date_to": str(date_to),
+        },
+        "failed_outbox": {
+            "total": int(failed_qs.count()),
+            "by_module": failed_by_module,
+        },
+        "reconciliation": reconciliation,
+        "fuel_compensation": fuel_compensation,
+        "gate_summary": gate_summary,
+    }
