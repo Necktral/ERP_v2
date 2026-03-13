@@ -93,7 +93,9 @@ jobs:
         working-directory: frontend
         run: |
           npm install --package-lock-only --ignore-scripts --no-fund --no-audit
-          npm audit --json > ../qa_npm_audit.json
+          # npm audit exits non-zero when any vulnerability exists; capture report first,
+          # then enforce our blocking policy in the parser below.
+          npm audit --json > ../qa_npm_audit.json || true
           node - <<'NODE'
           const fs = require('fs');
           const data = JSON.parse(fs.readFileSync('../qa_npm_audit.json', 'utf8'));
