@@ -7,7 +7,9 @@ from typing import Any, Callable
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import OutboxEvent
+from apps.common.domain_errors import IntegrationError
+
+from .models import InboxEvent, OutboxEvent
 
 OPERATIONAL_ACCOUNTING_CONTRACT_EVENTS = {
     ("BILLING", "DocumentIssued"),
@@ -107,6 +109,47 @@ def publish_outbox_event(
         payload=canonical_payload,
         occurred_at=occurred_at,
     )
+
+
+def create_or_get_inbox_event(
+    *,
+    event: OutboxEvent,
+    consumer: str,
+    status: str = InboxEvent.Status.RECEIVED,
+) -> tuple[InboxEvent, bool]:
+    """Idempotent inbox upsert that always returns the persisted row."""
+    existing = InboxEvent.objects.filter(event_id=event.event_id, consumer=consumer).first()
+    if existing is not None:
+        return existing, False
+
+    InboxEvent.objects.bulk_create(
+        [
+            InboxEvent(
+                event_id=event.event_id,
+                consumer=consumer,
+                source_module=event.source_module,
+                event_type=event.event_type,
+                schema_version=int(event.schema_version or 1),
+                payload=event.payload if isinstance(event.payload, dict) else {},
+                status=status,
+            )
+        ],
+        ignore_conflicts=True,
+    )
+
+    persisted = InboxEvent.objects.filter(event_id=event.event_id, consumer=consumer).first()
+    if persisted is None:
+        raise IntegrationError(
+            "Cannot create or recover InboxEvent.",
+            code="INBOX_UPSERT_FAILED",
+            context={
+                "event_id": str(event.event_id),
+                "consumer": str(consumer),
+                "source_module": str(event.source_module),
+                "event_type": str(event.event_type),
+            },
+        )
+    return persisted, True
 
 
 def mark_outbox_event_sent(*, event: OutboxEvent, published_at=None) -> OutboxEvent:

@@ -3,13 +3,22 @@
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
-	qa-backend-ruff qa-backend-mypy qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity \
+	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-frontend-ci qa-audit-integrity \
 	docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
 K6_IMAGE ?= grafana/k6
 
 QA_REPORTS_DIR ?= qa/reports
+QA_KEEP_FRONTEND ?= 1
+QA_MYPY_STRICT_TARGETS ?= \
+	login_module/src/apps/accounting \
+	login_module/src/tests/test_phase3_cec_execute_api.py \
+	login_module/src/tests/test_phase5_accounting_api.py \
+	login_module/src/tests/test_phase6_adapter_b_readiness.py \
+	login_module/src/tests/test_phase7b_intercompany_consolidation.py \
+	login_module/src/tests/test_phase10_procurement_4b.py \
+	login_module/src/tests/test_phase11_intercompany_advanced.py
 
 # Si QA_FRESH_DB=1, destruye volúmenes (DB limpia) antes de levantar.
 # Útil para CI determinista o cuando hay datos locales viejos que rompen Gate 3.
@@ -74,14 +83,20 @@ qa-ci-ci: qa-ci-fresh
 qa-static-scan:
 	docker compose exec -T backend bash -lc "chmod +x /app/qa/static_scan_backend.sh && /app/qa/static_scan_backend.sh /app"
 
+qa-backend-bandit:
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && bandit -q -r /app/login_module/src/apps /app/modulos -x /app/login_module/src/apps/*/migrations,/app/modulos/*/migrations -ll -ii -f txt | tee /app/$(QA_REPORTS_DIR)/bandit.txt"
+
 qa-backend-ruff:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/login_module/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/login_module/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
 
 qa-backend-mypy:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini login_module/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+	docker compose exec -T backend bash -lc 'set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini $(QA_MYPY_STRICT_TARGETS) | tee /app/$(QA_REPORTS_DIR)/mypy_strict_critical.txt ; strict_status=$${PIPESTATUS[0]} ; mypy --config-file mypy.ini login_module/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt ; mypy_status=$${PIPESTATUS[0]} ; python /app/qa/mypy_baseline_guard.py check --report /app/$(QA_REPORTS_DIR)/mypy.txt --baseline /app/qa/mypy_baseline.txt --delta-report /app/$(QA_REPORTS_DIR)/mypy_delta.json --delta-text /app/$(QA_REPORTS_DIR)/mypy_delta.txt ; guard_status=$$? ; if [ $$strict_status -ne 0 ]; then echo "[qa] mypy strict critical failed." ; exit $$strict_status ; fi ; if [ $$guard_status -ne 0 ]; then exit $$guard_status ; fi ; if [ $$mypy_status -ne 0 ]; then echo "[qa] mypy baseline active: existing debt tolerated, no nuevos errores." ; fi ; exit 0'
+
+qa-backend-mypy-baseline-refresh:
+	docker compose exec -T backend bash -lc "set -o pipefail && cd /app && mypy --config-file mypy.ini login_module/src | tee /app/qa/reports/mypy.txt ; python /app/qa/mypy_baseline_guard.py refresh --report /app/qa/reports/mypy.txt --baseline /app/qa/mypy_baseline.txt"
 
 qa-backend-tests:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && coverage run --rcfile /app/login_module/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/login_module/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/login_module/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && coverage run --rcfile /app/login_module/.coveragerc -m pytest --ds=config.settings.test --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/login_module/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/login_module/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
 qa-audit-integrity:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/login_module && python manage.py audit_verify_chain --seed-minimal --format json --output /app/$(QA_REPORTS_DIR)/audit_integrity.json"
@@ -90,7 +105,7 @@ qa-frontend-ci:
 	docker compose --profile qa run --rm frontend_ci
 
 # Gate 1: calidad estática + typecheck
-qa-ci-gate1: qa-ci-up qa-static-scan qa-backend-ruff qa-backend-mypy qa-frontend-ci
+qa-ci-gate1: qa-ci-up qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-frontend-ci
 
 # Gate 2: pruebas deterministas (pytest + cobertura)
 qa-ci-gate2: qa-ci-up qa-backend-tests
@@ -99,7 +114,8 @@ qa-ci-gate2: qa-ci-up qa-backend-tests
 qa-ci-gate3: qa-ci-up qa-audit-integrity
 
 # Runner completo Gates 1–3
-qa-ci: qa-ci-gate1 qa-ci-gate2 qa-ci-gate3
+qa-ci:
+	QA_REPORTS_DIR="$(QA_REPORTS_DIR)" QA_FRESH_DB="$(QA_FRESH_DB)" QA_KEEP_FRONTEND="$(QA_KEEP_FRONTEND)" bash ./qa/run_qa_ci.sh
 
 # --- Docker helpers (dev/local) ---
 

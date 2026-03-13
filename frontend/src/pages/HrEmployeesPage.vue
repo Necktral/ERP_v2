@@ -1,18 +1,22 @@
 <template>
   <AppContainer>
     <AppPageHeader
-      title="HR · Empleados"
-      subtitle="GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/ · POST /hr/employees/{id}/reset-temp-password/ · POST /hr/employees/{id}/revoke-access/"
+      :title="`${labels.humanResources} · Empleados`"
+      subtitle="API: GET/POST /hr/employees/ · PATCH /hr/employees/{id}/ · POST /hr/employees/{id}/assignments/ · POST /.../end/ · POST /hr/employees/{id}/provision-user/ · POST /hr/employees/{id}/reset-temp-password/ · POST /hr/employees/{id}/revoke-access/"
     >
       <template #badges>
-        <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
-        <q-badge outline>Read: hr.employee.read</q-badge>
-        <q-badge outline v-if="canCreate">Create: hr.employee.create</q-badge>
-        <q-badge outline v-if="canUpdate">Update: hr.employee.update</q-badge>
-        <q-badge outline v-if="canAssign">Assign: hr.assignment.create</q-badge>
-        <q-badge outline v-if="canEndAssign">End: hr.assignment.end</q-badge>
-        <q-badge outline v-if="canProvisionUser">Provision: iam.users.create</q-badge>
-        <q-badge outline v-if="canProvisionUser">Revoke: iam.users.create</q-badge>
+        <q-badge outline color="primary">Empresa activa: {{ companyLabel }}</q-badge>
+        <q-badge outline>Permiso lectura: hr.employee.read</q-badge>
+        <q-badge outline v-if="canCreate">Permiso creacion: hr.employee.create</q-badge>
+        <q-badge outline v-if="canUpdate">Permiso actualizacion: hr.employee.update</q-badge>
+        <q-badge outline v-if="canAssign">Permiso asignacion: hr.assignment.create</q-badge>
+        <q-badge outline v-if="canEndAssign">Permiso cierre asignacion: hr.assignment.end</q-badge>
+        <q-badge outline v-if="canProvisionUser">
+          {{ labels.identityAndAccess }}: iam.users.create
+        </q-badge>
+        <q-badge outline v-if="canProvisionUser">
+          Revocacion {{ labels.identityAndAccess }}: iam.users.create
+        </q-badge>
       </template>
 
       <template #actions>
@@ -22,106 +26,26 @@
     </AppPageHeader>
 
     <div class="q-mt-md">
-      <AppDataTable
-        title="Listado"
-        caption="Flujo PC-first: crear/editar empleado, asignar puesto/sucursal, provisionar acceso y terminar asignaciones."
+      <HrEmployeesTableWidget
         :rows="rows"
         :columns="columns"
-        row-key="id"
         :loading="loading"
-        :rows-per-page-options="[10, 20, 50, 0]"
-        :filter="filter"
         :pagination="pagination"
+        :filter="filter"
+        :error-msg="errorMsg"
+        :can-update="canUpdate"
+        :can-assign="canAssign"
+        :can-end-assign="canEndAssign"
+        :can-provision-user="canProvisionUser"
         @request="onRequest"
-      >
-        <template #toolbar>
-          <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
-        </template>
-
-        <template #body-cell-is_active="props">
-          <q-td :props="props">
-            <q-badge v-if="props.row.is_active" outline>ACTIVO</q-badge>
-            <q-badge v-else outline color="negative">INACTIVO</q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-assignment="props">
-          <q-td :props="props">
-            <template v-if="props.row.active_assignments?.length">
-              <div class="row items-center q-gutter-xs">
-                <q-badge outline color="primary">
-                  {{ props.row.active_assignments[0].position_name }}
-                </q-badge>
-                <q-badge
-                  v-if="props.row.active_assignments[0].branch_name"
-                  outline
-                  color="secondary"
-                >
-                  {{ props.row.active_assignments[0].branch_name }}
-                </q-badge>
-                <q-badge v-if="props.row.active_assignments.length > 1" outline>
-                  +{{ props.row.active_assignments.length - 1 }}
-                </q-badge>
-              </div>
-            </template>
-            <q-badge v-else outline color="grey-7">SIN ASIGNACIÓN</q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-access="props">
-          <q-td :props="props">
-            <q-badge v-if="props.row.linked_user_id" outline color="positive">
-              {{ props.row.linked_username || `user#${props.row.linked_user_id}` }}
-            </q-badge>
-            <q-badge v-else outline color="grey-7">SIN ACCESO</q-badge>
-          </q-td>
-        </template>
-
-        <template #body-cell-actions="props">
-          <q-td :props="props" class="text-right">
-            <q-btn v-if="canUpdate" dense flat icon="edit" @click="openEdit(props.row)" />
-            <q-btn v-if="canAssign" dense flat icon="work" @click="openAssign(props.row)" />
-            <q-btn
-              v-if="canEndAssign"
-              dense
-              flat
-              icon="event_busy"
-              :disable="!props.row.active_assignments?.length"
-              @click="openEnd(props.row)"
-            />
-            <q-btn
-              v-if="canProvisionUser"
-              dense
-              flat
-              icon="vpn_key"
-              :disable="!!props.row.linked_user_id || !props.row.active_assignments?.length"
-              @click="openProvision(props.row)"
-            />
-
-            <q-btn
-              v-if="canProvisionUser"
-              dense
-              flat
-              icon="person_off"
-              :disable="!props.row.linked_user_id"
-              @click="openRevokeAccess(props.row)"
-            />
-
-            <q-btn
-              v-if="canProvisionUser"
-              dense
-              flat
-              icon="lock_reset"
-              :disable="!props.row.linked_user_id || !props.row.active_assignments?.length"
-              @click="openResetTempPassword(props.row)"
-            />
-          </q-td>
-        </template>
-      </AppDataTable>
-
-      <q-banner v-if="errorMsg" class="q-mt-md" dense rounded>
-        {{ errorMsg }}
-      </q-banner>
+        @update:filter="filter = $event"
+        @edit="openEdit"
+        @assign="openAssign"
+        @end="openEnd"
+        @provision="openProvision"
+        @revoke="openRevokeAccess"
+        @reset="openResetTempPassword"
+      />
     </div>
 
     <!-- Create/Edit dialog -->
@@ -341,7 +265,7 @@
             <div class="col-12">
               <q-input
                 :model-value="provResult?.username || ''"
-                label="Username"
+                label="Nombre de usuario"
                 outlined
                 readonly
               />
@@ -427,7 +351,7 @@
             <div class="col-12">
               <q-input
                 :model-value="resetResult?.username || ''"
-                label="Username"
+                label="Nombre de usuario"
                 outlined
                 readonly
               />
@@ -542,19 +466,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { copyToClipboard, useQuasar } from 'quasar';
-import type { QTableColumn } from 'quasar';
 import { isAxiosError } from 'axios';
-import { useAclStore } from 'src/stores/acl.store';
-import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
+import { BUSINESS_LABELS } from 'src/shared/ui/business-terms';
+import { useHrEmployeesFeature } from 'src/features/hr/employees/useHrEmployeesFeature';
 import { listBranches } from 'src/services/org.service';
 import {
   createAssignment,
   createEmployee,
   endAssignment,
-  listEmployees,
   listPositions,
   patchEmployee,
   provisionEmployeeUser,
@@ -563,95 +485,29 @@ import {
   type EmployeeRow,
 } from 'src/services/hr.service';
 import AppContainer from 'src/ui/AppContainer.vue';
-import AppDataTable from 'src/ui/AppDataTable.vue';
 import AppPageHeader from 'src/ui/AppPageHeader.vue';
+import HrEmployeesTableWidget from 'src/widgets/hr/HrEmployeesTableWidget.vue';
 
 const $q = useQuasar();
-const acl = useAclStore();
-const ctx = useContextStore();
-
-const companyLabel = computed(
-  () => acl.companyName(ctx.activeCompanyId) ?? ctx.activeCompanyId ?? '—',
-);
-
-const loading = ref(false);
+const labels = BUSINESS_LABELS;
 const saving = ref(false);
-const errorMsg = ref<string | null>(null);
-const rows = ref<EmployeeRow[]>([]);
-const pagination = ref({
-  page: 1,
-  rowsPerPage: 20,
-  rowsNumber: 0,
-});
-
-const filter = ref('');
-
-const columns: QTableColumn[] = [
-  { name: 'employee_code', label: 'Código', field: 'employee_code', align: 'left', sortable: true },
-  { name: 'first_name', label: 'Nombres', field: 'first_name', align: 'left', sortable: true },
-  { name: 'last_name', label: 'Apellidos', field: 'last_name', align: 'left', sortable: true },
-  { name: 'phone', label: 'Teléfono', field: 'phone', align: 'left' },
-  { name: 'email', label: 'Email', field: 'email', align: 'left' },
-  { name: 'assignment', label: 'Asignación', field: 'has_active_assignment', align: 'left' },
-  { name: 'is_active', label: 'Activo', field: 'is_active', align: 'left', sortable: true },
-  { name: 'access', label: 'Acceso', field: 'access', align: 'left' },
-  { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' },
-];
-
-const canCreate = computed(
-  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'hr.employee.create'),
-);
-const canUpdate = computed(
-  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'hr.employee.update'),
-);
-const canAssign = computed(
-  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'hr.assignment.create'),
-);
-const canEndAssign = computed(
-  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'hr.assignment.end'),
-);
-const canProvision = computed(
-  () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'iam.users.create'),
-);
-const canProvisionUser = computed(() => canProvision.value && canUpdate.value);
-
-function computeLimit(rowsPerPage: number) {
-  return rowsPerPage === 0 ? 200 : rowsPerPage;
-}
-
-async function load(page = pagination.value.page, rowsPerPage = pagination.value.rowsPerPage) {
-  loading.value = true;
-  errorMsg.value = null;
-  try {
-    const limit = computeLimit(rowsPerPage);
-    const offset = (page - 1) * limit;
-    const data = await listEmployees({ limit, offset });
-    rows.value = data.results;
-    pagination.value = {
-      ...pagination.value,
-      page,
-      rowsPerPage,
-      rowsNumber: data.count,
-    };
-  } catch (e: unknown) {
-    errorMsg.value = extractErrorMessage(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
-  const { page, rowsPerPage } = props.pagination;
-  void load(page, rowsPerPage);
-}
-
-function reload() {
-  void load();
-}
-
-onMounted(() => {
-  void load();
-});
+const {
+  companyLabel,
+  loading,
+  errorMsg,
+  rows,
+  pagination,
+  filter,
+  columns,
+  canCreate,
+  canUpdate,
+  canAssign,
+  canEndAssign,
+  canProvisionUser,
+  load,
+  onRequest,
+  reload,
+} = useHrEmployeesFeature();
 
 // Create/Edit
 const editDialog = ref(false);

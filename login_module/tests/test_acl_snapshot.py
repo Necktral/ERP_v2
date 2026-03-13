@@ -32,7 +32,10 @@ def test_acl_snapshot_lists_companies_and_branches_and_admin_caps():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_acl", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.get("/api/auth/me/acl/")
     assert r.status_code == 200

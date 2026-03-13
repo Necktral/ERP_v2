@@ -57,7 +57,7 @@ class FuelShiftOpenView(APIView):
         ser = ShiftOpenIn(data=request.data)
         ser.is_valid(raise_exception=True)
 
-        shift = open_shift(
+        result = open_shift(
             request=request,
             company=request.company,
             branch=request.branch,
@@ -65,7 +65,10 @@ class FuelShiftOpenView(APIView):
             opened_at=ser.validated_data.get("opened_at"),
             note=ser.validated_data.get("note", ""),
         )
-        return Response(ShiftOut(shift).data, status=201)
+        body = ShiftOut(result.shift).data
+        if result.duplicate:
+            return Response({**body, "idempotency_status": "DUPLICATE_PROCESSED"}, status=status.HTTP_200_OK)
+        return Response(body, status=status.HTTP_201_CREATED)
 
 
 class FuelShiftCloseView(APIView):

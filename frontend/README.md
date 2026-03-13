@@ -1,6 +1,6 @@
 # Necktral ERP/CRM
 
-Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría, HR, ORG, IAM, sincronización y ciclo de arranque profesional con Docker Compose.
+Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye Roles y Permisos, auditoria, Recursos Humanos, Organizacion, Identidad y Acceso, sincronizacion y ciclo de arranque profesional con Docker Compose.
 
 ## 🚀 Guía de Inicio Rápido (Docker)
 
@@ -77,6 +77,12 @@ npm run dev
   npm run test
   ```
 
+## 🧱 Arquitectura SPA Modular
+
+El frontend mantiene Quasar/Vue, con migracion incremental a capas por dominio:
+- `app`, `shared`, `entities`, `features`, `widgets`, `pages`
+- Guia: `frontend/src/ARCHITECTURE_SPA_MODULAR.md`
+
 ---
 
 ## 🛠 Comandos Útiles
@@ -104,13 +110,13 @@ Luego abre http://localhost:3000
 - [x] **Arquitectura Base**: Docker Compose, Django DRF, Postgres.
 - [x] **Autenticación y Seguridad**: JWT, `X-Company-Id` Context Middleware, Protección CSRF/CORS.
 - [x] **Onboarding/Bootstrap**: Wizard de instalación inicial (Admin + Estructura Org).
-- [x] **Módulo ORG**: Gestión de Perfil de Empresa y Sucursales.
-- [x] **Módulo HR**: Gestión de Empleados y Posiciones.
+- [x] **Modulo Organizacion**: Gestion de perfil de empresa y sucursales.
+- [x] **Modulo Recursos Humanos**: Gestion de empleados y puestos.
 - [x] **UI Kit**: Componentes base (`AppDataTable`, `AppPageHeader`, layouts).
 
 ## Próximos pasos
 
-- RBAC Avanzado: Editor visual de roles y permisos (módulo separado de administración).
+- Roles y Permisos avanzados: editor visual de roles y permisos (modulo separado de administracion).
 
 Notas:
 
@@ -118,7 +124,7 @@ Notas:
 
 ---
 
-## 🆕 Provisionar usuario a empleado (HR)
+## Provisionar usuario a empleado (Recursos Humanos)
 
 - Desde la UI de empleados, puedes crear acceso para un empleado con un solo clic.
 - El sistema valida que el empleado tenga al menos una asignación activa.
@@ -129,7 +135,7 @@ Notas:
 
 Nota: si envías email vacío, el backend lo normaliza a `NULL` para evitar conflictos con la unicidad.
 
-## Seguridad memberships HR
+## Seguridad de memberships en Recursos Humanos
 
 - La reconciliación de memberships ya no fuerza acceso a la empresa por defecto.
 - Solo se asignan memberships por asignaciones activas y roles mapeados.

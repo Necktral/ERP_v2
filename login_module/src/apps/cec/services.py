@@ -20,7 +20,7 @@ from modulos.inventarios.models import StockBalance
 from .models import CECException, CloseRun
 
 TOLERANCE = Decimal("0.01")
-SCORE_WEIGHTS = {
+SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
     CECException.Severity.MEDIUM: 10,
@@ -607,10 +607,16 @@ def _build_summary(
     billing_cash_metrics: dict[str, str],
     procurement_metrics: dict[str, str],
 ) -> dict[str, Any]:
-    active_exceptions = list(
-        CECException.objects.filter(close_run=run, status__in=OPEN_EXCEPTION_STATUSES)
-        .values("exception_id", "code", "severity", "is_blocking", "fingerprint")
-    )
+    active_exceptions: list[dict[str, Any]] = [
+        dict(row)
+        for row in CECException.objects.filter(close_run=run, status__in=OPEN_EXCEPTION_STATUSES).values(
+            "exception_id",
+            "code",
+            "severity",
+            "is_blocking",
+            "fingerprint",
+        )
+    ]
     for ex in active_exceptions:
         ex["exception_id"] = str(ex["exception_id"])
     active_exceptions.sort(key=lambda x: (x.get("fingerprint") or "", x.get("code") or ""))

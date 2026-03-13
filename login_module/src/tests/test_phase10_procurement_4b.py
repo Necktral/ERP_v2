@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -27,7 +28,7 @@ def _mk_scope() -> tuple[OrgUnit, OrgUnit]:
     return company, branch
 
 
-def _mk_client(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, User]:
+def _mk_client(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, Any]:
     username = f"proc_{uuid.uuid4().hex[:8]}"
     user = User.objects.create_user(username=username, email=f"{username}@test.local", password="pass12345")
     UserMembership.objects.create(user=user, org_unit=company, is_active=True)
@@ -49,7 +50,7 @@ def _mk_client(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> t
     return client, user
 
 
-def _mk_packaged_run(*, company: OrgUnit, branch: OrgUnit, user: User) -> CloseRun:
+def _mk_packaged_run(*, company: OrgUnit, branch: OrgUnit, user: Any) -> CloseRun:
     now = timezone.now()
     run = CloseRun.objects.create(
         company=company,

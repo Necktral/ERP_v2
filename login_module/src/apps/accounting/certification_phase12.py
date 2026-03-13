@@ -171,12 +171,27 @@ def collect_phase12_env_manifest(*, company_id: int, branch_id: int) -> dict[str
         "fx_loss_account",
         "retained_earnings_account",
     ).filter(company=company).first()
+    fx_gain_account_code = ""
+    fx_loss_account_code = ""
+    retained_earnings_account_code = ""
+    if cfg is not None and cfg.fx_gain_account_id:
+        fx_gain = cfg.fx_gain_account
+        if fx_gain is not None:
+            fx_gain_account_code = str(fx_gain.code)
+    if cfg is not None and cfg.fx_loss_account_id:
+        fx_loss = cfg.fx_loss_account
+        if fx_loss is not None:
+            fx_loss_account_code = str(fx_loss.code)
+    if cfg is not None and cfg.retained_earnings_account_id:
+        retained = cfg.retained_earnings_account
+        if retained is not None:
+            retained_earnings_account_code = str(retained.code)
     config_payload = {
         "functional_currency": str(cfg.functional_currency) if cfg else "NIO",
         "phase7_enabled": bool(cfg.phase7_enabled) if cfg else False,
-        "fx_gain_account_code": cfg.fx_gain_account.code if cfg and cfg.fx_gain_account_id else "",
-        "fx_loss_account_code": cfg.fx_loss_account.code if cfg and cfg.fx_loss_account_id else "",
-        "retained_earnings_account_code": cfg.retained_earnings_account.code if cfg and cfg.retained_earnings_account_id else "",
+        "fx_gain_account_code": fx_gain_account_code,
+        "fx_loss_account_code": fx_loss_account_code,
+        "retained_earnings_account_code": retained_earnings_account_code,
     }
     config_hash = _json_hash(config_payload)
 
@@ -212,7 +227,7 @@ def collect_phase12_env_manifest(*, company_id: int, branch_id: int) -> dict[str
         .values("rate_date", "from_currency", "to_currency", "rate_type", "rate")
         .first()
     )
-    fx_state = {
+    fx_state: dict[str, Any] = {
         "rates_count": int(FxRate.objects.filter(company=company).count()),
         "latest_rate": latest_fx or {},
     }
@@ -371,7 +386,7 @@ def _canonical_manifest(report: dict[str, Any]) -> dict[str, Any]:
         }
         for item in checks
     ]
-    checks_signature.sort(key=lambda x: x["name"])
+    checks_signature.sort(key=lambda item: str(item["name"]))
 
     warnings_payload = [
         {
@@ -380,7 +395,7 @@ def _canonical_manifest(report: dict[str, Any]) -> dict[str, Any]:
         }
         for item in list(report.get("warnings") or [])
     ]
-    warnings_payload.sort(key=lambda x: (x["code"], x["severity"]))
+    warnings_payload.sort(key=lambda item: (str(item["code"]), str(item["severity"])))
 
     posting = dict(report.get("posting") or {})
     revaluation = dict(report.get("revaluation") or {})

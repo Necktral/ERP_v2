@@ -135,7 +135,10 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     client = APIClient()
     resp = client.post("/api/auth/login/", {"username": user.username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+    access = resp.data.get("access") if isinstance(resp.data, dict) else None
+    if isinstance(access, str) and access:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
@@ -349,7 +352,7 @@ def test_phase7_close_period_blocks_same_actor_who_ran_revaluation():
 def test_phase7_toolchain_commands_work(tmp_path):
     company, branch = _mk_org()
     user = _mk_user("owner")
-    accounts = _seed_coa_for_billing(company=company, include_tax=True)
+    _seed_coa_for_billing(company=company, include_tax=True)
     call_command("seed_rbac_v01")
     call_command("seed_posting_rules_v1", company_id=company.id)
     run = _mk_packaged_run(company=company, branch=branch, user=user)

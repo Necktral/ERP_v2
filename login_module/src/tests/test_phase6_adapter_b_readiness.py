@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -28,7 +29,7 @@ def _mk_org():
     return company, branch
 
 
-def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, User]:
+def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, Any]:
     username = f"u_{uuid.uuid4().hex[:10]}"
     user = User.objects.create_user(username=username, email=f"{username}@test.com", password="pass12345")
     UserMembership.objects.create(user=user, org_unit=company, is_active=True)
@@ -47,7 +48,10 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     client = APIClient()
     resp = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+    access = resp.data.get("access") if isinstance(resp.data, dict) else None
+    if isinstance(access, str) and access:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client, user

@@ -110,8 +110,8 @@ class Command(BaseCommand):
             return None, None
         if not df or not dt:
             raise CommandError("Debe enviar ambos --date-from y --date-to, o ninguno.")
-        date_from = timezone.datetime.fromisoformat(df).date()
-        date_to = timezone.datetime.fromisoformat(dt).date()
+        date_from = datetime.fromisoformat(df).date()
+        date_to = datetime.fromisoformat(dt).date()
         if date_from > date_to:
             raise CommandError("--date-from no puede ser mayor que --date-to.")
         return date_from, date_to

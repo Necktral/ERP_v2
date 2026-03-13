@@ -34,6 +34,7 @@ def _client_with_perms(user: User, company: OrgUnit, branch: OrgUnit, perms: lis
     assert login.status_code == 200
     access = login.data["access"]
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    c.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     c.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     c.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import ClassVar
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -636,7 +637,7 @@ class IntercompanyTransaction(models.Model):
             models.Index(fields=["reference_code"]),
         ]
 
-    _ALLOWED_TRANSITIONS = {
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
         Status.PENDING: {Status.CONFIRMED, Status.DIFFERENCE, Status.DISPUTED, Status.CLOSED},
         Status.CONFIRMED: {Status.DIFFERENCE, Status.DISPUTED, Status.CLOSED},
         Status.DIFFERENCE: {Status.CONFIRMED, Status.DISPUTED, Status.CLOSED},

@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from django.db import transaction
-from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -32,7 +32,7 @@ from .models import (
 from .phase7 import resolve_period_range
 
 MONEY_Q = Decimal("0.01")
-DECIMAL_MONEY_FIELD = DecimalField(max_digits=18, decimal_places=2)
+DECIMAL_MONEY_FIELD: DecimalField = DecimalField(max_digits=18, decimal_places=2)
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
 PHASE11_SLA_EXCEPTION_CODES = {
     "INTERCOMPANY_OPEN_SLA_BREACH",
@@ -343,7 +343,7 @@ def _enforce_intercompany_write_grant(
     )
 
 
-def _resolve_acting_company_for_tx(*, tx: IntercompanyTransaction, effective_company_id: int | None) -> OrgUnit | None:
+def _resolve_acting_company_for_tx(*, tx: IntercompanyTransaction, effective_company_id: int | None) -> OrgUnit:
     if effective_company_id is None:
         # F11: la matriz intercompany WRITE se exige siempre.
         # Sin contexto explícito, asumimos acción del source_company.
@@ -351,6 +351,8 @@ def _resolve_acting_company_for_tx(*, tx: IntercompanyTransaction, effective_com
     if int(effective_company_id) == int(tx.source_company_id):
         return tx.source_company
     if int(effective_company_id) == int(tx.target_company_id):
+        if tx.target_company is None:
+            raise Phase7BValidationError(f"target_company no disponible para tx={tx.tx_id}.")
         return tx.target_company
     raise Phase7BValidationError(
         f"effective_company_id={effective_company_id} no pertenece a tx={tx.tx_id} "
@@ -473,13 +475,12 @@ def confirm_intercompany_transaction(
         if tx is None:
             raise Phase7BValidationError(f"Intercompany tx no encontrada: {tx_id}")
         acting_company = _resolve_acting_company_for_tx(tx=tx, effective_company_id=effective_company_id)
-        if acting_company is not None:
-            counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
-            _enforce_intercompany_write_grant(
-                acting_company=acting_company,
-                counterparty_company=counterparty,
-                permission_code="accounting.intercompany.write",
-            )
+        counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
+        _enforce_intercompany_write_grant(
+            acting_company=acting_company,
+            counterparty_company=counterparty,
+            permission_code="accounting.intercompany.write",
+        )
         _ensure_transition(tx=tx, target_status=IntercompanyTransaction.Status.CONFIRMED)
         if (
             not allow_same_actor
@@ -578,13 +579,12 @@ def reconcile_intercompany_transaction(
         if tx is None:
             raise Phase7BValidationError(f"Intercompany tx no encontrada: {tx_id}")
         acting_company = _resolve_acting_company_for_tx(tx=tx, effective_company_id=effective_company_id)
-        if acting_company is not None:
-            counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
-            _enforce_intercompany_write_grant(
-                acting_company=acting_company,
-                counterparty_company=counterparty,
-                permission_code="accounting.intercompany.reconcile",
-            )
+        counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
+        _enforce_intercompany_write_grant(
+            acting_company=acting_company,
+            counterparty_company=counterparty,
+            permission_code="accounting.intercompany.reconcile",
+        )
         _ensure_transition(tx=tx, target_status=next_status)
 
         tx.status = next_status
@@ -808,13 +808,12 @@ def close_intercompany_transaction(
         if tx is None:
             raise Phase7BValidationError(f"Intercompany tx no encontrada: {tx_id}")
         acting_company = _resolve_acting_company_for_tx(tx=tx, effective_company_id=effective_company_id)
-        if acting_company is not None:
-            counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
-            _enforce_intercompany_write_grant(
-                acting_company=acting_company,
-                counterparty_company=counterparty,
-                permission_code="accounting.intercompany.write",
-            )
+        counterparty = tx.target_company if int(acting_company.id) == int(tx.source_company_id) else tx.source_company
+        _enforce_intercompany_write_grant(
+            acting_company=acting_company,
+            counterparty_company=counterparty,
+            permission_code="accounting.intercompany.write",
+        )
 
         valid_close_statuses = {IntercompanyTransaction.Status.CONFIRMED}
         if allow_difference:
@@ -1026,7 +1025,8 @@ def run_intercompany_cycle(
     confirmed = differences = disputed = closed = 0
     issues: list[dict[str, Any]] = []
     for tx in rows:
-        target_amount = _q_money(tx.target_journal_entry.debit_total) if tx.target_journal_entry_id else _q_money(tx.matched_amount_target)
+        target_entry = tx.target_journal_entry
+        target_amount = _q_money(target_entry.debit_total) if target_entry is not None else _q_money(tx.matched_amount_target)
         source_amount = _q_money(tx.amount)
         if target_amount <= Decimal("0.00"):
             issues.append(
@@ -1430,8 +1430,8 @@ def run_consolidation(
 
         coa_map: dict[tuple[int, str], ChartOfAccount] = {}
         for cid, codes in company_to_codes.items():
-            for row in ChartOfAccount.objects.filter(company_id=cid, code__in=sorted(set(codes)), is_active=True):
-                coa_map[(int(cid), str(row.code))] = row
+            for coa_row in ChartOfAccount.objects.filter(company_id=cid, code__in=sorted(set(codes)), is_active=True):
+                coa_map[(int(cid), str(coa_row.code))] = coa_row
 
         issues: list[dict[str, Any]] = []
         elimination_count = 0

@@ -51,6 +51,12 @@ class FuelCompensationCycleResult:
     errors: list[dict[str, str]]
 
 
+@dataclass(frozen=True)
+class OpenShiftResult:
+    shift: FuelShift
+    duplicate: bool
+
+
 def _fuel_inventory_sku(product: str) -> str:
     return f"FUEL-{str(product).upper()}"
 
@@ -463,20 +469,38 @@ def build_daily_close_report(*, company, branch, report_date: date) -> dict:
 
 
 @transaction.atomic
-def open_shift(*, request=None, company, branch, actor_user, opened_at=None, note: str = "") -> FuelShift:
+def open_shift(*, request=None, company, branch, actor_user, opened_at=None, note: str = "") -> OpenShiftResult:
     branch = _require_branch(branch)
+    existing = (
+        FuelShift.objects.select_for_update()
+        .filter(company=company, branch=branch, status=FuelShiftStatus.OPEN)
+        .order_by("-opened_at", "-id")
+        .first()
+    )
+    if existing is not None:
+        return OpenShiftResult(shift=existing, duplicate=True)
 
     try:
-        shift = FuelShift.objects.create(
-            company=company,
-            branch=branch,
-            opened_by=actor_user,
-            opened_at=opened_at or timezone.now(),
-            note=note or "",
-            status=FuelShiftStatus.OPEN,
-        )
+        # Aisla la inserción en savepoint para poder recuperar el turno abierto
+        # fuera del bloque fallido cuando hay carrera concurrente.
+        with transaction.atomic():
+            shift = FuelShift.objects.create(
+                company=company,
+                branch=branch,
+                opened_by=actor_user,
+                opened_at=opened_at or timezone.now(),
+                note=note or "",
+                status=FuelShiftStatus.OPEN,
+            )
     except IntegrityError:
-        raise ValidationError({"detail": "Ya existe un turno abierto para esta sucursal."})
+        recovered = (
+            FuelShift.objects.filter(company=company, branch=branch, status=FuelShiftStatus.OPEN)
+            .order_by("-opened_at", "-id")
+            .first()
+        )
+        if recovered is not None:
+            return OpenShiftResult(shift=recovered, duplicate=True)
+        raise ValidationError({"detail": "No se pudo abrir el turno en este momento. Intente nuevamente."})
 
     write_event(
         request=request,
@@ -489,7 +513,7 @@ def open_shift(*, request=None, company, branch, actor_user, opened_at=None, not
         after_snapshot={"note": shift.note, "opened_at": shift.opened_at.isoformat()},
         metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
     )
-    return shift
+    return OpenShiftResult(shift=shift, duplicate=False)
 
 
 @transaction.atomic
@@ -762,12 +786,16 @@ def _attempt_sale_compensation(*, request=None, sale: FuelSale, actor_user, reas
     effective_request = request
     if effective_request is None:
         class _FuelRequestShim:
-            pass
+            company: object
+            branch: object
+            data: dict[str, object]
 
-        effective_request = _FuelRequestShim()
-        effective_request.company = sale.company
-        effective_request.branch = sale.branch
-        effective_request.data = {}
+            def __init__(self, *, company, branch) -> None:
+                self.company = company
+                self.branch = branch
+                self.data = {}
+
+        effective_request = _FuelRequestShim(company=sale.company, branch=sale.branch)
 
     now = timezone.now()
     corr = _ensure_flow_correlation_id(sale=sale)

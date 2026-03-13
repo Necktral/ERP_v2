@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import timedelta
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounting.models import IntercompanyDisputeReason, IntercompanyTransaction
@@ -27,12 +26,12 @@ def _mk_scope():
     return source_company, source_branch, target_company, target_branch
 
 
-def _mk_user(prefix: str) -> User:
+def _mk_user(prefix: str) -> Any:
     username = f"{prefix}_{uuid.uuid4().hex[:8]}"
     return User.objects.create_user(username=username, email=f"{username}@test.local", password="pass12345")
 
 
-def _mk_client(*, user: User, company: OrgUnit, branch: OrgUnit, perms: list[str]) -> APIClient:
+def _mk_client(*, user: Any, company: OrgUnit, branch: OrgUnit, perms: list[str]) -> APIClient:
     UserMembership.objects.get_or_create(user=user, org_unit=company, defaults={"is_active": True})
     UserMembership.objects.get_or_create(user=user, org_unit=branch, defaults={"is_active": True})
     role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
@@ -45,7 +44,10 @@ def _mk_client(*, user: User, company: OrgUnit, branch: OrgUnit, perms: list[str
     client = APIClient()
     resp = client.post("/api/auth/login/", {"username": user.username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+    access = resp.data.get("access") if isinstance(resp.data, dict) else None
+    if isinstance(access, str) and access:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client

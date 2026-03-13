@@ -50,6 +50,7 @@ def test_hr_position_role_automation_end_to_end():
     assert login.status_code == 200
     token = login.data["access"]
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {token}"
 
     # 1) Create position
     r_pos = client.post(

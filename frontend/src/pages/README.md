@@ -1,6 +1,6 @@
 # Necktral ERP/CRM
 
-Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC, auditoría, HR, ORG, IAM, sincronización y ciclo de arranque profesional con Docker Compose.
+Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye Roles y Permisos, auditoria, Recursos Humanos, Organizacion, Identidad y Acceso, sincronizacion y ciclo de arranque profesional con Docker Compose.
 
 ## Ciclo de arranque (Onboarding/Bootstrap)
 

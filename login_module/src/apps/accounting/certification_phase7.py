@@ -143,15 +143,36 @@ def collect_phase7_env_manifest(*, company_id: int) -> dict[str, Any]:
         permissions_rows.append({"code": missing, "is_active": False})
     perms_hash = _json_hash({"rows": permissions_rows})
 
-    cfg = CompanyAccountingConfig.objects.filter(company=company).first()
+    cfg = (
+        CompanyAccountingConfig.objects.select_related(
+            "fx_gain_account",
+            "fx_loss_account",
+            "retained_earnings_account",
+        )
+        .filter(company=company)
+        .first()
+    )
+    fx_gain_account_code = ""
+    fx_loss_account_code = ""
+    retained_earnings_account_code = ""
+    if cfg is not None and cfg.fx_gain_account_id:
+        fx_gain = cfg.fx_gain_account
+        if fx_gain is not None:
+            fx_gain_account_code = str(fx_gain.code)
+    if cfg is not None and cfg.fx_loss_account_id:
+        fx_loss = cfg.fx_loss_account
+        if fx_loss is not None:
+            fx_loss_account_code = str(fx_loss.code)
+    if cfg is not None and cfg.retained_earnings_account_id:
+        retained = cfg.retained_earnings_account
+        if retained is not None:
+            retained_earnings_account_code = str(retained.code)
     config_payload = {
         "phase7_enabled": bool(cfg.phase7_enabled) if cfg else False,
         "functional_currency": str(cfg.functional_currency) if cfg else "NIO",
-        "fx_gain_account_code": cfg.fx_gain_account.code if cfg and cfg.fx_gain_account_id else "",
-        "fx_loss_account_code": cfg.fx_loss_account.code if cfg and cfg.fx_loss_account_id else "",
-        "retained_earnings_account_code": (
-            cfg.retained_earnings_account.code if cfg and cfg.retained_earnings_account_id else ""
-        ),
+        "fx_gain_account_code": fx_gain_account_code,
+        "fx_loss_account_code": fx_loss_account_code,
+        "retained_earnings_account_code": retained_earnings_account_code,
     }
     config_hash = _json_hash(config_payload)
 
@@ -168,7 +189,7 @@ def collect_phase7_env_manifest(*, company_id: int) -> dict[str, Any]:
         .values("run_id", "year", "month", "completed_at")
         .first()
     )
-    reval_payload = {
+    reval_payload: dict[str, Any] = {
         "completed_runs_count": int(
             RevaluationRun.objects.filter(company=company, status=RevaluationRun.Status.COMPLETED).count()
         ),

@@ -65,13 +65,14 @@ class Command(BaseCommand):
         second_counts = payload.get("second_counts")
         if not isinstance(first_counts, dict) or not isinstance(second_counts, dict) or first_counts != second_counts:
             errors.append("first_counts/second_counts inválidos o no coinciden.")
+        safe_first_counts = first_counts if isinstance(first_counts, dict) else {}
         if expect_blocked:
             if str(payload.get("close_run_status") or "") != "REOPENED_EXCEPTION":
                 errors.append("close_run_status esperado=REOPENED_EXCEPTION.")
         else:
             if str(payload.get("close_run_status") or "") != "PACKAGED":
                 errors.append("close_run_status esperado=PACKAGED.")
-            if int(first_counts.get("journal_entry_lines") or 0) <= 0:
+            if int(safe_first_counts.get("journal_entry_lines") or 0) <= 0:
                 errors.append("journal_entry_lines debe ser > 0 en happy path.")
         return errors
 

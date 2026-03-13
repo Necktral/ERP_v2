@@ -6,6 +6,7 @@ import ssl
 from typing import Protocol
 from urllib import error as urllib_error
 from urllib import request as urllib_request
+from urllib.parse import urlsplit
 
 from django.conf import settings
 
@@ -113,7 +114,7 @@ class NoopFiscalAdapter:
 
 
 class AdapterBEmulated:
-    mode = FiscalMode.B
+    mode = str(FiscalMode.B)
 
     def __init__(self, *, adapter_code: str = "EMULATED_B"):
         self.adapter_code = adapter_code or "EMULATED_B"
@@ -194,21 +195,33 @@ class AdapterBEmulated:
 
 
 class AdapterBHttp:
-    mode = FiscalMode.B
+    mode = str(FiscalMode.B)
 
     def __init__(self, *, adapter_code: str, config: AdapterBHttpConfig):
         self.adapter_code = adapter_code or "REAL_HTTP"
         self.config = config
 
-    def _context(self):
-        if self.config.verify_tls:
-            return None
-        return ssl._create_unverified_context()  # noqa: SLF001
+    def _context(self) -> ssl.SSLContext:
+        context = ssl.create_default_context()
+        if not self.config.verify_tls:
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+        return context
 
-    def _post(self, *, endpoint: str, payload: dict) -> dict:
-        base = str(self.config.base_url or "").rstrip("/")
+    def _normalized_base_url(self) -> str:
+        base = str(self.config.base_url or "").strip().rstrip("/")
         if not base:
             raise RuntimeError("FISCAL_ADAPTER_B_HTTP_BASE_URL no configurado")
+
+        parsed = urlsplit(base)
+        if parsed.scheme not in ("http", "https"):
+            raise RuntimeError("FISCAL_ADAPTER_B_HTTP_BASE_URL debe usar esquema http/https")
+        if not parsed.netloc:
+            raise RuntimeError("FISCAL_ADAPTER_B_HTTP_BASE_URL invalido (host requerido)")
+        return base
+
+    def _post(self, *, endpoint: str, payload: dict) -> dict:
+        base = self._normalized_base_url()
         url = f"{base}{endpoint}"
         body = json.dumps(payload).encode("utf-8")
         headers = {
@@ -219,8 +232,12 @@ class AdapterBHttp:
         if self.config.api_key:
             headers["Authorization"] = f"Bearer {self.config.api_key}"
         req = urllib_request.Request(url=url, data=body, headers=headers, method="POST")
+        opener = urllib_request.build_opener(
+            urllib_request.HTTPHandler(),
+            urllib_request.HTTPSHandler(context=self._context()),
+        )
         try:
-            with urllib_request.urlopen(req, timeout=self.config.timeout_seconds, context=self._context()) as response:
+            with opener.open(req, timeout=self.config.timeout_seconds) as response:
                 raw = response.read().decode("utf-8")
                 if not raw.strip():
                     return {}

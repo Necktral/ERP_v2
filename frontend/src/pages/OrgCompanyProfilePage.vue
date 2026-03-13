@@ -1,13 +1,13 @@
 <template>
   <AppContainer>
     <AppPageHeader
-      title="ORG · Perfil de compañía"
-      subtitle="GET /org/company/profile/ · PUT /org/company/profile/"
+      :title="`${labels.organization} · Perfil de empresa`"
+      subtitle="API: GET /org/company/profile/ · PUT /org/company/profile/"
     >
       <template #badges>
-        <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
-        <q-badge outline>Read: org.company.read</q-badge>
-        <q-badge outline v-if="canEdit">Update: org.company.update</q-badge>
+        <q-badge outline color="primary">Empresa activa: {{ companyLabel }}</q-badge>
+        <q-badge outline>Permiso lectura: org.company.read</q-badge>
+        <q-badge outline v-if="canEdit">Permiso actualizacion: org.company.update</q-badge>
       </template>
 
       <template #actions>
@@ -82,6 +82,7 @@ import { useQuasar } from 'quasar';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
+import { BUSINESS_LABELS } from 'src/shared/ui/business-terms';
 import {
   getCompanyProfile,
   updateCompanyProfile,
@@ -93,6 +94,7 @@ import AppPageHeader from 'src/ui/AppPageHeader.vue';
 const $q = useQuasar();
 const acl = useAclStore();
 const ctx = useContextStore();
+const labels = BUSINESS_LABELS;
 
 const canEdit = computed(
   () => !!ctx.activeCompanyId && acl.hasPermission(ctx.activeCompanyId, 'org.company.update'),

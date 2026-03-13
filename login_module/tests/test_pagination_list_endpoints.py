@@ -29,7 +29,10 @@ def _mk_user_with_company_access(*, username: str, company: OrgUnit, perm_codes:
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     return client
 
 

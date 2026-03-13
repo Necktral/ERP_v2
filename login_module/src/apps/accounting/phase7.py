@@ -4,12 +4,12 @@ import calendar
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Any
+from typing import Any, cast
 
 from django.db import transaction
-from django.db.models import Case, DecimalField, ExpressionWrapper, F, Q, Sum, Value, When
+from django.db.models import Case, DecimalField, ExpressionWrapper, F, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -34,8 +34,8 @@ from .models import (
 MONEY_Q = Decimal("0.01")
 RATE_Q = Decimal("0.00000001")
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
-DECIMAL_MONEY_FIELD = DecimalField(max_digits=18, decimal_places=2)
-DECIMAL_RATE_FIELD = DecimalField(max_digits=18, decimal_places=8)
+DECIMAL_MONEY_FIELD: DecimalField = DecimalField(max_digits=18, decimal_places=2)
+DECIMAL_RATE_FIELD: DecimalField = DecimalField(max_digits=18, decimal_places=8)
 
 
 class Phase7ValidationError(ValueError):
@@ -531,7 +531,7 @@ def balance_sheet_report(
         .order_by("account__code")
     )
 
-    sections = {
+    sections: dict[str, dict[str, Any]] = {
         "ASSET": {"rows": [], "total": Decimal("0.00")},
         "LIABILITY": {"rows": [], "total": Decimal("0.00")},
         "EQUITY": {"rows": [], "total": Decimal("0.00")},
@@ -555,9 +555,9 @@ def balance_sheet_report(
         )
         sections[account_type]["total"] += balance
 
-    assets_total = _q_money(sections["ASSET"]["total"])
-    liabilities_total = _q_money(sections["LIABILITY"]["total"])
-    equity_total = _q_money(sections["EQUITY"]["total"])
+    assets_total = _q_money(cast(Decimal, sections["ASSET"]["total"]))
+    liabilities_total = _q_money(cast(Decimal, sections["LIABILITY"]["total"]))
+    equity_total = _q_money(cast(Decimal, sections["EQUITY"]["total"]))
     return {
         "as_of": str(as_of),
         "assets": {"rows": sections["ASSET"]["rows"], "total": str(assets_total)},
@@ -882,9 +882,7 @@ def run_fx_revaluation(
                 event_type="FxRevaluationAdjusted",
                 company=company,
                 branch=None,
-                occurred_at=timezone.make_aware(
-                    timezone.datetime.combine(as_of, timezone.datetime.min.time())
-                ),
+                occurred_at=timezone.make_aware(datetime.combine(as_of, time.min)),
                 contract_version="1.0",
                 schema_version=1,
                 correlation_id=f"fx-reval-{run.run_id}",

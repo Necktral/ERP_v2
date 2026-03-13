@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
 
 from django.conf import settings
 from django.db import migrations, models

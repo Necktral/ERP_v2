@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -47,12 +48,12 @@ def _mk_orgs():
     return company_a, branch_a, company_b, branch_b
 
 
-def _mk_user(prefix: str) -> User:
+def _mk_user(prefix: str) -> Any:
     username = f"{prefix}_{uuid.uuid4().hex[:8]}"
     return User.objects.create_user(username=username, email=f"{username}@test.local", password="pass12345")
 
 
-def _mk_client(*, user: User, company: OrgUnit, branch: OrgUnit, perms: list[str]) -> APIClient:
+def _mk_client(*, user: Any, company: OrgUnit, branch: OrgUnit, perms: list[str]) -> APIClient:
     UserMembership.objects.get_or_create(user=user, org_unit=company, defaults={"is_active": True})
     UserMembership.objects.get_or_create(user=user, org_unit=branch, defaults={"is_active": True})
     role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
@@ -65,7 +66,10 @@ def _mk_client(*, user: User, company: OrgUnit, branch: OrgUnit, perms: list[str
     client = APIClient()
     resp = client.post("/api/auth/login/", {"username": user.username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+    access = resp.data.get("access") if isinstance(resp.data, dict) else None
+    if isinstance(access, str) and access:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
@@ -96,7 +100,7 @@ def _post_entry(
     *,
     company: OrgUnit,
     branch: OrgUnit,
-    actor: User,
+    actor: Any,
     line1_account: ChartOfAccount,
     line1_side: str,
     line2_account: ChartOfAccount,

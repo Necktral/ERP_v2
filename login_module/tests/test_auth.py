@@ -58,6 +58,7 @@ def test_logout_requires_auth_and_creates_audit_event():
 
     # 2) con Authorization -> 204 + audit AUTH_LOGOUT
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     r3 = client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
     assert r3.status_code == 204
 
@@ -79,6 +80,7 @@ def test_logout_is_idempotent_when_refresh_missing():
     access = r.data["access"]
 
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     r2 = client.post("/api/auth/logout/", {}, format="json")
     assert r2.status_code == 204
 
@@ -99,6 +101,7 @@ def test_logout_is_idempotent_when_refresh_invalid():
     access = r.data["access"]
 
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     r2 = client.post("/api/auth/logout/", {"refresh": "not-a-jwt"}, format="json")
     assert r2.status_code == 204
 
@@ -125,6 +128,7 @@ def test_logout_is_idempotent_when_refresh_belongs_to_another_user():
     access_b = r_b.data["access"]
 
     client_b.credentials(HTTP_AUTHORIZATION=f"Bearer {access_b}")
+    client_b.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access_b}"
     r2 = client_b.post("/api/auth/logout/", {"refresh": refresh_a}, format="json")
     assert r2.status_code == 403
 

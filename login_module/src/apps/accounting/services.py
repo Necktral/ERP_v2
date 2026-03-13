@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import date, datetime, time, timedelta
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -12,11 +13,12 @@ from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
+from apps.common.domain_errors import DomainError, IntegrationError
 from apps.cec.models import CECException, CloseRun
 from apps.cec.services import advance_close_run_state
 from apps.iam.models import OrgUnit
 from apps.integration.models import InboxEvent, OutboxEvent
-from apps.integration.services import publish_outbox_event
+from apps.integration.services import create_or_get_inbox_event, publish_outbox_event
 from modulos.facturacion.models import BillingDocument
 
 from .models import (
@@ -35,7 +37,7 @@ from .phase7 import Phase7ValidationError, ensure_journal_entry_lines, get_or_cr
 MONEY_Q = Decimal("0.01")
 PROJECTOR_CONSUMER = "accounting.projector"
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
-SCORE_WEIGHTS = {
+SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
     CECException.Severity.MEDIUM: 10,
@@ -60,6 +62,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryTransferCompleted"),
 }
 PERIOD_CLOSE_FAILED_OUTBOX_MODULES = ("BILLING", "INVENTORY", "ACCOUNTING")
+logger = logging.getLogger(__name__)
 
 
 class AccountingConflictError(ValueError):
@@ -314,7 +317,7 @@ def _normalize_operational_event_for_link(
 
 
 def _select_active_rule_set_for_scope(*, company, normalized: dict[str, Any]) -> PostingRuleSet | None:
-    occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+    occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
     fiscal_mode = _infer_fiscal_mode(normalized)
     qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
@@ -447,7 +450,7 @@ def link_operational_event_to_accounting(
         return OperationalAccountingLinkResult(status="DISABLED")
 
     normalized = _normalize_operational_event_for_link(outbox_event=outbox_event, company=company, branch=branch)
-    occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+    occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
 
     with transaction.atomic():
         defaults = {
@@ -539,12 +542,18 @@ def link_operational_event_to_accounting(
             )
 
         if created_draft or draft.state in (JournalDraft.State.GENERATED, JournalDraft.State.EXCEPTION):
+            current_metadata = dict(draft.metadata) if isinstance(draft.metadata, dict) else {}
+            default_metadata_raw = draft_defaults.get("metadata")
+            if isinstance(default_metadata_raw, dict):
+                default_metadata = {str(k): v for k, v in default_metadata_raw.items()}
+            else:
+                default_metadata = {}
             draft.lines_json = lines_json
             draft.total_debit = total_debit
             draft.total_credit = total_credit
             draft.metadata = {
-                **(draft.metadata or {}),
-                **draft_defaults["metadata"],
+                **current_metadata,
+                **default_metadata,
             }
 
         if line_errors:
@@ -711,7 +720,7 @@ def _infer_fiscal_mode(normalized: dict[str, Any]) -> str:
 
 
 def _select_active_rule_set(*, run: CloseRun, normalized: dict[str, Any]) -> PostingRuleSet | None:
-    occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+    occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
     fiscal_mode = _infer_fiscal_mode(normalized)
     qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
@@ -911,7 +920,7 @@ def project_close_run_from_trigger(*, trigger_event: OutboxEvent) -> ShadowProje
 
         for source_event in operational_events:
             normalized = _normalize_operational_event(run=run, outbox_event=source_event)
-            occurred_at = timezone.datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
+            occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
             event_defaults = {
                 "source_module": normalized["source_module"],
                 "event_type": normalized["event_type"],
@@ -1199,21 +1208,12 @@ def project_shadow_ledger_for_run(*, run_id: str, company_id: int | None = None)
 
 
 def _lock_or_create_inbox(*, event: OutboxEvent) -> InboxEvent:
-    inbox = InboxEvent.objects.filter(event_id=event.event_id, consumer=PROJECTOR_CONSUMER).first()
-    if inbox is not None:
-        return inbox
-    try:
-        return InboxEvent.objects.create(
-            event_id=event.event_id,
-            consumer=PROJECTOR_CONSUMER,
-            source_module=event.source_module,
-            event_type=event.event_type,
-            schema_version=int(event.schema_version or 1),
-            payload=event.payload if isinstance(event.payload, dict) else {},
-            status=InboxEvent.Status.RECEIVED,
-        )
-    except IntegrityError:
-        return InboxEvent.objects.get(event_id=event.event_id, consumer=PROJECTOR_CONSUMER)
+    inbox, _ = create_or_get_inbox_event(
+        event=event,
+        consumer=PROJECTOR_CONSUMER,
+        status=InboxEvent.Status.RECEIVED,
+    )
+    return inbox
 
 
 def project_pending_shadow_ledger_triggers(*, limit: int = 100, company_id: int | None = None) -> ShadowProjectionBatchResult:
@@ -1261,9 +1261,47 @@ def project_pending_shadow_ledger_triggers(*, limit: int = 100, company_id: int 
             processed += 1
             if result.blocked:
                 blocked += 1
-        except Exception as exc:  # noqa: BLE001
+        except DomainError as exc:
+            logger.warning(
+                "shadow_ledger projector domain error",
+                extra={
+                    "request_id": str(trigger.correlation_id or ""),
+                    "company_id": trigger.company_id,
+                    "branch_id": trigger.branch_id,
+                    "event_id": str(trigger.event_id),
+                    "command_id": str(trigger.event_id),
+                    "consumer": PROJECTOR_CONSUMER,
+                    "error_code": exc.code,
+                },
+            )
             inbox.status = InboxEvent.Status.FAILED
-            inbox.last_error = str(exc)[:255]
+            inbox.last_error = f"{exc.code}:{exc.message}"[:255]
+            inbox.processed_at = None
+            inbox.save(update_fields=["status", "last_error", "processed_at"])
+            failed += 1
+        except Exception as exc:  # noqa: BLE001
+            wrapped = IntegrationError(
+                "Unexpected projector failure.",
+                code="SHADOW_PROJECTOR_UNHANDLED",
+                context={
+                    "request_id": str(trigger.correlation_id or ""),
+                    "company_id": trigger.company_id,
+                    "branch_id": trigger.branch_id,
+                    "event_id": str(trigger.event_id),
+                    "command_id": str(trigger.event_id),
+                },
+            )
+            logger.exception(
+                "shadow_ledger projector unhandled error",
+                extra={
+                    **wrapped.context,
+                    "consumer": PROJECTOR_CONSUMER,
+                    "source_module": str(trigger.source_module),
+                    "event_type": str(trigger.event_type),
+                },
+            )
+            inbox.status = InboxEvent.Status.FAILED
+            inbox.last_error = f"{wrapped.code}:{exc}"[:255]
             inbox.processed_at = None
             inbox.save(update_fields=["status", "last_error", "processed_at"])
             failed += 1
@@ -2715,7 +2753,15 @@ def build_operational_monitor_snapshot(
             fuel_qs.filter(status=FuelSaleStatus.COMPENSATION_FAILED).count()
         )
     except Exception:  # noqa: BLE001
-        pass
+        logger.exception(
+            "fuel_compensation_summary_unavailable",
+            extra={
+                "company_id": int(company.id),
+                "branch_id": int(branch.id) if branch is not None else None,
+                "date_from": str(date_from),
+                "date_to": str(date_to),
+            },
+        )
 
     gate_summary = None
     if int(date_from.year) == int(date_to.year) and int(date_from.month) == int(date_to.month):

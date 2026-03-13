@@ -140,6 +140,10 @@ def _serialize_intercompany(tx: IntercompanyTransaction) -> dict:
     }
 
 
+def _load_intercompany(tx_id: str) -> IntercompanyTransaction | None:
+    return IntercompanyTransaction.objects.filter(tx_id=tx_id).first()
+
+
 class ChartOfAccountView(APIView):
     permission_classes = [rbac_permission("accounting.coa.read")]
 
@@ -640,7 +644,9 @@ class IntercompanyTransactionConfirmView(APIView):
             )
         except Phase7BValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
-        tx = IntercompanyTransaction.objects.filter(tx_id=result.tx_id).first()
+        tx = _load_intercompany(result.tx_id)
+        if tx is None:
+            return Response({"detail": "Intercompany transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize_intercompany(tx), status=status.HTTP_200_OK)
 
 
@@ -663,7 +669,9 @@ class IntercompanyTransactionReconcileView(APIView):
             )
         except Phase7BValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
-        tx = IntercompanyTransaction.objects.filter(tx_id=result.tx_id).first()
+        tx = _load_intercompany(result.tx_id)
+        if tx is None:
+            return Response({"detail": "Intercompany transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize_intercompany(tx), status=status.HTTP_200_OK)
 
 
@@ -687,7 +695,9 @@ class IntercompanyTransactionDisputeView(APIView):
             )
         except Phase7BValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
-        tx = IntercompanyTransaction.objects.filter(tx_id=result.tx_id).first()
+        tx = _load_intercompany(result.tx_id)
+        if tx is None:
+            return Response({"detail": "Intercompany transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize_intercompany(tx), status=status.HTTP_200_OK)
 
 
@@ -711,7 +721,9 @@ class IntercompanyTransactionSettleView(APIView):
             )
         except Phase7BValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
-        tx = IntercompanyTransaction.objects.filter(tx_id=result.tx_id).first()
+        tx = _load_intercompany(result.tx_id)
+        if tx is None:
+            return Response({"detail": "Intercompany transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize_intercompany(tx), status=status.HTTP_200_OK)
 
 
@@ -731,7 +743,9 @@ class IntercompanyTransactionCloseView(APIView):
             )
         except Phase7BValidationError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
-        tx = IntercompanyTransaction.objects.filter(tx_id=result.tx_id).first()
+        tx = _load_intercompany(result.tx_id)
+        if tx is None:
+            return Response({"detail": "Intercompany transaction not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(_serialize_intercompany(tx), status=status.HTTP_200_OK)
 
 

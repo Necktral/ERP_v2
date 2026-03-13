@@ -1,6 +1,6 @@
 <template>
-  <q-page :class="pagePadClass" class="app-page-container">
-    <div class="app-container" :class="{ 'app-container--fluid': fluid }">
+  <q-page class="app-page-container">
+    <div class="app-container" :class="containerClass">
       <slot />
     </div>
   </q-page>
@@ -10,8 +10,10 @@
 import { computed } from 'vue';
 import { useUiStore } from 'src/stores/ui.store';
 
-defineProps<{ fluid?: boolean }>();
-
 const ui = useUiStore();
-const pagePadClass = computed(() => (ui.density === 'compact' ? 'q-pa-sm' : 'q-pa-md'));
+const props = defineProps<{ fluid?: boolean }>();
+const containerClass = computed(() => ({
+  'app-container--fluid': Boolean(props.fluid),
+  'app-container--compact': ui.density === 'compact',
+}));
 </script>

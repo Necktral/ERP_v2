@@ -76,7 +76,7 @@ class Command(BaseCommand):
             "audit_chain_pass",
             "security_pytest_pass",
         )
-        details = {"status": str(payload.get("status") or ""), "checks": {}}
+        details: dict[str, Any] = {"status": str(payload.get("status") or ""), "checks": {}}
         passed = str(payload.get("status") or "").upper() == "PASS"
         for key in gate_keys:
             key_passed = bool(checks.get(key))

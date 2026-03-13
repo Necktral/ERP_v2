@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import ClassVar
 
 from django.conf import settings
 from django.db import models
@@ -62,7 +63,7 @@ class CloseRun(models.Model):
             models.Index(fields=["company", "branch", "window_start", "window_end"]),
         ]
 
-    _ALLOWED_TRANSITIONS = {
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
         Status.CREATED: {Status.GATHERED, Status.REOPENED_EXCEPTION},
         Status.GATHERED: {Status.VALIDATED, Status.REOPENED_EXCEPTION},
         Status.VALIDATED: {Status.PACKAGED, Status.REOPENED_EXCEPTION},

@@ -31,7 +31,10 @@ def test_permission_in_c1_does_not_apply_in_c2():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_multi", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # En C1 pasa
     r1 = client.get("/api/rbac/demo/inventory-read/", HTTP_X_COMPANY_ID=str(c1.id))

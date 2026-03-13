@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
+import logging
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Q
@@ -10,6 +12,7 @@ from django.utils import timezone
 
 from apps.audit.writer import write_event
 from apps.common.api_exceptions import ConflictError
+from apps.common.domain_errors import IntegrationError
 from apps.iam.models import OrgUnit
 from apps.integration.services import publish_outbox_event
 
@@ -30,6 +33,7 @@ MONEY_Q = Decimal("0.01")
 QTY_Q = Decimal("0.0001")
 PRICE_Q = Decimal("0.000001")
 TAX_Q = Decimal("0.0001")
+logger = logging.getLogger(__name__)
 
 
 _FISCAL_TRANSITIONS: dict[str, set[str]] = {
@@ -402,7 +406,7 @@ def issue_doc(
         if doc.status == DocStatus.VOIDED:
             raise BillingError("cannot issue a voided document")
         if doc.status == DocStatus.ISSUED:
-            out = {"ok": True, "already_issued": True, "doc_id": doc.id, "number": doc.number}
+            out: dict[str, Any] = {"ok": True, "already_issued": True, "doc_id": doc.id, "number": doc.number}
             out.update(_fiscal_payload(doc=doc))
             return out
 
@@ -579,11 +583,27 @@ def issue_doc(
                 journal_draft_id=accounting_link.journal_draft_id,
                 journal_entry_id=accounting_link.journal_entry_id,
             )
-        except Exception as exc:  # noqa: BLE001
+        except (ImportError, AttributeError, IntegrationError, RuntimeError, ValueError) as exc:
+            wrapped = IntegrationError(
+                "Billing accounting link failed during issue flow.",
+                code="BILLING_ACCOUNTING_LINK_ISSUE_FAILED",
+                context={
+                    "request_id": str(getattr(request, "request_id", "") or ""),
+                    "company_id": company.id,
+                    "branch_id": branch.id,
+                    "event_id": str(getattr(issued_outbox, "event_id", "")),
+                    "command_id": str(doc.id),
+                    "doc_id": int(doc.id),
+                },
+            )
+            logger.exception(
+                "billing_accounting_link_issue_failed",
+                extra={**wrapped.context, "error_code": wrapped.code},
+            )
             _apply_accounting_link_to_doc(
                 doc=doc,
                 status=BillingDocument.AccountingStatus.DRAFT_EXCEPTION,
-                error=str(exc),
+                error=f"{wrapped.code}:{exc}",
             )
         publish_outbox_event(
             request=request,
@@ -680,7 +700,7 @@ def mark_doc_contingency(
         if doc.fiscal_mode_resolved != FiscalMode.B:
             raise BillingError("document is not configured for fiscal mode B")
         if doc.fiscal_status == FiscalStatus.CONTINGENCY:
-            out = {"ok": True, "already_contingency": True, "doc_id": doc.id}
+            out: dict[str, Any] = {"ok": True, "already_contingency": True, "doc_id": doc.id}
             out.update(_fiscal_payload(doc=doc))
             return out
 
@@ -806,7 +826,25 @@ def _process_print_job(
             branch=doc.branch,
         )
         return "PRINTED", False
-    except Exception as exc:  # noqa: BLE001
+    except (RuntimeError, ValueError, OSError, BillingError, IntegrationError) as exc:
+        wrapped = IntegrationError(
+            "Fiscal print job processing failed.",
+            code="BILLING_FISCAL_PRINT_FAILED",
+            context={
+                "request_id": "",
+                "company_id": doc.company_id,
+                "branch_id": doc.branch_id,
+                "event_id": "",
+                "command_id": str(job.id),
+                "doc_id": int(doc.id),
+                "job_id": int(job.id),
+            },
+            retryable=True,
+        )
+        logger.warning(
+            "billing_fiscal_print_retryable_error",
+            extra={**wrapped.context, "error_code": wrapped.code},
+        )
         error_text = (str(exc) or "print_error")[:255]
         doc.last_print_error = error_text
         is_contingency = next_attempt >= max_attempts
@@ -1051,11 +1089,27 @@ def void_doc(
                 journal_draft_id=accounting_link.journal_draft_id,
                 journal_entry_id=accounting_link.journal_entry_id,
             )
-        except Exception as exc:  # noqa: BLE001
+        except (ImportError, AttributeError, IntegrationError, RuntimeError, ValueError) as exc:
+            wrapped = IntegrationError(
+                "Billing accounting link failed during void flow.",
+                code="BILLING_ACCOUNTING_LINK_VOID_FAILED",
+                context={
+                    "request_id": str(getattr(request, "request_id", "") or ""),
+                    "company_id": company.id,
+                    "branch_id": branch.id,
+                    "event_id": str(getattr(voided_outbox, "event_id", "")),
+                    "command_id": str(doc.id),
+                    "doc_id": int(doc.id),
+                },
+            )
+            logger.exception(
+                "billing_accounting_link_void_failed",
+                extra={**wrapped.context, "error_code": wrapped.code},
+            )
             _apply_accounting_link_to_doc(
                 doc=doc,
                 status=BillingDocument.AccountingStatus.DRAFT_EXCEPTION,
-                error=str(exc),
+                error=f"{wrapped.code}:{exc}",
             )
         return {
             "ok": True,

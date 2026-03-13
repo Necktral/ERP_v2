@@ -1,8 +1,9 @@
 import hashlib
 import uuid
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
+from django.core.signing import BadSignature, SignatureExpired
 from django.core import signing
 from django.db import transaction
 from django.http import QueryDict
@@ -13,6 +14,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -74,7 +76,7 @@ def _revoke_refresh_session(session: RefreshTokenSession, *, replaced_by_jti: st
 
 def _extract_login_reason_code(serializer_errors) -> str:
     # serializer_errors puede contener ErrorDetail con .code
-    try:
+    if hasattr(serializer_errors, "get"):
         nfe = serializer_errors.get("non_field_errors", [])
         if nfe:
             code = getattr(nfe[0], "code", "")
@@ -82,15 +84,14 @@ def _extract_login_reason_code(serializer_errors) -> str:
                 return "USER_DISABLED"
             if code == "invalid_credentials":
                 return "INVALID_CREDENTIALS"
-    except Exception:
-        pass
     return "INVALID_CREDENTIALS"
 
 
 def _request_auth_transport(request) -> str:
-    override = request.headers.get("X-Auth-Transport") or request.query_params.get("auth_transport")
-    if override in ("header", "cookie"):
-        return override
+    if getattr(settings, "AUTH_ALLOW_TRANSPORT_OVERRIDE", False):
+        override = request.headers.get("X-Auth-Transport") or request.query_params.get("auth_transport")
+        if override in ("header", "cookie"):
+            return override
     return getattr(settings, "AUTH_TOKEN_TRANSPORT", "header")
 
 
@@ -110,7 +111,7 @@ def _ua_hash(request) -> str:
 
 
 def _issue_2fa_challenge(*, user, request) -> str:
-    expires_at = timezone.now() + timezone.timedelta(seconds=int(settings.TOTP_CHALLENGE_TTL))
+    expires_at = timezone.now() + timedelta(seconds=int(settings.TOTP_CHALLENGE_TTL))
     challenge = TwoFactorChallenge.objects.create(
         user=user,
         expires_at=expires_at,
@@ -126,7 +127,7 @@ def _consume_2fa_challenge(*, challenge_token: str, request) -> TwoFactorChallen
     try:
         raw = signer.unsign(challenge_token, max_age=settings.TOTP_CHALLENGE_TTL)
         challenge_id = uuid.UUID(str(raw))
-    except Exception:
+    except (BadSignature, SignatureExpired, ValueError):
         return None
 
     now = timezone.now()
@@ -275,7 +276,7 @@ class RefreshView(TokenRefreshView):
 
         try:
             token = RefreshToken(refresh_token)
-        except Exception:
+        except TokenError:
             write_event(
                 request=request,
                 event_type="AUTH_TOKEN_REFRESH_FAILURE",
@@ -339,7 +340,8 @@ class RefreshView(TokenRefreshView):
         _revoke_refresh_session(session, replaced_by_jti=_token_jti(new_refresh))
         try:
             token.blacklist()
-        except Exception:
+        except TokenError:
+            # token_blacklist ausente o token no blacklisteable: mantenemos rotación de sesión.
             pass
 
         access = new_refresh.access_token
@@ -396,57 +398,23 @@ class LogoutView(APIView):
         if transport == "cookie":
             clear_auth_cookies(response)
 
-        try:
-            if not refresh:
-                write_event(
-                    request=request,
-                    event_type="AUTH_LOGOUT_FAILURE",
-                    reason_code="TOKEN_INVALID",
-                    actor_user=request.user,
-                    subject_type="SESSION",
-                    subject_id="",
-                    metadata={"stage": "logout", "detail": "missing_refresh"},
-                )
-                # response ya es 204 y cookies limpias
-                return response
-
-            token = RefreshToken(refresh)
-
-            token_user_id = token.get("user_id")
-            if token_user_id is not None and str(token_user_id) != str(request.user.id):
-                write_event(
-                    request=request,
-                    event_type="AUTH_LOGOUT_FAILURE",
-                    reason_code="TOKEN_MISMATCH",
-                    actor_user=request.user,
-                    subject_type="SESSION",
-                    subject_id="",
-                    metadata={"stage": "logout", "detail": "refresh_owner_mismatch"},
-                )
-                # No blacklistear refresh ajeno; responder 403 para señalizar el riesgo.
-                return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
-
-            jti = _token_jti(token)
-
-            # Revocación de sesión extendida
-            session = RefreshTokenSession.objects.filter(jti=jti, user=request.user, revoked_at__isnull=True).first()
-            if session:
-                _revoke_refresh_session(session)
-
-            # Revocación estándar (blacklist JWT)
-            token.blacklist()
-
+        if not refresh:
             write_event(
                 request=request,
-                event_type="AUTH_LOGOUT",
-                reason_code="",
+                event_type="AUTH_LOGOUT_FAILURE",
+                reason_code="TOKEN_INVALID",
                 actor_user=request.user,
-                subject_type="USER",
-                subject_id=str(request.user.id),
-                metadata={"stage": "logout"},
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "logout", "detail": "missing_refresh"},
             )
+            # Idempotente: refresh expirado/corrupto no debe bloquear el logout local.
+            # response ya es 204 y cookies limpias.
+            return response
 
-        except Exception:
+        try:
+            token = RefreshToken(refresh)
+        except TokenError:
             write_event(
                 request=request,
                 event_type="AUTH_LOGOUT_FAILURE",
@@ -456,9 +424,53 @@ class LogoutView(APIView):
                 subject_id="",
                 metadata={"stage": "logout", "detail": "invalid_refresh"},
             )
-            # Idempotente: refresh expirado/corrupto no debe bloquear el logout local.
-            # response ya es 204 y cookies limpias.
-            pass
+            return response
+
+        token_user_id = token.get("user_id")
+        if token_user_id is not None and str(token_user_id) != str(request.user.id):
+            write_event(
+                request=request,
+                event_type="AUTH_LOGOUT_FAILURE",
+                reason_code="TOKEN_MISMATCH",
+                actor_user=request.user,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "logout", "detail": "refresh_owner_mismatch"},
+            )
+            # No blacklistear refresh ajeno; responder 403 para señalizar el riesgo.
+            return Response({"detail": "refresh no pertenece al usuario."}, status=status.HTTP_403_FORBIDDEN)
+
+        jti = _token_jti(token)
+
+        # Revocación de sesión extendida
+        session = RefreshTokenSession.objects.filter(jti=jti, user=request.user, revoked_at__isnull=True).first()
+        if session:
+            _revoke_refresh_session(session)
+
+        # Revocación estándar (blacklist JWT)
+        try:
+            token.blacklist()
+        except TokenError:
+            write_event(
+                request=request,
+                event_type="AUTH_LOGOUT_FAILURE",
+                reason_code="TOKEN_INVALID",
+                actor_user=request.user,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "logout", "detail": "blacklist_failed"},
+            )
+            return response
+
+        write_event(
+            request=request,
+            event_type="AUTH_LOGOUT",
+            reason_code="",
+            actor_user=request.user,
+            subject_type="USER",
+            subject_id=str(request.user.id),
+            metadata={"stage": "logout"},
+        )
 
         return response
 

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
+import logging
 
 from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.writer import write_event
+from apps.common.domain_errors import IntegrationError
 from apps.iam.models import OrgUnit
 from apps.integration.services import publish_outbox_event
 
@@ -15,6 +17,7 @@ from .models import InventoryItem, MovementType, StockBalance, StockMovement, Wa
 
 QTY_Q = Decimal("0.0001")
 COST_Q = Decimal("0.000001")
+logger = logging.getLogger(__name__)
 
 
 def _q_qty(x: Decimal) -> Decimal:
@@ -158,11 +161,30 @@ def _link_accounting_for_movement(*, movement: StockMovement, outbox_event, acto
             journal_draft_id=link.journal_draft_id,
             journal_entry_id=link.journal_entry_id,
         )
-    except Exception as exc:  # noqa: BLE001
+    except (ImportError, AttributeError, ValueError, RuntimeError, IntegrationError) as exc:
+        wrapped = IntegrationError(
+            "Inventory to accounting link failed.",
+            code="INVENTORY_ACCOUNTING_LINK_FAILED",
+            context={
+                "request_id": str(getattr(outbox_event, "correlation_id", "") or ""),
+                "company_id": movement.company_id,
+                "branch_id": movement.branch_id,
+                "event_id": str(getattr(outbox_event, "event_id", "")),
+                "command_id": str(getattr(outbox_event, "event_id", "")),
+                "movement_id": int(movement.id),
+            },
+        )
+        logger.exception(
+            "inventory_accounting_link_failed",
+            extra={
+                **wrapped.context,
+                "error_code": wrapped.code,
+            },
+        )
         _set_movement_accounting(
             movement=movement,
             status=StockMovement.AccountingStatus.DRAFT_EXCEPTION,
-            error=str(exc),
+            error=f"{wrapped.code}:{exc}",
         )
 
 
