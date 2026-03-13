@@ -1,5 +1,17 @@
-import type { RouteRecordRaw } from 'vue-router';
-import MainLayout from 'layouts/MainLayout.vue';
+import type { RouteRecordRaw, RouteRecordRedirectOption } from 'vue-router';
+import { LEGACY_ROUTE_PATHS, UI_ROUTE_PATHS } from 'src/shared/ui/business-terms';
+
+function childPath(path: string): string {
+  return path.startsWith('/') ? path.slice(1) : path;
+}
+
+function redirectToCanonical(path: string): RouteRecordRedirectOption {
+  return (to) => ({
+    path,
+    query: to.query,
+    hash: to.hash,
+  });
+}
 
 const routes: RouteRecordRaw[] = [
   {
@@ -40,20 +52,21 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-
   {
     path: '/',
-    component: MainLayout,
+    component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      { path: '', redirect: '/dashboard' },
+      { path: '', redirect: UI_ROUTE_PATHS.dashboard },
       {
-        path: 'select-context',
+        path: childPath(UI_ROUTE_PATHS.selectContext),
+        name: 'seleccion-contexto',
         component: () => import('pages/SelectContextPage.vue'),
         meta: { requiresAuth: true, requiresContext: false },
       },
       {
-        path: 'dashboard',
+        path: childPath(UI_ROUTE_PATHS.dashboard),
+        name: 'tablero',
         component: () => import('pages/DashboardPage.vue'),
         meta: { requiresAuth: true, requiresContext: true },
       },
@@ -63,7 +76,8 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresContext: false },
       },
       {
-        path: 'org/companies',
+        path: childPath(UI_ROUTE_PATHS.organizationCompanies),
+        name: 'organizacion-empresas',
         component: () => import('pages/OrgCompaniesPage.vue'),
         meta: {
           requiresAuth: true,
@@ -72,7 +86,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'org/company-profile',
+        path: childPath(UI_ROUTE_PATHS.organizationCompanyProfile),
+        name: 'organizacion-perfil-empresa',
         component: () => import('pages/OrgCompanyProfilePage.vue'),
         meta: {
           requiresAuth: true,
@@ -81,7 +96,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'org/branches',
+        path: childPath(UI_ROUTE_PATHS.organizationBranches),
+        name: 'organizacion-sucursales',
         component: () => import('pages/OrgBranchesPage.vue'),
         meta: {
           requiresAuth: true,
@@ -90,7 +106,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'hr/positions',
+        path: childPath(UI_ROUTE_PATHS.humanResourcesPositions),
+        name: 'recursos-humanos-puestos',
         component: () => import('pages/HrPositionsPage.vue'),
         meta: {
           requiresAuth: true,
@@ -99,7 +116,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'hr/employees',
+        path: childPath(UI_ROUTE_PATHS.humanResourcesEmployees),
+        name: 'recursos-humanos-empleados',
         component: () => import('pages/HrEmployeesPage.vue'),
         meta: {
           requiresAuth: true,
@@ -108,7 +126,7 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'audit/bitacora',
+        path: childPath(UI_ROUTE_PATHS.auditLog),
         component: () => import('pages/AuditBitacoraPage.vue'),
         meta: {
           requiresAuth: true,
@@ -125,7 +143,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'fuel',
+        path: childPath(UI_ROUTE_PATHS.fuelDashboard),
+        name: 'combustible-tablero',
         component: () => import('pages/FuelDashboardPage.vue'),
         meta: {
           requiresAuth: true,
@@ -134,7 +153,8 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'fuel/health',
+        path: childPath(UI_ROUTE_PATHS.fuelHealth),
+        name: 'combustible-salud',
         component: () => import('pages/FuelHealthPage.vue'),
         meta: {
           requiresAuth: true,
@@ -142,9 +162,66 @@ const routes: RouteRecordRaw[] = [
           requiredPermissions: ['fuel.shift.read'],
         },
       },
+      {
+        path: childPath(UI_ROUTE_PATHS.synchronizationEnrollment),
+        name: 'sincronizacion-enrolamiento',
+        component: () => import('pages/SyncEnrollmentPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['sync.device.enroll'],
+        },
+      },
+      {
+        path: childPath(UI_ROUTE_PATHS.synchronizationDevices),
+        name: 'sincronizacion-dispositivos',
+        component: () => import('pages/SyncDevicesPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['sync.device.revoke'],
+        },
+      },
+
+      // Alias de compatibilidad retroactiva: mantienen enlaces legacy activos.
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.organizationCompanies),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.organizationCompanies),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.organizationCompanyProfile),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.organizationCompanyProfile),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.organizationBranches),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.organizationBranches),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.humanResourcesPositions),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.humanResourcesPositions),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.humanResourcesEmployees),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.humanResourcesEmployees),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.fuelDashboard),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.fuelDashboard),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.fuelHealth),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.fuelHealth),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.synchronizationEnrollment),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.synchronizationEnrollment),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.synchronizationDevices),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.synchronizationDevices),
+      },
     ],
   },
-
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
