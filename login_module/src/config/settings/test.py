@@ -4,6 +4,11 @@ from rest_framework.settings import api_settings
 
 # Tests: deterministas y rápidos
 DEBUG = False
+SECRET_KEY = "test-signing-key-with-minimum-32-bytes-2026"
+SIMPLE_JWT = {
+    **SIMPLE_JWT,
+    "SIGNING_KEY": SECRET_KEY,
+}
 
 # Tests: mantener header para facilitar clientes no-browser
 AUTH_TOKEN_TRANSPORT = "header"
