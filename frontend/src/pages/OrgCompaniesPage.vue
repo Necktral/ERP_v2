@@ -1,15 +1,18 @@
 <template>
   <AppContainer>
-    <AppPageHeader title="ORG · Empresas" subtitle="GET /org/companies/ · POST /org/companies/">
+    <AppPageHeader
+      :title="`${labels.organization} · Empresas`"
+      subtitle="API: GET /org/companies/ · POST /org/companies/"
+    >
       <template #badges>
-        <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
-        <q-badge outline>Read: org.company.read</q-badge>
-        <q-badge outline v-if="canCreate">Create: org.company.create</q-badge>
-        <q-badge outline>Count: {{ totalRows }}</q-badge>
+        <q-badge outline color="primary">Empresa activa: {{ companyLabel }}</q-badge>
+        <q-badge outline>Permiso lectura: org.company.read</q-badge>
+        <q-badge outline v-if="canCreate">Permiso creacion: org.company.create</q-badge>
+        <q-badge outline>Total: {{ totalRows }}</q-badge>
       </template>
 
       <template #actions>
-        <q-btn flat label="Recargar" :disable="loading" @click="load" />
+        <q-btn flat label="Recargar" :disable="loading" @click="reload" />
         <q-btn v-if="canCreate" color="primary" label="Nueva empresa" @click="openCreate" />
       </template>
     </AppPageHeader>
@@ -17,7 +20,7 @@
     <div class="q-mt-md">
       <AppDataTable
         title="Listado"
-        caption="Tabla PC-first (filtro, estado, acción). Crear empresa genera auditoría y clona accesos del creador."
+        caption="Vista operativa simetrica: filtro, estado y accion. Crear empresa registra auditoria y replica accesos del creador."
         :rows="rows"
         :columns="columns"
         row-key="id"
@@ -28,7 +31,13 @@
         @request="onRequest"
       >
         <template #toolbar>
-          <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
+          <q-input
+            v-model="filter"
+            dense
+            outlined
+            placeholder="Buscar empresa..."
+            style="width: 280px"
+          />
         </template>
 
         <template #body-cell-is_active="props">
@@ -45,7 +54,7 @@
               flat
               icon="arrow_forward"
               @click="switchToCompany(props.row.id)"
-              title="Cambiar contexto a esta empresa"
+              title="Cambiar contexto operativo"
             />
           </q-td>
         </template>
@@ -136,6 +145,7 @@ import type { QTableColumn } from 'quasar';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
+import { BUSINESS_LABELS, UI_ROUTE_PATHS } from 'src/shared/ui/business-terms';
 import { createCompany, listCompanies, type CompanyRow } from 'src/services/org.service';
 import AppContainer from 'src/ui/AppContainer.vue';
 import AppPageHeader from 'src/ui/AppPageHeader.vue';
@@ -145,6 +155,7 @@ const $q = useQuasar();
 const router = useRouter();
 const acl = useAclStore();
 const ctx = useContextStore();
+const labels = BUSINESS_LABELS;
 
 const companyLabel = computed(
   () => acl.companyName(ctx.activeCompanyId) ?? ctx.activeCompanyId ?? '—',
@@ -203,10 +214,16 @@ async function load(page = pagination.value.page, rowsPerPage = pagination.value
 
 function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   const { page, rowsPerPage } = props.pagination;
-  load(page, rowsPerPage);
+  void load(page, rowsPerPage);
 }
 
-onMounted(load);
+function reload() {
+  void load();
+}
+
+onMounted(() => {
+  void load();
+});
 
 // Create dialog
 const createDialog = ref(false);
@@ -260,13 +277,13 @@ async function createOne() {
     $q.notify({ type: 'positive', message: `Empresa creada (id=${id})` });
     createDialog.value = false;
 
-    // Recargar ACL y listado, para que aparezca sin refresh manual
+    // Recargar control de acceso y listado para evitar refresco manual.
     await acl.loadAcl();
     await load();
 
     // Cambiar contexto a la empresa nueva y llevar al perfil
     ctx.setContext(String(id), null);
-    await router.push('/org/company-profile');
+    await router.push(UI_ROUTE_PATHS.organizationCompanyProfile);
   } catch (e: unknown) {
     const msg = extractErrorMessage(e);
     dialogError.value = msg;

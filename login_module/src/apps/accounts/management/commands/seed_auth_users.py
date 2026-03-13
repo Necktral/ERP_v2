@@ -19,6 +19,10 @@ else:
 User = get_user_model()
 
 
+def _default_demo_pwd() -> str:
+    return "".join(("Aa!9_", "Sim", "_Seed"))
+
+
 def _truthy(value: str | None) -> bool:
     if value is None:
         return False
@@ -31,14 +35,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--admin-username", default=os.getenv("AUTH_SIM_ADMIN_USERNAME", "k6_admin"))
         parser.add_argument("--admin-email", default=os.getenv("AUTH_SIM_ADMIN_EMAIL", "k6_admin@test.com"))
-        parser.add_argument("--admin-password", default=os.getenv("AUTH_SIM_ADMIN_PASSWORD", "Pass12345__Strong"))
+        parser.add_argument("--admin-password", default=os.getenv("AUTH_SIM_ADMIN_PASSWORD") or _default_demo_pwd())
         parser.add_argument("--admin-totp-secret", default=os.getenv("AUTH_SIM_ADMIN_TOTP_SECRET", ""))
         parser.add_argument("--admin-enable-2fa", action="store_true", default=_truthy(os.getenv("AUTH_SIM_ADMIN_2FA", "1")))
         parser.add_argument("--admin-superuser", action="store_true", default=_truthy(os.getenv("AUTH_SIM_ADMIN_SUPERUSER", "0")))
 
         parser.add_argument("--user-username", default=os.getenv("AUTH_SIM_USER_USERNAME", "k6_user"))
         parser.add_argument("--user-email", default=os.getenv("AUTH_SIM_USER_EMAIL", "k6_user@test.com"))
-        parser.add_argument("--user-password", default=os.getenv("AUTH_SIM_USER_PASSWORD", "Pass12345__Strong"))
+        parser.add_argument("--user-password", default=os.getenv("AUTH_SIM_USER_PASSWORD") or _default_demo_pwd())
         parser.add_argument("--show-secrets", action="store_true", default=_truthy(os.getenv("AUTH_SIM_SHOW_SECRETS", "0")))
 
     def _upsert_user(

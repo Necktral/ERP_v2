@@ -34,6 +34,7 @@ env = environ.Env(
     DJANGO_CORS_ALLOWED_ORIGINS=(list, ["http://localhost:3000"]),
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:3000"]),
     AUTH_TOKEN_TRANSPORT=(str, "cookie"),
+    AUTH_ALLOW_TRANSPORT_OVERRIDE=(bool, False),
     AUTH_COOKIE_ACCESS_NAME=(str, "nt_access"),
     AUTH_COOKIE_REFRESH_NAME=(str, "nt_refresh"),
     AUTH_COOKIE_CSRF_NAME=(str, "nt_csrf"),
@@ -58,6 +59,16 @@ env = environ.Env(
     TOTP_ISSUER=(str, "Necktral"),
     TOTP_CHALLENGE_TTL=(int, 300),
     TOTP_VALID_WINDOW=(int, 1),
+    FISCAL_ADAPTER_MODE=(str, "NOOP"),
+    FISCAL_ADAPTER_B_PROVIDER=(str, "EMULATED"),
+    FISCAL_ADAPTER_B_HTTP_BASE_URL=(str, ""),
+    FISCAL_ADAPTER_B_HTTP_API_KEY=(str, ""),
+    FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS=(int, 15),
+    FISCAL_ADAPTER_B_HTTP_VERIFY_TLS=(bool, True),
+    ACCOUNTING_POSTING_MODE=(str, "HYBRID"),
+    ACCOUNTING_POSTING_ENABLE_BILLING=(bool, True),
+    ACCOUNTING_POSTING_ENABLE_INVENTORY=(bool, True),
+    ACCOUNTING_POSTING_AUTO_POST_ON_WRITE=(bool, False),
 )
 
 if ENV_FILE.exists():
@@ -158,6 +169,17 @@ USE_TZ = True
 
 LANGUAGE_CODE = "es"
 
+FISCAL_ADAPTER_MODE = env("FISCAL_ADAPTER_MODE")
+FISCAL_ADAPTER_B_PROVIDER = env("FISCAL_ADAPTER_B_PROVIDER")
+FISCAL_ADAPTER_B_HTTP_BASE_URL = env("FISCAL_ADAPTER_B_HTTP_BASE_URL")
+FISCAL_ADAPTER_B_HTTP_API_KEY = env("FISCAL_ADAPTER_B_HTTP_API_KEY")
+FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS = env("FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS")
+FISCAL_ADAPTER_B_HTTP_VERIFY_TLS = env("FISCAL_ADAPTER_B_HTTP_VERIFY_TLS")
+ACCOUNTING_POSTING_MODE = env("ACCOUNTING_POSTING_MODE")
+ACCOUNTING_POSTING_ENABLE_BILLING = env("ACCOUNTING_POSTING_ENABLE_BILLING")
+ACCOUNTING_POSTING_ENABLE_INVENTORY = env("ACCOUNTING_POSTING_ENABLE_INVENTORY")
+ACCOUNTING_POSTING_AUTO_POST_ON_WRITE = env("ACCOUNTING_POSTING_AUTO_POST_ON_WRITE")
+
 INSTALLED_APPS = [
     # Django
     "django.contrib.admin",
@@ -184,6 +206,10 @@ INSTALLED_APPS = [
     "apps.iam.apps.IamConfig",
     "apps.org.apps.OrgConfig",  # <-- NUEVO
     "apps.hr.apps.HrConfig",  # <-- NUEVO
+    "apps.accounting.apps.AccountingConfig",
+    "apps.payments.apps.PaymentsConfig",
+    "apps.cec.apps.CecConfig",
+    "apps.integration.apps.IntegrationConfig",
     "apps.sync_engine",
     "apps.sync.apps.SyncConfig",
     # Módulos de dominio (raíz/modulos)
@@ -194,6 +220,7 @@ INSTALLED_APPS += [
     "modulos.estacion_servicios",
     "modulos.inventarios",
     "modulos.facturacion",
+    "modulos.compras",
 ]
 
 MIDDLEWARE = [
@@ -402,6 +429,7 @@ CONTENT_SECURITY_POLICY_REPORT_ONLY = {
 }
 
 AUTH_TOKEN_TRANSPORT = env("AUTH_TOKEN_TRANSPORT")
+AUTH_ALLOW_TRANSPORT_OVERRIDE = env("AUTH_ALLOW_TRANSPORT_OVERRIDE")
 AUTH_COOKIE_ACCESS_NAME = env("AUTH_COOKIE_ACCESS_NAME")
 AUTH_COOKIE_REFRESH_NAME = env("AUTH_COOKIE_REFRESH_NAME")
 AUTH_COOKIE_CSRF_NAME = env("AUTH_COOKIE_CSRF_NAME")

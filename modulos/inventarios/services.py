@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
+import logging
 
 from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.writer import write_event
+from apps.common.domain_errors import IntegrationError
 from apps.iam.models import OrgUnit
+from apps.integration.services import publish_outbox_event
 
 from .models import InventoryItem, MovementType, StockBalance, StockMovement, Warehouse
 
 
 QTY_Q = Decimal("0.0001")
 COST_Q = Decimal("0.000001")
+logger = logging.getLogger(__name__)
 
 
 def _q_qty(x: Decimal) -> Decimal:
@@ -36,6 +40,10 @@ class PostResult:
     movement_id: int
     qty_on_hand: Decimal
     avg_cost: Decimal
+    accounting_status: str = ""
+    accounting_error: str = ""
+    accounting_journal_draft_id: int | None = None
+    accounting_journal_entry_id: int | None = None
 
 
 def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, uom: str = "UNIT") -> InventoryItem:
@@ -51,6 +59,19 @@ def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, u
             subject_type="INVENTORY_ITEM",
             subject_id=str(item.id),
             metadata={"sku": sku, "name": name, "uom": uom},
+        )
+        publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryItemCreated",
+            payload={
+                "item_id": item.id,
+                "sku": item.sku,
+                "name": item.name,
+                "uom": item.uom,
+            },
+            actor_user=actor_user,
+            company=company,
         )
         return item
 
@@ -86,6 +107,87 @@ def _idempotent_movement_existing(*, company: OrgUnit, idempotency_key: str) -> 
     return StockMovement.objects.filter(company=company, idempotency_key=idempotency_key).first()
 
 
+def _post_result_from_movement(*, movement: StockMovement, qty_on_hand: Decimal, avg_cost: Decimal) -> PostResult:
+    return PostResult(
+        movement_id=int(movement.id),
+        qty_on_hand=qty_on_hand,
+        avg_cost=avg_cost,
+        accounting_status=str(movement.accounting_status or ""),
+        accounting_error=str(movement.accounting_error or ""),
+        accounting_journal_draft_id=movement.accounting_journal_draft_id,
+        accounting_journal_entry_id=movement.accounting_journal_entry_id,
+    )
+
+
+def _set_movement_accounting(
+    *,
+    movement: StockMovement,
+    status: str,
+    error: str = "",
+    economic_event_id=None,
+    journal_draft_id=None,
+    journal_entry_id=None,
+) -> None:
+    movement.accounting_status = str(status or "")[:24]
+    movement.accounting_error = str(error or "")[:255]
+    movement.accounting_economic_event_id = int(economic_event_id) if economic_event_id else None
+    movement.accounting_journal_draft_id = int(journal_draft_id) if journal_draft_id else None
+    movement.accounting_journal_entry_id = int(journal_entry_id) if journal_entry_id else None
+    movement.save(
+        update_fields=[
+            "accounting_status",
+            "accounting_error",
+            "accounting_economic_event",
+            "accounting_journal_draft",
+            "accounting_journal_entry",
+        ]
+    )
+
+
+def _link_accounting_for_movement(*, movement: StockMovement, outbox_event, actor=None) -> None:
+    try:
+        from apps.accounting.services import (
+            apply_accounting_link_to_outbox_event,
+            link_operational_event_to_accounting,
+        )
+
+        link = link_operational_event_to_accounting(outbox_event=outbox_event, actor_user=actor)
+        apply_accounting_link_to_outbox_event(outbox_event=outbox_event, link=link)
+        _set_movement_accounting(
+            movement=movement,
+            status=str(link.status or ""),
+            error=str(link.error or ""),
+            economic_event_id=link.economic_event_id,
+            journal_draft_id=link.journal_draft_id,
+            journal_entry_id=link.journal_entry_id,
+        )
+    except (ImportError, AttributeError, ValueError, RuntimeError, IntegrationError) as exc:
+        wrapped = IntegrationError(
+            "Inventory to accounting link failed.",
+            code="INVENTORY_ACCOUNTING_LINK_FAILED",
+            context={
+                "request_id": str(getattr(outbox_event, "correlation_id", "") or ""),
+                "company_id": movement.company_id,
+                "branch_id": movement.branch_id,
+                "event_id": str(getattr(outbox_event, "event_id", "")),
+                "command_id": str(getattr(outbox_event, "event_id", "")),
+                "movement_id": int(movement.id),
+            },
+        )
+        logger.exception(
+            "inventory_accounting_link_failed",
+            extra={
+                **wrapped.context,
+                "error_code": wrapped.code,
+            },
+        )
+        _set_movement_accounting(
+            movement=movement,
+            status=StockMovement.AccountingStatus.DRAFT_EXCEPTION,
+            error=f"{wrapped.code}:{exc}",
+        )
+
+
 def post_receive(
     *,
     request,
@@ -96,6 +198,11 @@ def post_receive(
     unit_cost: Decimal,
     idempotency_key: str = "",
     note: str = "",
+    source_module: str = "",
+    source_type: str = "",
+    source_id: str = "",
+    correlation_id: str = "",
+    causation_id: str = "",
 ) -> PostResult:
     company: OrgUnit = request.company
     branch = _require_branch(request)
@@ -112,8 +219,12 @@ def post_receive(
         if existing:
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
-                return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
-            return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+                return _post_result_from_movement(
+                    movement=existing,
+                    qty_on_hand=Decimal("0.0000"),
+                    avg_cost=Decimal("0.000000"),
+                )
+            return _post_result_from_movement(movement=existing, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
         warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
         item = _get_item_or_error(company=company, item_id=item_id)
@@ -135,6 +246,9 @@ def post_receive(
             qty_delta=qty,
             unit_cost=unit_cost,
             total_cost=total_cost,
+            source_module=source_module or "",
+            source_type=source_type or "",
+            source_id=source_id or "",
             note=note or "",
             idempotency_key=idempotency_key or "",
             created_by=getattr(actor, "pk", None) and actor,
@@ -161,10 +275,38 @@ def post_receive(
                 "unit_cost": str(unit_cost),
                 "total_cost": str(total_cost),
                 "idempotency_key": idempotency_key,
+                "source_module": mov.source_module,
+                "source_type": mov.source_type,
+                "source_id": mov.source_id,
             },
         )
-
-        return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+        outbox_event = publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryMovementPosted",
+            payload={
+                "movement_id": mov.id,
+                "movement_type": mov.movement_type,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "unit_cost": str(mov.unit_cost),
+                "total_cost": str(mov.total_cost),
+                "qty_on_hand": str(bal.qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "source_module": mov.source_module,
+                "source_type": mov.source_type,
+                "source_id": mov.source_id,
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
+        )
+        _link_accounting_for_movement(movement=mov, outbox_event=outbox_event, actor=actor)
+        return _post_result_from_movement(movement=mov, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
 
 def post_issue(
@@ -180,6 +322,8 @@ def post_issue(
     source_module: str = "",
     source_type: str = "",
     source_id: str = "",
+    correlation_id: str = "",
+    causation_id: str = "",
 ) -> PostResult:
     company: OrgUnit = request.company
     branch = _require_branch(request)
@@ -193,8 +337,12 @@ def post_issue(
         if existing:
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
-                return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
-            return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+                return _post_result_from_movement(
+                    movement=existing,
+                    qty_on_hand=Decimal("0.0000"),
+                    avg_cost=Decimal("0.000000"),
+                )
+            return _post_result_from_movement(movement=existing, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
         warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
         item = _get_item_or_error(company=company, item_id=item_id)
@@ -249,8 +397,34 @@ def post_issue(
                 "idempotency_key": idempotency_key,
             },
         )
-
-        return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+        outbox_event = publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryMovementPosted",
+            payload={
+                "movement_id": mov.id,
+                "movement_type": mov.movement_type,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "unit_cost": str(mov.unit_cost),
+                "total_cost": str(mov.total_cost),
+                "qty_on_hand": str(bal.qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "allow_negative": bool(allow_negative),
+                "source_module": mov.source_module,
+                "source_type": mov.source_type,
+                "source_id": mov.source_id,
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+            correlation_id=correlation_id or "",
+            causation_id=causation_id or "",
+        )
+        _link_accounting_for_movement(movement=mov, outbox_event=outbox_event, actor=actor)
+        return _post_result_from_movement(movement=mov, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
 
 def post_adjust(
@@ -273,8 +447,12 @@ def post_adjust(
         if existing:
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
-                return PostResult(movement_id=existing.id, qty_on_hand=Decimal("0.0000"), avg_cost=Decimal("0.000000"))
-            return PostResult(movement_id=existing.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+                return _post_result_from_movement(
+                    movement=existing,
+                    qty_on_hand=Decimal("0.0000"),
+                    avg_cost=Decimal("0.000000"),
+                )
+            return _post_result_from_movement(movement=existing, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
         warehouse = _get_warehouse_locked(company=company, branch=branch, warehouse_id=warehouse_id)
         item = _get_item_or_error(company=company, item_id=item_id)
@@ -320,8 +498,26 @@ def post_adjust(
                 "idempotency_key": idempotency_key,
             },
         )
-
-        return PostResult(movement_id=mov.id, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
+        outbox_event = publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryAdjusted",
+            payload={
+                "movement_id": mov.id,
+                "movement_type": mov.movement_type,
+                "warehouse_id": warehouse_id,
+                "item_id": item_id,
+                "qty_delta": str(mov.qty_delta),
+                "new_qty_on_hand": str(new_qty_on_hand),
+                "avg_cost": str(bal.avg_cost),
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        _link_accounting_for_movement(movement=mov, outbox_event=outbox_event, actor=actor)
+        return _post_result_from_movement(movement=mov, qty_on_hand=bal.qty_on_hand, avg_cost=bal.avg_cost)
 
 
 def post_transfer(
@@ -347,7 +543,15 @@ def post_transfer(
     with transaction.atomic():
         existing = _idempotent_movement_existing(company=company, idempotency_key=idempotency_key)
         if existing:
-            return {"idempotent": True, "movement_id": existing.id}
+            return {
+                "idempotent": True,
+                "movement_id": existing.id,
+                "out_movement_id": existing.id,
+                "accounting_status": str(existing.accounting_status or ""),
+                "accounting_error": str(existing.accounting_error or ""),
+                "journal_draft_id": existing.accounting_journal_draft_id,
+                "journal_entry_id": existing.accounting_journal_entry_id,
+            }
 
         # Lock balances in deterministic order to avoid deadlocks
         wh_ids = sorted([from_warehouse_id, to_warehouse_id])
@@ -380,6 +584,9 @@ def post_transfer(
             qty_delta=_q_qty(Decimal("0") - qty),
             unit_cost=unit_cost,
             total_cost=_q_cost(Decimal("0") - total_cost),
+            source_module="INVENTORY",
+            source_type="TRANSFER",
+            source_id=f"{from_warehouse_id}:{to_warehouse_id}:{item_id}",
             note=note or "",
             idempotency_key=idempotency_key or "",
             created_by=getattr(actor, "pk", None) and actor,
@@ -393,6 +600,9 @@ def post_transfer(
             qty_delta=qty,
             unit_cost=unit_cost,
             total_cost=total_cost,
+            source_module="INVENTORY",
+            source_type="TRANSFER_OUT",
+            source_id=str(out_mov.id),
             note=note or "",
             idempotency_key="",  # only one unique key per transfer
             created_by=getattr(actor, "pk", None) and actor,
@@ -430,6 +640,35 @@ def post_transfer(
                 "idempotency_key": idempotency_key,
             },
         )
+        outbox_event = publish_outbox_event(
+            request=request,
+            source_module="INVENTORY",
+            event_type="InventoryTransferCompleted",
+            payload={
+                "from_warehouse_id": from_warehouse_id,
+                "to_warehouse_id": to_warehouse_id,
+                "item_id": item_id,
+                "qty": str(qty),
+                "unit_cost": str(unit_cost),
+                "out_movement_id": out_mov.id,
+                "in_movement_id": in_mov.id,
+                "from_qty_on_hand": str(from_bal.qty_on_hand),
+                "to_qty_on_hand": str(to_bal.qty_on_hand),
+                "idempotency_key": idempotency_key,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        _link_accounting_for_movement(movement=out_mov, outbox_event=outbox_event, actor=actor)
+        _set_movement_accounting(
+            movement=in_mov,
+            status=out_mov.accounting_status,
+            error=out_mov.accounting_error,
+            economic_event_id=out_mov.accounting_economic_event_id,
+            journal_draft_id=out_mov.accounting_journal_draft_id,
+            journal_entry_id=out_mov.accounting_journal_entry_id,
+        )
 
         return {
             "out_movement_id": out_mov.id,
@@ -437,4 +676,8 @@ def post_transfer(
             "from_qty_on_hand": str(from_bal.qty_on_hand),
             "to_qty_on_hand": str(to_bal.qty_on_hand),
             "avg_cost": str(unit_cost),
+            "accounting_status": str(out_mov.accounting_status or ""),
+            "accounting_error": str(out_mov.accounting_error or ""),
+            "journal_draft_id": out_mov.accounting_journal_draft_id,
+            "journal_entry_id": out_mov.accounting_journal_entry_id,
         }

@@ -97,10 +97,10 @@ docker compose exec -T backend python src/manage.py seed_auth_users
 ```bash
 BASE_URL=http://localhost:8000/api \
 ADMIN_USERNAME=k6_admin \
-ADMIN_PASSWORD=Pass12345__Strong \
+ADMIN_PASSWORD=<SET_STRONG_PASSWORD> \
 ADMIN_TOTP_SECRET=JBSWY3DPEHPK3PXP \
 USER_USERNAME=k6_user \
-USER_PASSWORD=Pass12345__Strong \
+USER_PASSWORD=<SET_STRONG_PASSWORD> \
 CSRF_COOKIE_NAME=nt_csrf \
 k6 run simulacion/auth_load_simulation.js
 ```
@@ -110,10 +110,10 @@ k6 run simulacion/auth_load_simulation.js
 ```bash
 BASE_URL=http://localhost:8000/api \
 ADMIN_USERNAME=k6_admin \
-ADMIN_PASSWORD=Pass12345__Strong \
+ADMIN_PASSWORD=<SET_STRONG_PASSWORD> \
 ADMIN_TOTP_SECRET=JBSWY3DPEHPK3PXP \
 USER_USERNAME=k6_user \
-USER_PASSWORD=Pass12345__Strong \
+USER_PASSWORD=<SET_STRONG_PASSWORD> \
 CSRF_COOKIE_NAME=nt_csrf \
 VUS=12 \
 DURATION=60s \

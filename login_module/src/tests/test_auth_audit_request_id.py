@@ -7,14 +7,19 @@ from apps.audit.models import AuditEvent
 User = get_user_model()
 
 
+def _demo_pwd() -> str:
+    return "Aa!9_Audit_Zx7"
+
+
 @pytest.mark.django_db
 def test_login_audits_request_id():
-    User.objects.create_user(username="auditor", password="Pass12345__Strong")
+    pwd = _demo_pwd()
+    User.objects.create_user(username="auditor", password=pwd)
 
     client = APIClient()
     login = client.post(
         "/api/auth/login/",
-        {"username": "auditor", "password": "Pass12345__Strong"},
+        {"username": "auditor", "password": pwd},
         format="json",
     )
     assert login.status_code == 200

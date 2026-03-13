@@ -10,13 +10,29 @@ from apps.iam.models import OrgUnit
 
 from .models import BillingDocument
 from .serializers import (
+    BranchFiscalConfigOut,
+    BranchFiscalConfigUpdateIn,
+    DocContingencyResolveSerializer,
+    DocContingencySerializer,
     DocCreateSerializer,
     DocIssueSerializer,
+    DocPrintSerializer,
     DocVoidSerializer,
     InvoiceCreateIn,
     InvoiceOut,
 )
-from .services import BillingError, create_draft, create_invoice, issue_doc, void_doc
+from .services import (
+    BillingError,
+    BillingNotFoundError,
+    create_draft,
+    create_invoice,
+    get_or_update_branch_fiscal_config,
+    issue_doc,
+    mark_doc_contingency,
+    queue_fiscal_print,
+    resolve_doc_contingency,
+    void_doc,
+)
 
 
 class HealthView(APIView):
@@ -27,10 +43,38 @@ class HealthView(APIView):
         return Response({"ok": True, "module": "billing"}, status=status.HTTP_200_OK)
 
 
+class BranchFiscalConfigView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [rbac_permission("billing.fiscal.config.read")()]
+        return [rbac_permission("billing.fiscal.config.update")()]
+
+    def get(self, request):
+        company = request.company
+        branch = request.branch
+        cfg = get_or_update_branch_fiscal_config(company=company, branch=branch)
+        return Response(BranchFiscalConfigOut(cfg).data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        company = request.company
+        branch = request.branch
+        s = BranchFiscalConfigUpdateIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        cfg = get_or_update_branch_fiscal_config(
+            company=company,
+            branch=branch,
+            actor=request.user,
+            data=s.validated_data,
+        )
+        return Response(BranchFiscalConfigOut(cfg).data, status=status.HTTP_200_OK)
+
+
 class DocCreateView(APIView):
     permission_classes = [rbac_permission("billing.doc.create")]
 
     def post(self, request):
+        if not getattr(request, "branch", None):
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
         s = DocCreateSerializer(data=request.data)
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -93,6 +137,25 @@ class DocDetailView(APIView):
                 "issued_at": doc.issued_at,
                 "voided_at": doc.voided_at,
                 "void_reason": doc.void_reason,
+                "fiscal": {
+                    "mode": doc.fiscal_mode_resolved,
+                    "status": doc.fiscal_status,
+                    "reference": doc.fiscal_reference,
+                    "evidence_id": doc.fiscal_evidence_id,
+                    "printed_at": doc.printed_at,
+                    "attempts": doc.print_attempt_count,
+                    "last_error": doc.last_print_error,
+                    "contingency_reason": doc.contingency_reason,
+                    "contingency_at": doc.contingency_at,
+                    "metadata": doc.fiscal_metadata_json or {},
+                },
+                "accounting": {
+                    "status": doc.accounting_status,
+                    "error": doc.accounting_error,
+                    "economic_event_id": doc.accounting_economic_event_id,
+                    "journal_draft_id": doc.accounting_journal_draft_id,
+                    "journal_entry_id": doc.accounting_journal_entry_id,
+                },
                 "lines": lines,
             },
             status=status.HTTP_200_OK,
@@ -103,6 +166,8 @@ class DocIssueView(APIView):
     permission_classes = [rbac_permission("billing.doc.issue")]
 
     def post(self, request, doc_id: int):
+        if not getattr(request, "branch", None):
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
         s = DocIssueSerializer(data=request.data)
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -113,7 +178,85 @@ class DocIssueView(APIView):
                 actor=request.user,
                 doc_id=doc_id,
                 apply_inventory=bool(v.get("apply_inventory", False)),
+                print_after_issue=bool(v.get("print_after_issue", False)),
+                idempotency_key=v.get("idempotency_key") or "",
             )
+        except BillingNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(out, status=status.HTTP_200_OK)
+
+
+class DocPrintView(APIView):
+    permission_classes = [rbac_permission("billing.doc.print")]
+
+    def post(self, request, doc_id: int):
+        s = DocPrintSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            out = queue_fiscal_print(
+                request=request,
+                actor=request.user,
+                doc_id=doc_id,
+                idempotency_key=s.validated_data.get("idempotency_key") or "",
+            )
+        except BillingNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "doc_id": out.doc_id,
+                "job_id": out.job_id,
+                "status": out.status,
+                "created": out.created,
+                "fiscal_status": out.fiscal_status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class DocContingencyView(APIView):
+    permission_classes = [rbac_permission("billing.doc.contingency")]
+
+    def post(self, request, doc_id: int):
+        s = DocContingencySerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            out = mark_doc_contingency(
+                request=request,
+                actor=request.user,
+                doc_id=doc_id,
+                reason=s.validated_data["reason"],
+            )
+        except BillingNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except BillingError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(out, status=status.HTTP_200_OK)
+
+
+class DocContingencyResolveView(APIView):
+    permission_classes = [rbac_permission("billing.doc.contingency.resolve")]
+
+    def post(self, request, doc_id: int):
+        s = DocContingencyResolveSerializer(data=request.data)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            out = resolve_doc_contingency(
+                request=request,
+                actor=request.user,
+                doc_id=doc_id,
+                action=s.validated_data["action"],
+                idempotency_key=s.validated_data.get("idempotency_key") or "",
+                reason=s.validated_data.get("reason") or "",
+            )
+        except BillingNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except BillingError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_200_OK)
@@ -123,6 +266,8 @@ class DocVoidView(APIView):
     permission_classes = [rbac_permission("billing.doc.void")]
 
     def post(self, request, doc_id: int):
+        if not getattr(request, "branch", None):
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
         s = DocVoidSerializer(data=request.data)
         if not s.is_valid():
             return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -134,6 +279,8 @@ class DocVoidView(APIView):
                 doc_id=doc_id,
                 reason=v.get("reason") or "VOID",
             )
+        except BillingNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except BillingError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_200_OK)
@@ -144,7 +291,6 @@ class BillingHealthView(APIView):
     permission_classes = []
 
     def get(self, request):
-        # compat legacy
         resp = Response({"ok": True, "module": "billing"})
         resp["X-Deprecated"] = "true"
         resp["X-Deprecation-Notice"] = "Use /api/billing/health/ (legacy será retirado en v1.1)"
@@ -155,6 +301,8 @@ class InvoiceCreateView(APIView):
     permission_classes = [rbac_permission("billing.invoice.create")]
 
     def post(self, request):
+        if not getattr(request, "branch", None):
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
         ser = InvoiceCreateIn(data=request.data)
         ser.is_valid(raise_exception=True)
         try:

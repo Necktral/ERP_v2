@@ -21,7 +21,10 @@ def test_403_creates_auth_access_denied_with_required_permission_and_scope():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_no_perm", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.get("/api/rbac/demo/inventory-read/", HTTP_X_COMPANY_ID=str(company.id))
     assert r.status_code == 403
@@ -56,7 +59,10 @@ def test_200_when_user_has_scoped_permission():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_yes_perm", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.get("/api/rbac/demo/inventory-read/", HTTP_X_COMPANY_ID=str(company.id))
     assert r.status_code == 200

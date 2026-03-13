@@ -1,161 +1,266 @@
-// app global css in SCSS form
-
-/* ---------------------------
-   Necktral Console - UI Foundation (Theme + Density)
-   --------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap');
 
 :root {
-  /* Surfaces (Light) */
-  --n-surface-page: #f6f7f9;
-  --n-surface-card: #ffffff;
-  --n-surface-elevated: #ffffff;
+  --app-bg: #f3f6fb;
+  --app-bg-gradient:
+    radial-gradient(1200px 460px at -10% -20%, rgba(31, 142, 201, 0.18), transparent 55%),
+    radial-gradient(950px 380px at 110% -15%, rgba(29, 161, 132, 0.18), transparent 52%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
 
-  /* Text (Light) */
-  --n-text: rgba(0, 0, 0, 0.87);
-  --n-text-muted: rgba(0, 0, 0, 0.6);
+  --app-surface: rgba(255, 255, 255, 0.9);
+  --app-surface-strong: #ffffff;
+  --app-border: rgba(24, 46, 84, 0.12);
+  --app-border-strong: rgba(24, 46, 84, 0.2);
 
-  /* Borders / Focus */
-  --n-border: rgba(0, 0, 0, 0.12);
-  --n-border-strong: rgba(0, 0, 0, 0.2);
-  --n-focus: #1976d2;
+  --app-text: #10243e;
+  --app-text-muted: #4d6178;
+  --app-primary: #1869a8;
+  --app-secondary: #1d9b84;
+  --app-focus: #0f5c95;
 
-  /* Shape / spacing */
-  --n-radius: 10px;
+  --app-radius-sm: 10px;
+  --app-radius-md: 14px;
+  --app-radius-lg: 18px;
+
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+  --app-space-8: 32px;
+
+  --app-shadow-soft: 0 8px 22px rgba(24, 46, 84, 0.07);
+  --app-shadow-card: 0 12px 28px rgba(24, 46, 84, 0.09);
 }
 
-/* Quasar agrega body--dark cuando Dark.set(true) está activo */
 body.body--dark {
-  --n-surface-page: #0f1115;
-  --n-surface-card: #151923;
-  --n-surface-elevated: #1a2030;
+  --app-bg: #0e1725;
+  --app-bg-gradient:
+    radial-gradient(1200px 460px at -10% -20%, rgba(31, 142, 201, 0.24), transparent 55%),
+    radial-gradient(950px 380px at 110% -15%, rgba(29, 161, 132, 0.22), transparent 52%),
+    linear-gradient(180deg, #0f192b 0%, #0b1423 100%);
 
-  --n-text: rgba(255, 255, 255, 0.92);
-  --n-text-muted: rgba(255, 255, 255, 0.68);
+  --app-surface: rgba(18, 30, 50, 0.9);
+  --app-surface-strong: #18263d;
+  --app-border: rgba(188, 211, 241, 0.14);
+  --app-border-strong: rgba(188, 211, 241, 0.24);
 
-  --n-border: rgba(255, 255, 255, 0.14);
-  --n-border-strong: rgba(255, 255, 255, 0.22);
-  --n-focus: #90caf9;
+  --app-text: #e6edf8;
+  --app-text-muted: #b5c1d4;
+  --app-focus: #7db9ee;
 }
 
 html,
-body {
-  height: 100%;
+body,
+#q-app {
+  min-height: 100%;
 }
 
 body {
-  background: var(--n-surface-page);
-  color: var(--n-text);
+  margin: 0;
+  color: var(--app-text);
+  background: var(--app-bg-gradient);
+  background-color: var(--app-bg);
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 }
 
-/* Contenedor base para páginas (PC-first) */
 .app-page-container {
-  background: var(--n-surface-page);
+  min-height: 100%;
+  background: transparent;
 }
 
-/* Cards más “enterprise” */
-.q-card {
-  border-radius: var(--n-radius);
-}
-
-/* Focus accesible y consistente */
-:focus-visible {
-  outline: 2px solid var(--n-focus);
-  outline-offset: 2px;
-}
-
-/* ---------------------------
-   Density: Compact (ERP tables)
-   --------------------------- */
-.density-compact .q-table thead tr th {
-  padding: 8px 10px;
-}
-.density-compact .q-table tbody td {
-  padding: 6px 10px;
-}
-.density-compact .q-btn--dense .q-btn__content {
-  line-height: 1.1;
-}
-
-/* Compact visible: forms + cards + page padding */
-.density-compact .app-container--padded {
-  padding: 12px;
-}
-
-.density-compact .q-card__section {
-  padding: 12px;
-}
-
-.density-compact .q-toolbar {
-  min-height: 44px;
-}
-
-/* Inputs/fields más bajos (PC-first ERP style) */
-.density-compact .q-field--outlined .q-field__control {
-  min-height: 38px;
-}
-.density-compact .q-field__marginal {
-  height: 38px;
-}
-.density-compact .q-field__label {
-  font-size: 12px;
-}
-
-/* Separación vertical un poco más corta */
-.density-compact .q-my-md {
-  margin-top: 12px !important;
-  margin-bottom: 12px !important;
-}
-
-/* Separadores y bordes suaves */
-.q-separator {
-  background: var(--n-border);
-}
-
-/* ---------------------------
-   Layout containers (PC-first)
-   --------------------------- */
 .app-container {
   width: 100%;
+  max-width: 1320px;
   margin: 0 auto;
+  padding: var(--app-space-6);
 }
 
-.app-container--padded {
-  padding: 16px;
-}
-
-/* Max widths (ajustable) */
-.app-container--sm {
-  max-width: 720px;
-}
-.app-container--md {
-  max-width: 960px;
-}
-.app-container--lg {
-  max-width: 1200px;
-}
-.app-container--xl {
-  max-width: 1440px;
-}
-
-/* ---------------------------
-   App container: PC-first
-   --------------------------- */
-.app-container {
-  max-width: 1280px;
-  margin: 0 auto;
+.app-container--compact {
+  padding: var(--app-space-4);
 }
 
 .app-container--fluid {
   max-width: none;
 }
 
-/* Card style enterprise (sin sombras agresivas) */
-.app-card {
-  background: var(--n-surface-card);
-  border: 1px solid var(--n-border);
-  box-shadow: none;
+.app-topbar .q-toolbar {
+  min-height: 72px;
+}
+
+.app-topbar__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--app-space-4);
+}
+
+.app-topbar__context {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+  min-width: 0;
+}
+
+.app-topbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--app-space-2);
+}
+
+.app-brand {
+  min-width: 0;
+}
+
+.app-brand__title {
+  font-family: 'Manrope', 'IBM Plex Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.app-brand__subtitle {
+  color: var(--app-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.1;
+}
+
+.app-drawer {
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  backdrop-filter: blur(4px);
+}
+
+.app-page-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--app-space-4);
+  align-items: stretch;
+  padding: var(--app-space-5);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: linear-gradient(180deg, var(--app-surface) 0%, var(--app-surface-strong) 100%);
+  box-shadow: var(--app-shadow-soft);
+  animation: app-fade-up 240ms ease-out;
+}
+
+.app-page-header--compact {
+  padding: var(--app-space-4);
+}
+
+.app-page-header__zone {
+  min-height: 72px;
+}
+
+.app-page-header__zone--actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.app-page-header__subtitle {
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+  margin-top: var(--app-space-1);
+}
+
+.app-card,
+.q-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-strong);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.q-card {
+  animation: app-fade-up 260ms ease-out;
+}
+
+.q-separator {
+  background: var(--app-border);
+}
+
+.q-field--outlined .q-field__control,
+.q-table__container {
+  border-radius: var(--app-radius-sm);
+}
+
+.q-table thead tr th {
+  color: var(--app-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.q-table tbody td {
+  border-bottom: 1px solid rgba(24, 46, 84, 0.08);
+}
+
+.density-compact .q-toolbar {
+  min-height: 56px;
+}
+
+.density-compact .app-page-header {
+  padding: var(--app-space-3);
+}
+
+.density-compact .app-container {
+  padding: var(--app-space-3);
+}
+
+.density-compact .q-table thead tr th {
+  padding: 8px 10px;
+}
+
+.density-compact .q-table tbody td {
+  padding: 6px 10px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
 }
 
 .app-muted {
-  color: var(--n-text-muted);
+  color: var(--app-text-muted);
+}
+
+@keyframes app-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-container {
+    padding: var(--app-space-4);
+  }
+
+  .app-page-header {
+    grid-template-columns: 1fr;
+  }
+
+  .app-page-header__zone--actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 599px) {
+  .app-topbar .q-toolbar {
+    min-height: 64px;
+  }
+
+  .app-brand__subtitle {
+    display: none;
+  }
+
+  .app-container {
+    padding: var(--app-space-3);
+  }
 }

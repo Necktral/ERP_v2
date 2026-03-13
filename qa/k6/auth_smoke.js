@@ -10,7 +10,7 @@ const BOOTSTRAP =
 
 const BOOTSTRAP_USERNAME = __ENV.BOOTSTRAP_USERNAME || "root";
 const BOOTSTRAP_EMAIL = __ENV.BOOTSTRAP_EMAIL || "root@test.com";
-const BOOTSTRAP_PASSWORD = __ENV.BOOTSTRAP_PASSWORD || "Pass12345__Strong";
+const BOOTSTRAP_PASSWORD = __ENV.BOOTSTRAP_PASSWORD || "";
 
 export const options = {
   vus: Number(__ENV.VUS || 5),

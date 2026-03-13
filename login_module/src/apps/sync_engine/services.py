@@ -28,6 +28,7 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
 
 from apps.audit.writer import write_event
+from apps.common.domain_errors import IntegrationError
 from apps.iam.models import OrgUnit
 
 from .errors import SyncRejectError
@@ -539,22 +540,54 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
                 out["details"] = details
             return out
         except Exception as e:
-            logger.error(f"[SYNC_ENGINE][process_command] ERROR: {repr(e)}")
+            request_id = str(getattr(request, "request_id", "") or "")
+            internal_error = IntegrationError(
+                "Unhandled sync command processing error.",
+                code="SYNC_INTERNAL_ERROR",
+                context={
+                    "request_id": request_id,
+                    "company_id": company_id,
+                    "branch_id": branch_id,
+                    "command_id": str(command_id),
+                },
+            )
+            logger.exception(
+                "[SYNC_ENGINE][process_command] unhandled exception",
+                extra={
+                    **internal_error.context,
+                    "command_type": str(command_type),
+                    "device_id": str(device.id),
+                },
+            )
             row.result_status = AppliedCommand.ResultStatus.REJECTED
-            row.error = cast(dict[str, Any], {"reason": "SYNC_INTERNAL_ERROR", "exception": str(e)})
+            row.error = cast(
+                dict[str, Any],
+                {
+                    "reason": internal_error.code,
+                    "exception": str(e),
+                    "request_id": request_id,
+                },
+            )
             row.save(update_fields=["result_status", "error"])
             write_event(
                 request=request,
                 event_type="SYNC_COMMAND_REJECTED",
-                reason_code="SYNC_INTERNAL_ERROR",
+                reason_code=internal_error.code,
                 actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
                 subject_type="DEVICE",
                 subject_id=str(device.id),
                 device_id=str(device.id),
                 offline_mode=True,
-                metadata={"command_id": str(command_id), "command_type": command_type, "error": str(e)},
+                metadata={
+                    "command_id": str(command_id),
+                    "command_type": command_type,
+                    "request_id": request_id,
+                    "company_id": company_id,
+                    "branch_id": branch_id,
+                    "error": str(e),
+                },
             )
-            return {"command_id": str(command_id), "status": "REJECTED", "reason": "SYNC_INTERNAL_ERROR"}
+            return {"command_id": str(command_id), "status": "REJECTED", "reason": internal_error.code}
 
         # Actualizar row a APPLIED
         row.result_status = AppliedCommand.ResultStatus.APPLIED

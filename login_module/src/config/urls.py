@@ -45,6 +45,14 @@ urlpatterns = [
     path("api/org/", include("apps.org.urls")),
     # HR
     path("api/hr/", include("apps.hr.urls")),
+    # Accounting
+    path("api/accounting/", include("apps.accounting.urls")),
+    # Payments/Cash
+    path("api/payments/", include("apps.payments.urls")),
+    # CEC
+    path("api/cec/", include("apps.cec.urls")),
+    # Integration Backbone
+    path("api/integration/", include("apps.integration.urls")),
     # Estación de Servicios
     path("api/fuel/", include("modulos.estacion_servicios.urls")),
 ]
@@ -52,6 +60,7 @@ urlpatterns = [
 urlpatterns += [
     path("api/inventory/", include("modulos.inventarios.urls")),
     path("api/billing/", include("modulos.facturacion.urls")),
+    path("api/procurement/", include("modulos.compras.urls")),
 ]
 
 urlpatterns += [

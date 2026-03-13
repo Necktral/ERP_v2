@@ -1,20 +1,24 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between">
-      <div>
-        <div class="text-h6">HR · Puestos</div>
-        <div class="text-caption text-grey-7">
-          GET /hr/positions/ devuelve lista (id, name, code, is_active)
-        </div>
-      </div>
+  <AppContainer>
+    <AppPageHeader
+      :title="`${labels.humanResources} · Puestos`"
+      subtitle="API: GET /hr/positions/ · POST /hr/positions/ · PATCH /hr/positions/{id}/"
+    >
+      <template #badges>
+        <q-badge outline color="primary">Empresa activa: {{ companyLabel }}</q-badge>
+        <q-badge outline>Permiso lectura: hr.position.read</q-badge>
+        <q-badge outline v-if="canCreate">Permiso creacion: hr.position.create</q-badge>
+        <q-badge outline v-if="canUpdate">Permiso actualizacion: hr.position.update</q-badge>
+        <q-badge outline v-if="canRoleMap">{{ labels.rolesAndPermissions }}: rbac.roles.read</q-badge>
+      </template>
 
-      <div class="row items-center q-gutter-sm">
-        <q-btn flat label="Recargar" :disable="loading" @click="load" />
+      <template #actions>
+        <q-btn flat label="Recargar" :disable="loading" @click="reload" />
         <q-btn v-if="canCreate" color="primary" label="Nuevo puesto" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </AppPageHeader>
 
-    <q-card class="q-mt-md">
+    <q-card class="q-mt-md app-card">
       <q-card-section>
         <q-table
           :rows="rows"
@@ -29,7 +33,7 @@
             <q-td :props="props">
               <q-btn v-if="canUpdate" dense flat icon="edit" @click="openEdit(props.row)" />
               <q-btn v-if="canRoleMap" dense flat icon="security" @click="openRoleMap(props.row)">
-                <q-tooltip>Set Puesto → Roles (reemplaza maps)</q-tooltip>
+                <q-tooltip>Configurar puesto y roles (reemplaza mapeo)</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -43,7 +47,7 @@
 
     <!-- Create/Edit dialog -->
     <q-dialog v-model="editDialog">
-      <q-card style="width: 520px; max-width: 92vw">
+      <q-card style="width: 520px; max-width: 92vw" class="app-card">
         <q-card-section class="row items-center justify-between">
           <div class="text-h6">{{ editingId ? 'Editar puesto' : 'Nuevo puesto' }}</div>
           <q-btn flat icon="close" v-close-popup />
@@ -73,9 +77,9 @@
 
     <!-- Role map dialog -->
     <q-dialog v-model="roleDialog">
-      <q-card style="width: 720px; max-width: 96vw">
+      <q-card style="width: 720px; max-width: 96vw" class="app-card">
         <q-card-section class="row items-center justify-between">
-          <div class="text-h6">Puesto → Roles</div>
+          <div class="text-h6">Puesto y roles</div>
           <q-btn flat icon="close" v-close-popup />
         </q-card-section>
 
@@ -83,8 +87,8 @@
 
         <q-card-section>
           <q-banner class="q-mb-md" dense rounded>
-            Este guardado <b>reemplaza</b> el mapeo actual (backend desactiva todos y activa/crea
-            los nuevos).
+            Este guardado <b>reemplaza</b> el mapeo actual. El backend desactiva todos y activa o
+            crea los nuevos.
           </q-banner>
 
           <div class="text-caption text-grey-7 q-mb-sm">
@@ -97,7 +101,7 @@
                 <q-select
                   v-model="m.role_id"
                   :options="roleOptions"
-                  label="Role"
+                  label="Rol"
                   outlined
                   emit-value
                   map-options
@@ -108,7 +112,7 @@
                 <q-select
                   v-model="m.scope_mode"
                   :options="scopeOptions"
-                  label="Scope"
+                  label="Alcance"
                   outlined
                   emit-value
                   map-options
@@ -125,7 +129,7 @@
             <q-space />
             <q-btn
               color="primary"
-              label="Guardar mapeo"
+              label="Guardar asignacion"
               :loading="rolesSaving"
               @click="saveRoleMap"
             />
@@ -137,7 +141,7 @@
         </q-card-section>
       </q-card>
     </q-dialog>
-  </q-page>
+  </AppContainer>
 </template>
 
 <script setup lang="ts">
@@ -146,6 +150,7 @@ import { useQuasar } from 'quasar';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
+import { BUSINESS_LABELS } from 'src/shared/ui/business-terms';
 import { listRoles } from 'src/services/rbac.service';
 import {
   createPosition,
@@ -155,11 +160,14 @@ import {
   type PositionRow,
   type PositionRoleMapItem,
 } from 'src/services/hr.service';
+import AppContainer from 'src/ui/AppContainer.vue';
+import AppPageHeader from 'src/ui/AppPageHeader.vue';
 import type { QTableColumn } from 'quasar';
 
 const $q = useQuasar();
 const acl = useAclStore();
 const ctx = useContextStore();
+const labels = BUSINESS_LABELS;
 
 const loading = ref(false);
 const saving = ref(false);
@@ -170,6 +178,9 @@ const pagination = ref({
   rowsPerPage: 20,
   rowsNumber: 0,
 });
+const companyLabel = computed(
+  () => acl.companyName(ctx.activeCompanyId) ?? ctx.activeCompanyId ?? '-',
+);
 
 const columns: QTableColumn[] = [
   { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
@@ -219,10 +230,16 @@ async function load(page = pagination.value.page, rowsPerPage = pagination.value
 
 function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   const { page, rowsPerPage } = props.pagination;
-  load(page, rowsPerPage);
+  void load(page, rowsPerPage);
 }
 
-onMounted(load);
+function reload() {
+  void load();
+}
+
+onMounted(() => {
+  void load();
+});
 
 // Create/Edit
 const editDialog = ref(false);
@@ -284,8 +301,8 @@ const roleError = ref<string | null>(null);
 
 const roleOptions = ref<{ label: string; value: number }[]>([]);
 const scopeOptions = [
-  { label: 'BRANCH', value: 'BRANCH' },
-  { label: 'COMPANY', value: 'COMPANY' },
+  { label: 'Sucursal', value: 'BRANCH' },
+  { label: 'Empresa', value: 'COMPANY' },
 ];
 
 const roleMaps = ref<PositionRoleMapItem[]>([]);

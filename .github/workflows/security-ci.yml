@@ -22,7 +22,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        run: |
+          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:latest detect \
+            --no-git \
+            --source /repo \
+            --config /repo/.gitleaks.toml \
+            --report-format json \
+            --report-path /repo/qa_gitleaks.json \
+            --exit-code 1
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -86,7 +93,9 @@ jobs:
         working-directory: frontend
         run: |
           npm install --package-lock-only --ignore-scripts --no-fund --no-audit
-          npm audit --json > ../qa_npm_audit.json
+          # npm audit exits non-zero when any vulnerability exists; capture report first,
+          # then enforce our blocking policy in the parser below.
+          npm audit --json > ../qa_npm_audit.json || true
           node - <<'NODE'
           const fs = require('fs');
           const data = JSON.parse(fs.readFileSync('../qa_npm_audit.json', 'utf8'));

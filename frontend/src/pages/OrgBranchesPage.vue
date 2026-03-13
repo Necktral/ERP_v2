@@ -1,18 +1,18 @@
 <template>
   <AppContainer>
     <AppPageHeader
-      title="ORG · Sucursales"
-      subtitle="GET /org/branches/ · POST /org/branches/ · PATCH /org/branches/{id}/"
+      :title="`${labels.organization} · Sucursales`"
+      subtitle="API: GET /org/branches/ · POST /org/branches/ · PATCH /org/branches/{id}/"
     >
       <template #badges>
-        <q-badge outline color="primary">Company: {{ companyLabel }}</q-badge>
-        <q-badge outline>Read: org.branch.read</q-badge>
-        <q-badge outline v-if="canCreate">Create: org.branch.create</q-badge>
-        <q-badge outline v-if="canUpdate">Update: org.branch.update</q-badge>
+        <q-badge outline color="primary">Empresa activa: {{ companyLabel }}</q-badge>
+        <q-badge outline>Permiso lectura: org.branch.read</q-badge>
+        <q-badge outline v-if="canCreate">Permiso creacion: org.branch.create</q-badge>
+        <q-badge outline v-if="canUpdate">Permiso actualizacion: org.branch.update</q-badge>
       </template>
 
       <template #actions>
-        <q-btn flat label="Recargar" :disable="loading" @click="load" />
+        <q-btn flat label="Recargar" :disable="loading" @click="reload" />
         <q-btn v-if="canCreate" color="primary" label="Nueva sucursal" @click="openCreate" />
       </template>
     </AppPageHeader>
@@ -20,7 +20,7 @@
     <div class="q-mt-md">
       <AppDataTable
         title="Listado"
-        caption="Operación PC-first: tabla con filtro, badges de estado y acciones."
+        caption="Operacion simetrica: tabla con filtro, estado y acciones de mantenimiento."
         :rows="rows"
         :columns="columns"
         row-key="id"
@@ -31,7 +31,13 @@
         @request="onRequest"
       >
         <template #toolbar>
-          <q-input v-model="filter" dense outlined placeholder="Buscar…" style="width: 280px" />
+          <q-input
+            v-model="filter"
+            dense
+            outlined
+            placeholder="Buscar sucursal..."
+            style="width: 280px"
+          />
         </template>
 
         <template #body-cell-is_active="props">
@@ -121,6 +127,7 @@ import type { QTableColumn } from 'quasar';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { extractErrorMessage } from 'src/core/http/errors';
+import { BUSINESS_LABELS } from 'src/shared/ui/business-terms';
 import { createBranch, listBranches, patchBranch, type BranchRow } from 'src/services/org.service';
 import AppContainer from 'src/ui/AppContainer.vue';
 import AppPageHeader from 'src/ui/AppPageHeader.vue';
@@ -129,6 +136,7 @@ import AppDataTable from 'src/ui/AppDataTable.vue';
 const $q = useQuasar();
 const acl = useAclStore();
 const ctx = useContextStore();
+const labels = BUSINESS_LABELS;
 
 const companyLabel = computed(
   () => acl.companyName(ctx.activeCompanyId) ?? ctx.activeCompanyId ?? '—',
@@ -190,10 +198,16 @@ async function load(page = pagination.value.page, rowsPerPage = pagination.value
 
 function onRequest(props: { pagination: { page: number; rowsPerPage: number } }) {
   const { page, rowsPerPage } = props.pagination;
-  load(page, rowsPerPage);
+  void load(page, rowsPerPage);
 }
 
-onMounted(load);
+function reload() {
+  void load();
+}
+
+onMounted(() => {
+  void load();
+});
 
 // dialog create/edit
 const editDialog = ref(false);

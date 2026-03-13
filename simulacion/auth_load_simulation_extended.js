@@ -8,11 +8,11 @@ const DURATION = __ENV.DURATION || "40s";
 const TOTAL_VUS = Number(__ENV.VUS || 10);
 
 const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || "k6_admin";
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "Pass12345__Strong";
+const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "";
 const ADMIN_TOTP_SECRET = __ENV.ADMIN_TOTP_SECRET || "";
 
 const USER_USERNAME = __ENV.USER_USERNAME || "k6_user";
-const USER_PASSWORD = __ENV.USER_PASSWORD || "Pass12345__Strong";
+const USER_PASSWORD = __ENV.USER_PASSWORD || "";
 
 const CSRF_COOKIE_NAME = __ENV.CSRF_COOKIE_NAME || "nt_csrf";
 const ADMIN_2FA_VUS = Number(__ENV.ADMIN_2FA_VUS || 1);

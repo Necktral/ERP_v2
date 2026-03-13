@@ -10,6 +10,7 @@ from django.core.cache import cache
 from django.test import override_settings
 from rest_framework.settings import api_settings
 from django.utils import timezone
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
 
@@ -235,6 +236,7 @@ def test_sync_batch_throttling_enveloped():
     with override_settings(REST_FRAMEWORK=override):
         cache.clear()
         api_settings.reload()
+        SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
 
         client = APIClient()
 
@@ -280,3 +282,4 @@ def test_sync_batch_throttling_enveloped():
 
     cache.clear()
     api_settings.reload()
+    SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES

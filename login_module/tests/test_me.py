@@ -21,6 +21,7 @@ def test_me_returns_roles_and_permissions():
     access = login.data["access"]
 
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     me = client.get("/api/auth/me/")
     assert me.status_code == 200
     assert "warehouse" in me.data["roles"]

@@ -110,6 +110,7 @@ def test_logout_throttling_enveloped():
             assert refresh
 
             client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+            client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
             r1 = client.post("/api/auth/logout/", {"refresh": refresh}, format="json")
             assert r1.status_code == 204

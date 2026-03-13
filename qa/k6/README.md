@@ -20,14 +20,14 @@ docker compose exec -T backend python src/manage.py seed_auth_users
 O bien crea un usuario manual:
 
 ```bash
-docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('Pass12345__Strong');
+docker compose exec -T backend python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); u, _=User.objects.get_or_create(username='k6'); u.email='k6@test.com'; u.is_staff=True; u.set_password('<SET_STRONG_PASSWORD>');
 setattr(u, 'must_change_password', False); u.save()"
 ```
 
 Luego corre k6 con:
 
 - `-e USERNAME=k6`
-- `-e PASSWORD=Pass12345__Strong`
+- `-e PASSWORD=<SET_STRONG_PASSWORD>`
 
 ### Smoke de autenticación + ACL
 
@@ -82,12 +82,47 @@ Ejemplo (Linux, Docker):
 docker run --rm -i --network host \
   -e BASE_URL=http://localhost:8000/api \
   -e USERNAME=k6 \
-  -e PASSWORD=Pass12345__Strong \
+  -e PASSWORD=<SET_STRONG_PASSWORD> \
   -e VUS_WARMUP=5 -e WARMUP=15s \
   -e VUS_TARGET=20 -e SUSTAIN=30s \
   -e COOLDOWN=10s \
   grafana/k6 run - < qa/k6/auth_stress.js
 ```
+
+### Carga operacional (Billing + Inventory + Accounting)
+
+Script: `qa/k6/operational_posting_load.js`
+
+Objetivo:
+- flujo `billing_issue_void`
+- flujo `inventory_receive_issue`
+- ciclo `accounting_posting_cycle`
+
+Gate balanceado (thresholds del script):
+- `billing_write_ms p95 < 400ms`
+- `inventory_write_ms p95 < 400ms`
+- `posting_cycle_ms p95 < 400ms`
+- `operational_error_rate < 1%`
+
+Ejemplo:
+
+```bash
+k6 run qa/k6/operational_posting_load.js \
+  -e BASE_URL=http://localhost:8000/api \
+  -e USERNAME=<OPER_USER> \
+  -e PASSWORD=<OPER_PASSWORD> \
+  -e COMPANY_ID=<COMPANY_ID> \
+  -e BRANCH_ID=<BRANCH_ID> \
+  -e DURATION=2m \
+  -e BILLING_VUS=6 \
+  -e INVENTORY_VUS=6 \
+  -e POSTING_VUS=1
+```
+
+Notas:
+- Si no defines `WAREHOUSE_ID`/`ITEM_ID`, el script intentará crearlos (requiere permisos `inventory.warehouse.create` e `inventory.item.create`).
+- El usuario de carga debe tener 2FA deshabilitado para login automático en k6.
+- El runner recomendado para evidencia completa es `qa/run_operational_performance_gate.sh`.
 
 ### Overrides QA (throttles)
 

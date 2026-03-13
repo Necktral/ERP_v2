@@ -81,9 +81,9 @@ describe('auth.store', () => {
   });
 
   it('reusa el refresh en vuelo', async () => {
-    let resolveRefresh: (() => void) | null = null;
+    let resolveRefresh: (() => void) | undefined;
     const refreshPromise = new Promise<void>((resolve) => {
-      resolveRefresh = resolve;
+      resolveRefresh = () => resolve();
     });
     authApi.post.mockReturnValueOnce(refreshPromise);
 

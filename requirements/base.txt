@@ -1,7 +1,7 @@
 # Seguridad y firmas
-cryptography==42.0.2
+cryptography==46.0.5
 # Framework + API
-Django==5.2.9
+Django==5.2.12
 djangorestframework==3.16.1
 
 # Auth JWT (login para PWA)
@@ -30,7 +30,7 @@ django-csp==4.0
 pyotp==2.9.0
 
 # Observabilidad (errores)
-sentry-sdk==1.45.0
+sentry-sdk==1.45.1
 
 # Static files (admin, y despliegue simple sin nginx al inicio)
 whitenoise==6.11.0

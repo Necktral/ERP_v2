@@ -6,11 +6,11 @@ const BASE_URL = __ENV.BASE_URL || "http://localhost:8000/api";
 const ROOT_URL = BASE_URL.replace(/\/api\/?$/, "");
 
 const ADMIN_USERNAME = __ENV.ADMIN_USERNAME || "k6_admin";
-const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "Pass12345__Strong";
+const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD || "";
 const ADMIN_TOTP_SECRET = __ENV.ADMIN_TOTP_SECRET || "";
 
 const USER_USERNAME = __ENV.USER_USERNAME || "k6_user";
-const USER_PASSWORD = __ENV.USER_PASSWORD || "Pass12345__Strong";
+const USER_PASSWORD = __ENV.USER_PASSWORD || "";
 
 const CSRF_COOKIE_NAME = __ENV.CSRF_COOKIE_NAME || "nt_csrf";
 const AUTH_TRANSPORT = "cookie";

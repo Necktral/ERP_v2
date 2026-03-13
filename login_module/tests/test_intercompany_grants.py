@@ -29,7 +29,10 @@ def test_intercompany_without_grant_denies_even_if_user_has_local_permission():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_b", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # Intenta leer datos de A desde contexto B
     r = client.get(
@@ -90,7 +93,10 @@ def test_intercompany_with_grant_allows_read():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_b2", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.get(
         "/api/rbac/demo/inventory-read/",

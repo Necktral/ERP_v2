@@ -1,0 +1,25 @@
+title = "ERP_CRM local and CI gitleaks policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Legacy backend is out of active security gates"
+paths = [
+  '''^backend/''',
+  '''^/repo/backend/''',
+]
+
+[[allowlists]]
+description = "Generated evidence may include historical scanner outputs"
+paths = [
+  '''^docs/operacion/evidencia/''',
+  '''^/repo/docs/operacion/evidencia/''',
+]
+
+[[allowlists]]
+description = "Generated root-level security scanner outputs"
+paths = [
+  '''^qa_gitleaks\.json$''',
+  '''^/repo/qa_gitleaks\.json$''',
+]

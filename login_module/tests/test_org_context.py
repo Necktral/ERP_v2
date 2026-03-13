@@ -21,7 +21,10 @@ def test_context_requires_company_header_and_denies_without_membership():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_ctx", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # Falta header -> 400
     r = client.get("/api/iam/context/")
@@ -48,7 +51,10 @@ def test_context_allows_branch_membership_with_headers():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_ok", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.get("/api/iam/context/", HTTP_X_COMPANY_ID=str(c1.id), HTTP_X_BRANCH_ID=str(b1.id))
     assert r.status_code == 200

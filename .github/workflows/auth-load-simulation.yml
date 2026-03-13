@@ -43,12 +43,12 @@ jobs:
           DRF_THROTTLE_ME_ACL_READ=6000/min
           AUTH_SIM_ADMIN_USERNAME=k6_admin
           AUTH_SIM_ADMIN_EMAIL=k6_admin@test.com
-          AUTH_SIM_ADMIN_PASSWORD=Pass12345__Strong
+          AUTH_SIM_ADMIN_PASSWORD=${{ secrets.AUTH_SIM_ADMIN_PASSWORD }}
           AUTH_SIM_ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }}
           AUTH_SIM_ADMIN_2FA=1
           AUTH_SIM_USER_USERNAME=k6_user
           AUTH_SIM_USER_EMAIL=k6_user@test.com
-          AUTH_SIM_USER_PASSWORD=Pass12345__Strong
+          AUTH_SIM_USER_PASSWORD=${{ secrets.AUTH_SIM_USER_PASSWORD }}
           EOF
 
       - name: Start backend and db services
@@ -86,10 +86,10 @@ jobs:
             --network erp_crm_default \
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
-            -e ADMIN_PASSWORD=Pass12345__Strong \
+            -e ADMIN_PASSWORD=${{ secrets.AUTH_SIM_ADMIN_PASSWORD }} \
             -e ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }} \
             -e USER_USERNAME=k6_user \
-            -e USER_PASSWORD=Pass12345__Strong \
+            -e USER_PASSWORD=${{ secrets.AUTH_SIM_USER_PASSWORD }} \
             -e CSRF_COOKIE_NAME=nt_csrf \
             -e VUS_WARMUP=2 \
             -e VUS_TARGET=6 \
@@ -114,7 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-log
-          path: qa/reports/backend.log
+          path: simulacion/reports/backend.log
 
       - name: Tear down services
         if: always()

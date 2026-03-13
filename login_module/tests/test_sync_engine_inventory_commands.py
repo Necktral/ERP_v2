@@ -48,7 +48,10 @@ def _client_with_perms(*, user: User, company: OrgUnit, branch: OrgUnit, perms: 
     c = APIClient()
     login = c.post("/api/auth/login/", {"username": user.username, "password": "x"}, format="json")
     assert login.status_code == 200
-    c.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        c.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     c.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     c.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)

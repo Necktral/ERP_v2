@@ -8,6 +8,7 @@ from modulos.estacion_servicios.views import (
     FuelSaleDetailView,
     FuelSaleCreateView,
     FuelSaleCancelView,
+    FuelSaleCompensateRetryView,
     FuelShiftDetailView,
     FuelShiftListView,
     FuelShiftCloseView,
@@ -30,6 +31,7 @@ urlpatterns = [
     path("sales/", FuelSaleCreateView.as_view(), name="fuel-sale-list-create"),
     path("sales/<int:sale_id>/", FuelSaleDetailView.as_view(), name="fuel-sale-detail"),
     path("sales/<int:sale_id>/cancel/", FuelSaleCancelView.as_view(), name="fuel-sale-cancel"),
+    path("sales/<int:sale_id>/compensate/retry/", FuelSaleCompensateRetryView.as_view(), name="fuel-sale-compensate-retry"),
 
     path("reports/shift-close/<int:shift_id>/", FuelShiftCloseReportView.as_view(), name="fuel-report-shift-close"),
     path("reports/daily-close/", FuelDailyCloseReportView.as_view(), name="fuel-report-daily-close"),

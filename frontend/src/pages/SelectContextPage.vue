@@ -1,52 +1,52 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="text-h6">Seleccionar contexto</div>
-    <div class="text-caption text-grey-7">
-      El backend requiere Company para operar. Selecciona Company (y Branch si aplica).
-    </div>
+  <AppContainer>
+    <AppPageHeader
+      title="Seleccion de contexto"
+      subtitle="Selecciona empresa y sucursal para habilitar los modulos operativos."
+    />
 
-    <div class="q-mt-md">
-      <q-card>
-        <q-card-section>
-          <q-select
-            v-model="selectedCompanyId"
-            :options="companyOptions"
-            label="Company"
-            outlined
-            emit-value
-            map-options
+    <q-card class="q-mt-md app-card">
+      <q-card-section>
+        <q-select
+          v-model="selectedCompanyId"
+          :options="companyOptions"
+          label="Empresa"
+          outlined
+          emit-value
+          map-options
+        />
+
+        <div class="q-mt-md" />
+
+        <q-select
+          v-model="selectedBranchId"
+          :disable="branchOptions.length === 0"
+          :options="branchOptions"
+          label="Sucursal (opcional)"
+          outlined
+          emit-value
+          map-options
+          clearable
+        />
+
+        <div class="q-mt-lg">
+          <q-btn
+            label="Continuar"
+            color="primary"
+            :disable="!selectedCompanyId"
+            @click="applyContext"
           />
-
-          <div class="q-mt-md" />
-
-          <q-select
-            v-model="selectedBranchId"
-            :disable="branchOptions.length === 0"
-            :options="branchOptions"
-            label="Branch (opcional)"
-            outlined
-            emit-value
-            map-options
-            clearable
-          />
-
-          <div class="q-mt-lg">
-            <q-btn
-              label="Continuar"
-              color="primary"
-              :disable="!selectedCompanyId"
-              @click="applyContext"
-            />
-          </div>
-        </q-card-section>
-      </q-card>
-    </div>
-  </q-page>
+        </div>
+      </q-card-section>
+    </q-card>
+  </AppContainer>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import AppContainer from 'src/ui/AppContainer.vue';
+import AppPageHeader from 'src/ui/AppPageHeader.vue';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 

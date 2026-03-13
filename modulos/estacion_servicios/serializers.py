@@ -276,12 +276,20 @@ class SaleCancelIn(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
 
+class SaleCompensateRetryIn(serializers.Serializer):
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+
 class SaleOut(serializers.ModelSerializer):
     dispense = DispenseOut()
 
     billing_doc_id = serializers.IntegerField(read_only=True)
     inventory_movement_id = serializers.IntegerField(read_only=True)
     inventory_reversal_movement_id = serializers.IntegerField(read_only=True)
+    compensation_pending = serializers.SerializerMethodField()
+
+    def get_compensation_pending(self, obj: FuelSale) -> bool:
+        return str(obj.status) == "COMPENSATING"
 
     class Meta:
         model = FuelSale
@@ -295,9 +303,15 @@ class SaleOut(serializers.ModelSerializer):
             "total_amount",
             "is_fiscal",
             "created_at",
+            "flow_correlation_id",
             "billing_doc_id",
             "inventory_movement_id",
             "inventory_reversal_movement_id",
+            "compensation_pending",
+            "compensation_attempts",
+            "compensation_last_error",
+            "compensation_next_retry_at",
+            "last_compensation_at",
             "dispense",
             "cancelled_at",
             "cancel_reason",

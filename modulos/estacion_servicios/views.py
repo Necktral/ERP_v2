@@ -19,6 +19,7 @@ from modulos.estacion_servicios.serializers import (
     FuelDailyCloseReportOut,
     FuelShiftCloseReportOut,
     SaleCancelIn,
+    SaleCompensateRetryIn,
     SaleCreateIn,
     SaleOut,
     ShiftCloseIn,
@@ -37,6 +38,7 @@ from modulos.estacion_servicios.services import (
     list_shifts,
     open_shift,
     record_dispense,
+    retry_sale_compensation,
 )
 
 
@@ -55,7 +57,7 @@ class FuelShiftOpenView(APIView):
         ser = ShiftOpenIn(data=request.data)
         ser.is_valid(raise_exception=True)
 
-        shift = open_shift(
+        result = open_shift(
             request=request,
             company=request.company,
             branch=request.branch,
@@ -63,7 +65,10 @@ class FuelShiftOpenView(APIView):
             opened_at=ser.validated_data.get("opened_at"),
             note=ser.validated_data.get("note", ""),
         )
-        return Response(ShiftOut(shift).data, status=201)
+        body = ShiftOut(result.shift).data
+        if result.duplicate:
+            return Response({**body, "idempotency_status": "DUPLICATE_PROCESSED"}, status=status.HTTP_200_OK)
+        return Response(body, status=status.HTTP_201_CREATED)
 
 
 class FuelShiftCloseView(APIView):
@@ -284,6 +289,24 @@ class FuelSaleCancelView(APIView):
             reason=ser.validated_data.get("reason", ""),
         )
 
+        sale = FuelSale.objects.select_related("dispense").get(pk=sale.id)
+        return Response(SaleOut(sale).data, status=200)
+
+
+class FuelSaleCompensateRetryView(APIView):
+    permission_classes = [rbac_permission("fuel.sale.void")]
+
+    def post(self, request, sale_id: int):
+        ser = SaleCompensateRetryIn(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        sale = get_object_or_404(FuelSale, pk=sale_id, company=request.company, branch=request.branch)
+        sale = retry_sale_compensation(
+            request=request,
+            sale=sale,
+            actor_user=request.user,
+            reason=ser.validated_data.get("reason", ""),
+        )
         sale = FuelSale.objects.select_related("dispense").get(pk=sale.id)
         return Response(SaleOut(sale).data, status=200)
 

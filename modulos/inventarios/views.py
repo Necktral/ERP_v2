@@ -21,6 +21,18 @@ from .serializers import (
 from .services import create_item, post_adjust, post_issue, post_receive, post_transfer
 
 
+def _movement_post_response(result) -> dict:
+    return {
+        "movement_id": result.movement_id,
+        "qty_on_hand": str(result.qty_on_hand),
+        "avg_cost": str(result.avg_cost),
+        "accounting_status": result.accounting_status,
+        "accounting_error": result.accounting_error,
+        "journal_draft_id": result.accounting_journal_draft_id,
+        "journal_entry_id": result.accounting_journal_entry_id,
+    }
+
+
 class HealthView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -62,14 +74,17 @@ class ItemCreateView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        item = create_item(
-            request=request,
-            company=company,
-            actor_user=request.user,
-            sku=v["sku"],
-            name=v["name"],
-            uom=v.get("uom") or "UNIT",
-        )
+        try:
+            item = create_item(
+                request=request,
+                company=company,
+                actor_user=request.user,
+                sku=v["sku"],
+                name=v["name"],
+                uom=v.get("uom") or "UNIT",
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InventoryItemOut(item).data, status=status.HTTP_201_CREATED)
 
 
@@ -83,20 +98,20 @@ class ReceiveView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        r = post_receive(
-            request=request,
-            actor=request.user,
-            warehouse_id=v["warehouse_id"],
-            item_id=v["item_id"],
-            qty=v["qty"],
-            unit_cost=v["unit_cost"],
-            idempotency_key=v.get("idempotency_key", "") or "",
-            note=v.get("note", "") or "",
-        )
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            r = post_receive(
+                request=request,
+                actor=request.user,
+                warehouse_id=v["warehouse_id"],
+                item_id=v["item_id"],
+                qty=v["qty"],
+                unit_cost=v["unit_cost"],
+                idempotency_key=v.get("idempotency_key", "") or "",
+                note=v.get("note", "") or "",
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class IssueView(APIView):
@@ -109,20 +124,20 @@ class IssueView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        r = post_issue(
-            request=request,
-            actor=request.user,
-            warehouse_id=v["warehouse_id"],
-            item_id=v["item_id"],
-            qty=v["qty"],
-            allow_negative=bool(v.get("allow_negative", False)),
-            idempotency_key=v.get("idempotency_key", "") or "",
-            note=v.get("note", "") or "",
-        )
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            r = post_issue(
+                request=request,
+                actor=request.user,
+                warehouse_id=v["warehouse_id"],
+                item_id=v["item_id"],
+                qty=v["qty"],
+                allow_negative=bool(v.get("allow_negative", False)),
+                idempotency_key=v.get("idempotency_key", "") or "",
+                note=v.get("note", "") or "",
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class AdjustView(APIView):
@@ -135,19 +150,19 @@ class AdjustView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        r = post_adjust(
-            request=request,
-            actor=request.user,
-            warehouse_id=v["warehouse_id"],
-            item_id=v["item_id"],
-            new_qty_on_hand=v["new_qty_on_hand"],
-            idempotency_key=v.get("idempotency_key", "") or "",
-            note=v.get("note", "") or "",
-        )
-        return Response(
-            {"movement_id": r.movement_id, "qty_on_hand": str(r.qty_on_hand), "avg_cost": str(r.avg_cost)},
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            r = post_adjust(
+                request=request,
+                actor=request.user,
+                warehouse_id=v["warehouse_id"],
+                item_id=v["item_id"],
+                new_qty_on_hand=v["new_qty_on_hand"],
+                idempotency_key=v.get("idempotency_key", "") or "",
+                note=v.get("note", "") or "",
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
 
 
 class TransferView(APIView):
@@ -160,16 +175,19 @@ class TransferView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
 
-        out = post_transfer(
-            request=request,
-            actor=request.user,
-            from_warehouse_id=v["from_warehouse_id"],
-            to_warehouse_id=v["to_warehouse_id"],
-            item_id=v["item_id"],
-            qty=v["qty"],
-            idempotency_key=v.get("idempotency_key", "") or "",
-            note=v.get("note", "") or "",
-        )
+        try:
+            out = post_transfer(
+                request=request,
+                actor=request.user,
+                from_warehouse_id=v["from_warehouse_id"],
+                to_warehouse_id=v["to_warehouse_id"],
+                item_id=v["item_id"],
+                qty=v["qty"],
+                idempotency_key=v.get("idempotency_key", "") or "",
+                note=v.get("note", "") or "",
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_201_CREATED)
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import BillingDocument, DocType
+from .models import BillingDocument, BranchFiscalConfig, DocType, FiscalMode
 
 
 class LineInSerializer(serializers.Serializer):
@@ -27,10 +27,50 @@ class DocCreateSerializer(serializers.Serializer):
 class DocIssueSerializer(serializers.Serializer):
     apply_inventory = serializers.BooleanField(required=False, default=False)
     warehouse_id = serializers.IntegerField(required=False)  # requerido si apply_inventory
+    print_after_issue = serializers.BooleanField(required=False, default=False)
+    idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
 
 
 class DocVoidSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+
+class DocPrintSerializer(serializers.Serializer):
+    idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
+
+
+class DocContingencySerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=255)
+
+
+class DocContingencyResolveSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["RETRY_PRINT", "VOID"])
+    idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
+    reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+
+class BranchFiscalConfigOut(serializers.ModelSerializer):
+    class Meta:
+        model = BranchFiscalConfig
+        fields = [
+            "fiscal_mode",
+            "adapter_code",
+            "print_required",
+            "strict_integrity",
+            "contingency_max_attempts",
+            "is_active",
+            "updated_at",
+            "created_at",
+        ]
+
+
+class BranchFiscalConfigUpdateIn(serializers.Serializer):
+    fiscal_mode = serializers.ChoiceField(choices=FiscalMode.choices, required=False)
+    adapter_code = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    print_required = serializers.BooleanField(required=False)
+    strict_integrity = serializers.BooleanField(required=False)
+    contingency_max_attempts = serializers.IntegerField(min_value=1, max_value=20, required=False)
+    is_active = serializers.BooleanField(required=False)
 
 
 class InvoiceCreateIn(serializers.Serializer):

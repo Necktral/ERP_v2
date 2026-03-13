@@ -3,7 +3,7 @@ import { check, sleep } from "k6";
 
 const BASE_URL = __ENV.BASE_URL || "http://localhost:8000/api";
 const USERNAME = __ENV.USERNAME || "k6";
-const PASSWORD = __ENV.PASSWORD || "Pass12345__Strong";
+const PASSWORD = __ENV.PASSWORD || "";
 
 // Opcional: bootstrap automático si el entorno está "fresh".
 const BOOTSTRAP =
@@ -12,7 +12,7 @@ const BOOTSTRAP =
 
 const BOOTSTRAP_USERNAME = __ENV.BOOTSTRAP_USERNAME || "root";
 const BOOTSTRAP_EMAIL = __ENV.BOOTSTRAP_EMAIL || "root@test.com";
-const BOOTSTRAP_PASSWORD = __ENV.BOOTSTRAP_PASSWORD || "Pass12345__Strong";
+const BOOTSTRAP_PASSWORD = __ENV.BOOTSTRAP_PASSWORD || "";
 
 export const options = {
   // Modelo de carga realista:

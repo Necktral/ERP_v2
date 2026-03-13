@@ -3,11 +3,11 @@
     <AppContainer>
       <AppPageHeader
         title="Dashboard"
-        subtitle="Consola base: Auth + ACL + Contexto + Guards. Siguiente paso: módulos con tablas."
+        subtitle="Consola base: autenticacion, control de acceso y contexto operativo."
       >
         <template #badges>
-          <q-badge outline class="q-mr-sm">Company: {{ companyLabel }}</q-badge>
-          <q-badge outline>Branch: {{ branchLabel }}</q-badge>
+          <q-badge outline class="q-mr-sm">Empresa: {{ companyLabel }}</q-badge>
+          <q-badge outline>Sucursal: {{ branchLabel }}</q-badge>
         </template>
 
         <template #actions>
@@ -22,13 +22,13 @@
           :columns="companyColumns"
           row-key="company_id"
           :loading="loadingCompanies"
-          search-placeholder="Buscar company…"
-          empty-label="No hay companies disponibles en tu ACL."
+          search-placeholder="Buscar empresa..."
+          empty-label="No hay empresas disponibles en tu control de acceso."
         >
           <template #top-left>
-            <div class="text-subtitle2">Companies accesibles</div>
+            <div class="text-subtitle2">Empresas accesibles</div>
             <div class="text-caption text-grey-7">
-              Esto refleja lo que el backend entregó en /auth/me/acl/.
+              Esto refleja lo entregado por el backend en /auth/me/acl/.
             </div>
           </template>
 
@@ -81,7 +81,7 @@ const companyRows = computed(() =>
 );
 
 const companyColumns: QTableColumn[] = [
-  { name: 'company_name', label: 'Company', field: 'company_name', align: 'left', sortable: true },
+  { name: 'company_name', label: 'Empresa', field: 'company_name', align: 'left', sortable: true },
   { name: 'company_id', label: 'ID', field: 'company_id', align: 'left', sortable: true },
   {
     name: 'branches_count',

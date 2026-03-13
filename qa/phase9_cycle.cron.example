@@ -1,0 +1,28 @@
+# F9 Adapter B Go-Live (hibrido: EMULATED/HTTP)
+# Instalar con: crontab qa/phase9_cycle.cron.example
+# Requisitos:
+# - Ajustar ROOT y PATH de entorno.
+# - Definir F9_PROVIDER_MODE y variables HTTP solo cuando se opere carril real.
+# - Mantener PHASE9_OUT fijo por ventana/campana.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ROOT=/home/necktral/ERP_CRM
+PHASE9_OUT=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_go_live_active
+LOCK_ROOT=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_go_live_active/.locks
+COMPANY_ID=5
+BRANCH_ID=6
+PYTHON_BIN=python3
+
+# Carril operativo (cada 5 minutos, horario laboral 08:00-18:00)
+*/5 8-18 * * 1-5 OUT_DIR=$PHASE9_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase9_go_live.sh cycle >> $PHASE9_OUT/cron_phase9_cycle.log 2>&1
+
+# Gate diario estricto (18:10)
+10 18 * * 1-5 OUT_DIR=$PHASE9_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase9_go_live.sh gate >> $PHASE9_OUT/cron_phase9_gate.log 2>&1
+
+# Resumen consolidado diario (18:12)
+12 18 * * 1-5 OUT_DIR=$PHASE9_OUT LOCK_ROOT=$LOCK_ROOT COMPANY_ID=$COMPANY_ID BRANCH_ID=$BRANCH_ID PYTHON_BIN=$PYTHON_BIN \
+  $ROOT/qa/run_phase9_go_live.sh summary >> $PHASE9_OUT/cron_phase9_summary.log 2>&1

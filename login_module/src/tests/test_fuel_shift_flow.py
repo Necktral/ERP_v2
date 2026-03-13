@@ -45,7 +45,10 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     client = APIClient()
     resp = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+    access = resp.data.get("access") if isinstance(resp.data, dict) else None
+    if isinstance(access, str) and access:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # Contexto multiempresa (middleware)
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
@@ -164,7 +167,7 @@ def test_fuel_dispense_diesel_in_gallons_returns_both_units():
 
 
 @pytest.mark.django_db
-def test_fuel_open_shift_twice_denied_by_constraint():
+def test_fuel_open_shift_twice_returns_duplicate_processed():
     company, branch = _mk_org()
     client = _client_with_perms(company=company, branch=branch, perm_codes=["fuel.shift.open"])
 
@@ -180,5 +183,6 @@ def test_fuel_open_shift_twice_denied_by_constraint():
         {},
         format="json",
     )
-    assert r2.status_code == 422
-    assert "turno abierto" in (r2.data.get("error", {}).get("message") or "").lower()
+    assert r2.status_code == 200
+    assert r2.data.get("idempotency_status") == "DUPLICATE_PROCESSED"
+    assert r2.data.get("id") == r1.data.get("id")

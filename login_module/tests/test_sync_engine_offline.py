@@ -74,7 +74,10 @@ def test_enroll_and_sync_replay_is_duplicate():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # Crear challenge
     r = client.post(
@@ -149,7 +152,10 @@ def test_enroll_and_sync_replay_is_duplicate():
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner", "password": "pass12345"}, format="json")
     assert login.status_code == 200
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     # Crear challenge
     r = client.post(
@@ -252,7 +258,10 @@ def test_batch_partial_invalid_signature_does_not_break_other_commands():
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner2", "password": "pass12345"}, format="json")
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.post(
         "/api/sync/enrollment/challenges/",
@@ -355,7 +364,10 @@ def test_payload_mismatch_same_command_id_is_rejected():
 
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "owner3", "password": "pass12345"}, format="json")
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+    access = login.data.get("access") if isinstance(login.data, dict) else None
+    if isinstance(access, str) and access.count(".") == 2:
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
 
     r = client.post(
         "/api/sync/enrollment/challenges/",

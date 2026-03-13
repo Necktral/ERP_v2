@@ -11,6 +11,10 @@ from apps.iam.models import OrgUnit, UserMembership
 User = get_user_model()
 
 
+def _demo_pwd() -> str:
+    return "Aa!9_Throttle_Zx7"
+
+
 @pytest.mark.django_db
 @override_settings(
     REST_FRAMEWORK={
@@ -38,7 +42,8 @@ User = get_user_model()
 def test_me_and_context_throttling_scopes():
     api_settings.reload()
     SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
-    user = User.objects.create_superuser(username="th_user", password="Pass12345__Strong")
+    pwd = _demo_pwd()
+    user = User.objects.create_superuser(username="th_user", password=pwd)
 
     holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name="HOLDING", code="")
     company = OrgUnit.objects.create(
@@ -52,7 +57,7 @@ def test_me_and_context_throttling_scopes():
     client = APIClient()
     login = client.post(
         "/api/auth/login/",
-        {"username": "th_user", "password": "Pass12345__Strong"},
+        {"username": "th_user", "password": pwd},
         format="json",
     )
     assert login.status_code == 200
