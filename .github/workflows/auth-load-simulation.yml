@@ -10,12 +10,6 @@ on:
 jobs:
   load-test:
     runs-on: ubuntu-latest
-    env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-      ADMIN_TOTP_SECRET: ${{ secrets.ADMIN_TOTP_SECRET }}
 
     steps:
       - name: Check out code
@@ -24,14 +18,28 @@ jobs:
       - name: Docker Compose version
         run: docker compose version
 
+      - name: Resolve env defaults for load simulation
+        run: |
+          {
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER || 'erp_user' }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'erp_pass' }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB || 'erp_db' }}"
+            echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY || 'dev-only-secret-key-auth-load-simulation' }}"
+            echo "AUDIT_HMAC_KEY=${{ secrets.AUDIT_HMAC_KEY || 'dev-audit-hmac-key-auth-load' }}"
+            echo "ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXP' }}"
+            echo "AUTH_SIM_ADMIN_PASSWORD=${{ secrets.AUTH_SIM_ADMIN_PASSWORD || 'K6Tmp!2026' }}"
+            echo "AUTH_SIM_USER_PASSWORD=${{ secrets.AUTH_SIM_USER_PASSWORD || 'K6Tmp!2026' }}"
+          } >> "$GITHUB_ENV"
+
       - name: Write .env for compose
         run: |
           cat > .env << 'EOF'
           DJANGO_DEBUG=True
-          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+          AUDIT_HMAC_KEY=${AUDIT_HMAC_KEY}
+          POSTGRES_DB=${POSTGRES_DB}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
           AUTH_TOKEN_TRANSPORT=cookie
           AUTH_COOKIE_SECURE=False
           DRF_THROTTLE_ANON=6000/min
@@ -43,12 +51,12 @@ jobs:
           DRF_THROTTLE_ME_ACL_READ=6000/min
           AUTH_SIM_ADMIN_USERNAME=k6_admin
           AUTH_SIM_ADMIN_EMAIL=k6_admin@test.com
-          AUTH_SIM_ADMIN_PASSWORD=${{ secrets.AUTH_SIM_ADMIN_PASSWORD }}
-          AUTH_SIM_ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }}
+          AUTH_SIM_ADMIN_PASSWORD=${AUTH_SIM_ADMIN_PASSWORD}
+          AUTH_SIM_ADMIN_TOTP_SECRET=${ADMIN_TOTP_SECRET}
           AUTH_SIM_ADMIN_2FA=1
           AUTH_SIM_USER_USERNAME=k6_user
           AUTH_SIM_USER_EMAIL=k6_user@test.com
-          AUTH_SIM_USER_PASSWORD=${{ secrets.AUTH_SIM_USER_PASSWORD }}
+          AUTH_SIM_USER_PASSWORD=${AUTH_SIM_USER_PASSWORD}
           EOF
 
       - name: Start backend and db services
@@ -86,10 +94,10 @@ jobs:
             --network erp_crm_default \
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
-            -e ADMIN_PASSWORD=${{ secrets.AUTH_SIM_ADMIN_PASSWORD }} \
-            -e ADMIN_TOTP_SECRET=${{ secrets.ADMIN_TOTP_SECRET }} \
+            -e ADMIN_PASSWORD=${AUTH_SIM_ADMIN_PASSWORD} \
+            -e ADMIN_TOTP_SECRET=${ADMIN_TOTP_SECRET} \
             -e USER_USERNAME=k6_user \
-            -e USER_PASSWORD=${{ secrets.AUTH_SIM_USER_PASSWORD }} \
+            -e USER_PASSWORD=${AUTH_SIM_USER_PASSWORD} \
             -e CSRF_COOKIE_NAME=nt_csrf \
             -e VUS_WARMUP=2 \
             -e VUS_TARGET=6 \

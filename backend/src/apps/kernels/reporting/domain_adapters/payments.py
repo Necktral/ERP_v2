@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from apps.kernels.reporting.exceptions import DatasetExecutionError
+
 
 def run_dataset(*, dataset_key: str, company, branch, filters: dict):
-    raise NotImplementedError(f"Payments adapter no implementado en R0-R2 ({dataset_key}).")
-
+    raise DatasetExecutionError(
+        f"Payments adapter no disponible en este corte (R0-R2): {dataset_key}"
+    )
