@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /app/login_module
+cd /app/backend
 
 : "${DJANGO_SETTINGS_MODULE:=config.settings.dev}"
 
@@ -33,7 +33,7 @@ raise SystemExit(1)
 PY
 
 # Migraciones automáticas en dev
-python src/manage.py migrate --noinput
+python manage.py migrate --noinput
 
 # Arranque servidor
 # - Por defecto: runserver (DX / hot-reload)
@@ -62,4 +62,4 @@ if [[ "${USE_GUNICORN}" == "1" || "${USE_GUNICORN}" == "true" ]]; then
         --error-logfile -
 fi
 
-exec python src/manage.py runserver 0.0.0.0:8000
+exec python manage.py runserver 0.0.0.0:8000

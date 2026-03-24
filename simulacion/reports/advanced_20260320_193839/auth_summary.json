@@ -1,0 +1,256 @@
+{
+  "metrics": {
+    "vus": {
+      "value": 37,
+      "min": 37,
+      "max": 70
+    },
+    "http_req_duration{expected_response:true}": {
+      "avg": 1694.9085515941033,
+      "min": 6.346482,
+      "med": 1251.691589,
+      "max": 12711.73278,
+      "p(90)": 4099.048133,
+      "p(95)": 5270.311752
+    },
+    "http_req_waiting": {
+      "min": 5.992802,
+      "med": 1250.412428,
+      "max": 12711.445262,
+      "p(90)": 4096.951782,
+      "p(95)": 5267.9854625,
+      "avg": 1693.8942454342582
+    },
+    "http_req_duration{scenario:refresh_rotation,name:auth_refresh_header}": {
+      "max": 11904.534562,
+      "p(90)": 3005.026664400001,
+      "p(95)": 4372.162298249997,
+      "avg": 1117.542473263138,
+      "min": 16.653384,
+      "med": 544.304023,
+      "thresholds": {
+        "p(95)<400": true
+      }
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 35911,
+      "thresholds": {
+        "rate<0.01": false
+      },
+      "value": 0
+    },
+    "data_received": {
+      "count": 44209827,
+      "rate": 46554.61895302961
+    },
+    "iterations": {
+      "rate": 22.771942420386882,
+      "count": 21625
+    },
+    "http_reqs": {
+      "count": 35911,
+      "rate": 37.815640428139346
+    },
+    "http_req_duration{scenario:logout_idempotent,name:auth_logout_header}": {
+      "p(95)": 4058.446107249995,
+      "avg": 1065.0814204521967,
+      "min": 16.975142,
+      "med": 640.718834,
+      "max": 9078.417069,
+      "p(90)": 2296.739531400001,
+      "thresholds": {
+        "p(95)<400": true
+      }
+    },
+    "iteration_duration": {
+      "min": 413.442477,
+      "med": 2118.402748,
+      "max": 31495.239973,
+      "p(90)": 5433.865137200003,
+      "p(95)": 6942.914475399995,
+      "avg": 2916.5823779259613
+    },
+    "http_req_tls_handshaking": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0
+    },
+    "http_req_duration{scenario:attacks,name:auth_attack}": {
+      "avg": 1299.3549086192968,
+      "min": 12.974066,
+      "med": 709.652355,
+      "max": 10249.222432,
+      "p(90)": 3584.681297,
+      "p(95)": 4951.0892752,
+      "thresholds": {
+        "p(95)<500": true
+      }
+    },
+    "http_req_duration{scenario:cookie_logout_idempotent,name:auth_logout_cookie_invalid}": "__REDACTED__",
+    "http_req_connecting": {
+      "avg": 0.015836837487120937,
+      "min": 0,
+      "med": 0,
+      "max": 49.571255,
+      "p(90)": 0,
+      "p(95)": 0
+    },
+    "checks": {
+      "passes": 41011,
+      "fails": 0,
+      "value": 1
+    },
+    "http_req_blocked": {
+      "avg": 0.031052931469465955,
+      "min": 0.002182,
+      "med": 0.009025,
+      "max": 49.611365,
+      "p(90)": 0.018918,
+      "p(95)": 0.026457
+    },
+    "http_req_duration{scenario:cookie_flow,name:auth_refresh_cookie}": "__REDACTED__",
+    "http_req_receiving": {
+      "min": 0.028301,
+      "med": 0.187085,
+      "max": 847.462114,
+      "p(90)": 1.64441,
+      "p(95)": 4.0326925,
+      "avg": 0.9444797255993985
+    },
+    "vus_max": {
+      "value": 70,
+      "min": 70,
+      "max": 70
+    },
+    "http_req_duration": {
+      "max": 12711.73278,
+      "p(90)": 4099.048133,
+      "p(95)": 5270.311752,
+      "avg": 1694.9085515941033,
+      "min": 6.346482,
+      "med": 1251.691589
+    },
+    "http_req_duration{scenario:admin_2fa,name:auth_2fa_verify}": {
+      "avg": 707.5538344140161,
+      "min": 6.346482,
+      "med": 165.36666350000002,
+      "max": 10489.696305,
+      "p(90)": 2190.2271473000033,
+      "p(95)": 4242.08981915,
+      "thresholds": {
+        "p(95)<700": true
+      }
+    },
+    "http_req_sending": {
+      "avg": 0.06982643424020488,
+      "min": 0.010437,
+      "med": 0.042645,
+      "max": 48.748428,
+      "p(90)": 0.092879,
+      "p(95)": 0.12714550000000002
+    },
+    "http_req_duration{scenario:cookie_flow,name:auth_login_cookie}": "__REDACTED__",
+    "http_req_duration{scenario:cookie_flow,name:auth_logout_cookie}": "__REDACTED__",
+    "data_sent": {
+      "count": 11885132,
+      "rate": 12515.493251454223
+    }
+  },
+  "root_group": {
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {},
+    "checks": {
+      "login header 200": {
+        "path": "::login header 200",
+        "id": "e2de627dc9d56cba34b17fd2a821d422",
+        "passes": 4234,
+        "fails": 0,
+        "name": "login header 200"
+      },
+      "login cookie 200": "__REDACTED__",
+      "corrupt refresh rejected": {
+        "name": "corrupt refresh rejected",
+        "path": "::corrupt refresh rejected",
+        "id": "bd0c58c1e1375086f76263ddb8867771",
+        "passes": 4405,
+        "fails": 0
+      },
+      "refresh 1 200": {
+        "name": "refresh 1 200",
+        "path": "::refresh 1 200",
+        "id": "7f43bc094b00ab268d44bea88ce8cc97",
+        "passes": 2550,
+        "fails": 0
+      },
+      "refresh 1 rotated": {
+        "name": "refresh 1 rotated",
+        "path": "::refresh 1 rotated",
+        "id": "fd1e133db781909357a8518ef8d0c677",
+        "passes": 2550,
+        "fails": 0
+      },
+      "old refresh rejected": {
+        "fails": 0,
+        "name": "old refresh rejected",
+        "path": "::old refresh rejected",
+        "id": "67f0dbec65762433dda659f1dabfe01d",
+        "passes": 2550
+      },
+      "refresh 2 200": {
+        "path": "::refresh 2 200",
+        "id": "20cc43f423309ec2adbbf6df76770d74",
+        "passes": 2550,
+        "fails": 0,
+        "name": "refresh 2 200"
+      },
+      "refresh 2 rotated": {
+        "fails": 0,
+        "name": "refresh 2 rotated",
+        "path": "::refresh 2 rotated",
+        "id": "12d2fbddc3256dff044649b714283842",
+        "passes": 2550
+      },
+      "admin login 202": {
+        "name": "admin login 202",
+        "path": "::admin login 202",
+        "id": "02ab156508c9d10ddfd574e5ca7b4c20",
+        "passes": 1634,
+        "fails": 0
+      },
+      "2fa verify 200": {
+        "name": "2fa verify 200",
+        "path": "::2fa verify 200",
+        "id": "cd57983ccfdee99ffaf59cb01961f0b7",
+        "passes": 1634,
+        "fails": 0
+      },
+      "2fa replay rejected": {
+        "passes": 1634,
+        "fails": 0,
+        "name": "2fa replay rejected",
+        "path": "::2fa replay rejected",
+        "id": "db8efaa284073411dbfe858b26318b30"
+      },
+      "logout 1 204": {
+        "id": "ab7c5eabc24f8c50dc18f0476ac262e1",
+        "passes": 1684,
+        "fails": 0,
+        "name": "logout 1 204",
+        "path": "::logout 1 204"
+      },
+      "logout 2 idempotent": {
+        "path": "::logout 2 idempotent",
+        "id": "67f47ca202e520be023ccb9883deca43",
+        "passes": 1684,
+        "fails": 0,
+        "name": "logout 2 idempotent"
+      }
+    },
+    "name": "",
+    "path": ""
+  }
+}

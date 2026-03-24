@@ -34,9 +34,9 @@ Este flujo es 100% automático y guiado desde el frontend. No requiere comandos 
 Si necesitas crear el admin o la organización por comandos:
 
 ```bash
-docker compose exec backend python src/manage.py migrate --noinput
+docker compose exec backend python manage.py migrate --noinput
 # Crear superusuario manual
-# docker compose exec backend python src/manage.py createsuperuser
+# docker compose exec backend python manage.py createsuperuser
 ```
 
 ### 5. Endpoints clave del backend

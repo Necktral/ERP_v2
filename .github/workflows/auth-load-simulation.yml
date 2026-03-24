@@ -74,10 +74,10 @@ jobs:
           fi
 
       - name: Run database migrations
-        run: docker compose exec -T backend python src/manage.py migrate --noinput
+        run: docker compose exec -T backend python manage.py migrate --noinput
 
       - name: Seed test users for load
-        run: docker compose exec -T backend python src/manage.py seed_auth_users
+        run: docker compose exec -T backend python manage.py seed_auth_users
 
       - name: Run k6 load test
         run: |

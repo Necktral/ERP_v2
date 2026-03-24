@@ -16,9 +16,9 @@ def _domain_for(path: str) -> str:
         return "accounting"
     if "/apps/accounts/" in normalized:
         return "accounts"
-    if "/modulos/facturacion/" in normalized:
+    if "/apps/modulos/facturacion/" in normalized:
         return "facturacion"
-    if "/modulos/estacion_servicios/" in normalized or "/fuel_" in normalized:
+    if "/apps/modulos/estacion_servicios/" in normalized or "/fuel_" in normalized:
         return "fuel"
     return "other"
 
