@@ -15,9 +15,9 @@ from rest_framework.test import APIClient
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
-from apps.modulos.facturacion.fiscal_adapters import get_fiscal_adapter
-from apps.modulos.facturacion.models import BillingDocument, DocStatus, DocType, FiscalMode, FiscalPrintJob, FiscalStatus
-from apps.modulos.facturacion.services import process_fiscal_print_jobs
+from apps.kernels.facturacion.fiscal_adapters import get_fiscal_adapter
+from apps.kernels.facturacion.models import BillingDocument, DocStatus, DocType, FiscalMode, FiscalPrintJob, FiscalStatus
+from apps.kernels.facturacion.services import process_fiscal_print_jobs
 
 User = get_user_model()
 
@@ -331,7 +331,7 @@ def test_phase6_adapter_resolution_fallback_and_branch_override():
     adapter_default = get_fiscal_adapter(company=company, branch=branch)
     assert adapter_default.mode == FiscalMode.B
 
-    from apps.modulos.facturacion.models import BranchFiscalConfig
+    from apps.kernels.facturacion.models import BranchFiscalConfig
 
     BranchFiscalConfig.objects.create(
         company=company,

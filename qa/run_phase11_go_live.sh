@@ -258,8 +258,8 @@ import os
 
 from django.utils import timezone
 
-from apps.modulos.accounting.models import IntercompanyDisputeCase, IntercompanyTransaction
-from apps.modulos.accounting.phase7b import settle_intercompany_transaction
+from apps.kernels.accounting.models import IntercompanyDisputeCase, IntercompanyTransaction
+from apps.kernels.accounting.phase7b import settle_intercompany_transaction
 from apps.modulos.cec.models import CECException
 
 blocked_path = str(os.environ["BLOCKED_EVIDENCE_FILE"])

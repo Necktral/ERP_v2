@@ -46,9 +46,9 @@ urlpatterns = [
     # HR
     path("api/hr/", include("apps.modulos.hr.urls")),
     # Accounting
-    path("api/accounting/", include("apps.modulos.accounting.urls")),
+    path("api/accounting/", include("apps.kernels.accounting.urls")),
     # Payments/Cash
-    path("api/payments/", include("apps.modulos.payments.urls")),
+    path("api/payments/", include("apps.kernels.payments.urls")),
     # CEC
     path("api/cec/", include("apps.modulos.cec.urls")),
     # Integration Backbone
@@ -62,11 +62,11 @@ urlpatterns = [
 ]
 
 urlpatterns += [
-    path("api/inventory/", include("apps.modulos.inventarios.urls")),
-    path("api/billing/", include("apps.modulos.facturacion.urls")),
+    path("api/inventory/", include("apps.kernels.inventarios.urls")),
+    path("api/billing/", include("apps.kernels.facturacion.urls")),
     path("api/procurement/", include("apps.modulos.compras.urls")),
 ]
 
 urlpatterns += [
-    path("api/billing/", include("apps.modulos.facturacion.urls_legacy")),
+    path("api/billing/", include("apps.kernels.facturacion.urls_legacy")),
 ]

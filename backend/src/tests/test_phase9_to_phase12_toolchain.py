@@ -7,7 +7,7 @@ import pytest
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.modulos.accounting.models import IntercompanyDisputeReason
+from apps.kernels.accounting.models import IntercompanyDisputeReason
 from apps.modulos.iam.models import CompanyLink, LinkGrant, OrgUnit
 from apps.modulos.rbac.models import Permission
 

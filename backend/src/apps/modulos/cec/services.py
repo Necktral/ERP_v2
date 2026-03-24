@@ -12,10 +12,10 @@ from django.db.models.functions import Coalesce
 
 from apps.modulos.common.api_exceptions import ConflictError
 from apps.modulos.integration.services import publish_outbox_event
-from apps.modulos.payments.models import CashMovement, CashSession
+from apps.kernels.payments.models import CashMovement, CashSession
 from apps.modulos.compras.models import PurchaseDocument, PurchaseDocStatus, PurchaseDocType
-from apps.modulos.facturacion.models import BillingDocument, BranchFiscalConfig, DocStatus, FiscalMode, FiscalStatus
-from apps.modulos.inventarios.models import StockBalance
+from apps.kernels.facturacion.models import BillingDocument, BranchFiscalConfig, DocStatus, FiscalMode, FiscalStatus
+from apps.kernels.inventarios.models import StockBalance
 
 from .models import CECException, CloseRun
 

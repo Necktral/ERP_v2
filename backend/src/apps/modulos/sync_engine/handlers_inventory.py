@@ -5,8 +5,8 @@ from typing import Any
 
 from apps.modulos.iam.models import OrgUnit
 
-from apps.modulos.inventarios import services as inv_services
-from apps.modulos.inventarios.models import MovementType, StockMovement
+from apps.kernels.inventarios import services as inv_services
+from apps.kernels.inventarios.models import MovementType, StockMovement
 
 from .errors import SyncRejectError
 from .registry import HandlerResult, register

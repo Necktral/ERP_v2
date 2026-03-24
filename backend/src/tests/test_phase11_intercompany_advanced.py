@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
-from apps.modulos.accounting.models import IntercompanyDisputeReason, IntercompanyTransaction
+from apps.kernels.accounting.models import IntercompanyDisputeReason, IntercompanyTransaction
 from apps.modulos.cec.models import CECException
 from apps.modulos.iam.models import CompanyLink, LinkGrant, OrgUnit, UserMembership
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission

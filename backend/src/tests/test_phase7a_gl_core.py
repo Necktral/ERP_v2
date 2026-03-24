@@ -11,7 +11,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.modulos.accounting.models import (
+from apps.kernels.accounting.models import (
     ChartOfAccount,
     CompanyAccountingConfig,
     FiscalPeriod,
@@ -21,8 +21,8 @@ from apps.modulos.accounting.models import (
     RevaluationEntryLink,
     RevaluationRun,
 )
-from apps.modulos.accounting.phase7 import run_fx_revaluation
-from apps.modulos.accounting.services import AccountingConflictError, close_fiscal_period, post_journal_drafts
+from apps.kernels.accounting.phase7 import run_fx_revaluation
+from apps.kernels.accounting.services import AccountingConflictError, close_fiscal_period, post_journal_drafts
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.services import publish_outbox_event
@@ -234,7 +234,7 @@ def test_phase7_fx_revaluation_executes_and_is_idempotent():
     now = timezone.localdate()
     period, _ = FiscalPeriod.objects.get_or_create(company=company, year=now.year, month=now.month)
     econ = None
-    from apps.modulos.accounting.models import EconomicEvent, JournalDraft, PostingRuleSet
+    from apps.kernels.accounting.models import EconomicEvent, JournalDraft, PostingRuleSet
 
     econ = EconomicEvent.objects.create(
         source_module="ACCOUNTING",
