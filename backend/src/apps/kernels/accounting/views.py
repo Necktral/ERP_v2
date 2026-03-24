@@ -6,8 +6,15 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.kernels.reporting.exceptions import (
+    DatasetExecutionError,
+    DatasetNotFoundError,
+    DatasetScopeError,
+    ReportingValidationError,
+)
+from apps.kernels.reporting.services import run_dataset_from_request
 from apps.modulos.common.api_exceptions import ConflictError
-from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
+from apps.modulos.common.pagination import get_limit_offset, paginate_list, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.integration.services import publish_outbox_event
 from apps.modulos.rbac.selectors import get_effective_permissions_for_scope
@@ -30,10 +37,8 @@ from .phase7 import (
     general_ledger_queryset,
     get_or_create_accounting_config,
     is_phase7_enabled_for_company,
-    pnl_report,
     resolve_period_range,
     run_fx_revaluation,
-    trial_balance_queryset,
     upsert_chart_of_accounts,
 )
 from .phase7b import (
@@ -275,42 +280,37 @@ class TrialBalanceReportView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
         try:
-            date_from, date_to = _resolve_range_payload(v)
-        except Phase7ValidationError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-        qs = trial_balance_queryset(
-            company=request.company,
-            branch=getattr(request, "branch", None),
-            date_from=date_from,
-            date_to=date_to,
-        )
-        limit, offset = get_limit_offset(request)
-        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
-        results = []
-        for row in rows:
-            debit = row["debit_total"]
-            credit = row["credit_total"]
-            results.append(
-                {
-                    "account_code": str(row["account__code"]),
-                    "account_name": str(row["account__name"]),
-                    "account_type": str(row["account__account_type"]),
-                    "debit_total": str(debit),
-                    "credit_total": str(credit),
-                    "net_balance": str(debit - credit),
-                }
+            envelope, _ = run_dataset_from_request(
+                request=request,
+                dataset_key="accounting.trial_balance.period",
+                filters={
+                    "year": v.get("year"),
+                    "month": v.get("month"),
+                    "date_from": v.get("date_from"),
+                    "date_to": v.get("date_to"),
+                },
+                consumer_ref="legacy:/api/accounting/reports/trial-balance/",
+                enforce_kernel_permission=False,
             )
+        except (ReportingValidationError, DatasetScopeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_list(list(envelope.get("rows") or []), limit=limit, offset=offset)
         return Response(
             {
                 "count": int(total),
                 "limit": int(limit),
                 "offset": int(offset),
                 "filters": {
-                    "date_from": str(date_from) if date_from else "",
-                    "date_to": str(date_to) if date_to else "",
+                    "date_from": str((envelope.get("filters") or {}).get("date_from") or ""),
+                    "date_to": str((envelope.get("filters") or {}).get("date_to") or ""),
                 },
-                "results": results,
+                "results": rows,
             },
             status=status.HTTP_200_OK,
         )
@@ -377,23 +377,33 @@ class PnLReportView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
         try:
-            date_from, date_to = _resolve_range_payload(v)
-            report = pnl_report(
-                company=request.company,
-                branch=getattr(request, "branch", None),
-                date_from=date_from,
-                date_to=date_to,
+            envelope, _ = run_dataset_from_request(
+                request=request,
+                dataset_key="accounting.pnl.period",
+                filters={
+                    "year": v.get("year"),
+                    "month": v.get("month"),
+                    "date_from": v.get("date_from"),
+                    "date_to": v.get("date_to"),
+                },
+                consumer_ref="legacy:/api/accounting/reports/pnl/",
+                enforce_kernel_permission=False,
             )
-        except Phase7ValidationError as exc:
+        except (ReportingValidationError, DatasetScopeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(
             {
                 "filters": {
-                    "date_from": str(date_from) if date_from else "",
-                    "date_to": str(date_to) if date_to else "",
+                    "date_from": str((envelope.get("filters") or {}).get("date_from") or ""),
+                    "date_to": str((envelope.get("filters") or {}).get("date_to") or ""),
                 },
-                **report,
+                "rows": list(envelope.get("rows") or []),
+                "totals": dict(envelope.get("totals") or {}),
             },
             status=status.HTTP_200_OK,
         )

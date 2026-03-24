@@ -6,7 +6,8 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 - `backend/`: backend Django/DRF (código en `backend/src/`)
 - `frontend/`: consola web (Vue 3 + Quasar)
-- `backend/src/apps/modulos/`: módulos de dominio (`facturacion`, `inventarios`, `estacion_servicios`)
+- `backend/src/apps/kernels/`: kernels canónicos (`accounting`, `facturacion`, `inventarios`, `payments`, `reporting`)
+- `backend/src/apps/modulos/`: verticales y core apps (`estacion_servicios`, `iam`, `rbac`, `org`, `hr`, etc.)
 - `compose.yaml`: entorno Docker (backend + Postgres)
 - `system_wis/`: entorno virtual Python (dev)
 

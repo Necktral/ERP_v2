@@ -153,6 +153,12 @@ def seed_rbac_v01() -> SeedResult:
         "accounting.intercompany.settle": "Resolver disputa y liquidar/cerrar transacción intercompany.",
         "accounting.consolidation.read": "Ver corridas y reportes de consolidación multi-compañía.",
         "accounting.consolidation.run": "Ejecutar cierre y consolidación financiera multi-compañía.",
+        # --- Reporting kernel ---
+        "report.catalog.read": "Ver catálogo de datasets certificados.",
+        "report.dataset.read": "Ejecutar datasets del reporting kernel.",
+        "report.dataset.export": "Exportar resultados de datasets.",
+        "report.run.read": "Ver historial de ejecuciones de reporting.",
+        "report.definition.manage": "Gestionar definiciones y metadatos de datasets.",
 
         # --- Compat / legacy (tests + transición) ---
         # Nota: se conservan porque varios tests usan estos códigos como canary de RBAC.
@@ -314,6 +320,12 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.intercompany.settle",
             "accounting.consolidation.read",
             "accounting.consolidation.run",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
+            "report.definition.manage",
             # Compat
             "inventory.read",
             "inventory.write",
@@ -388,6 +400,11 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.intercompany.dispute",
             "accounting.intercompany.settle",
             "accounting.consolidation.read",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
             # Compat
             "inventory.read",
             "inventory.write",
@@ -435,6 +452,10 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.report.read",
             "accounting.intercompany.read",
             "accounting.consolidation.read",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.run.read",
         ],
         "warehouse_manager": [
             "inventory.item.read",

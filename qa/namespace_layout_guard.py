@@ -22,9 +22,9 @@ MODULOS_CORE_APPS = (
     "compras",
     "estacion_servicios",
 )
-KERNEL_APPS = ("accounting", "facturacion", "inventarios", "payments")
-EXPECTED_MODULOS_APPS = set(MODULOS_CORE_APPS + KERNEL_APPS)
-EXPECTED_KERNEL_APPS = set(KERNEL_APPS)
+KERNEL_COMPAT_APPS = ("accounting", "facturacion", "inventarios", "payments")
+EXPECTED_MODULOS_APPS = set(MODULOS_CORE_APPS + KERNEL_COMPAT_APPS)
+EXPECTED_KERNEL_APPS = set(KERNEL_COMPAT_APPS + ("reporting",))
 
 IMPORT_RE = re.compile(
     r"\b(?:from|import)\s+apps\.(?P<app>common|audit|rbac|accounts|iam|org|hr|accounting|payments|cec|integration|sync|sync_engine)\b"
