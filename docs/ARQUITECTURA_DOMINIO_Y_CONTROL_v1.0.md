@@ -266,12 +266,14 @@ Flujo recomendado:
 
 Implementacion actual alineada parcialmente:
 
-- IAM/RBAC/contexto: `login_module/src/apps/iam`, `login_module/src/apps/rbac`
-- Auditoria: `login_module/src/apps/audit`
-- Sync backbone (en transicion): `login_module/src/apps/sync_engine`, `login_module/src/apps/sync`
-- Billing kernel: `modulos/facturacion`
-- Inventory kernel: `modulos/inventarios`
-- Vertical Fuel: `modulos/estacion_servicios`
+- IAM/RBAC/contexto: `backend/src/apps/modulos/iam`, `backend/src/apps/modulos/rbac`
+- Auditoria: `backend/src/apps/modulos/audit`
+- Sync backbone: `backend/src/apps/modulos/sync_engine`, `backend/src/apps/modulos/sync`
+- Billing kernel: `backend/src/apps/kernels/facturacion`
+- Inventory kernel: `backend/src/apps/kernels/inventarios`
+- Accounting kernel: `backend/src/apps/kernels/accounting`
+- Payments/Cash kernel: `backend/src/apps/kernels/payments`
+- Vertical Fuel: `backend/src/apps/modulos/estacion_servicios`
 
 Brechas actuales que este blueprint busca cerrar:
 
@@ -280,4 +282,3 @@ Brechas actuales que este blueprint busca cerrar:
 - Evitar dualidad de motores sync en produccion.
 - Pasar de auditoria operativa a CEC como control plane completo.
 - Formalizar Shadow Ledger/PostingRuleSet sin duplicar verdad contable.
-

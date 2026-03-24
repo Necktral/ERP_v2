@@ -1,7 +1,7 @@
 # Plan Faseado: Billing/Inventory Avanzado con Flujos Contables (No-MVP)
 
 ## Resumen
-- Objetivo: evolucionar `modulos.facturacion` y `modulos.inventarios` de MVP a operación avanzada, conectados formalmente con `apps.accounting`.
+- Objetivo: evolucionar `apps.kernels.facturacion` y `apps.kernels.inventarios` de MVP a operación avanzada, conectados formalmente con `apps.kernels.accounting`.
 - Decisiones fijadas:
   - `Posting model`: **Híbrido**.
   - `Fase 1`: **Factura + Inventario + Asiento**.
@@ -19,7 +19,7 @@
   - Modelo `OperationalPostingConfig` por `company`/`branch`.
 - Fase 1 cerrada (integración contable core):
   - Cobertura funcional ampliada para `issue/void/credit_note`, idempotencia y validación contractual de payload en Billing/Inventory.
-  - Pruebas modulares de `modulos/facturacion/tests` y `modulos/inventarios/tests` integradas a la corrida estándar de `pytest`.
+  - Pruebas modulares de `apps/kernels/facturacion/tests` y `apps/kernels/inventarios/tests` integradas a la corrida estándar de `pytest`.
 - Enlace contable en Billing:
   - `BillingDocument` ahora guarda `accounting_status`, `accounting_error`, `accounting_economic_event`, `accounting_journal_draft`, `accounting_journal_entry`.
   - `issue_doc` y `void_doc` generan enlace contable en la misma operación y devuelven estado contable.
@@ -38,7 +38,7 @@
   - Evento de auditoría `ACCOUNTING.PeriodCloseBlocked` con `gate_summary` estructurado.
   - API `POST /api/accounting/periods/close/` y comando `close_fiscal_period` con salida enriquecida (`gate_summary`, `force_applied`).
 - Fase 2 cerrada:
-  - `modulos/estacion_servicios` queda explícitamente como vertical orquestador (no kernel).
+  - `apps/modulos/estacion_servicios` queda explícitamente como vertical orquestador (no kernel).
   - Correlación transversal Fuel ↔ Inventory ↔ Billing con `flow_correlation_id` y referencias `source_*`.
   - Compensación híbrida en cancelación de venta Fuel (`sync + retry`) con estados `COMPENSATING` y `COMPENSATION_FAILED`.
   - Endpoint de retry y comando batch para recuperación idempotente de compensaciones.

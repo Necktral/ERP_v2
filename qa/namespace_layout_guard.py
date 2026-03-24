@@ -43,6 +43,7 @@ KERNEL_COMPAT_DOTTED_RE = re.compile(
 )
 KERNEL_COMPAT_PATH_RE = re.compile(r"backend/src/apps/modulos/(?P<app>accounting|facturacion|inventarios|payments)")
 TEXT_EXTENSIONS = {".py", ".sh", ".yml", ".yaml", ".ini", ".toml", ".txt"}
+KERNEL_COMPAT_ALLOWED_REFERENCES = {"backend/src/tests/test_kernel_namespace_compat.py"}
 
 
 def _readable_files(root: Path) -> list[Path]:
@@ -149,7 +150,10 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_IMPORT_RE.search(line)
             if m:
                 app = m.group("app")
-                if rel != f"backend/src/apps/modulos/{app}/__init__.py":
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel compat import detected (apps.modulos.{app}); "
                         f"use apps.kernels.{app}"
@@ -157,7 +161,10 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_DOTTED_RE.search(line)
             if m:
                 app = m.group("app")
-                if rel != f"backend/src/apps/modulos/{app}/__init__.py":
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel dotted path detected (apps.modulos.{app}.*); "
                         f"use apps.kernels.{app}.*"
@@ -165,7 +172,10 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_PATH_RE.search(line)
             if m:
                 app = m.group("app")
-                if rel != f"backend/src/apps/modulos/{app}/__init__.py":
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel path backend/src/apps/modulos/{app}; "
                         f"use backend/src/apps/kernels/{app}"
