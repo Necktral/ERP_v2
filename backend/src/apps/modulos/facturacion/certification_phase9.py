@@ -140,7 +140,7 @@ def collect_phase9_operational_health(
     consumer: str = "accounting.projector",
     stale_minutes: int = 30,
 ) -> dict[str, Any]:
-    health = collect_phase6_operational_health(
+    health: dict[str, Any] = collect_phase6_operational_health(
         company_id=company_id,
         branch_id=branch_id,
         consumer=consumer,
@@ -249,4 +249,3 @@ def certify_adapter_b_provider_run(
         scenario_adapter_code=scenario_adapter_code,
         blocked_path_mode="EMULATED_FALLBACK" if expect_blocked else "PROVIDER_OR_RUNTIME",
     )
-

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import PurchaseDocType
@@ -13,7 +15,7 @@ class PurchaseDocCreateSerializer(serializers.Serializer):
     supplier_ref = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     external_ref = serializers.CharField(max_length=96, required=False, allow_blank=True, default="")
     subtotal = serializers.DecimalField(max_digits=18, decimal_places=2)
-    tax_total = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
+    tax_total = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
     total = serializers.DecimalField(max_digits=18, decimal_places=2)
     notes = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     metadata_json = serializers.JSONField(required=False, default=dict)

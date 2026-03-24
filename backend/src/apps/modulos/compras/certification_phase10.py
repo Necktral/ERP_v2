@@ -132,7 +132,7 @@ def collect_phase10_env_manifest(*, company_id: int, branch_id: int) -> dict[str
     )
     rules_hash = _json_hash({"rows": rules_rows})
 
-    procurement_state = {
+    procurement_state: dict[str, Any] = {
         "docs_total": int(PurchaseDocument.objects.filter(company=company, branch=branch).count()),
         "docs_draft": int(
             PurchaseDocument.objects.filter(company=company, branch=branch, status=PurchaseDocStatus.DRAFT).count()

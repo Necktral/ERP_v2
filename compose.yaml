@@ -82,7 +82,7 @@ services:
     # command/entrypoint quedan definidos en la imagen (docker/entrypoint.sh)
 
   frontend:
-    image: node:20-bullseye-slim
+    image: node:22-bullseye-slim
     container_name: erpcrm_frontend
     restart: unless-stopped
     working_dir: /app/frontend
@@ -105,7 +105,7 @@ services:
 
   # Runner CI para frontend (lint + typecheck). No expone puertos.
   frontend_ci:
-    image: node:20-bullseye-slim
+    image: node:22-bullseye-slim
     container_name: erpcrm_frontend_ci
     profiles: ["qa"]
     working_dir: /app/frontend
