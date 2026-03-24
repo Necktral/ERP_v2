@@ -24,9 +24,9 @@ Con tests dirigidos y un ajuste mínimo del alcance de cobertura, es razonable s
 - Archivos con baja cobertura destacados en el reporte:
   - `src/apps/audit/writer.py` (31%)
   - `src/apps/sync_engine/admin.py` (29%)
-  - `modulos/estacion_servicios/migrations/0006_*` (50%)
-  - `modulos/estacion_servicios/migrations/0007_*` (35%)
-  - `modulos/inventarios/urls.py` (56%)
+  - `apps/modulos/estacion_servicios/migrations/0006_*` (50%)
+  - `apps/modulos/estacion_servicios/migrations/0007_*` (35%)
+  - `apps/kernels/inventarios/urls.py` (56%)
   - `src/apps/sync_engine/migrations/0001_initial.py` (63%)
   - `src/config/middleware/request_id.py` (58%)
 

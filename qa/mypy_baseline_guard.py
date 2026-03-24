@@ -12,11 +12,11 @@ ERROR_RE = re.compile(r"^(?P<path>.+?):(?P<line>\d+): error: (?P<message>.+?)\s+
 
 def _domain_for(path: str) -> str:
     normalized = path.replace("\\", "/")
-    if "/apps/modulos/accounting/" in normalized:
+    if "/apps/kernels/accounting/" in normalized or "/apps/modulos/accounting/" in normalized:
         return "accounting"
     if "/apps/modulos/accounts/" in normalized:
         return "accounts"
-    if "/apps/modulos/facturacion/" in normalized:
+    if "/apps/kernels/facturacion/" in normalized or "/apps/modulos/facturacion/" in normalized:
         return "facturacion"
     if "/apps/modulos/estacion_servicios/" in normalized or "/fuel_" in normalized:
         return "fuel"

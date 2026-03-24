@@ -13,7 +13,7 @@ K6_IMAGE ?= grafana/k6
 QA_REPORTS_DIR ?= qa/reports
 QA_KEEP_FRONTEND ?= 1
 QA_MYPY_STRICT_TARGETS ?= \
-	backend/src/apps/modulos/accounting \
+	backend/src/apps/kernels/accounting \
 	backend/src/tests/test_phase3_cec_execute_api.py \
 	backend/src/tests/test_phase5_accounting_api.py \
 	backend/src/tests/test_phase6_adapter_b_readiness.py \

@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.cec.services import execute_close_run
 from apps.modulos.iam.models import OrgUnit
-from apps.modulos.payments.models import CashSession
+from apps.kernels.payments.models import CashSession
 
 User = get_user_model()
 

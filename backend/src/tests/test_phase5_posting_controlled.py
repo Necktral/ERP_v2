@@ -10,7 +10,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from apps.modulos.accounting.models import FiscalPeriod, JournalDraft, JournalEntry
+from apps.kernels.accounting.models import FiscalPeriod, JournalDraft, JournalEntry
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent

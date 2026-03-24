@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
-from apps.modulos.payments.models import CashSession
+from apps.kernels.payments.models import CashSession
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 User = get_user_model()

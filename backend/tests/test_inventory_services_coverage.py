@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from apps.modulos.iam.models import OrgUnit
-from apps.modulos.inventarios import services as inv_services
-from apps.modulos.inventarios.models import InventoryItem, MovementType, StockMovement, Warehouse
+from apps.kernels.inventarios import services as inv_services
+from apps.kernels.inventarios.models import InventoryItem, MovementType, StockMovement, Warehouse
 from apps.modulos.sync_engine import handlers_inventory as inv_handlers
 from apps.modulos.sync_engine.errors import SyncRejectError
 

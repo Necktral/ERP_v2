@@ -11,7 +11,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.modulos.accounting.models import EconomicEvent, JournalDraft
+from apps.kernels.accounting.models import EconomicEvent, JournalDraft
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent

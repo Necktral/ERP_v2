@@ -208,8 +208,8 @@ INSTALLED_APPS = [
     "apps.modulos.iam.apps.IamConfig",
     "apps.modulos.org.apps.OrgConfig",  # <-- NUEVO
     "apps.modulos.hr.apps.HrConfig",  # <-- NUEVO
-    "apps.modulos.accounting.apps.AccountingConfig",
-    "apps.modulos.payments.apps.PaymentsConfig",
+    "apps.kernels.accounting.apps.AccountingConfig",
+    "apps.kernels.payments.apps.PaymentsConfig",
     "apps.modulos.cec.apps.CecConfig",
     "apps.modulos.integration.apps.IntegrationConfig",
     "apps.modulos.sync_engine",
@@ -220,8 +220,8 @@ INSTALLED_APPS = [
 
 INSTALLED_APPS += [
     "apps.modulos.estacion_servicios.apps.EstacionServiciosConfig",
-    "apps.modulos.inventarios",
-    "apps.modulos.facturacion",
+    "apps.kernels.inventarios",
+    "apps.kernels.facturacion",
     "apps.modulos.compras",
 ]
 

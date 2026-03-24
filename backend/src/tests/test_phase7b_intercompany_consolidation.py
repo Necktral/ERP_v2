@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from rest_framework.test import APIClient
 
-from apps.modulos.accounting.models import (
+from apps.kernels.accounting.models import (
     ChartOfAccount,
     CompanyAccountingConfig,
     ConsolidationRun,
@@ -23,7 +23,7 @@ from apps.modulos.accounting.models import (
     JournalEntryLine,
     PostingRuleSet,
 )
-from apps.modulos.accounting.phase7b import (
+from apps.kernels.accounting.phase7b import (
     Phase7BValidationError,
     close_intercompany_transaction,
     confirm_intercompany_transaction,

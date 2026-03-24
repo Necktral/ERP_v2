@@ -10,8 +10,8 @@ from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
-from apps.modulos.facturacion.models import BillingDocument, DocStatus
-from apps.modulos.inventarios.models import InventoryItem, StockMovement, Warehouse
+from apps.kernels.facturacion.models import BillingDocument, DocStatus
+from apps.kernels.inventarios.models import InventoryItem, StockMovement, Warehouse
 from apps.modulos.estacion_servicios.models import FuelDispense
 
 User = get_user_model()

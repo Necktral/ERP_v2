@@ -15,8 +15,8 @@ from django.db import connection
 from django.db.migrations.recorder import MigrationRecorder
 from django.utils import timezone
 
-from apps.modulos.accounting.models import EconomicEvent, JournalDraft, JournalEntry, PostingRuleSet
-from apps.modulos.accounting.services import (
+from apps.kernels.accounting.models import EconomicEvent, JournalDraft, JournalEntry, PostingRuleSet
+from apps.kernels.accounting.services import (
     post_journal_drafts,
     project_shadow_ledger_for_run,
     seed_posting_rules_v1_for_company,

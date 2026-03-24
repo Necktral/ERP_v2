@@ -8,7 +8,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
-from apps.modulos.accounting.certification import collect_phase4_env_manifest
+from apps.kernels.accounting.certification import collect_phase4_env_manifest
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import InboxEvent
 

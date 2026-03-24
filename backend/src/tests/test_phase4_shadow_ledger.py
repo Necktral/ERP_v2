@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.utils import timezone
 
-from apps.modulos.accounting.models import DraftValidationResult, EconomicEvent, JournalDraft, PostingRuleSet
+from apps.kernels.accounting.models import DraftValidationResult, EconomicEvent, JournalDraft, PostingRuleSet
 from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import InboxEvent, OutboxEvent

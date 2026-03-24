@@ -56,6 +56,14 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
   - alias canónico transicional: `/api/backend/fuel/*`
   - legacy: `/api/fuel/*` con headers `Deprecation`, `Sunset`, `Link`.
 
+## Topología de Kernels (canónica)
+
+- Accounting: `backend/src/apps/kernels/accounting`
+- Billing: `backend/src/apps/kernels/facturacion`
+- Inventory: `backend/src/apps/kernels/inventarios`
+- Payments/Cash: `backend/src/apps/kernels/payments`
+- Compatibilidad temporal (2 releases): `apps.modulos.{accounting,facturacion,inventarios,payments}`
+
 ## Reglas
 
 - Todo en español.

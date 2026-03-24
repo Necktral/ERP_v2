@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-CORE_APPS = (
+MODULOS_CORE_APPS = (
     "common",
     "audit",
     "rbac",
@@ -15,16 +15,16 @@ CORE_APPS = (
     "iam",
     "org",
     "hr",
-    "accounting",
-    "payments",
     "cec",
     "integration",
     "sync",
     "sync_engine",
+    "compras",
+    "estacion_servicios",
 )
-
-DOMAIN_APPS = ("facturacion", "inventarios", "estacion_servicios", "compras")
-EXPECTED_APPS = set(CORE_APPS + DOMAIN_APPS)
+KERNEL_APPS = ("accounting", "facturacion", "inventarios", "payments")
+EXPECTED_MODULOS_APPS = set(MODULOS_CORE_APPS + KERNEL_APPS)
+EXPECTED_KERNEL_APPS = set(KERNEL_APPS)
 
 IMPORT_RE = re.compile(
     r"\b(?:from|import)\s+apps\.(?P<app>common|audit|rbac|accounts|iam|org|hr|accounting|payments|cec|integration|sync|sync_engine)\b"
@@ -33,9 +33,17 @@ DOTTED_RE = re.compile(
     r"['\"]apps\.(?P<app>common|audit|rbac|accounts|iam|org|hr|accounting|payments|cec|integration|sync|sync_engine)\."
 )
 LEGACY_PATH_RE = re.compile(
-    r"backend/src/apps/(?P<app>common|audit|rbac|accounts|iam|org|hr|accounting|payments|cec|integration|sync|sync_engine)(?:/|\b)"
+    r"backend/src/apps/(?P<app>common|audit|rbac|accounts|iam|org|hr|cec|integration|sync|sync_engine)(?:/|\b)"
 )
+KERNEL_COMPAT_IMPORT_RE = re.compile(
+    r"\b(?:from|import)\s+apps\.modulos\.(?P<app>accounting|facturacion|inventarios|payments)\b"
+)
+KERNEL_COMPAT_DOTTED_RE = re.compile(
+    r"['\"]apps\.modulos\.(?P<app>accounting|facturacion|inventarios|payments)\."
+)
+KERNEL_COMPAT_PATH_RE = re.compile(r"backend/src/apps/modulos/(?P<app>accounting|facturacion|inventarios|payments)")
 TEXT_EXTENSIONS = {".py", ".sh", ".yml", ".yaml", ".ini", ".toml", ".txt"}
+KERNEL_COMPAT_ALLOWED_REFERENCES = {"backend/src/tests/test_kernel_namespace_compat.py"}
 
 
 def _readable_files(root: Path) -> list[Path]:
@@ -82,10 +90,11 @@ def _check_layout(root: Path) -> list[str]:
         return violations
 
     top_level_dirs = [p for p in apps_root.iterdir() if p.is_dir() and p.name != "__pycache__"]
-    extra_dirs = [p.name for p in top_level_dirs if p.name != "modulos"]
+    extra_dirs = [p.name for p in top_level_dirs if p.name not in {"modulos", "kernels"}]
     if extra_dirs:
         violations.append(
-            "unexpected app directories outside backend/src/apps/modulos: " + ", ".join(sorted(extra_dirs))
+            "unexpected app directories outside backend/src/apps/{modulos,kernels}: "
+            + ", ".join(sorted(extra_dirs))
         )
 
     modulos_root = apps_root / "modulos"
@@ -93,10 +102,20 @@ def _check_layout(root: Path) -> list[str]:
         violations.append("missing backend/src/apps/modulos")
         return violations
 
-    existing = {p.name for p in modulos_root.iterdir() if p.is_dir() and p.name != "__pycache__"}
-    missing = sorted(EXPECTED_APPS - existing)
-    if missing:
-        violations.append("missing expected apps under backend/src/apps/modulos: " + ", ".join(missing))
+    kernels_root = apps_root / "kernels"
+    if not kernels_root.exists():
+        violations.append("missing backend/src/apps/kernels")
+        return violations
+
+    modulos_existing = {p.name for p in modulos_root.iterdir() if p.is_dir() and p.name != "__pycache__"}
+    modulos_missing = sorted(EXPECTED_MODULOS_APPS - modulos_existing)
+    if modulos_missing:
+        violations.append("missing expected apps under backend/src/apps/modulos: " + ", ".join(modulos_missing))
+
+    kernels_existing = {p.name for p in kernels_root.iterdir() if p.is_dir() and p.name != "__pycache__"}
+    kernels_missing = sorted(EXPECTED_KERNEL_APPS - kernels_existing)
+    if kernels_missing:
+        violations.append("missing expected apps under backend/src/apps/kernels: " + ", ".join(kernels_missing))
 
     return violations
 
@@ -128,11 +147,46 @@ def _check_imports(root: Path) -> list[str]:
                 violations.append(
                     f"{rel}:{i}: legacy filesystem path backend/src/apps/{app}; use backend/src/apps/modulos/{app}"
                 )
+            m = KERNEL_COMPAT_IMPORT_RE.search(line)
+            if m:
+                app = m.group("app")
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
+                    violations.append(
+                        f"{rel}:{i}: legacy kernel compat import detected (apps.modulos.{app}); "
+                        f"use apps.kernels.{app}"
+                    )
+            m = KERNEL_COMPAT_DOTTED_RE.search(line)
+            if m:
+                app = m.group("app")
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
+                    violations.append(
+                        f"{rel}:{i}: legacy kernel dotted path detected (apps.modulos.{app}.*); "
+                        f"use apps.kernels.{app}.*"
+                    )
+            m = KERNEL_COMPAT_PATH_RE.search(line)
+            if m:
+                app = m.group("app")
+                if (
+                    rel != f"backend/src/apps/modulos/{app}/__init__.py"
+                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                ):
+                    violations.append(
+                        f"{rel}:{i}: legacy kernel path backend/src/apps/modulos/{app}; "
+                        f"use backend/src/apps/kernels/{app}"
+                    )
     return violations
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate backend namespace/layout cutover to apps.modulos.*")
+    parser = argparse.ArgumentParser(
+        description="Validate backend namespace/layout split to apps.modulos.* + apps.kernels.*"
+    )
     parser.add_argument("--root", default=".", help="Repository root path")
     args = parser.parse_args()
     root = Path(args.root).resolve()

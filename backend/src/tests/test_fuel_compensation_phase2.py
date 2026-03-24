@@ -14,8 +14,8 @@ from rest_framework.test import APIClient
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
-from apps.modulos.facturacion.models import BillingDocument, DocStatus
-from apps.modulos.inventarios.models import StockMovement
+from apps.kernels.facturacion.models import BillingDocument, DocStatus
+from apps.kernels.inventarios.models import StockMovement
 from apps.modulos.estacion_servicios.models import FuelSale, FuelSaleStatus
 
 User = get_user_model()
@@ -106,7 +106,7 @@ def test_fuel_cancel_compensating_then_retry_endpoint_success(monkeypatch):
     )
     sale_id, _ = _mk_sale(client=client)
 
-    from apps.modulos.facturacion import services as billing_services
+    from apps.kernels.facturacion import services as billing_services
 
     original_void_doc = billing_services.void_doc
     call_count = {"n": 0}
@@ -232,7 +232,7 @@ def test_run_fuel_compensation_cycle_command_processes_pending(monkeypatch):
     )
     sale_id, _ = _mk_sale(client=client)
 
-    from apps.modulos.facturacion import services as billing_services
+    from apps.kernels.facturacion import services as billing_services
 
     original_void_doc = billing_services.void_doc
     call_count = {"n": 0}

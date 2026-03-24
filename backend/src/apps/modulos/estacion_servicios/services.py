@@ -66,7 +66,7 @@ def _fuel_inventory_name(product: str) -> str:
 
 
 def _get_or_create_fuel_warehouse(*, company, branch):
-    from apps.modulos.inventarios.models import Warehouse
+    from apps.kernels.inventarios.models import Warehouse
 
     wh = Warehouse.objects.filter(company=company, branch=branch, code="FUEL").first()
     if wh:
@@ -82,8 +82,8 @@ def _get_or_create_fuel_warehouse(*, company, branch):
 
 
 def _get_or_create_fuel_item(*, request, company, actor_user, product: str):
-    from apps.modulos.inventarios.models import InventoryItem
-    from apps.modulos.inventarios.services import create_item
+    from apps.kernels.inventarios.models import InventoryItem
+    from apps.kernels.inventarios.services import create_item
 
     sku = _fuel_inventory_sku(product)
     item = InventoryItem.objects.filter(company=company, sku=sku).first()
@@ -689,9 +689,9 @@ def create_sale(
 
     # Integración Fuel -> Billing -> Inventory (transaccional)
     # Decisión: no bloqueamos venta por stock (allow_negative=True) para no detener operación.
-    from apps.modulos.inventarios.services import post_issue
-    from apps.modulos.facturacion.services import create_draft, issue_doc
-    from apps.modulos.facturacion.models import DocType
+    from apps.kernels.inventarios.services import post_issue
+    from apps.kernels.facturacion.services import create_draft, issue_doc
+    from apps.kernels.facturacion.models import DocType
 
     warehouse = _get_or_create_fuel_warehouse(company=company, branch=branch)
     item = _get_or_create_fuel_item(request=request, company=company, actor_user=actor_user, product=dispense.product)
@@ -803,7 +803,7 @@ def _attempt_sale_compensation(*, request=None, sale: FuelSale, actor_user, reas
 
     if sale.billing_doc_id:
         try:
-            from apps.modulos.facturacion.services import void_doc
+            from apps.kernels.facturacion.services import void_doc
 
             void_doc(
                 request=effective_request,
@@ -818,8 +818,8 @@ def _attempt_sale_compensation(*, request=None, sale: FuelSale, actor_user, reas
 
     if sale.inventory_movement_id and not sale.inventory_reversal_movement_id:
         try:
-            from apps.modulos.inventarios.models import StockMovement
-            from apps.modulos.inventarios.services import post_receive
+            from apps.kernels.inventarios.models import StockMovement
+            from apps.kernels.inventarios.services import post_receive
 
             mov = StockMovement.objects.get(id=int(sale.inventory_movement_id))
             qty = _D("0") - _D(mov.qty_delta)
