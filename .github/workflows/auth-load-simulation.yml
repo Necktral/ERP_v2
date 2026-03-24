@@ -91,6 +91,7 @@ jobs:
         run: |
           mkdir -p simulacion/reports
           docker run --rm -v "$PWD/simulacion:/simulacion" \
+            --user "$(id -u):$(id -g)" \
             --network erp_crm_default \
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
