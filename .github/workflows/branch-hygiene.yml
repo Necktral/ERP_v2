@@ -4,12 +4,25 @@ on:
   schedule:
     - cron: "0 13 * * 1"
   workflow_dispatch:
+    inputs:
+      apply_cleanup:
+        description: "Archive + delete stale branches (creates archive tags)."
+        required: false
+        default: "false"
+      ttl_days:
+        description: "Stale threshold in days."
+        required: false
+        default: "14"
+      keep_list:
+        description: "Comma-separated branches to never clean."
+        required: false
+        default: "master,main"
 
 jobs:
   branch-hygiene:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,22 +33,58 @@ jobs:
         run: |
           git fetch origin --prune
 
+      - name: Resolve parameters
+        run: |
+          TTL_DAYS="${{ github.event.inputs.ttl_days }}"
+          KEEP_LIST="${{ github.event.inputs.keep_list }}"
+          APPLY_CLEANUP="${{ github.event.inputs.apply_cleanup }}"
+
+          [ -z "$TTL_DAYS" ] && TTL_DAYS="14"
+          [ -z "$KEEP_LIST" ] && KEEP_LIST="master,main"
+          [ -z "$APPLY_CLEANUP" ] && APPLY_CLEANUP="false"
+
+          echo "TTL_DAYS=$TTL_DAYS" >> "$GITHUB_ENV"
+          echo "KEEP_LIST=$KEEP_LIST" >> "$GITHUB_ENV"
+          echo "APPLY_CLEANUP=$APPLY_CLEANUP" >> "$GITHUB_ENV"
+
       - name: Generate branch hygiene report
         run: |
           python3 qa/branch_hygiene_report.py \
-            --ttl-days 14 \
-            --keep "master,main,sync/local-parity-20260324,sync/integration-parity-20260324" \
+            --ttl-days "$TTL_DAYS" \
+            --keep "$KEEP_LIST" \
             --output qa/reports/branch_hygiene_report.md \
             --json-output qa/reports/branch_hygiene_report.json
+
+      - name: Dry-run cleanup plan
+        if: env.APPLY_CLEANUP != 'true'
+        run: |
+          python3 qa/branch_hygiene_cleanup.py \
+            --ttl-days "$TTL_DAYS" \
+            --keep "$KEEP_LIST" \
+            --output qa/reports/branch_hygiene_cleanup.md \
+            --json-output qa/reports/branch_hygiene_cleanup.json
+
+      - name: Apply cleanup
+        if: env.APPLY_CLEANUP == 'true'
+        run: |
+          python3 qa/branch_hygiene_cleanup.py \
+            --ttl-days "$TTL_DAYS" \
+            --keep "$KEEP_LIST" \
+            --apply \
+            --output qa/reports/branch_hygiene_cleanup.md \
+            --json-output qa/reports/branch_hygiene_cleanup.json
 
       - name: Publish summary
         run: |
           cat qa/reports/branch_hygiene_report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat qa/reports/branch_hygiene_cleanup.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report artifact
         uses: actions/upload-artifact@v4
         with:
           name: branch-hygiene-report
-          path: qa/reports/branch_hygiene_report.*
+          path: |
+            qa/reports/branch_hygiene_report.*
+            qa/reports/branch_hygiene_cleanup.*
           if-no-files-found: error
-

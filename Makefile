@@ -1,6 +1,6 @@
 .PHONY: qa-backend-gunicorn qa-backend-gunicorn-performance qa-backend-runserver \
 	qa-load-user qa-load-reset-axes qa-load-smoke qa-load-stress qa-gate3 qa-gate3-security qa-gate3-performance qa-gate3-run \
-	qa-branch-hygiene \
+	qa-branch-hygiene qa-branch-hygiene-cleanup-plan qa-branch-hygiene-cleanup \
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
@@ -254,9 +254,29 @@ qa-gate3: qa-gate3-security
 qa-branch-hygiene:
 	python3 qa/branch_hygiene_report.py \
 		--ttl-days 14 \
-		--keep "master,main,sync/local-parity-20260324,sync/integration-parity-20260324" \
+		--keep "master,main" \
 		--output qa/reports/branch_hygiene_report.md \
 		--json-output qa/reports/branch_hygiene_report.json
+
+qa-branch-hygiene-cleanup-plan:
+	python3 qa/branch_hygiene_cleanup.py \
+		--ttl-days 14 \
+		--keep "master,main" \
+		--output qa/reports/branch_hygiene_cleanup.md \
+		--json-output qa/reports/branch_hygiene_cleanup.json
+
+qa-branch-hygiene-cleanup:
+	@if [ "$(APPLY)" != "1" ]; then \
+		echo "Refusing destructive cleanup without APPLY=1"; \
+		echo "Use: make qa-branch-hygiene-cleanup APPLY=1"; \
+		exit 1; \
+	fi
+	python3 qa/branch_hygiene_cleanup.py \
+		--ttl-days 14 \
+		--keep "master,main" \
+		--apply \
+		--output qa/reports/branch_hygiene_cleanup.md \
+		--json-output qa/reports/branch_hygiene_cleanup.json
 
 qa-operational-hygiene:
 	./qa/run_operational_hygiene_checks.sh
