@@ -27,7 +27,7 @@ services:
       dockerfile: docker/backend.Dockerfile.dev
     container_name: erpcrm_backend
     restart: unless-stopped
-    working_dir: /app/login_module
+    working_dir: /app/backend
     env_file:
       - ./.env
     environment:
@@ -42,8 +42,8 @@ services:
       # (redundante pero explícito; manage.py ya setea dev)
       DJANGO_SETTINGS_MODULE: config.settings.dev
 
-      # Para imports consistentes (tu código vive en /app/src)
-      PYTHONPATH: /app/login_module/src
+      # Para imports consistentes (el código backend vive en /app/backend/src)
+      PYTHONPATH: /app/backend/src
 
       # QA / Load: habilita Gunicorn para mejor concurrencia
       USE_GUNICORN: ${USE_GUNICORN:-0}
@@ -54,6 +54,14 @@ services:
       GUNICORN_KEEPALIVE: ${GUNICORN_KEEPALIVE:-5}
       GUNICORN_GRACEFUL_TIMEOUT: ${GUNICORN_GRACEFUL_TIMEOUT:-30}
       GUNICORN_BACKLOG: ${GUNICORN_BACKLOG:-2048}
+
+      # QA / Load profiles (security/performance)
+      DRF_THROTTLE_AUTH_LOGIN: ${DRF_THROTTLE_AUTH_LOGIN:-20/min}
+      DRF_THROTTLE_USER: ${DRF_THROTTLE_USER:-600/min}
+      DRF_THROTTLE_ME_READ: ${DRF_THROTTLE_ME_READ:-60/min}
+      DRF_THROTTLE_ME_ACL_READ: ${DRF_THROTTLE_ME_ACL_READ:-30/min}
+      AXES_FAILURE_LIMIT: ${AXES_FAILURE_LIMIT:-15}
+      AXES_COOLOFF_SECONDS: ${AXES_COOLOFF_SECONDS:-300}
     depends_on:
       db:
         condition: service_healthy
@@ -74,7 +82,7 @@ services:
     # command/entrypoint quedan definidos en la imagen (docker/entrypoint.sh)
 
   frontend:
-    image: node:20-bullseye-slim
+    image: node:22-bullseye-slim
     container_name: erpcrm_frontend
     restart: unless-stopped
     working_dir: /app/frontend
@@ -97,7 +105,7 @@ services:
 
   # Runner CI para frontend (lint + typecheck). No expone puertos.
   frontend_ci:
-    image: node:20-bullseye-slim
+    image: node:22-bullseye-slim
     container_name: erpcrm_frontend_ci
     profiles: ["qa"]
     working_dir: /app/frontend

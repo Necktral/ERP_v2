@@ -48,6 +48,14 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - Security CI (blocking): `.github/workflows/security-ci.yml`
 - Simulación de carga auth (k6): `.github/workflows/auth-load-simulation.yml`
 
+## Topología de Fuel (transición vigente)
+
+- Módulo canónico Fuel: `backend/src/apps/modulos/estacion_servicios`.
+- Rutas:
+  - canónica: `/api/backend/estacion-servicios/*`
+  - alias canónico transicional: `/api/backend/fuel/*`
+  - legacy: `/api/fuel/*` con headers `Deprecation`, `Sunset`, `Link`.
+
 ## Reglas
 
 - Todo en español.

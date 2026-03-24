@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="${ROOT_DIR}/login_module/src"
+APP_DIR="${ROOT_DIR}/backend"
 MODE="${1:-full}"
 TS="${TS:-$(date +%Y%m%d_%H%M%S)}"
 
@@ -271,8 +271,8 @@ import json
 import os
 from datetime import datetime, timezone
 
-from modulos.facturacion.models import BillingDocument, DocStatus, FiscalMode, FiscalPrintJob, FiscalStatus
-from modulos.facturacion.services import retry_fiscal_print_job
+from apps.modulos.facturacion.models import BillingDocument, DocStatus, FiscalMode, FiscalPrintJob, FiscalStatus
+from apps.modulos.facturacion.services import retry_fiscal_print_job
 
 company_id = int(os.environ["COMPANY_ID"])
 branch_id = int(os.environ["BRANCH_ID"])

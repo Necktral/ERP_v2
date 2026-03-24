@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_DIR="${ROOT_DIR}/login_module/src"
+APP_DIR="${ROOT_DIR}/backend"
 MODE="${1:-full}"
 TS="${TS:-$(date +%Y%m%d_%H%M%S)}"
 
@@ -205,7 +205,7 @@ from __future__ import annotations
 import json
 import os
 
-from apps.cec.models import CECException, CloseRun
+from apps.modulos.cec.models import CECException, CloseRun
 from django.utils import timezone
 
 blocked_path = str(os.environ["BLOCKED_EVIDENCE_FILE"])

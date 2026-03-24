@@ -90,7 +90,8 @@ else
 fi
 
 if [[ "${run_status}" == "passed" ]]; then
-  if make_cmd qa-static-scan \
+  if make_cmd qa-namespace-guard \
+    && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
     && make_cmd qa-backend-mypy \

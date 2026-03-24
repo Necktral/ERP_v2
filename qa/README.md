@@ -41,6 +41,44 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
 
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 
+### Gate 3 dual recomendado (security + performance)
+
+Modelo operativo:
+
+- `qa-gate3` => alias de `qa-gate3-security` (canónico para PR/CI estable).
+- `qa-gate3-performance` => perfil extendido para capacidad (nightly/release o ejecución manual).
+
+Preflight recomendado:
+
+```bash
+docker compose up -d --build db backend
+docker compose exec -T backend python /app/qa/wait_backend_ready.py
+PASSWORD='K6Tmp!2026' make qa-load-user
+make qa-load-reset-axes
+```
+
+Ejecución:
+
+```bash
+PASSWORD='K6Tmp!2026' make qa-gate3-security
+PASSWORD='K6Tmp!2026' make qa-gate3-performance
+```
+
+Artefactos por perfil:
+
+- `qa/reports/gate3_<profile>.log`
+- `qa/reports/backend_gate3_<profile>_tail.log`
+- `qa/reports/db_gate3_<profile>_tail.log`
+- `qa/reports/gate3_<profile>_summary.json`
+
+Lectura rápida de resultado:
+
+- `passed=true` => corrida aceptada.
+- `failure_class=throttle_mismatch` => desalineación de carga/throttle (ajustar perfil).
+- `failure_class=latency_regression` => regresión de p95.
+- `failure_class=app_error` => error real backend (5xx/traceback), bloquear release.
+- `failure_class=infra_error` => salida no-cero sin firma clara de app (diagnóstico de infraestructura).
+
 ## Load / Stress (k6)
 
 Requisitos:
@@ -53,7 +91,7 @@ Requisitos:
 Si no tienes credenciales conocidas (o tu entorno no está "fresh"), crea un usuario dedicado para carga:
 
 ```bash
-docker compose exec -T backend python src/manage.py seed_auth_users
+docker compose exec -T backend python manage.py seed_auth_users
 ```
 
 O bien crea un usuario manual:
@@ -194,15 +232,15 @@ El gate exige aprobaciones de owner funcional/técnico y signoff final (`FINAL_A
 Registro manual recomendado:
 
 ```bash
-python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_FUNCIONAL> --role FUNCTIONAL --status APPROVED --summary "<resumen>"
-python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status APPROVED --summary "<resumen>"
-python login_module/src/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status FINAL_APPROVED --summary "<resumen>"
+python backend/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_FUNCIONAL> --role FUNCTIONAL --status APPROVED --summary "<resumen>"
+python backend/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status APPROVED --summary "<resumen>"
+python backend/manage.py record_operational_go_live_review --evidence-dir <RUTA_EVIDENCIA> --reviewer <OWNER_TECNICO> --role TECHNICAL --status FINAL_APPROVED --summary "<resumen>"
 ```
 
 Excepción auditable por fuerza mayor (día excusado):
 
 ```bash
-python login_module/src/manage.py record_operational_go_live_exception \
+python backend/manage.py record_operational_go_live_exception \
   --evidence-dir <RUTA_EVIDENCIA> \
   --date <YYYY-MM-DD> \
   --exception-type FORCE_MAJEURE \
@@ -509,16 +547,16 @@ EVENTUAL_NOTE="Cierre eventual aprobado por mantenimiento crítico del sistema."
 Registro de revisión del contador (on-demand) y sign-off final:
 
 ```bash
-cd login_module/src
+cd backend
 python3 manage.py record_phase8_accountant_review \
-  --evidence-dir ../../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+  --evidence-dir ../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
   --date 2026-03-09 \
   --reviewer contador.principal \
   --status OBSERVED \
   --summary "Pendiente ajuste por reclasificación de gasto operativo."
 
 python3 manage.py record_phase8_accountant_review \
-  --evidence-dir ../../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
+  --evidence-dir ../docs/operacion/evidencia/phase8_go_live_20260309_1040 \
   --date 2026-03-22 \
   --reviewer contador.principal \
   --status FINAL_APPROVED \

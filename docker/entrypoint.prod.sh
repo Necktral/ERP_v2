@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /app/login_module
+cd /app/backend
 
 # En PROD: settings prod (tienes fail-fast de llaves en config.settings.prod)
 : "${DJANGO_SETTINGS_MODULE:=config.settings.prod}"
@@ -30,13 +30,13 @@ raise SystemExit(1)
 PY
 
 # Migraciones
-python src/manage.py migrate --noinput
+python manage.py migrate --noinput
 
 # Static (Django admin + whitenoise manifest)
-python src/manage.py collectstatic --noinput
+python manage.py collectstatic --noinput
 
 # Preflight (te detecta cosas de prod rápido)
-python src/manage.py check --deploy || true
+python manage.py check --deploy || true
 
 # Gunicorn
 : "${GUNICORN_WORKERS:=3}"

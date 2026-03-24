@@ -31,6 +31,7 @@ yarn-error.log*
 
 # local .env files
 .env
+backend/.env
 .env.local*
 
 # Python
@@ -65,3 +66,8 @@ docs/operacion/evidencia/**
 
 # No subir backups
 ERP_CRM_backup_*.tar.gz
+
+# Snapshot local de referencia (no publicar)
+docs/repo/Necktral-master.zip
+docs/repo/Necktral-master.zip:Zone.Identifier
+*:Zone.Identifier
