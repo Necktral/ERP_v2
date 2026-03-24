@@ -1,0 +1,41 @@
+name: Branch Hygiene (Weekly)
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+jobs:
+  branch-hygiene:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch branches
+        run: |
+          git fetch origin --prune
+
+      - name: Generate branch hygiene report
+        run: |
+          python3 qa/branch_hygiene_report.py \
+            --ttl-days 14 \
+            --keep "master,main,sync/local-parity-20260324,sync/integration-parity-20260324" \
+            --output qa/reports/branch_hygiene_report.md \
+            --json-output qa/reports/branch_hygiene_report.json
+
+      - name: Publish summary
+        run: |
+          cat qa/reports/branch_hygiene_report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-hygiene-report
+          path: qa/reports/branch_hygiene_report.*
+          if-no-files-found: error
+
