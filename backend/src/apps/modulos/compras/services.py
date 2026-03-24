@@ -6,8 +6,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
-from apps.iam.models import OrgUnit
-from apps.integration.services import publish_outbox_event
+from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.services import publish_outbox_event
 
 from .models import PurchaseDocument, PurchaseDocStatus, PurchaseDocType, PurchaseSequence
 

@@ -41,6 +41,44 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
 
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 
+### Gate 3 dual recomendado (security + performance)
+
+Modelo operativo:
+
+- `qa-gate3` => alias de `qa-gate3-security` (canónico para PR/CI estable).
+- `qa-gate3-performance` => perfil extendido para capacidad (nightly/release o ejecución manual).
+
+Preflight recomendado:
+
+```bash
+docker compose up -d --build db backend
+docker compose exec -T backend python /app/qa/wait_backend_ready.py
+PASSWORD='K6Tmp!2026' make qa-load-user
+make qa-load-reset-axes
+```
+
+Ejecución:
+
+```bash
+PASSWORD='K6Tmp!2026' make qa-gate3-security
+PASSWORD='K6Tmp!2026' make qa-gate3-performance
+```
+
+Artefactos por perfil:
+
+- `qa/reports/gate3_<profile>.log`
+- `qa/reports/backend_gate3_<profile>_tail.log`
+- `qa/reports/db_gate3_<profile>_tail.log`
+- `qa/reports/gate3_<profile>_summary.json`
+
+Lectura rápida de resultado:
+
+- `passed=true` => corrida aceptada.
+- `failure_class=throttle_mismatch` => desalineación de carga/throttle (ajustar perfil).
+- `failure_class=latency_regression` => regresión de p95.
+- `failure_class=app_error` => error real backend (5xx/traceback), bloquear release.
+- `failure_class=infra_error` => salida no-cero sin firma clara de app (diagnóstico de infraestructura).
+
 ## Load / Stress (k6)
 
 Requisitos:

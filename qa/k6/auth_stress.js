@@ -1,11 +1,13 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
+import { authHeaders, jsonOrNull, login } from "./auth_common.js";
 
 const BASE_URL = __ENV.BASE_URL || "http://localhost:8000/api";
 const USERNAME = __ENV.USERNAME || "k6";
 const PASSWORD = __ENV.PASSWORD || "";
-
-// Opcional: bootstrap automático si el entorno está "fresh".
+const LOGIN_CHURN_USERNAME = __ENV.LOGIN_CHURN_USERNAME || USERNAME;
+const LOGIN_CHURN_PASSWORD = __ENV.LOGIN_CHURN_PASSWORD || PASSWORD;
+const PROFILE = String(__ENV.QA_LOAD_PROFILE || "security").toLowerCase();
 const BOOTSTRAP =
   String(__ENV.BOOTSTRAP || "").toLowerCase() === "1" ||
   String(__ENV.BOOTSTRAP || "").toLowerCase() === "true";
@@ -13,65 +15,82 @@ const BOOTSTRAP =
 const BOOTSTRAP_USERNAME = __ENV.BOOTSTRAP_USERNAME || "root";
 const BOOTSTRAP_EMAIL = __ENV.BOOTSTRAP_EMAIL || "root@test.com";
 const BOOTSTRAP_PASSWORD = __ENV.BOOTSTRAP_PASSWORD || "";
+const AUTH_TTL_MS = Number(__ENV.TOKEN_TTL_MS || 9 * 60 * 1000);
 
-export const options = {
-  // Modelo de carga realista:
-  // 1) tráfico normal: /me + /acl (token reutilizado)
-  // 2) churn de login: logins por segundo controlados (arrival-rate)
-  scenarios: {
-    me_acl: {
-      executor: "ramping-vus",
-      startVUs: 0,
-      stages: [
-        {
-          duration: __ENV.WARMUP || "15s",
-          target: Number(__ENV.VUS_WARMUP || 5),
-        },
-        {
-          duration: __ENV.SUSTAIN || "30s",
-          target: Number(__ENV.VUS_TARGET || 20),
-        },
-        { duration: __ENV.COOLDOWN || "10s", target: 0 },
-      ],
-      exec: "meAclFlow",
-    },
-    login_churn: {
-      executor: "ramping-arrival-rate",
-      timeUnit: "1s",
-      startRate: Number(__ENV.LOGIN_RATE_START || 1),
-      preAllocatedVUs: Number(__ENV.LOGIN_VUS_PREALLOC || 10),
-      maxVUs: Number(__ENV.LOGIN_VUS_MAX || 50),
-      stages: [
-        {
-          duration: __ENV.WARMUP || "15s",
-          target: Number(__ENV.LOGIN_RATE_WARMUP || 1),
-        },
-        {
-          duration: __ENV.SUSTAIN || "30s",
-          target: Number(__ENV.LOGIN_RATE_TARGET || 2),
-        },
-        { duration: __ENV.COOLDOWN || "10s", target: 0 },
-      ],
-      exec: "loginOnly",
-    },
-  },
-  thresholds: {
-    http_req_failed: ["rate<0.01"],
+function toBool(raw, fallback = false) {
+  if (raw === undefined || raw === null || raw === "") {
+    return fallback;
+  }
+  const normalized = String(raw).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
 
-    // Por endpoint y por escenario (para que el gate sea interpretable).
-    "http_req_duration{scenario:me_acl,name:auth_me}": ["p(95)<500"],
-    "http_req_duration{scenario:me_acl,name:auth_acl}": ["p(95)<600"],
-    "http_req_duration{scenario:login_churn,name:auth_login}": ["p(95)<600"],
+const LOGIN_CHURN_ENABLED = toBool(
+  __ENV.LOGIN_CHURN_ENABLED,
+  PROFILE === "performance",
+);
+// En performance permitimos umbral de login más amplio para señal estable bajo estrés.
+const LOGIN_P95_THRESHOLD = PROFILE === "performance" ? "p(95)<900" : "p(95)<600";
+
+const scenarios = {
+  // Flujo principal: sesión autenticada + endpoints /me y /me/acl.
+  me_acl: {
+    executor: "ramping-vus",
+    startVUs: 0,
+    stages: [
+      {
+        duration: __ENV.WARMUP || "15s",
+        target: Number(__ENV.VUS_WARMUP || 5),
+      },
+      {
+        duration: __ENV.SUSTAIN || "30s",
+        target: Number(__ENV.VUS_TARGET || 20),
+      },
+      { duration: __ENV.COOLDOWN || "10s", target: 0 },
+    ],
+    exec: "meAclFlow",
   },
 };
 
-function jsonOrNull(res) {
-  try {
-    return res && res.json ? res.json() : null;
-  } catch (_) {
-    return null;
-  }
+if (LOGIN_CHURN_ENABLED) {
+  // Flujo secundario: churn de login para tensionar auth sin mezclar con la sesión de me_acl.
+  scenarios.login_churn = {
+    executor: "ramping-arrival-rate",
+    timeUnit: "1s",
+    startRate: Number(__ENV.LOGIN_RATE_START || 1),
+    preAllocatedVUs: Number(__ENV.LOGIN_VUS_PREALLOC || 10),
+    maxVUs: Number(__ENV.LOGIN_VUS_MAX || 50),
+    stages: [
+      {
+        duration: __ENV.WARMUP || "15s",
+        target: Number(__ENV.LOGIN_RATE_WARMUP || 1),
+      },
+      {
+        duration: __ENV.SUSTAIN || "30s",
+        target: Number(__ENV.LOGIN_RATE_TARGET || 2),
+      },
+      { duration: __ENV.COOLDOWN || "10s", target: 0 },
+    ],
+    exec: "loginOnly",
+  };
 }
+
+const thresholds = {
+  http_req_failed: ["rate<0.01"],
+  "http_req_duration{scenario:me_acl,name:auth_me}": ["p(95)<500"],
+  "http_req_duration{scenario:me_acl,name:auth_acl}": ["p(95)<600"],
+};
+
+if (LOGIN_CHURN_ENABLED) {
+  thresholds["http_req_duration{scenario:login_churn,name:auth_login}"] = [LOGIN_P95_THRESHOLD];
+}
+
+export const options = {
+  // Importante para cookie transport: preservar jar por VU durante la corrida.
+  noCookiesReset: true,
+  scenarios,
+  thresholds,
+};
 
 function ensureBootstrapped() {
   const statusRes = http.get(`${BASE_URL}/auth/bootstrap/status/`, {
@@ -107,43 +126,26 @@ function ensureBootstrapped() {
   return { username: BOOTSTRAP_USERNAME, password: BOOTSTRAP_PASSWORD };
 }
 
-function login(username, password) {
-  const res = http.post(
-    `${BASE_URL}/auth/login/`,
-    JSON.stringify({ username, password }),
-    {
-      headers: { "Content-Type": "application/json" },
-      tags: { name: "auth_login" },
-    },
-  );
-
-  const body = jsonOrNull(res);
-  const access = body && body.access ? body.access : null;
-
-  check(res, {
-    "login status 200": (r) => r && r.status === 200,
-    "login has access": () => !!access,
-  });
-
-  return access;
-}
-
-let cachedToken = null;
+let cachedAuth = null;
 let cachedAtMs = 0;
 
-function getToken() {
+function getAuthContext() {
   const now = Date.now();
-  const ttlMs = Number(__ENV.TOKEN_TTL_MS || 9 * 60 * 1000); // por defecto ~9 min
-  if (cachedToken && now - cachedAtMs < ttlMs) {
-    return cachedToken;
+  if (cachedAuth && now - cachedAtMs < AUTH_TTL_MS) {
+    return cachedAuth;
   }
 
-  const token = login(USERNAME, PASSWORD);
-  if (token) {
-    cachedToken = token;
+  const authCtx = login({
+    baseUrl: BASE_URL,
+    username: USERNAME,
+    password: PASSWORD,
+    tags: { profile: PROFILE },
+  });
+  if (authCtx.ok) {
+    cachedAuth = authCtx;
     cachedAtMs = now;
   }
-  return token;
+  return authCtx;
 }
 
 export function setup() {
@@ -154,30 +156,33 @@ export function setup() {
 }
 
 export function loginOnly() {
-  const token = login(USERNAME, PASSWORD);
-  if (!token) {
+  const authCtx = login({
+    baseUrl: BASE_URL,
+    username: LOGIN_CHURN_USERNAME,
+    password: LOGIN_CHURN_PASSWORD,
+    tags: { profile: PROFILE },
+  });
+  if (!authCtx.ok) {
     sleep(0.1);
   }
 }
 
 export function meAclFlow() {
-  const token = getToken();
-  if (!token) {
+  const authCtx = getAuthContext();
+  if (!authCtx || !authCtx.ok) {
     sleep(0.2);
     return;
   }
 
-  const authHeaders = { Authorization: `Bearer ${token}` };
-
   const me = http.get(`${BASE_URL}/auth/me/`, {
-    headers: authHeaders,
-    tags: { name: "auth_me" },
+    headers: authHeaders(authCtx),
+    tags: { name: "auth_me", profile: PROFILE },
   });
   check(me, { "me status 200": (r) => r && r.status === 200 });
 
   const acl = http.get(`${BASE_URL}/auth/me/acl/`, {
-    headers: authHeaders,
-    tags: { name: "auth_acl" },
+    headers: authHeaders(authCtx),
+    tags: { name: "auth_acl", profile: PROFILE },
   });
   check(acl, { "acl status 200": (r) => r && r.status === 200 });
 

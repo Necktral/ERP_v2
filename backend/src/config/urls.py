@@ -30,29 +30,29 @@ urlpatterns = [
     # CSP reports (report-only)
     path("api/csp/report/", csp_report, name="csp-report"),
     # Auth
-    path("api/auth/", include("apps.accounts.urls")),
+    path("api/auth/", include("apps.modulos.accounts.urls")),
     # IAM
-    path("api/iam/", include("apps.iam.urls")),
+    path("api/iam/", include("apps.modulos.iam.urls")),
     # RBAC
-    path("api/rbac/", include("apps.rbac.urls")),
-    path("api/sync/", include("apps.sync_engine.urls")),
-    path("api/sync-hmac/", include("apps.sync.urls")),
+    path("api/rbac/", include("apps.modulos.rbac.urls")),
+    path("api/sync/", include("apps.modulos.sync_engine.urls")),
+    path("api/sync-hmac/", include("apps.modulos.sync.urls")),
     # Auditoría
-    path("api/audit/", include("apps.audit.urls")),
+    path("api/audit/", include("apps.modulos.audit.urls")),
     # Observabilidad
-    path("api/metrics/", include("apps.common.urls")),
+    path("api/metrics/", include("apps.modulos.common.urls")),
     # ORG
-    path("api/org/", include("apps.org.urls")),
+    path("api/org/", include("apps.modulos.org.urls")),
     # HR
-    path("api/hr/", include("apps.hr.urls")),
+    path("api/hr/", include("apps.modulos.hr.urls")),
     # Accounting
-    path("api/accounting/", include("apps.accounting.urls")),
+    path("api/accounting/", include("apps.modulos.accounting.urls")),
     # Payments/Cash
-    path("api/payments/", include("apps.payments.urls")),
+    path("api/payments/", include("apps.modulos.payments.urls")),
     # CEC
-    path("api/cec/", include("apps.cec.urls")),
+    path("api/cec/", include("apps.modulos.cec.urls")),
     # Integration Backbone
-    path("api/integration/", include("apps.integration.urls")),
+    path("api/integration/", include("apps.modulos.integration.urls")),
     # Backend v2 canonical (fuel vertical)
     path("api/backend/estacion-servicios/", include("apps.modulos.estacion_servicios.urls")),
     # Alias canónico transicional
