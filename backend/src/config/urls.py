@@ -64,6 +64,7 @@ urlpatterns = [
 urlpatterns += [
     path("api/inventory/", include("apps.modulos.inventarios.urls")),
     path("api/billing/", include("apps.modulos.facturacion.urls")),
+    path("api/procurement/", include("apps.modulos.compras.urls")),
 ]
 
 urlpatterns += [
