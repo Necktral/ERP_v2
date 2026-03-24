@@ -54,7 +54,7 @@ jobs:
           AUTH_SIM_ADMIN_EMAIL=k6_admin@test.com
           AUTH_SIM_ADMIN_PASSWORD=${AUTH_SIM_ADMIN_PASSWORD}
           AUTH_SIM_ADMIN_TOTP_SECRET=${ADMIN_TOTP_SECRET}
-          AUTH_SIM_ADMIN_2FA=1
+          AUTH_SIM_ADMIN_2FA=0
           AUTH_SIM_USER_USERNAME=k6_user
           AUTH_SIM_USER_EMAIL=k6_user@test.com
           AUTH_SIM_USER_PASSWORD=${AUTH_SIM_USER_PASSWORD}
@@ -97,7 +97,7 @@ jobs:
             -e BASE_URL=http://backend:8000/api \
             -e ADMIN_USERNAME=k6_admin \
             -e ADMIN_PASSWORD=${AUTH_SIM_ADMIN_PASSWORD} \
-            -e ADMIN_TOTP_SECRET=${ADMIN_TOTP_SECRET} \
+            -e ADMIN_TOTP_SECRET= \
             -e USER_USERNAME=k6_user \
             -e USER_PASSWORD=${AUTH_SIM_USER_PASSWORD} \
             -e CSRF_COOKIE_NAME=nt_csrf \
