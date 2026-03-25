@@ -37,6 +37,8 @@ cleanup_reports() {
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
     "${REPORTS_DIR}/audit_integrity.json" \
+    "${REPORTS_DIR}/reporting_r8_gate.json" \
+    "${REPORTS_DIR}/reporting_observability_snapshot.json" \
     "${REPORTS_DIR}/run_manifest.json"
 }
 
@@ -91,6 +93,7 @@ fi
 
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
+    && make_cmd qa-analytics-contract-guard \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
@@ -115,7 +118,8 @@ if [[ "${run_status}" == "passed" ]]; then
 fi
 
 if [[ "${run_status}" == "passed" ]]; then
-  if make_cmd qa-audit-integrity; then
+  if make_cmd qa-audit-integrity \
+    && make_cmd qa-reporting-r8-gate; then
     gate3_status="passed"
   else
     gate3_status="failed"

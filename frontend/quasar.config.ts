@@ -82,6 +82,12 @@ export default defineConfig((/* ctx */) => {
       host: '0.0.0.0',
       port: 3000,
       open: true, // abre el navegador automáticamente
+      proxy: {
+        '/analytics': {
+          target: 'http://dash_analytics:8050',
+          changeOrigin: true,
+        },
+      },
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

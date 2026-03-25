@@ -33,6 +33,12 @@ class RunStatus(models.TextChoices):
     FAILED = "FAILED", "Failed"
 
 
+class QualityStatus(models.TextChoices):
+    PASS = "PASS", "Pass"
+    WARN = "WARN", "Warn"
+    FAIL = "FAIL", "Fail"
+
+
 class ConsumerType(models.TextChoices):
     API = "API", "API"
     DASHBOARD = "DASHBOARD", "Dashboard"
@@ -45,3 +51,14 @@ class ExportFormat(models.TextChoices):
     CSV = "csv", "CSV"
     XLSX = "xlsx", "XLSX"
 
+
+class ExportStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    SUCCEEDED = "SUCCEEDED", "Succeeded"
+    FAILED = "FAILED", "Failed"
+
+
+class SnapshotStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    EXPIRED = "EXPIRED", "Expired"
+    FAILED = "FAILED", "Failed"

@@ -39,7 +39,73 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
   make qa-ci
   ```
 
+### Guard de contrato Analytics (puerto/prefix/proxy)
+
+Se valida en Gate 1 que el contrato operativo de Analytics no derive:
+
+- Prefix canónico: `/analytics`
+- Puerto interno Dash: `8050`
+- Dev con `8050:8050` publicado (debug)
+- Prod sin publicación host de Dash (solo same-origin vía Nginx)
+
+Ejecución manual:
+
+```bash
+make qa-analytics-contract-guard
+```
+
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
+
+### Gate R8 (reporting calidad + SLO)
+
+Gate adicional de R8 (incluido en `qa-ci-gate3`) para `reporting/dashboard`:
+
+```bash
+make qa-reporting-r8-gate
+```
+
+Artefacto generado:
+
+- `qa/reports/reporting_r8_gate.json`
+
+Política de enforcement:
+
+- hasta `2026-04-07`: resultado con brechas = `WARN` (no bloquea CI).
+- desde `2026-04-08`: brechas = `FAIL` (bloquea CI).
+
+Thresholds por defecto:
+
+- `snapshot p95 <= 800ms`
+- `near-realtime/cache p95 <= 1500ms`
+- `error_rate < 0.5%`
+
+### Aislamiento de base de datos de tests (anti-colisión)
+
+Por defecto, los tests usan **DB de test aislada por proceso** para evitar colisiones cuando hay corridas concurrentes.
+
+- Variables disponibles:
+  - `PYTEST_DB_BASE_NAME` (default: `test_erp_db`)
+  - `PYTEST_DB_SLOT` (opcional, para nombre estable al reutilizar DB)
+
+Modos recomendados:
+
+- Modo seguro default (aislado, sin configuración):
+
+  ```bash
+  pytest -q
+  ```
+
+- Modo rápido de desarrollo con reuse explícito:
+
+  ```bash
+  PYTEST_DB_SLOT=dev pytest --reuse-db -q
+  ```
+
+- Diagnóstico (ver conexiones activas a DB de test):
+
+  ```bash
+  python backend/manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute(\"select datname,pid,state,application_name from pg_stat_activity where datname like 'test_%' order by datname,pid\"); print(c.fetchall())"
+  ```
 
 ### Gate 3 dual recomendado (security + performance)
 

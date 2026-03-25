@@ -47,6 +47,32 @@ services:
       timeout: 3s
       retries: 30
 
+  dash_analytics:
+    image: ${IMAGE_REGISTRY:-ghcr.io/necktral}/necktral-dash:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/dash.Dockerfile
+    restart: unless-stopped
+    environment:
+      DASH_BACKEND_BASE_URL: http://backend:8000/api
+      DASH_URL_PREFIX: /analytics
+      DASH_SESSION_SECRET: ${DASH_SESSION_SECRET:-dash-prod-secret-change-me}
+      DASH_INTERNAL_PORT: "8050"
+    depends_on:
+      backend:
+        condition: service_healthy
+    expose:
+      - "8050"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8050/analytics/health', timeout=2)\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
   web:
     image: ${IMAGE_REGISTRY:-ghcr.io/necktral}/necktral-web:${IMAGE_TAG:-latest}
     build:
@@ -57,6 +83,8 @@ services:
     restart: unless-stopped
     depends_on:
       backend:
+        condition: service_healthy
+      dash_analytics:
         condition: service_healthy
     ports:
       - "80:80"

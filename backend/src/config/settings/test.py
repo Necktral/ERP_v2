@@ -1,5 +1,9 @@
 from .base import *  # noqa
 
+import hashlib
+import os
+import re
+
 from rest_framework.settings import api_settings
 
 # Tests: deterministas y rápidos
@@ -50,5 +54,44 @@ REST_FRAMEWORK = {
         "heavy_reads": "10000/min",
     },
 }
+
+
+def _normalize_token(value: str) -> str:
+    token = re.sub(r"[^a-zA-Z0-9_]+", "_", str(value or "").strip()).strip("_").lower()
+    if not token:
+        return "default"
+    if len(token) <= 24:
+        return token
+    digest = hashlib.sha1(token.encode("utf-8")).hexdigest()[:8]
+    return f"{token[:15]}_{digest}"
+
+
+def _build_pytest_test_db_name() -> str:
+    base_name = _normalize_token(os.getenv("PYTEST_DB_BASE_NAME", "test_erp_db"))
+    slot = str(os.getenv("PYTEST_DB_SLOT", "")).strip()
+    worker = str(os.getenv("PYTEST_XDIST_WORKER", "")).strip()
+
+    if slot:
+        suffix = f"slot_{_normalize_token(slot)}"
+    elif worker:
+        suffix = f"worker_{_normalize_token(worker)}"
+    else:
+        suffix = f"pid_{os.getpid()}"
+
+    # PostgreSQL limita identificadores de base de datos a 63 caracteres.
+    return f"{base_name}_{suffix}"[:63]
+
+
+DATABASES = {
+    **DATABASES,
+    "default": {
+        **DATABASES["default"],
+        "TEST": {
+            **DATABASES["default"].get("TEST", {}),
+            "NAME": _build_pytest_test_db_name(),
+        },
+    },
+}
+
 
 api_settings.reload()

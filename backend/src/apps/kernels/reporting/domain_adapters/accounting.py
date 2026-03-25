@@ -108,6 +108,7 @@ def _general_ledger_payload(*, company, branch, filters: dict[str, Any]) -> dict
                 "amount_tx": _q2(amount_tx),
                 "debit_base": _q2(debit),
                 "credit_base": _q2(credit),
+                "posted_at": row.journal_entry.posted_at.isoformat() if row.journal_entry.posted_at else None,
             }
         )
         total_debit += debit
@@ -228,4 +229,3 @@ def run_dataset(*, dataset_key: str, company, branch, filters: dict[str, Any]) -
     except ValidationError as exc:
         raise ValueError(str(exc)) from exc
     raise ValueError(f"Dataset contable no soportado: {dataset_key}")
-

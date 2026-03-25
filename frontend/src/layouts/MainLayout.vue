@@ -161,6 +161,14 @@
 
         <q-separator spaced />
 
+        <q-item-label header>{{ labels.analytics }}</q-item-label>
+        <q-item clickable :to="routes.analytics" :disable="!canAnalyticsRead">
+          <q-item-section avatar><q-icon name="insights" /></q-item-section>
+          <q-item-section>Workspace analytics</q-item-section>
+        </q-item>
+
+        <q-separator spaced />
+
         <q-item-label header>{{ labels.synchronization }}</q-item-label>
         <q-item clickable :to="routes.synchronizationEnrollment" :disable="!canSyncEnroll">
           <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
@@ -253,6 +261,12 @@ const canFuelRead = computed(() => {
   const companyId = ctx.activeCompanyId;
   if (!companyId) return false;
   return acl.hasPermission(companyId, 'fuel.shift.read');
+});
+
+const canAnalyticsRead = computed(() => {
+  const companyId = ctx.activeCompanyId;
+  if (!companyId) return false;
+  return acl.hasPermission(companyId, 'report.dashboard.read');
 });
 
 const canSyncEnroll = computed(() => {

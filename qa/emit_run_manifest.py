@@ -19,6 +19,8 @@ ARTIFACTS = [
     ("coverage.xml", "gate2"),
     ("coverage.txt", "gate2"),
     ("audit_integrity.json", "gate3"),
+    ("reporting_r8_gate.json", "gate3"),
+    ("reporting_observability_snapshot.json", "gate3"),
     ("qa-ci-run.log", "setup"),
 ]
 

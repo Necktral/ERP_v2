@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal
+
 from django.db.models import Q
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,8 +35,6 @@ from .models import (
 )
 from .phase7 import (
     Phase7ValidationError,
-    balance_sheet_report,
-    general_ledger_queryset,
     get_or_create_accounting_config,
     is_phase7_enabled_for_company,
     resolve_period_range,
@@ -324,46 +324,40 @@ class GeneralLedgerReportView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
         try:
-            date_from, date_to = _resolve_range_payload(v)
-            qs = general_ledger_queryset(
-                company=request.company,
-                branch=getattr(request, "branch", None),
-                account_code=str(v["account_code"]),
-                date_from=date_from,
-                date_to=date_to,
+            envelope, _ = run_dataset_from_request(
+                request=request,
+                dataset_key="accounting.general_ledger.transaction",
+                filters={
+                    "account_code": str(v.get("account_code") or ""),
+                    "year": v.get("year"),
+                    "month": v.get("month"),
+                    "date_from": v.get("date_from"),
+                    "date_to": v.get("date_to"),
+                },
+                consumer_ref="legacy:/api/accounting/reports/general-ledger/",
+                enforce_kernel_permission=False,
             )
-        except Phase7ValidationError as exc:
+        except (ReportingValidationError, DatasetScopeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         limit, offset = get_limit_offset(request)
-        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
-        results = [
-            {
-                "journal_entry_id": int(row.journal_entry_id),
-                "entry_date": row.journal_entry.entry_date,
-                "description": row.journal_entry.description,
-                "line_no": int(row.line_no),
-                "account_code": row.account_code_snapshot,
-                "currency": row.currency,
-                "fx_rate": str(row.fx_rate),
-                "amount_tx": str(row.amount_tx),
-                "debit_base": str(row.debit_base),
-                "credit_base": str(row.credit_base),
-                "posted_at": row.journal_entry.posted_at,
-            }
-            for row in rows
-        ]
+        total, rows = paginate_list(list(envelope.get("rows") or []), limit=limit, offset=offset)
+        eff_filters = dict(envelope.get("filters") or {})
         return Response(
             {
                 "count": int(total),
                 "limit": int(limit),
                 "offset": int(offset),
                 "filters": {
-                    "account_code": str(v["account_code"]).strip().upper(),
-                    "date_from": str(date_from) if date_from else "",
-                    "date_to": str(date_to) if date_to else "",
+                    "account_code": str(eff_filters.get("account_code") or "").strip().upper(),
+                    "date_from": str(eff_filters.get("date_from") or ""),
+                    "date_to": str(eff_filters.get("date_to") or ""),
                 },
-                "results": results,
+                "results": rows,
             },
             status=status.HTTP_200_OK,
         )
@@ -416,23 +410,65 @@ class BalanceSheetReportView(APIView):
         s = ReportRangeIn(data=request.query_params)
         s.is_valid(raise_exception=True)
         v = s.validated_data
-        as_of = v.get("as_of")
-        if as_of is None:
-            period = resolve_period_range(year=v.get("year"), month=v.get("month"))
-            if period is not None:
-                as_of = period[1]
-            else:
-                as_of = v.get("date_to") or timezone.localdate()
         try:
-            report = balance_sheet_report(
-                company=request.company,
-                branch=getattr(request, "branch", None),
-                as_of=as_of,
+            envelope, _ = run_dataset_from_request(
+                request=request,
+                dataset_key="accounting.balance_sheet.as_of",
+                filters={
+                    "year": v.get("year"),
+                    "month": v.get("month"),
+                    "date_to": v.get("date_to"),
+                    "as_of": v.get("as_of"),
+                },
+                consumer_ref="legacy:/api/accounting/reports/balance-sheet/",
+                enforce_kernel_permission=False,
             )
-        except Phase7ValidationError as exc:
+        except (ReportingValidationError, DatasetScopeError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(report, status=status.HTTP_200_OK)
+        assets_rows = []
+        liabilities_rows = []
+        equity_rows = []
+        for row in list(envelope.get("rows") or []):
+            section = str(row.get("section") or "").upper()
+            out_row = {
+                "account_code": row.get("account_code"),
+                "account_name": row.get("account_name"),
+                "debit_total": row.get("debit_total"),
+                "credit_total": row.get("credit_total"),
+                "balance": row.get("balance"),
+            }
+            if section in {"ASSET", "ASSETS"}:
+                assets_rows.append(out_row)
+            elif section in {"LIABILITY", "LIABILITIES"}:
+                liabilities_rows.append(out_row)
+            elif section == "EQUITY":
+                equity_rows.append(out_row)
+
+        def _sum_balance(rows: list[dict]) -> Decimal:
+            return sum((Decimal(str(r.get("balance") or "0")) for r in rows), Decimal("0.00"))
+
+        assets_total = _sum_balance(assets_rows).quantize(Decimal("0.01"))
+        liabilities_total = _sum_balance(liabilities_rows).quantize(Decimal("0.01"))
+        equity_total = _sum_balance(equity_rows).quantize(Decimal("0.01"))
+        eff_filters = dict(envelope.get("filters") or {})
+        return Response(
+            {
+                "as_of": str(eff_filters.get("as_of") or ""),
+                "assets": {"rows": assets_rows, "total": str(assets_total)},
+                "liabilities": {"rows": liabilities_rows, "total": str(liabilities_total)},
+                "equity": {"rows": equity_rows, "total": str(equity_total)},
+                "totals": {
+                    "assets": str(assets_total),
+                    "liabilities_plus_equity": str((liabilities_total + equity_total).quantize(Decimal("0.01"))),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class OperationalReconciliationReportView(APIView):
@@ -442,18 +478,61 @@ class OperationalReconciliationReportView(APIView):
         s = OperationalReconciliationIn(data=request.query_params)
         s.is_valid(raise_exception=True)
         v = s.validated_data
-        payload = reconcile_operational_vs_accounting(
+        try:
+            envelope, _ = run_dataset_from_request(
+                request=request,
+                dataset_key="accounting.operational_reconciliation.period",
+                filters={
+                    "date_from": v.get("date_from"),
+                    "date_to": v.get("date_to"),
+                },
+                consumer_ref="legacy:/api/accounting/reports/operational-reconciliation/",
+                enforce_kernel_permission=False,
+            )
+        except (ReportingValidationError, DatasetScopeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        eff_filters = dict(envelope.get("filters") or {})
+        date_from_raw = eff_filters.get("date_from")
+        date_to_raw = eff_filters.get("date_to")
+
+        def _parse_filter_date(value):
+            if isinstance(value, date):
+                return value
+            text = str(value or "").strip()
+            if not text:
+                return None
+            try:
+                return date.fromisoformat(text)
+            except ValueError:
+                return None
+
+        date_from = _parse_filter_date(date_from_raw)
+        date_to = _parse_filter_date(date_to_raw)
+        pending = reconcile_operational_vs_accounting(
             company=request.company,
             branch=getattr(request, "branch", None),
-            date_from=v.get("date_from"),
-            date_to=v.get("date_to"),
+            date_from=date_from,
+            date_to=date_to,
+        ).get("pending_operational_events", [])
+
+        return Response(
+            {
+                "summary": dict(envelope.get("totals") or {}),
+                "by_event_type": list(envelope.get("rows") or []),
+                "pending_operational_events": list(pending),
+                "filters": {
+                    "date_from": str(eff_filters.get("date_from") or ""),
+                    "date_to": str(eff_filters.get("date_to") or ""),
+                    "branch_id": getattr(getattr(request, "branch", None), "id", None),
+                },
+            },
+            status=status.HTTP_200_OK,
         )
-        payload["filters"] = {
-            "date_from": str(v.get("date_from") or ""),
-            "date_to": str(v.get("date_to") or ""),
-            "branch_id": getattr(getattr(request, "branch", None), "id", None),
-        }
-        return Response(payload, status=status.HTTP_200_OK)
 
 
 class FxRateUpsertView(APIView):

@@ -22,6 +22,9 @@ CANONICAL_DATASET_ENVELOPE_FIELDS = (
     "warnings",
     "lineage",
     "render_hints",
+    "drill_metadata",
+    "quality_status",
+    "quality_checks",
     "export_capabilities",
 )
 
@@ -44,6 +47,9 @@ def build_dataset_envelope(
     warnings: list[dict[str, Any]] | list[str] | None = None,
     lineage: dict[str, Any] | None = None,
     render_hints: dict[str, Any] | None = None,
+    drill_metadata: dict[str, Any] | None = None,
+    quality_status: str | None = None,
+    quality_checks: list[dict[str, Any]] | None = None,
     export_capabilities: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
@@ -64,6 +70,8 @@ def build_dataset_envelope(
         "warnings": warnings or [],
         "lineage": lineage or {},
         "render_hints": render_hints or {},
+        "drill_metadata": drill_metadata or {},
+        "quality_status": str(quality_status or "PASS"),
+        "quality_checks": list(quality_checks or []),
         "export_capabilities": export_capabilities or [],
     }
-

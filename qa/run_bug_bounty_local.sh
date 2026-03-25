@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TS="${1:-$(date +%Y%m%d_%H%M)}"
 OUT_DIR="${ROOT_DIR}/docs/operacion/evidencia/bug_bounty_local_${TS}"
+PYTEST_DB_SLOT="${PYTEST_DB_SLOT:-}"
+PYTEST_DB_BASE_NAME="${PYTEST_DB_BASE_NAME:-test_erp_db}"
 
 mkdir -p "${OUT_DIR}"
 
@@ -67,12 +69,14 @@ audit_chain_rc=0
 ) || audit_chain_rc=$?
 
 security_pytest_rc=0
-pytest -q \
+echo "[bug-bounty] pytest test_db_slot=${PYTEST_DB_SLOT:-<auto>} test_db_base=${PYTEST_DB_BASE_NAME}" \
+  > "${OUT_DIR}/22_security_pytest.txt"
+PYTEST_DB_SLOT="${PYTEST_DB_SLOT}" PYTEST_DB_BASE_NAME="${PYTEST_DB_BASE_NAME}" pytest -q \
   "${ROOT_DIR}/backend/tests/test_axes_lockout.py" \
   "${ROOT_DIR}/backend/tests/test_2fa_challenge.py" \
   "${ROOT_DIR}/backend/tests/test_access_denied_audit.py" \
   "${ROOT_DIR}/backend/tests/test_audit_chain_integrity.py" \
-  > "${OUT_DIR}/22_security_pytest.txt" 2>&1 || security_pytest_rc=$?
+  >> "${OUT_DIR}/22_security_pytest.txt" 2>&1 || security_pytest_rc=$?
 
 BUG_BOUNTY_OUT="${OUT_DIR}" \
 GITLEAKS_RC="${gitleaks_rc}" \

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
+from apps.modulos.iam.authentication import JWTAuthWithOrgContext
 
 from ..exceptions import (
     DatasetExecutionError,
@@ -15,12 +16,36 @@ from ..exceptions import (
     ReportingValidationError,
 )
 from ..models import ReportRun
-from ..services import get_catalog_entry, list_catalog, run_dataset_from_request
+from ..authentication import ReportingEmbedJWTAuthentication
+from ..services import (
+    create_run_export_from_request,
+    create_saved_view_from_request,
+    generate_snapshot_from_request,
+    get_catalog_entry,
+    get_export_detail_from_request,
+    get_saved_view_detail_from_request,
+    list_catalog,
+    list_saved_views_from_request,
+    list_snapshots_from_request,
+    run_dataset_from_request,
+)
 from .filters import sanitize_filters
-from .serializers import DatasetRunIn, RunsListIn
+from .serializers import (
+    DatasetRunIn,
+    RunExportIn,
+    RunsListIn,
+    SavedViewCreateIn,
+    SavedViewsListIn,
+    SnapshotGenerateIn,
+    SnapshotsListIn,
+)
 
 
-class CatalogListView(APIView):
+class ReportingAPIView(APIView):
+    authentication_classes = [ReportingEmbedJWTAuthentication, JWTAuthWithOrgContext]
+
+
+class CatalogListView(ReportingAPIView):
     permission_classes = [rbac_permission("report.catalog.read")]
 
     def get(self, request):
@@ -28,7 +53,7 @@ class CatalogListView(APIView):
         return Response({"count": len(rows), "results": rows}, status=status.HTTP_200_OK)
 
 
-class CatalogDetailView(APIView):
+class CatalogDetailView(ReportingAPIView):
     permission_classes = [rbac_permission("report.catalog.read")]
 
     def get(self, request, dataset_key: str):
@@ -39,7 +64,7 @@ class CatalogDetailView(APIView):
         return Response(row, status=status.HTTP_200_OK)
 
 
-class DatasetRunView(APIView):
+class DatasetRunView(ReportingAPIView):
     permission_classes = [rbac_permission("report.dataset.read")]
 
     def post(self, request, dataset_key: str):
@@ -64,10 +89,12 @@ class DatasetRunView(APIView):
 
         body = dict(envelope)
         body["run_id"] = run_id
+        body["quality_status"] = str(body.get("quality_status") or "")
+        body["quality_checks"] = list(body.get("quality_checks") or [])
         return Response(body, status=status.HTTP_200_OK)
 
 
-class RunsListView(APIView):
+class RunsListView(ReportingAPIView):
     permission_classes = [rbac_permission("report.run.read")]
 
     def get(self, request):
@@ -94,6 +121,7 @@ class RunsListView(APIView):
                 "status": row.status,
                 "row_count": int(row.row_count or 0),
                 "duration_ms": int(row.duration_ms or 0),
+                "quality_status": row.quality_status,
                 "created_at": row.created_at,
                 "completed_at": row.completed_at,
                 "company_id": getattr(row.company, "id", None),
@@ -107,7 +135,7 @@ class RunsListView(APIView):
         )
 
 
-class RunDetailView(APIView):
+class RunDetailView(ReportingAPIView):
     permission_classes = [rbac_permission("report.run.read")]
 
     def get(self, request, run_id: str):
@@ -130,6 +158,8 @@ class RunDetailView(APIView):
                 "row_count": int(row.row_count or 0),
                 "duration_ms": int(row.duration_ms or 0),
                 "result_hash": row.result_hash,
+                "quality_status": row.quality_status,
+                "quality_checks": list(row.quality_checks_json or []),
                 "warnings": row.warnings_json,
                 "source_summary": row.source_summary_json,
                 "lineage": row.lineage_json,
@@ -144,3 +174,171 @@ class RunDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+class RunExportCreateView(ReportingAPIView):
+    permission_classes = [rbac_permission("report.dataset.export")]
+
+    def post(self, request, run_id):
+        serializer = RunExportIn(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        try:
+            body = create_run_export_from_request(
+                request=request,
+                run_id=run_id,
+                export_format=str(payload["format"]),
+            )
+        except KeyError:
+            return Response({"detail": "Run no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        except ReportingValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(body, status=status.HTTP_200_OK)
+
+
+class ExportDetailView(ReportingAPIView):
+    permission_classes = [rbac_permission("report.dataset.export")]
+
+    def get(self, request, export_id):
+        try:
+            body = get_export_detail_from_request(request=request, export_id=export_id)
+        except KeyError:
+            return Response({"detail": "Export no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(body, status=status.HTTP_200_OK)
+
+
+class SnapshotsListView(ReportingAPIView):
+    permission_classes = [rbac_permission("report.run.read")]
+
+    def get(self, request):
+        serializer = SnapshotsListIn(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        dataset_key = str(serializer.validated_data.get("dataset_key") or "")
+        snapshot_status = str(serializer.validated_data.get("status") or "")
+        qs = list_snapshots_from_request(request=request, dataset_key=dataset_key, status=snapshot_status)
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        results = [
+            {
+                "snapshot_id": int(row.id),
+                "dataset_key": row.dataset_key,
+                "status": row.status,
+                "fresh_until": row.fresh_until,
+                "row_count": int(row.row_count or 0),
+                "payload_hash": row.payload_hash,
+                "schema_version": row.schema_version,
+                "semantic_version": row.semantic_version,
+                "company_id": getattr(row.company, "id", None),
+                "branch_id": getattr(row.branch, "id", None),
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
+            }
+            for row in rows
+        ]
+        return Response(
+            {"count": int(total), "limit": int(limit), "offset": int(offset), "results": results},
+            status=status.HTTP_200_OK,
+        )
+
+
+class SnapshotGenerateView(ReportingAPIView):
+    permission_classes = [rbac_permission("report.snapshot.generate")]
+
+    def post(self, request):
+        serializer = SnapshotGenerateIn(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        try:
+            out = generate_snapshot_from_request(
+                request=request,
+                dataset_key=str(payload["dataset_key"]),
+                filters=sanitize_filters(payload.get("filters")),
+                force_refresh=bool(payload.get("force_refresh")),
+                consumer_ref=str(payload.get("consumer_ref") or ""),
+            )
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetPermissionDenied as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (ReportingValidationError, DatasetScopeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DatasetExecutionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(out, status=status.HTTP_200_OK)
+
+
+class SavedViewsListCreateView(ReportingAPIView):
+    permission_classes = []
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("report.dashboard.compose")()]
+        return [rbac_permission("report.dashboard.read")()]
+
+    def get(self, request):
+        serializer = SavedViewsListIn(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        try:
+            qs = list_saved_views_from_request(
+                request=request,
+                dataset_key=str(serializer.validated_data.get("dataset_key") or ""),
+            )
+        except DatasetScopeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        results = [
+            {
+                "view_id": str(row.view_id),
+                "name": row.name,
+                "dataset_key": row.dataset_key,
+                "filters": dict(row.filters_json or {}),
+                "render_state": dict(row.render_state_json or {}),
+                "is_shared": bool(row.is_shared),
+                "is_owner": bool(
+                    getattr(request.user, "is_authenticated", False)
+                    and getattr(row.requested_by, "id", None) == getattr(request.user, "id", None)
+                ),
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
+            }
+            for row in rows
+        ]
+        return Response(
+            {"count": int(total), "limit": int(limit), "offset": int(offset), "results": results},
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request):
+        serializer = SavedViewCreateIn(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+        try:
+            out = create_saved_view_from_request(
+                request=request,
+                name=str(payload["name"]),
+                dataset_key=str(payload["dataset_key"]),
+                filters=sanitize_filters(payload.get("filters")),
+                render_state=dict(payload.get("render_state") or {}),
+                is_shared=bool(payload.get("is_shared")),
+            )
+        except DatasetPermissionDenied as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except DatasetNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (ReportingValidationError, DatasetScopeError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(out, status=status.HTTP_201_CREATED)
+
+
+class SavedViewDetailView(ReportingAPIView):
+    permission_classes = [rbac_permission("report.dashboard.read")]
+
+    def get(self, request, view_id):
+        try:
+            out = get_saved_view_detail_from_request(request=request, view_id=view_id)
+        except KeyError:
+            return Response({"detail": "Saved view no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        except DatasetScopeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(out, status=status.HTTP_200_OK)

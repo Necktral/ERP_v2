@@ -24,6 +24,8 @@ class DatasetSpec:
     materialization_policy: str
     export_capabilities: list[str]
     render_hints: dict[str, Any]
+    drill_metadata: dict[str, Any]
+    quality_policy: dict[str, Any]
     schema_version: str = "1.0.0"
     semantic_version: str = "1.0.0"
     status: str = DatasetStatus.CERTIFIED
@@ -38,6 +40,11 @@ class DatasetSpec:
 _DATE_RANGE_FILTERS = {
     "year": {"type": "int", "required": False},
     "month": {"type": "int", "required": False},
+    "date_from": {"type": "date", "required": False},
+    "date_to": {"type": "date", "required": False},
+}
+
+_SINGLE_DAY_FILTERS = {
     "date_from": {"type": "date", "required": False},
     "date_to": {"type": "date", "required": False},
 }
@@ -60,6 +67,17 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         materialization_policy=MaterializationPolicy.SNAPSHOT_REQUIRED,
         export_capabilities=["json", "csv", "xlsx"],
         render_hints={"default_chart": "table", "numeric_format": "currency"},
+        drill_metadata={
+            "supports_drill_down": True,
+            "supports_drill_through": True,
+            "drill_through_dataset": "accounting.general_ledger.transaction",
+            "drill_filters_mapping": {"account_code": "account_code"},
+        },
+        quality_policy={
+            "required_totals": ["debit_total", "credit_total"],
+            "required_dimensions": ["account_code"],
+            "allow_empty_rows": False,
+        },
     ),
     DatasetSpec(
         dataset_key="accounting.general_ledger.transaction",
@@ -80,6 +98,12 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         materialization_policy=MaterializationPolicy.SNAPSHOT_REQUIRED,
         export_capabilities=["json", "csv", "xlsx"],
         render_hints={"default_chart": "table", "sort": ["entry_date", "line_no"]},
+        drill_metadata={"supports_drill_down": False, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": [],
+            "required_dimensions": ["journal_entry_id", "account_code"],
+            "allow_empty_rows": True,
+        },
     ),
     DatasetSpec(
         dataset_key="accounting.pnl.period",
@@ -97,6 +121,17 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         materialization_policy=MaterializationPolicy.SNAPSHOT_REQUIRED,
         export_capabilities=["json", "csv", "xlsx"],
         render_hints={"default_chart": "waterfall", "numeric_format": "currency"},
+        drill_metadata={
+            "supports_drill_down": True,
+            "supports_drill_through": True,
+            "drill_through_dataset": "accounting.general_ledger.transaction",
+            "drill_filters_mapping": {"account_code": "account_code"},
+        },
+        quality_policy={
+            "required_totals": ["debit_total", "credit_total"],
+            "required_dimensions": ["account_code"],
+            "allow_empty_rows": False,
+        },
     ),
     DatasetSpec(
         dataset_key="accounting.balance_sheet.as_of",
@@ -119,6 +154,12 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         materialization_policy=MaterializationPolicy.SNAPSHOT_REQUIRED,
         export_capabilities=["json", "csv", "xlsx"],
         render_hints={"default_chart": "table", "group_by": ["section"]},
+        drill_metadata={"supports_drill_down": True, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": ["assets", "liabilities", "equity"],
+            "required_dimensions": ["section"],
+            "allow_empty_rows": False,
+        },
     ),
     DatasetSpec(
         dataset_key="accounting.operational_reconciliation.period",
@@ -128,10 +169,7 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         scope_level=ScopeLevel.BRANCH,
         kernel_permissions=("report.dataset.read",),
         domain_permissions=("accounting.report.read",),
-        filters_schema={
-            "date_from": {"type": "date", "required": False},
-            "date_to": {"type": "date", "required": False},
-        },
+        filters_schema=dict(_SINGLE_DAY_FILTERS),
         dimensions=["source_module", "event_type"],
         measures=[
             "operational_count",
@@ -147,6 +185,87 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         materialization_policy=MaterializationPolicy.CACHE_ALLOWED,
         export_capabilities=["json", "csv", "xlsx"],
         render_hints={"default_chart": "table", "highlight": ["pending_operational_events"]},
+        drill_metadata={"supports_drill_down": False, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": [
+                "operational_count",
+                "linked_count",
+                "posted_count",
+                "draft_exception_count",
+                "pending_operational_events",
+            ],
+            "required_dimensions": ["source_module", "event_type"],
+            "allow_empty_rows": True,
+        },
+    ),
+    DatasetSpec(
+        dataset_key="fuel.sales.by_shift.daily",
+        title="Fuel Sales by Shift",
+        description="Ventas Fuel agregadas por turno.",
+        domain_owner="FUEL",
+        scope_level=ScopeLevel.BRANCH,
+        kernel_permissions=("report.dataset.read",),
+        domain_permissions=("fuel.reports.view",),
+        filters_schema=dict(_SINGLE_DAY_FILTERS),
+        dimensions=["shift_id", "shift_status", "opened_at", "closed_at"],
+        measures=["sales_active", "sales_cancelled", "total_amount", "liters_sold"],
+        grain="shift",
+        freshness_mode=FreshnessMode.CACHE_ALLOWED,
+        materialization_policy=MaterializationPolicy.CACHE_ALLOWED,
+        export_capabilities=["json", "csv", "xlsx"],
+        render_hints={"default_chart": "table"},
+        drill_metadata={"supports_drill_down": True, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": ["sales_active", "sales_cancelled", "total_amount", "liters_sold"],
+            "required_dimensions": ["shift_id"],
+            "allow_empty_rows": True,
+        },
+    ),
+    DatasetSpec(
+        dataset_key="fuel.sales.by_pump.daily",
+        title="Fuel Sales by Pump",
+        description="Ventas Fuel por surtidor y producto.",
+        domain_owner="FUEL",
+        scope_level=ScopeLevel.BRANCH,
+        kernel_permissions=("report.dataset.read",),
+        domain_permissions=("fuel.reports.view",),
+        filters_schema=dict(_SINGLE_DAY_FILTERS),
+        dimensions=["pump_code", "product"],
+        measures=["dispense_count", "sales_count", "liters", "amount_total"],
+        grain="pump_product",
+        freshness_mode=FreshnessMode.CACHE_ALLOWED,
+        materialization_policy=MaterializationPolicy.CACHE_ALLOWED,
+        export_capabilities=["json", "csv", "xlsx"],
+        render_hints={"default_chart": "bar"},
+        drill_metadata={"supports_drill_down": True, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": ["dispense_count", "sales_count", "liters", "amount_total"],
+            "required_dimensions": ["pump_code", "product"],
+            "allow_empty_rows": True,
+        },
+    ),
+    DatasetSpec(
+        dataset_key="fuel.dispense_vs_sale.daily",
+        title="Fuel Dispense vs Sale",
+        description="Comparativo diario entre despacho físico y ventas registradas.",
+        domain_owner="FUEL",
+        scope_level=ScopeLevel.BRANCH,
+        kernel_permissions=("report.dataset.read",),
+        domain_permissions=("fuel.reports.view",),
+        filters_schema=dict(_SINGLE_DAY_FILTERS),
+        dimensions=["date"],
+        measures=["dispense_count", "sales_count", "liters_dispensed", "amount_sold", "cancelled_sales"],
+        grain="day",
+        freshness_mode=FreshnessMode.CACHE_ALLOWED,
+        materialization_policy=MaterializationPolicy.CACHE_ALLOWED,
+        export_capabilities=["json", "csv", "xlsx"],
+        render_hints={"default_chart": "line"},
+        drill_metadata={"supports_drill_down": False, "supports_drill_through": False},
+        quality_policy={
+            "required_totals": ["dispense_count", "sales_count", "liters_dispensed", "amount_sold", "cancelled_sales"],
+            "required_dimensions": ["date"],
+            "allow_empty_rows": True,
+        },
     ),
 )
 
@@ -179,10 +298,10 @@ def to_definition_defaults(spec: DatasetSpec) -> dict[str, Any]:
         "materialization_policy": spec.materialization_policy,
         "export_capabilities_json": spec.export_capabilities,
         "render_hints_json": spec.render_hints,
+        "quality_policy_json": spec.quality_policy,
         "schema_version": spec.schema_version,
         "semantic_version": spec.semantic_version,
         "status": spec.status,
         "is_certified": spec.is_certified,
         "is_enabled": spec.is_enabled,
     }
-

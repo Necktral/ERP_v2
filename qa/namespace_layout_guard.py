@@ -17,6 +17,7 @@ MODULOS_CORE_APPS = (
     "hr",
     "cec",
     "integration",
+    "dashboard",
     "sync",
     "sync_engine",
     "compras",
