@@ -65,7 +65,19 @@ jobs:
       - name: Start backend and db services
         run: |
           docker compose down -v --remove-orphans || true
-          USE_GUNICORN=1 GUNICORN_WORKERS=4 docker compose up -d db backend
+          up_ok=0
+          for attempt in 1 2 3; do
+            if USE_GUNICORN=1 GUNICORN_WORKERS=4 docker compose up -d db backend; then
+              up_ok=1
+              break
+            fi
+            echo "docker compose up failed (attempt $attempt/3), retrying..."
+            sleep $((attempt * 4))
+          done
+          if [ "$up_ok" -ne 1 ]; then
+            echo "failed to start db/backend after retries"
+            exit 1
+          fi
 
       - name: Wait for backend readiness
         run: |
