@@ -13,7 +13,6 @@ NOTA:
 from datetime import timedelta
 from typing import cast
 from pathlib import Path
-import sys
 
 import environ
 
@@ -21,11 +20,6 @@ import environ
 # BASE_DIR = backend/src
 BASE_DIR = Path(__file__).resolve().parents[2]  # -> backend/src
 ENV_FILE = BASE_DIR.parent.parent / ".env"  # -> ERP_CRM/.env
-
-# Permite importar utilidades/scripts ubicados en la raíz del repo.
-REPO_ROOT = BASE_DIR.parent.parent  # -> ERP_CRM/
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
