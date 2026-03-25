@@ -71,14 +71,17 @@ def rbac_permission(required_permission: str):
                 _set_on_request_and_raw(request, "required_scope", effective_scope)
                 return False
 
-            include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
-
-            perms = get_effective_permissions_for_scope(
-                user,
-                company=company,
-                branch=branch,
-                include_global=include_global,
-            )
+            override = getattr(request, "rbac_effective_permissions_override", None)
+            if override is not None:
+                perms = {str(code).strip() for code in list(override) if str(code).strip()}
+            else:
+                include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
+                perms = get_effective_permissions_for_scope(
+                    user,
+                    company=company,
+                    branch=branch,
+                    include_global=include_global,
+                )
 
             allowed_local = required_permission in perms or ("*" in perms)
             if not allowed_local:

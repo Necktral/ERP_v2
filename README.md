@@ -6,7 +6,8 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 
 - `backend/`: backend Django/DRF (código en `backend/src/`)
 - `frontend/`: consola web (Vue 3 + Quasar)
-- `backend/src/apps/modulos/`: módulos de dominio (`facturacion`, `inventarios`, `estacion_servicios`)
+- `backend/src/apps/kernels/`: kernels canónicos (`accounting`, `facturacion`, `inventarios`, `payments`, `reporting`)
+- `backend/src/apps/modulos/`: verticales y core apps (`estacion_servicios`, `iam`, `rbac`, `org`, `hr`, etc.)
 - `compose.yaml`: entorno Docker (backend + Postgres)
 - `system_wis/`: entorno virtual Python (dev)
 
@@ -69,7 +70,19 @@ Esto levanta por defecto:
 
 - Frontend (Quasar): http://localhost:3000
 - Backend (Django/DRF): http://localhost:8000
+- Analytics (Dash engine): http://localhost:3000/analytics
 - DB (Postgres): localhost:5432
+
+### Contrato de puertos Analytics (congelado)
+
+- Prefix público canónico: `/analytics`
+- Puerto interno Dash canónico: `8050`
+- Dev:
+  - host principal: `http://localhost:3000/analytics`
+  - debug opcional directo: `http://localhost:8050/analytics`
+- Prod:
+  - acceso solo same-origin por Nginx: `http://localhost/analytics/`
+  - sin publicación host de `8050`
 
 Nota: el contenedor `backend` corre migraciones automáticamente al iniciar (ver `compose.yaml`).
 
@@ -93,6 +106,7 @@ Endpoints:
 
 - Web (SPA): http://localhost/
 - API (proxy): http://localhost/api/
+- Analytics (proxy same-origin): http://localhost/analytics/
 
 Herramientas opcionales (Adminer):
 
@@ -212,6 +226,7 @@ Artefactos generados:
 - `qa/reports/coverage.xml`
 - `qa/reports/coverage.txt`
 - `qa/reports/audit_integrity.json`
+- `qa/reports/reporting_r8_gate.json`
 
 ### Backend
 
@@ -256,12 +271,30 @@ Artefactos generados:
 
 Base path: `/api/fuel/`
 
+### Reporting / Analytics (R8)
+
+- API canónica reporting: `/api/reporting/*`
+- Dashboard gateway: `/api/backend/dashboard/*`
+- Métricas operativas consolidadas: `/api/metrics/` (incluye bloques `reporting` y `dashboard`)
+- Endpoints legacy contables `/api/accounting/reports/*` emiten headers `Deprecation`, `Sunset` y `Link` hacia `/api/reporting/catalog/`
+
 - `GET /api/fuel/health/` — Healthcheck del módulo (público)
 - `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
 - `POST /api/fuel/shifts/{shift_id}/close/` — Cerrar turno (permiso: `fuel.shift.close`)
 - `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
 - `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
 - `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
+
+### Reporting Kernel
+
+Base path: `/api/reporting/`
+
+- `GET /api/reporting/catalog/` — Catálogo de datasets certificados (`report.catalog.read`)
+- `POST /api/reporting/datasets/{dataset_key}/run/` — Ejecutar dataset (`report.dataset.read` + permiso de dominio)
+- `GET /api/reporting/runs/` y `GET /api/reporting/runs/{run_id}/` — Historial/detalle de runs (`report.run.read`)
+- `POST /api/reporting/runs/{run_id}/export/` y `GET /api/reporting/exports/{export_id}/` — Export reproducible por `run_id` (`report.dataset.export`)
+- `GET /api/reporting/snapshots/` y `POST /api/reporting/snapshots/generate/` — Snapshots (`report.run.read` / `report.snapshot.generate`)
+- `GET /api/reporting/saved-views/`, `POST /api/reporting/saved-views/`, `GET /api/reporting/saved-views/{view_id}/` — Vistas guardadas (`report.dashboard.read` / `report.dashboard.compose`)
 
 ## Historial de cambios
 

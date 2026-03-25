@@ -1,0 +1,14 @@
+# Global default owner
+* @Necktral
+
+# Backend architecture layers
+/backend/src/apps/kernels/ @Necktral
+/backend/src/apps/modulos/ @Necktral
+/backend/src/config/ @Necktral
+
+# Quality and CI
+/qa/ @Necktral
+/.github/workflows/ @Necktral
+
+# Frontend analytics host
+/frontend/ @Necktral

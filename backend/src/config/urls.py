@@ -49,6 +49,10 @@ urlpatterns = [
     path("api/accounting/", include("apps.kernels.accounting.urls")),
     # Payments/Cash
     path("api/payments/", include("apps.kernels.payments.urls")),
+    # Reporting kernel
+    path("api/reporting/", include("apps.kernels.reporting.urls")),
+    # Dashboard gateway (embed + workspaces)
+    path("api/backend/dashboard/", include("apps.modulos.dashboard.urls")),
     # CEC
     path("api/cec/", include("apps.modulos.cec.urls")),
     # Integration Backbone

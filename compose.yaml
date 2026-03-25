@@ -81,6 +81,36 @@ services:
       start_period: 30s
     # command/entrypoint quedan definidos en la imagen (docker/entrypoint.sh)
 
+  dash_analytics:
+    build:
+      context: .
+      dockerfile: docker/dash.Dockerfile
+    container_name: erpcrm_dash_analytics
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      DASH_BACKEND_BASE_URL: http://backend:8000/api
+      DASH_URL_PREFIX: /analytics
+      DASH_SESSION_SECRET: ${DASH_SESSION_SECRET:-dash-dev-secret-change-me}
+      DASH_INTERNAL_PORT: "8050"
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./:/app
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8050/analytics/health', timeout=2)\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
   frontend:
     image: node:22-bullseye-slim
     container_name: erpcrm_frontend
@@ -91,6 +121,8 @@ services:
       VITE_API_BASE_URL: http://localhost:8000/api
     depends_on:
       backend:
+        condition: service_healthy
+      dash_analytics:
         condition: service_healthy
     ports:
       - "3000:3000"

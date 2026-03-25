@@ -153,6 +153,15 @@ def seed_rbac_v01() -> SeedResult:
         "accounting.intercompany.settle": "Resolver disputa y liquidar/cerrar transacción intercompany.",
         "accounting.consolidation.read": "Ver corridas y reportes de consolidación multi-compañía.",
         "accounting.consolidation.run": "Ejecutar cierre y consolidación financiera multi-compañía.",
+        # --- Reporting kernel ---
+        "report.catalog.read": "Ver catálogo de datasets certificados.",
+        "report.dataset.read": "Ejecutar datasets del reporting kernel.",
+        "report.dataset.export": "Exportar resultados de datasets.",
+        "report.run.read": "Ver historial de ejecuciones de reporting.",
+        "report.snapshot.generate": "Generar snapshots manuales de reporting.",
+        "report.definition.manage": "Gestionar definiciones y metadatos de datasets.",
+        "report.dashboard.read": "Ver dashboards y vistas guardadas de reporting.",
+        "report.dashboard.compose": "Crear y gestionar vistas guardadas para dashboards.",
 
         # --- Compat / legacy (tests + transición) ---
         # Nota: se conservan porque varios tests usan estos códigos como canary de RBAC.
@@ -314,6 +323,15 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.intercompany.settle",
             "accounting.consolidation.read",
             "accounting.consolidation.run",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
+            "report.snapshot.generate",
+            "report.definition.manage",
+            "report.dashboard.read",
+            "report.dashboard.compose",
             # Compat
             "inventory.read",
             "inventory.write",
@@ -388,6 +406,14 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.intercompany.dispute",
             "accounting.intercompany.settle",
             "accounting.consolidation.read",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
+            "report.snapshot.generate",
+            "report.dashboard.read",
+            "report.dashboard.compose",
             # Compat
             "inventory.read",
             "inventory.write",
@@ -435,6 +461,11 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.report.read",
             "accounting.intercompany.read",
             "accounting.consolidation.read",
+            # Reporting kernel
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.run.read",
+            "report.dashboard.read",
         ],
         "warehouse_manager": [
             "inventory.item.read",
@@ -505,6 +536,7 @@ def seed_rbac_v01() -> SeedResult:
             "fuel.reports.view",
             "fuel.reports.export",
             "fuel.uom_preferences.manage",
+            "report.dashboard.read",
         ],
         "fuel_supervisor": [
             "fuel.config.read",
@@ -527,6 +559,7 @@ def seed_rbac_v01() -> SeedResult:
             "fuel.reports.view",
             "fuel.reports.export",
             "fuel.uom_preferences.manage",
+            "report.dashboard.read",
         ],
         "fuel_cashier": [
             "fuel.shift.open",

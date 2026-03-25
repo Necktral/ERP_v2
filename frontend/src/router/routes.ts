@@ -163,6 +163,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: childPath(UI_ROUTE_PATHS.analytics),
+        name: 'analytics',
+        component: () => import('pages/AnalyticsPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['report.dashboard.read'],
+        },
+      },
+      {
         path: childPath(UI_ROUTE_PATHS.synchronizationEnrollment),
         name: 'sincronizacion-enrolamiento',
         component: () => import('pages/SyncEnrollmentPage.vue'),

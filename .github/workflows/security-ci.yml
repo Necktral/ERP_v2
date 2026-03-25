@@ -16,6 +16,8 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GITLEAKS_IMAGE: zricethezav/gitleaks:latest
 
     steps:
       - name: Checkout
@@ -23,7 +25,21 @@ jobs:
 
       - name: Secret scan (gitleaks)
         run: |
-          docker run --rm -v "$PWD":/repo zricethezav/gitleaks:latest detect \
+          pull_ok=0
+          for attempt in 1 2 3; do
+            if docker pull "$GITLEAKS_IMAGE"; then
+              pull_ok=1
+              break
+            fi
+            echo "gitleaks image pull failed (attempt $attempt/3), retrying..."
+            sleep $((attempt * 3))
+          done
+          if [ "$pull_ok" -ne 1 ]; then
+            echo "failed to pull $GITLEAKS_IMAGE after retries"
+            exit 1
+          fi
+
+          docker run --rm -v "$PWD":/repo "$GITLEAKS_IMAGE" detect \
             --no-git \
             --source /repo \
             --config /repo/.gitleaks.toml \

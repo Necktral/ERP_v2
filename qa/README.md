@@ -39,7 +39,126 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
   make qa-ci
   ```
 
+### Guard de contrato Analytics (puerto/prefix/proxy)
+
+Se valida en Gate 1 que el contrato operativo de Analytics no derive:
+
+- Prefix canónico: `/analytics`
+- Puerto interno Dash: `8050`
+- Dev con `8050:8050` publicado (debug)
+- Prod sin publicación host de Dash (solo same-origin vía Nginx)
+
+Ejecución manual:
+
+```bash
+make qa-analytics-contract-guard
+```
+
+### Verificación estática veraz (ruff + mypy)
+
+Gate 1 ahora valida estáticos en dos capas:
+
+- `ruff` y `mypy` corren con `pipefail` (fallan si el comando falla aunque use `tee`).
+- `qa-verify-static-gate` parsea `qa/reports/ruff.txt` y `qa/reports/mypy.txt` para bloquear falsos verdes.
+
+Ejecución manual:
+
+```bash
+make qa-backend-ruff QA_REPORTS_DIR=qa/reports
+make qa-backend-mypy QA_REPORTS_DIR=qa/reports
+make qa-verify-static-gate QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/static_gate_summary.json`
+
+### Guard de drift de migraciones
+
+Gate 1 bloquea drift de modelos/migraciones con:
+
+```bash
+make qa-makemigrations-check QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/makemigrations_check.txt`
+
+### Guard de bootstrap de `PYTHONPATH` en runtime
+
+Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/src`:
+
+```bash
+make qa-pythonpath-bootstrap-guard
+```
+
+### Guard de contrato de registry (`reporting`)
+
+Gate 1 también bloquea drift en datasets de reporting:
+
+- metadata mínima obligatoria por dataset (`render_hints`, `drill_metadata`, `quality_policy`, `export_capabilities`),
+- `dataset_key` únicos,
+- handlers de adapters (`accounting`/`fuel`) alineados con datasets habilitados en `registry`.
+
+Ejecución manual:
+
+```bash
+make qa-reporting-registry-guard
+```
+
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
+
+### Gate R8 (reporting calidad + SLO)
+
+Gate adicional de R8 (incluido en `qa-ci-gate3`) para `reporting/dashboard`:
+
+```bash
+make qa-reporting-r8-gate
+```
+
+Artefacto generado:
+
+- `qa/reports/reporting_r8_gate.json`
+
+Política de enforcement:
+
+- hasta `2026-04-07`: resultado con brechas = `WARN` (no bloquea CI).
+- desde `2026-04-08`: brechas = `FAIL` (bloquea CI).
+
+Thresholds por defecto:
+
+- `snapshot p95 <= 800ms`
+- `near-realtime/cache p95 <= 1500ms`
+- `error_rate < 0.5%`
+
+### Aislamiento de base de datos de tests (anti-colisión)
+
+Por defecto, los tests usan **DB de test aislada por proceso** para evitar colisiones cuando hay corridas concurrentes.
+
+- Variables disponibles:
+  - `PYTEST_DB_BASE_NAME` (default: `test_erp_db`)
+  - `PYTEST_DB_SLOT` (opcional, para nombre estable al reutilizar DB)
+
+Modos recomendados:
+
+- Modo seguro default (aislado, sin configuración):
+
+  ```bash
+  pytest -q
+  ```
+
+- Modo rápido de desarrollo con reuse explícito:
+
+  ```bash
+  PYTEST_DB_SLOT=dev pytest --reuse-db -q
+  ```
+
+- Diagnóstico (ver conexiones activas a DB de test):
+
+  ```bash
+  python backend/manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute(\"select datname,pid,state,application_name from pg_stat_activity where datname like 'test_%' order by datname,pid\"); print(c.fetchall())"
+  ```
 
 ### Gate 3 dual recomendado (security + performance)
 

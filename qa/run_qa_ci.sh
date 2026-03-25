@@ -31,12 +31,16 @@ cleanup_reports() {
     "${REPORTS_DIR}/ruff.txt" \
     "${REPORTS_DIR}/mypy_strict_critical.txt" \
     "${REPORTS_DIR}/mypy.txt" \
+    "${REPORTS_DIR}/static_gate_summary.json" \
+    "${REPORTS_DIR}/makemigrations_check.txt" \
     "${REPORTS_DIR}/mypy_delta.json" \
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/pytest.xml" \
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
     "${REPORTS_DIR}/audit_integrity.json" \
+    "${REPORTS_DIR}/reporting_r8_gate.json" \
+    "${REPORTS_DIR}/reporting_observability_snapshot.json" \
     "${REPORTS_DIR}/run_manifest.json"
 }
 
@@ -91,10 +95,15 @@ fi
 
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
+    && make_cmd qa-analytics-contract-guard \
+    && make_cmd qa-reporting-registry-guard \
+    && make_cmd qa-pythonpath-bootstrap-guard \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
     && make_cmd qa-backend-mypy \
+    && make_cmd qa-verify-static-gate \
+    && make_cmd qa-makemigrations-check \
     && make_cmd qa-frontend-ci; then
     gate1_status="passed"
   else
@@ -115,7 +124,8 @@ if [[ "${run_status}" == "passed" ]]; then
 fi
 
 if [[ "${run_status}" == "passed" ]]; then
-  if make_cmd qa-audit-integrity; then
+  if make_cmd qa-audit-integrity \
+    && make_cmd qa-reporting-r8-gate; then
     gate3_status="passed"
   else
     gate3_status="failed"

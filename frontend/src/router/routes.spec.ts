@@ -27,6 +27,7 @@ describe('router routes', () => {
       UI_ROUTE_PATHS.organizationCompanies,
       UI_ROUTE_PATHS.organizationCompanyProfile,
       UI_ROUTE_PATHS.organizationBranches,
+      UI_ROUTE_PATHS.analytics,
       UI_ROUTE_PATHS.fuelDashboard,
       UI_ROUTE_PATHS.fuelHealth,
       UI_ROUTE_PATHS.synchronizationEnrollment,

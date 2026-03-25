@@ -11,6 +11,7 @@ _lock = threading.Lock()
 _status_counts: Counter[str] = Counter()
 _method_counts: Counter[str] = Counter()
 _path_counts: Counter[str] = Counter()
+_legacy_prefix_counts: Counter[str] = Counter()
 _latency_sum_ms = 0
 _latency_max_ms = 0
 _total_requests = 0
@@ -36,6 +37,7 @@ def record_request(request, *, status_code: int | None, duration_ms: int) -> Non
     family = f"{code // 100}xx" if code else "0xx"
     method = (getattr(request, "method", "") or "").upper()
     path = _normalize_path(getattr(request, "path", "") or "")
+    legacy_prefix = str(getattr(request, "_legacy_api_prefix", "") or "").strip()
 
     with _lock:
         _total_requests += 1
@@ -47,6 +49,8 @@ def record_request(request, *, status_code: int | None, duration_ms: int) -> Non
             _method_counts[method] += 1
         if path:
             _path_counts[path] += 1
+        if legacy_prefix:
+            _legacy_prefix_counts[legacy_prefix] += 1
 
 
 def _top(counter: Counter[str], limit: int = 10) -> list[dict[str, Any]]:
@@ -65,4 +69,5 @@ def snapshot() -> dict:
             "status_counts": dict(_status_counts),
             "method_counts": dict(_method_counts),
             "top_paths": _top(_path_counts, limit=15),
+            "legacy_api_counts": dict(_legacy_prefix_counts),
         }

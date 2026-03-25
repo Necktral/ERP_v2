@@ -13,7 +13,6 @@ NOTA:
 from datetime import timedelta
 from typing import cast
 from pathlib import Path
-import sys
 
 import environ
 
@@ -21,11 +20,6 @@ import environ
 # BASE_DIR = backend/src
 BASE_DIR = Path(__file__).resolve().parents[2]  # -> backend/src
 ENV_FILE = BASE_DIR.parent.parent / ".env"  # -> ERP_CRM/.env
-
-# Permite importar utilidades/scripts ubicados en la raíz del repo.
-REPO_ROOT = BASE_DIR.parent.parent  # -> ERP_CRM/
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -71,6 +65,11 @@ env = environ.Env(
     ACCOUNTING_POSTING_ENABLE_BILLING=(bool, True),
     ACCOUNTING_POSTING_ENABLE_INVENTORY=(bool, True),
     ACCOUNTING_POSTING_AUTO_POST_ON_WRITE=(bool, False),
+    REPORTING_LEGACY_ACCOUNTING_REPORTS_SUNSET=(str, "Mon, 22 Jun 2026 00:00:00 GMT"),
+    REPORTING_R8_GATE_WARN_UNTIL=(str, "2026-04-07"),
+    REPORTING_R8_GATE_HARD_FAIL_FROM=(str, "2026-04-08"),
+    REPORTING_R8_GATE_WINDOW_HOURS=(int, 24),
+    REPORTING_OBSERVABILITY_WINDOW_HOURS=(int, 24),
 )
 
 if ENV_FILE.exists():
@@ -181,6 +180,11 @@ ACCOUNTING_POSTING_MODE = env("ACCOUNTING_POSTING_MODE")
 ACCOUNTING_POSTING_ENABLE_BILLING = env("ACCOUNTING_POSTING_ENABLE_BILLING")
 ACCOUNTING_POSTING_ENABLE_INVENTORY = env("ACCOUNTING_POSTING_ENABLE_INVENTORY")
 ACCOUNTING_POSTING_AUTO_POST_ON_WRITE = env("ACCOUNTING_POSTING_AUTO_POST_ON_WRITE")
+REPORTING_LEGACY_ACCOUNTING_REPORTS_SUNSET = env("REPORTING_LEGACY_ACCOUNTING_REPORTS_SUNSET")
+REPORTING_R8_GATE_WARN_UNTIL = env("REPORTING_R8_GATE_WARN_UNTIL")
+REPORTING_R8_GATE_HARD_FAIL_FROM = env("REPORTING_R8_GATE_HARD_FAIL_FROM")
+REPORTING_R8_GATE_WINDOW_HOURS = env("REPORTING_R8_GATE_WINDOW_HOURS")
+REPORTING_OBSERVABILITY_WINDOW_HOURS = env("REPORTING_OBSERVABILITY_WINDOW_HOURS")
 
 INSTALLED_APPS = [
     # Django
@@ -210,8 +214,10 @@ INSTALLED_APPS = [
     "apps.modulos.hr.apps.HrConfig",  # <-- NUEVO
     "apps.kernels.accounting.apps.AccountingConfig",
     "apps.kernels.payments.apps.PaymentsConfig",
+    "apps.kernels.reporting.apps.ReportingConfig",
     "apps.modulos.cec.apps.CecConfig",
     "apps.modulos.integration.apps.IntegrationConfig",
+    "apps.modulos.dashboard.apps.DashboardConfig",
     "apps.modulos.sync_engine",
     "apps.modulos.sync.apps.SyncConfig",
     # Módulos de dominio (raíz/modulos)
@@ -414,7 +420,7 @@ CONTENT_SECURITY_POLICY = {
         "style-src": ("'self'",),
         "object-src": ("'none'",),
         "base-uri": ("'self'",),
-        "frame-ancestors": ("'none'",),
+        "frame-ancestors": ("'self'",),
         "form-action": ("'self'",),
     }
 }

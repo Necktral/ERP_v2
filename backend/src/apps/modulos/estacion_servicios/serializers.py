@@ -22,7 +22,6 @@ from apps.modulos.estacion_servicios.models import (
     FuelSale,
     FuelSaleType,
     FuelVolumeUOM,
-    FuelVolumeUoM,
     FuelShift,
 )
 

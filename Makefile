@@ -4,7 +4,7 @@
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
-	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-namespace-guard qa-frontend-ci qa-audit-integrity \
+	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-pythonpath-bootstrap-guard qa-makemigrations-check qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-namespace-guard qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate \
 	docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
@@ -12,6 +12,14 @@ K6_IMAGE ?= grafana/k6
 
 QA_REPORTS_DIR ?= qa/reports
 QA_KEEP_FRONTEND ?= 1
+QA_PYTEST_DB_SLOT ?=
+QA_PYTEST_DB_BASE_NAME ?= test_erp_db
+REPORTING_R8_GATE_WARN_UNTIL ?= 2026-04-07
+REPORTING_R8_GATE_HARD_FAIL_FROM ?= 2026-04-08
+REPORTING_R8_GATE_WINDOW_HOURS ?= 24
+REPORTING_R8_GATE_SNAPSHOT_P95_MAX_MS ?= 800
+REPORTING_R8_GATE_NEAR_RT_P95_MAX_MS ?= 1500
+REPORTING_R8_GATE_ERROR_RATE_MAX_PCT ?= 0.5
 QA_MYPY_STRICT_TARGETS ?= \
 	backend/src/apps/kernels/accounting \
 	backend/src/tests/test_phase3_cec_execute_api.py \
@@ -117,32 +125,53 @@ qa-static-scan:
 qa-namespace-guard:
 	python3 qa/namespace_layout_guard.py --root .
 
+qa-analytics-contract-guard:
+	python3 qa/analytics_contract_guard.py --root .
+
+qa-reporting-registry-guard:
+	docker compose exec -T backend bash -lc "python /app/qa/reporting_registry_contract_guard.py --root /app --mode auto"
+
+qa-reporting-registry-guard-host:
+	python3 qa/reporting_registry_contract_guard.py --root . --mode ast
+
+qa-pythonpath-bootstrap-guard:
+	python3 qa/pythonpath_bootstrap_guard.py --root .
+
 qa-backend-bandit:
 	docker compose exec -T backend bash -lc 'set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && APPS_ROOT=""; for p in /app/backend/src/apps /app/src/apps /app/login_module/src/apps; do [ -d "$$p" ] && APPS_ROOT="$$p" && break; done; [ -n "$$APPS_ROOT" ] || { echo "apps root not found under /app" >&2; exit 2; }; EXCLUDES=$$(find "$$APPS_ROOT/modulos" -mindepth 2 -maxdepth 2 -type d -name migrations 2>/dev/null | tr "\n" "," | sed "s/,$$//"); bandit -q -r "$$APPS_ROOT" -x "$$EXCLUDES" -ll -ii -f txt | tee /app/$(QA_REPORTS_DIR)/bandit.txt'
 
 qa-backend-ruff:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
 
 qa-backend-mypy:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+
+qa-verify-static-gate:
+	python3 qa/verify_static_gate_reports.py --reports-dir "$(QA_REPORTS_DIR)"
+
+qa-makemigrations-check:
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py makemigrations --check --dry-run --noinput | tee /app/$(QA_REPORTS_DIR)/makemigrations_check.txt"
 
 qa-backend-tests:
-	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && DJANGO_SETTINGS_MODULE=config.settings.test coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
 qa-audit-integrity:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py audit_verify_chain --seed-minimal --format json --output /app/$(QA_REPORTS_DIR)/audit_integrity.json"
+
+qa-reporting-r8-gate:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py export_reporting_observability_snapshot --window-hours $(REPORTING_R8_GATE_WINDOW_HOURS) --output /app/$(QA_REPORTS_DIR)/reporting_observability_snapshot.json && python manage.py reporting_r8_gate --window-hours $(REPORTING_R8_GATE_WINDOW_HOURS) --warn-until $(REPORTING_R8_GATE_WARN_UNTIL) --hard-fail-from $(REPORTING_R8_GATE_HARD_FAIL_FROM) --snapshot-p95-max-ms $(REPORTING_R8_GATE_SNAPSHOT_P95_MAX_MS) --near-realtime-p95-max-ms $(REPORTING_R8_GATE_NEAR_RT_P95_MAX_MS) --error-rate-max-pct $(REPORTING_R8_GATE_ERROR_RATE_MAX_PCT) --output /app/$(QA_REPORTS_DIR)/reporting_r8_gate.json"
 
 qa-frontend-ci:
 	docker compose --profile qa run --rm frontend_ci
 
 # Gate 1: calidad estática + typecheck
-qa-ci-gate1: qa-ci-up qa-namespace-guard qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-frontend-ci
+qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-reporting-registry-guard qa-pythonpath-bootstrap-guard qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-frontend-ci
 
 # Gate 2: pruebas deterministas (pytest + cobertura)
 qa-ci-gate2: qa-ci-up qa-backend-tests
 
 # Gate 3: integridad de auditoría (reporte)
-qa-ci-gate3: qa-ci-up qa-audit-integrity
+qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate
 
 # Runner completo Gates 1–3
 qa-ci:
