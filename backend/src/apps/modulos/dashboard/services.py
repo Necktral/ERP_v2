@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone as dt_timezone
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 from django.conf import settings
@@ -225,7 +225,7 @@ def redeem_embed_token(*, token_str: str) -> dict[str, Any]:
     if not raw:
         raise DashboardValidationError("token es requerido.")
     try:
-        decoded = AccessToken(raw)
+        decoded = AccessToken(cast(Any, raw))
     except TokenError as exc:
         raise DashboardAuthError("Token embed inválido o expirado.") from exc
 

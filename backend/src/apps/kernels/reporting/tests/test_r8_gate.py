@@ -54,7 +54,7 @@ def test_reporting_r8_gate_hard_fail_mode_blocks(tmp_path: Path):
             hard_fail_from="2026-04-08",
             window_hours=24,
         )
-    assert int(exc.value.code) == 2
+    assert exc.value.code == 2
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["mode"] == "HARD_FAIL"
     assert payload["gate_status"] == "FAIL"

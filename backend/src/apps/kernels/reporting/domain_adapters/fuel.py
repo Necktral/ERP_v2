@@ -19,9 +19,27 @@ def _q4(value: Decimal) -> str:
     return str(value.quantize(Decimal("0.0001")))
 
 
+def _coerce_filter_date(value: Any, *, field_name: str) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            return date.fromisoformat(raw)
+        except ValueError as exc:
+            raise DatasetExecutionError(f"{field_name} debe estar en formato YYYY-MM-DD.") from exc
+    raise DatasetExecutionError(f"{field_name} inválido.")
+
+
 def _resolve_date_range(filters: dict[str, Any]) -> tuple[date, date]:
-    date_from = filters.get("date_from")
-    date_to = filters.get("date_to")
+    date_from = _coerce_filter_date(filters.get("date_from"), field_name="date_from")
+    date_to = _coerce_filter_date(filters.get("date_to"), field_name="date_to")
     if date_from and not date_to:
         date_to = date_from
     if date_to and not date_from:
@@ -29,6 +47,8 @@ def _resolve_date_range(filters: dict[str, Any]) -> tuple[date, date]:
     if not date_from and not date_to:
         today = timezone.localdate()
         return today, today
+    if date_from is None or date_to is None:
+        raise DatasetExecutionError("Rango de fechas inválido.")
     return date_from, date_to
 
 
@@ -259,28 +279,32 @@ def _dispense_vs_sale_payload(*, company, branch, filters: dict[str, Any]) -> di
             row["cancelled_sales"] += 1
 
     rows = []
-    totals = {
-        "dispense_count": 0,
-        "sales_count": 0,
-        "liters_dispensed": Decimal("0.0000"),
-        "amount_sold": Decimal("0.00"),
-        "cancelled_sales": 0,
-    }
+    total_dispense_count = 0
+    total_sales_count = 0
+    total_liters_dispensed = Decimal("0.0000")
+    total_amount_sold = Decimal("0.00")
+    total_cancelled_sales = 0
     for key in sorted(days.keys()):
         row = days[key]
-        totals["dispense_count"] += int(row["dispense_count"])
-        totals["sales_count"] += int(row["sales_count"])
-        totals["liters_dispensed"] += row["liters_dispensed"]
-        totals["amount_sold"] += row["amount_sold"]
-        totals["cancelled_sales"] += int(row["cancelled_sales"])
+        dispense_count = int(row["dispense_count"])
+        sales_count = int(row["sales_count"])
+        liters_dispensed = Decimal(row["liters_dispensed"])
+        amount_sold = Decimal(row["amount_sold"])
+        cancelled_sales = int(row["cancelled_sales"])
+
+        total_dispense_count += dispense_count
+        total_sales_count += sales_count
+        total_liters_dispensed += liters_dispensed
+        total_amount_sold += amount_sold
+        total_cancelled_sales += cancelled_sales
         rows.append(
             {
                 "date": row["date"],
-                "dispense_count": int(row["dispense_count"]),
-                "sales_count": int(row["sales_count"]),
-                "liters_dispensed": _q4(row["liters_dispensed"]),
-                "amount_sold": _q2(row["amount_sold"]),
-                "cancelled_sales": int(row["cancelled_sales"]),
+                "dispense_count": dispense_count,
+                "sales_count": sales_count,
+                "liters_dispensed": _q4(liters_dispensed),
+                "amount_sold": _q2(amount_sold),
+                "cancelled_sales": cancelled_sales,
             }
         )
 
@@ -290,11 +314,11 @@ def _dispense_vs_sale_payload(*, company, branch, filters: dict[str, Any]) -> di
         "measures": ["dispense_count", "sales_count", "liters_dispensed", "amount_sold", "cancelled_sales"],
         "rows": rows,
         "totals": {
-            "dispense_count": int(totals["dispense_count"]),
-            "sales_count": int(totals["sales_count"]),
-            "liters_dispensed": _q4(totals["liters_dispensed"]),
-            "amount_sold": _q2(totals["amount_sold"]),
-            "cancelled_sales": int(totals["cancelled_sales"]),
+            "dispense_count": int(total_dispense_count),
+            "sales_count": int(total_sales_count),
+            "liters_dispensed": _q4(total_liters_dispensed),
+            "amount_sold": _q2(total_amount_sold),
+            "cancelled_sales": int(total_cancelled_sales),
         },
         "warnings": [],
         "source_summary": {"source_modules": ["FUEL"]},
