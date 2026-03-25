@@ -107,6 +107,26 @@ Ejecución manual:
 make qa-reporting-registry-guard
 ```
 
+### Guard de compatibilidad contractual versionada (`reporting` U2)
+
+Gate 1 bloquea cambios contractuales silenciosos en datasets de reporting usando baseline versionado:
+
+- baseline: `qa/contracts/reporting_dataset_contract_baseline.json`
+- verifica bumps obligatorios:
+  - cambios estructurales (`filters_schema`, `dimensions`, `measures`, `export_capabilities`) requieren `schema_version` mayor.
+  - cambios semánticos (`quality_policy`) requieren `semantic_version` mayor.
+- datasets nuevos solo pasan si cumplen metadata contractual mínima.
+
+Ejecución manual:
+
+```bash
+make qa-reporting-contract-version-guard
+```
+
+Artefacto:
+
+- `qa/reports/reporting_contract_guard.json`
+
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 
 ### Gate R8 (reporting calidad + SLO)

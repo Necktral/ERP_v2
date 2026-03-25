@@ -227,6 +227,13 @@ Artefactos generados:
 - `qa/reports/coverage.txt`
 - `qa/reports/audit_integrity.json`
 - `qa/reports/reporting_r8_gate.json`
+- `qa/reports/reporting_contract_guard.json`
+
+Guard contractual versionado de reporting (U2):
+
+```bash
+make qa-reporting-contract-version-guard
+```
 
 ### Backend
 
