@@ -31,6 +31,8 @@ cleanup_reports() {
     "${REPORTS_DIR}/ruff.txt" \
     "${REPORTS_DIR}/mypy_strict_critical.txt" \
     "${REPORTS_DIR}/mypy.txt" \
+    "${REPORTS_DIR}/static_gate_summary.json" \
+    "${REPORTS_DIR}/makemigrations_check.txt" \
     "${REPORTS_DIR}/mypy_delta.json" \
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/pytest.xml" \
@@ -94,10 +96,13 @@ fi
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
     && make_cmd qa-analytics-contract-guard \
+    && make_cmd qa-reporting-registry-guard \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
     && make_cmd qa-backend-mypy \
+    && make_cmd qa-verify-static-gate \
+    && make_cmd qa-makemigrations-check \
     && make_cmd qa-frontend-ci; then
     gate1_status="passed"
   else

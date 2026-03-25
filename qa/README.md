@@ -54,6 +54,51 @@ Ejecución manual:
 make qa-analytics-contract-guard
 ```
 
+### Verificación estática veraz (ruff + mypy)
+
+Gate 1 ahora valida estáticos en dos capas:
+
+- `ruff` y `mypy` corren con `pipefail` (fallan si el comando falla aunque use `tee`).
+- `qa-verify-static-gate` parsea `qa/reports/ruff.txt` y `qa/reports/mypy.txt` para bloquear falsos verdes.
+
+Ejecución manual:
+
+```bash
+make qa-backend-ruff QA_REPORTS_DIR=qa/reports
+make qa-backend-mypy QA_REPORTS_DIR=qa/reports
+make qa-verify-static-gate QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/static_gate_summary.json`
+
+### Guard de drift de migraciones
+
+Gate 1 bloquea drift de modelos/migraciones con:
+
+```bash
+make qa-makemigrations-check QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/makemigrations_check.txt`
+
+### Guard de contrato de registry (`reporting`)
+
+Gate 1 también bloquea drift en datasets de reporting:
+
+- metadata mínima obligatoria por dataset (`render_hints`, `drill_metadata`, `quality_policy`, `export_capabilities`),
+- `dataset_key` únicos,
+- handlers de adapters (`accounting`/`fuel`) alineados con datasets habilitados en `registry`.
+
+Ejecución manual:
+
+```bash
+make qa-reporting-registry-guard
+```
+
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 
 ### Gate R8 (reporting calidad + SLO)

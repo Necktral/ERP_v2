@@ -8,7 +8,7 @@ from django.utils import timezone
 
 class User(AbstractUser):
     # AbstractUser.email es str (no nullable). Mantener compatibilidad de tipos.
-    email = models.EmailField(unique=True, blank=True)
+    email = models.EmailField(unique=True, blank=True, null=True)  # type: ignore[assignment]
 
     # Flujo onboarding:
     # - empleado creado por admin: entra con contraseña provisional y el sistema obliga a cambiarla
