@@ -1,0 +1,378 @@
+{
+  "datasets": [
+    {
+      "dataset_key": "accounting.balance_sheet.as_of",
+      "dimensions": [
+        "section",
+        "account_code",
+        "account_name"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "as_of": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        },
+        "month": {
+          "required": false,
+          "type": "int"
+        },
+        "year": {
+          "required": false,
+          "type": "int"
+        }
+      },
+      "measures": [
+        "debit_total",
+        "credit_total",
+        "balance"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": false,
+        "required_dimensions": [
+          "section"
+        ],
+        "required_totals": [
+          "assets",
+          "liabilities",
+          "equity"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "accounting.general_ledger.transaction",
+      "dimensions": [
+        "journal_entry_id",
+        "entry_date",
+        "line_no",
+        "account_code"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "account_code": {
+          "required": true,
+          "type": "str"
+        },
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        },
+        "month": {
+          "required": false,
+          "type": "int"
+        },
+        "year": {
+          "required": false,
+          "type": "int"
+        }
+      },
+      "measures": [
+        "amount_tx",
+        "debit_base",
+        "credit_base"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "journal_entry_id",
+          "account_code"
+        ],
+        "required_totals": []
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "accounting.operational_reconciliation.period",
+      "dimensions": [
+        "source_module",
+        "event_type"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "operational_count",
+        "linked_count",
+        "posted_count",
+        "draft_exception_count",
+        "operational_amount",
+        "draft_amount",
+        "posted_amount"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "source_module",
+          "event_type"
+        ],
+        "required_totals": [
+          "operational_count",
+          "linked_count",
+          "posted_count",
+          "draft_exception_count",
+          "pending_operational_events"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "accounting.pnl.period",
+      "dimensions": [
+        "account_code",
+        "account_name",
+        "account_type"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        },
+        "month": {
+          "required": false,
+          "type": "int"
+        },
+        "year": {
+          "required": false,
+          "type": "int"
+        }
+      },
+      "measures": [
+        "debit_total",
+        "credit_total",
+        "balance"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": false,
+        "required_dimensions": [
+          "account_code"
+        ],
+        "required_totals": [
+          "debit_total",
+          "credit_total"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "accounting.trial_balance.period",
+      "dimensions": [
+        "account_code",
+        "account_name",
+        "account_type"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        },
+        "month": {
+          "required": false,
+          "type": "int"
+        },
+        "year": {
+          "required": false,
+          "type": "int"
+        }
+      },
+      "measures": [
+        "debit_total",
+        "credit_total",
+        "net_balance"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": false,
+        "required_dimensions": [
+          "account_code"
+        ],
+        "required_totals": [
+          "debit_total",
+          "credit_total"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "fuel.dispense_vs_sale.daily",
+      "dimensions": [
+        "date"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "dispense_count",
+        "sales_count",
+        "liters_dispensed",
+        "amount_sold",
+        "cancelled_sales"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "date"
+        ],
+        "required_totals": [
+          "dispense_count",
+          "sales_count",
+          "liters_dispensed",
+          "amount_sold",
+          "cancelled_sales"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "fuel.sales.by_pump.daily",
+      "dimensions": [
+        "pump_code",
+        "product"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "dispense_count",
+        "sales_count",
+        "liters",
+        "amount_total"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "pump_code",
+          "product"
+        ],
+        "required_totals": [
+          "dispense_count",
+          "sales_count",
+          "liters",
+          "amount_total"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "fuel.sales.by_shift.daily",
+      "dimensions": [
+        "shift_id",
+        "shift_status",
+        "opened_at",
+        "closed_at"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "sales_active",
+        "sales_cancelled",
+        "total_amount",
+        "liters_sold"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "shift_id"
+        ],
+        "required_totals": [
+          "sales_active",
+          "sales_cancelled",
+          "total_amount",
+          "liters_sold"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    }
+  ],
+  "manifest_version": 1
+}
