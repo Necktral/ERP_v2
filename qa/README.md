@@ -85,6 +85,14 @@ Artefacto:
 
 - `qa/reports/makemigrations_check.txt`
 
+### Guard de bootstrap de `PYTHONPATH` en runtime
+
+Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/src`:
+
+```bash
+make qa-pythonpath-bootstrap-guard
+```
+
 ### Guard de contrato de registry (`reporting`)
 
 Gate 1 también bloquea drift en datasets de reporting:

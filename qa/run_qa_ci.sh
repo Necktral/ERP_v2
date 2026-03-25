@@ -97,6 +97,7 @@ if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
     && make_cmd qa-analytics-contract-guard \
     && make_cmd qa-reporting-registry-guard \
+    && make_cmd qa-pythonpath-bootstrap-guard \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
