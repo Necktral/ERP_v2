@@ -22,6 +22,10 @@ RECOMMENDED_REPORTS = [
     "qa/reports/security_exceptions_guard.json",
     "qa/reports/security_findings_guard.json",
     "qa/reports/migration_safety_guard.json",
+    "qa/reports/route_contract_report.json",
+    "qa/reports/kernel_compat_usage.json",
+    "qa/reports/coverage_by_domain.json",
+    "qa/reports/pr_blast_radius.json",
 ]
 
 SUPPLY_CHAIN_ARTIFACTS = [

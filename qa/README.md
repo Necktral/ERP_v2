@@ -6,18 +6,28 @@ Este directorio contiene artefactos de QA que complementan los tests unitarios/i
 
 El Makefile incluye un runner para CI/local que genera reportes en `qa/reports/`:
 
-## Cobertura (Gate 2): alcance y criterio de éxito
+## Cobertura (Gate 2): modelo estratificado por dominio
 
-**Alcance (scope):** el reporte de coverage usa `.coveragerc` y está filtrado a `src/apps/sync_engine`.
-Eso significa que el **TOTAL** del reporte corresponde **solo** a ese módulo, no al backend completo.
+Gate 2 mantiene `coverage.xml`/`coverage.txt` y además ejecuta `qa-coverage-by-domain-guard` para medir dominios críticos:
 
-**Criterio de éxito recomendado (verificable):**
+- `apps.modulos.sync_engine`
+- `apps.kernels.reporting`
+- `apps.kernels.accounting`
+- `apps.modulos.accounts`
+- `apps.modulos.dashboard`
+- `apps.modulos.integration`
+- `apps.modulos.estacion_servicios`
 
-- Cobertura del scope definido **≥ 98%** (o **≥ 99%** si el objetivo es más estricto).
-- `make qa-ci-gate2` y `make qa-ci-gate3` pasan sin errores.
-- Sin regresión: no bajar la cobertura del scope ni en archivos tocados.
+Política aplicada:
 
-Si el KPI es “backend completo”, hay que **ampliar o ajustar** el `source` en `.coveragerc` y recalcular el %.
+- falla si un dominio crítico no tiene medición;
+- falla si la cobertura de dominio cae por debajo del baseline ratchet;
+- falla si archivos críticos tocados quedan bajo el floor configurado.
+
+Contrato y artefactos:
+
+- baseline: `qa/contracts/coverage_by_domain_baseline.json`
+- reporte: `qa/reports/coverage_by_domain.json`
 
 - Recomendado (DB limpia, reproducible):
 
@@ -39,6 +49,23 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
   make qa-ci
   ```
 
+### Runner por perfiles (manifiestos reproducibles)
+
+Perfiles soportados:
+
+- `pr` -> `qa/manifests/pr_default.yaml`
+- `release` -> `qa/manifests/release_candidate.yaml`
+- `go_live` -> `qa/manifests/go_live_strict.yaml`
+- `rollback_rehearsal` -> `qa/manifests/rollback_rehearsal.yaml`
+
+Ejecución:
+
+```bash
+make qa-run-profile PROFILE=pr
+```
+
+El `run_manifest.json` registra `profile`, `manifest` y `overrides` efectivos.
+
 ### Guard de contrato Analytics (puerto/prefix/proxy)
 
 Se valida en Gate 1 que el contrato operativo de Analytics no derive:
@@ -53,6 +80,18 @@ Ejecución manual:
 ```bash
 make qa-analytics-contract-guard
 ```
+
+### Guard de contrato de rutas (canónico vs legacy)
+
+Valida colisiones de prefijos e inventario contractual de aliases legacy:
+
+```bash
+make qa-route-contract-guard
+```
+
+Artefacto:
+
+- `qa/reports/route_contract_report.json`
 
 ### Verificación estática veraz (ruff + mypy)
 
@@ -237,6 +276,14 @@ Artefactos:
 - `qa/reports/github_master_ruleset_verify.json`
 - `qa/reports/github_master_ruleset_apply.json`
 
+### AI Review (advisory)
+
+Workflow: `.github/workflows/ai-review.yml` (`AI Review (Advisory)`).
+
+- No es check bloqueante.
+- No forma parte de `required_checks`.
+- Si falta `OPENAI_API_KEY`, se reporta como omitido sin afectar merge.
+
 ### Guard de fronteras arquitectónicas (U4)
 
 Gate 1 incorpora guard AST con política dual:
@@ -259,6 +306,25 @@ make qa-architecture-dependency-guard QA_REPORTS_DIR=qa/reports
 Artefacto:
 
 - `qa/reports/architecture_dependency_guard.json`
+
+### Guard de compat legacy de kernels
+
+`namespace_layout_guard` ahora emite inventario de deuda legacy y bloquea nuevos usos fuera de policy:
+
+- policy: `qa/kernel_compat_policy.py`
+- artefacto: `qa/reports/kernel_compat_usage.json`
+
+Ejecución:
+
+```bash
+make qa-namespace-guard
+```
+
+Modo estricto (retiro total):
+
+```bash
+make qa-kernel-compat-strict
+```
 
 ### Guard de contrato de registry (`reporting`)
 
@@ -293,6 +359,22 @@ make qa-reporting-contract-version-guard
 Artefacto:
 
 - `qa/reports/reporting_contract_guard.json`
+
+### Guard de blast radius de PR
+
+Clasifica el alcance del cambio y aplica policy para cambios `high/extreme`:
+
+```bash
+make qa-pr-blast-radius-guard
+```
+
+Artefacto:
+
+- `qa/reports/pr_blast_radius.json`
+
+Regla actual:
+
+- `high/extreme` requiere ADR o design note en `docs/adr/*` o `docs/design/*`.
 
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 

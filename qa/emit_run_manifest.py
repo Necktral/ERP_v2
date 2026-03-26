@@ -14,11 +14,14 @@ ARTIFACTS = [
     ("mypy_strict_critical.txt", "gate1"),
     ("mypy.txt", "gate1"),
     ("static_gate_summary.json", "gate1"),
+    ("kernel_compat_usage.json", "gate1"),
     ("makemigrations_check.txt", "gate1"),
     ("migration_safety_guard.json", "gate1"),
     ("mypy_delta.json", "gate1"),
     ("mypy_delta.txt", "gate1"),
     ("reporting_contract_guard.json", "gate1"),
+    ("route_contract_report.json", "gate1"),
+    ("pr_blast_radius.json", "gate1"),
     ("package_install.txt", "gate1"),
     ("package_imports.txt", "gate1"),
     ("package_check.txt", "gate1"),
@@ -30,6 +33,7 @@ ARTIFACTS = [
     ("pytest.xml", "gate2"),
     ("coverage.xml", "gate2"),
     ("coverage.txt", "gate2"),
+    ("coverage_by_domain.json", "gate2"),
     ("audit_integrity.json", "gate3"),
     ("reporting_r8_gate.json", "gate3"),
     ("reporting_r8_gate_guard.json", "gate3"),
@@ -51,6 +55,9 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--gate3-status", required=True)
     p.add_argument("--run-status", required=True)
     p.add_argument("--failed-gate", default="")
+    p.add_argument("--profile", default="default")
+    p.add_argument("--manifest", default="")
+    p.add_argument("--overrides-json", default="[]")
     return p.parse_args()
 
 
@@ -83,6 +90,13 @@ def main() -> int:
     reports_dir = Path(args.reports_dir)
     reports_dir.mkdir(parents=True, exist_ok=True)
 
+    try:
+        overrides = json.loads(args.overrides_json)
+        if not isinstance(overrides, list):
+            overrides = []
+    except Exception:
+        overrides = []
+
     gate_statuses = {
         "setup": args.setup_status,
         "gate1": args.gate1_status,
@@ -110,6 +124,9 @@ def main() -> int:
         "run_finished_at": args.run_finished_at,
         "run_status": args.run_status,
         "failed_gate": args.failed_gate or None,
+        "profile": args.profile,
+        "manifest": args.manifest or None,
+        "overrides": overrides,
         "gates": gate_statuses,
         "artifacts": artifacts,
     }

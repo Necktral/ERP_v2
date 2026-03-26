@@ -72,7 +72,7 @@ def test_billing_invoice_create_writes_audit_event():
     client = _client_with_perms(company=company, branch=branch, perm_codes=["billing.invoice.create"])
 
     resp = client.post(
-        "/api/billing/invoices/",
+        "/api/legacy/billing/invoices/",
         {"customer_name": "Cliente QA", "total_amount": "123.45"},
         format="json",
     )
@@ -90,7 +90,7 @@ def test_billing_invoice_create_denied_is_audited():
     client = _client_with_membership_only(company=company, branch=branch)
 
     resp = client.post(
-        "/api/billing/invoices/",
+        "/api/legacy/billing/invoices/",
         {"customer_name": "No debe", "total_amount": "1.00"},
         format="json",
     )

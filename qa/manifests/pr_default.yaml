@@ -1,0 +1,10 @@
+{
+  "profile": "pr",
+  "qa_target": "qa-ci",
+  "qa_reports_dir": "qa/reports",
+  "qa_fresh_db": "0",
+  "qa_keep_frontend": "1",
+  "enforcement_level": "standard",
+  "gates": ["setup", "gate1", "gate2", "gate3"],
+  "allowed_overrides": ["QA_REPORTS_DIR", "QA_FRESH_DB", "QA_KEEP_FRONTEND"]
+}

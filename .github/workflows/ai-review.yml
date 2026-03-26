@@ -1,4 +1,4 @@
-name: AI Review (PR)
+name: AI Review (Advisory)
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
   issues: write
 
 jobs:
-  ai_review:
+  ai_review_advisory:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

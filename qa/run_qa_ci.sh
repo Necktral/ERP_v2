@@ -6,6 +6,9 @@ REPORTS_REL="${QA_REPORTS_DIR:-qa/reports}"
 REPORTS_DIR="${ROOT_DIR}/${REPORTS_REL}"
 QA_FRESH_DB="${QA_FRESH_DB:-0}"
 QA_KEEP_FRONTEND="${QA_KEEP_FRONTEND:-1}"
+QA_PIPELINE_PROFILE="${QA_PIPELINE_PROFILE:-default}"
+QA_PIPELINE_MANIFEST="${QA_PIPELINE_MANIFEST:-}"
+QA_PIPELINE_OVERRIDES_JSON="${QA_PIPELINE_OVERRIDES_JSON:-[]}"
 MAKE_BIN="${MAKE_BIN:-make}"
 
 mkdir -p "${REPORTS_DIR}"
@@ -32,11 +35,14 @@ cleanup_reports() {
     "${REPORTS_DIR}/mypy_strict_critical.txt" \
     "${REPORTS_DIR}/mypy.txt" \
     "${REPORTS_DIR}/static_gate_summary.json" \
+    "${REPORTS_DIR}/kernel_compat_usage.json" \
     "${REPORTS_DIR}/makemigrations_check.txt" \
     "${REPORTS_DIR}/migration_safety_guard.json" \
     "${REPORTS_DIR}/mypy_delta.json" \
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/reporting_contract_guard.json" \
+    "${REPORTS_DIR}/route_contract_report.json" \
+    "${REPORTS_DIR}/pr_blast_radius.json" \
     "${REPORTS_DIR}/package_install.txt" \
     "${REPORTS_DIR}/package_imports.txt" \
     "${REPORTS_DIR}/package_check.txt" \
@@ -50,6 +56,7 @@ cleanup_reports() {
     "${REPORTS_DIR}/pytest.xml" \
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
+    "${REPORTS_DIR}/coverage_by_domain.json" \
     "${REPORTS_DIR}/audit_integrity.json" \
     "${REPORTS_DIR}/reporting_r8_gate.json" \
     "${REPORTS_DIR}/reporting_r8_gate_guard.json" \
@@ -75,7 +82,10 @@ emit_manifest() {
     --gate2-status "${gate2_status}" \
     --gate3-status "${gate3_status}" \
     --run-status "${run_status}" \
-    --failed-gate "${failed_gate}"
+    --failed-gate "${failed_gate}" \
+    --profile "${QA_PIPELINE_PROFILE}" \
+    --manifest "${QA_PIPELINE_MANIFEST}" \
+    --overrides-json "${QA_PIPELINE_OVERRIDES_JSON}"
 }
 
 ensure_frontend_up() {
@@ -109,6 +119,8 @@ fi
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
     && make_cmd qa-analytics-contract-guard \
+    && make_cmd qa-route-contract-guard \
+    && make_cmd qa-pr-blast-radius-guard \
     && make_cmd qa-reporting-registry-guard \
     && make_cmd qa-reporting-contract-version-guard \
     && make_cmd qa-pythonpath-bootstrap-guard \
@@ -135,7 +147,8 @@ if [[ "${run_status}" == "passed" ]]; then
 fi
 
 if [[ "${run_status}" == "passed" ]]; then
-  if make_cmd qa-backend-tests; then
+  if make_cmd qa-backend-tests \
+    && make_cmd qa-coverage-by-domain-guard; then
     gate2_status="passed"
   else
     gate2_status="failed"

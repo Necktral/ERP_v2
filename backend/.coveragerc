@@ -1,6 +1,12 @@
 [run]
 source =
     src/apps/modulos/sync_engine
+    src/apps/kernels/reporting
+    src/apps/kernels/accounting
+    src/apps/modulos/accounts
+    src/apps/modulos/dashboard
+    src/apps/modulos/integration
+    src/apps/modulos/estacion_servicios
 omit =
     */migrations/*
     */tests/*
@@ -13,4 +19,4 @@ omit =
 
 [report]
 show_missing = True
-skip_covered = True
+skip_covered = False

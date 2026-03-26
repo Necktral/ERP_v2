@@ -219,6 +219,14 @@ El repo incluye un runner determinista para CI/local (lint + typecheck + tests +
   make qa-ci
   ```
 
+- Runner por perfiles (manifiestos reproducibles):
+
+  ```bash
+  make qa-run-profile PROFILE=pr
+  make qa-run-profile PROFILE=release
+  make qa-run-profile PROFILE=go_live
+  ```
+
 Artefactos generados:
 
 - `qa/reports/static_scan.txt`
@@ -227,10 +235,14 @@ Artefactos generados:
 - `qa/reports/pytest.xml`
 - `qa/reports/coverage.xml`
 - `qa/reports/coverage.txt`
+- `qa/reports/coverage_by_domain.json`
 - `qa/reports/audit_integrity.json`
 - `qa/reports/reporting_r8_gate.json`
 - `qa/reports/reporting_r8_gate_guard.json`
 - `qa/reports/reporting_contract_guard.json`
+- `qa/reports/route_contract_report.json`
+- `qa/reports/kernel_compat_usage.json`
+- `qa/reports/pr_blast_radius.json`
 - `qa/reports/package_check.txt`
 - `qa/reports/architecture_dependency_guard.json`
 - `qa/reports/migration_safety_guard.json`
@@ -250,6 +262,19 @@ Guard de fronteras arquitectónicas (U4):
 
 ```bash
 make qa-architecture-dependency-guard
+```
+
+Guard de contrato de rutas (canónico vs legacy):
+
+```bash
+make qa-route-contract-guard
+```
+
+Guard de compat legacy de kernels:
+
+```bash
+make qa-namespace-guard
+make qa-kernel-compat-strict   # modo retiro total
 ```
 
 Guard de seguridad de migraciones (U5):
@@ -275,6 +300,16 @@ Guard de checks requeridos GitHub (U6):
 ```bash
 make qa-github-required-checks-guard
 ```
+
+Guard de blast radius de PR:
+
+```bash
+make qa-pr-blast-radius-guard
+```
+
+AI Review:
+
+- Workflow: `AI Review (Advisory)` (no bloqueante, fuera de required checks).
 
 Guard de higiene post-runner (U6):
 
@@ -347,12 +382,16 @@ make qa-export-u6-release-evidence
 
 Base path: `/api/fuel/`
 
+- Canónico: `/api/fuel/*`
+- Legacy con deprecación: `/api/backend/fuel/*` y `/api/backend/estacion-servicios/*`
+
 ### Reporting / Analytics (R8)
 
 - API canónica reporting: `/api/reporting/*`
 - Dashboard gateway: `/api/backend/dashboard/*`
 - Métricas operativas consolidadas: `/api/metrics/` (incluye `reporting.dataset_slo`, `reporting.failure_classes_last_window` y `dashboard.workspace_redeem_rate`)
 - Endpoints legacy contables `/api/accounting/reports/*` emiten headers `Deprecation`, `Sunset` y `Link` hacia `/api/reporting/catalog/`
+- Billing canónico: `/api/billing/*` y carril legacy explícito `/api/legacy/billing/*`
 
 - `GET /api/fuel/health/` — Healthcheck del módulo (público)
 - `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
