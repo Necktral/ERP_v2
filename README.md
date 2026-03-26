@@ -16,6 +16,7 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Estado ejecutivo: [docs/contexto_nucleos.md](docs/contexto_nucleos.md)
 - Blueprint arquitectónico: [docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md](docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md)
 - Runbooks y operación release: [docs/operacion/README.md](docs/operacion/README.md)
+- Runbook U5 migraciones online-safe: [docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md](docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md)
 - Índice general: [docs/README.md](docs/README.md)
 
 ## Estado Release F1–F12 (2026-03-10)
@@ -231,6 +232,7 @@ Artefactos generados:
 - `qa/reports/reporting_contract_guard.json`
 - `qa/reports/package_check.txt`
 - `qa/reports/architecture_dependency_guard.json`
+- `qa/reports/migration_safety_guard.json`
 
 Guard contractual versionado de reporting (U2):
 
@@ -242,6 +244,18 @@ Guard de fronteras arquitectónicas (U4):
 
 ```bash
 make qa-architecture-dependency-guard
+```
+
+Guard de seguridad de migraciones (U5):
+
+```bash
+make qa-migration-safety-guard
+```
+
+Rehearsal operativo de migraciones en DB efímera (U5):
+
+```bash
+make qa-migration-rehearsal
 ```
 
 ### Backend

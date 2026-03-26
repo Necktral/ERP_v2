@@ -85,6 +85,39 @@ Artefacto:
 
 - `qa/reports/makemigrations_check.txt`
 
+### Guard de seguridad de migraciones (U5)
+
+Gate 1 bloquea migraciones nuevas/modificadas sin metadata de riesgo o con reglas online-safe incumplidas.
+
+Baseline versionado:
+
+- `qa/contracts/migration_safety_baseline.json`
+- actualización solo por PR explícito de arquitectura/DB:
+  `python3 qa/migration_safety_guard.py --root . --baseline qa/contracts/migration_safety_baseline.json --write-baseline`
+
+Ejecución manual:
+
+```bash
+make qa-migration-safety-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/migration_safety_guard.json`
+
+### Rehearsal de migraciones en DB efímera (U5)
+
+Ensayo operativo no destructivo para validar plan y aplicación de migraciones:
+
+```bash
+make qa-migration-rehearsal QA_REPORTS_DIR=qa/reports
+```
+
+Artefactos:
+
+- `qa/reports/migration_plan.txt`
+- `qa/reports/migration_rehearsal_summary.json`
+
 ### Guard de bootstrap de `PYTHONPATH` en runtime
 
 Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/src`:
