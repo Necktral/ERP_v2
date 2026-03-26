@@ -229,11 +229,19 @@ Artefactos generados:
 - `qa/reports/reporting_r8_gate.json`
 - `qa/reports/reporting_r8_gate_guard.json`
 - `qa/reports/reporting_contract_guard.json`
+- `qa/reports/package_check.txt`
+- `qa/reports/architecture_dependency_guard.json`
 
 Guard contractual versionado de reporting (U2):
 
 ```bash
 make qa-reporting-contract-version-guard
+```
+
+Guard de fronteras arquitectónicas (U4):
+
+```bash
+make qa-architecture-dependency-guard
 ```
 
 ### Backend
@@ -255,6 +263,16 @@ make qa-reporting-contract-version-guard
   source system_wis/bin/activate
   cd backend
   ruff check .
+  ```
+
+- Comando canónico empaquetado (U4):
+  ```bash
+  cd backend
+  python -m config.manage check
+  ```
+  Compatibilidad vigente:
+  ```bash
+  python backend/manage.py check
   ```
 
 ### Frontend

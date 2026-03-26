@@ -93,6 +93,49 @@ Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/s
 make qa-pythonpath-bootstrap-guard
 ```
 
+### Packaging progresivo backend (U4)
+
+Gate 1 valida que el backend corre como paquete instalable (sin quitar compatibilidad de `backend/manage.py`):
+
+```bash
+make qa-backend-package-check QA_REPORTS_DIR=qa/reports
+```
+
+El check realiza:
+
+- `pip install -e /app/backend --no-deps`
+- smoke import (`config`, `apps.kernels.reporting`)
+- smoke de comando canónico: `python -m config.manage check --deploy`
+
+Artefactos:
+
+- `qa/reports/package_install.txt`
+- `qa/reports/package_imports.txt`
+- `qa/reports/package_check.txt`
+
+### Guard de fronteras arquitectónicas (U4)
+
+Gate 1 incorpora guard AST con política dual:
+
+- hard-fail inmediato para imports prohibidos en `apps.kernels.reporting` hacia dominios transaccionales fuera de `domain_adapters/*`;
+- ratchet global de dependencias cruzadas (bloquea nuevas aristas fuera del baseline).
+
+Baseline versionado:
+
+- `qa/contracts/architecture_dependency_baseline.json`
+- actualización solo por PR explícito de arquitectura:
+  `python3 qa/architecture_dependency_guard.py --root . --baseline qa/contracts/architecture_dependency_baseline.json --write-baseline`
+
+Ejecución manual:
+
+```bash
+make qa-architecture-dependency-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/architecture_dependency_guard.json`
+
 ### Guard de contrato de registry (`reporting`)
 
 Gate 1 también bloquea drift en datasets de reporting:

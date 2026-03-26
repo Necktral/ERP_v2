@@ -36,6 +36,10 @@ cleanup_reports() {
     "${REPORTS_DIR}/mypy_delta.json" \
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/reporting_contract_guard.json" \
+    "${REPORTS_DIR}/package_install.txt" \
+    "${REPORTS_DIR}/package_imports.txt" \
+    "${REPORTS_DIR}/package_check.txt" \
+    "${REPORTS_DIR}/architecture_dependency_guard.json" \
     "${REPORTS_DIR}/pytest.xml" \
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
@@ -101,6 +105,8 @@ if [[ "${run_status}" == "passed" ]]; then
     && make_cmd qa-reporting-registry-guard \
     && make_cmd qa-reporting-contract-version-guard \
     && make_cmd qa-pythonpath-bootstrap-guard \
+    && make_cmd qa-backend-package-check \
+    && make_cmd qa-architecture-dependency-guard \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
