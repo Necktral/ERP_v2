@@ -15,6 +15,7 @@ ARTIFACTS = [
     ("mypy.txt", "gate1"),
     ("static_gate_summary.json", "gate1"),
     ("makemigrations_check.txt", "gate1"),
+    ("migration_safety_guard.json", "gate1"),
     ("mypy_delta.json", "gate1"),
     ("mypy_delta.txt", "gate1"),
     ("reporting_contract_guard.json", "gate1"),

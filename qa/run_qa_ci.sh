@@ -33,6 +33,7 @@ cleanup_reports() {
     "${REPORTS_DIR}/mypy.txt" \
     "${REPORTS_DIR}/static_gate_summary.json" \
     "${REPORTS_DIR}/makemigrations_check.txt" \
+    "${REPORTS_DIR}/migration_safety_guard.json" \
     "${REPORTS_DIR}/mypy_delta.json" \
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/reporting_contract_guard.json" \
@@ -113,6 +114,7 @@ if [[ "${run_status}" == "passed" ]]; then
     && make_cmd qa-backend-mypy \
     && make_cmd qa-verify-static-gate \
     && make_cmd qa-makemigrations-check \
+    && make_cmd qa-migration-safety-guard \
     && make_cmd qa-frontend-ci; then
     gate1_status="passed"
   else
