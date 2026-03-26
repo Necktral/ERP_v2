@@ -18,6 +18,7 @@ Gate 1 debe pasar con:
 - `qa-github-required-checks-guard` (checks requeridos válidos).
 - `qa-runner-hygiene-guard` (sin residuos críticos del runner).
 - `qa-validate-security-exceptions` (excepciones vigentes).
+- `qa-security-findings-enforce` (hallazgos `pip`/`npm` contra excepciones).
 
 ## Supply chain
 
@@ -31,6 +32,12 @@ Artefactos mínimos:
 - `qa_npm_audit_u6.json`
 - `qa_security_findings_guard_u6.json`
 - `qa_supply_chain_artifacts.sha256`
+
+Política operacional:
+
+- Estos artefactos son **source of truth del workflow `supply-chain-ci`**.
+- El consolidado local (`release_evidence_u6.json`) los clasifica como `CI-only` para evitar falso rojo fuera de CI.
+- En CI, siguen siendo obligatorios.
 
 ## Aplicar/verificar política de master (GitHub API)
 

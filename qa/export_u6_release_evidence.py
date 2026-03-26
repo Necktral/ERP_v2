@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -76,6 +77,12 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def _is_ci_environment() -> bool:
+    if os.getenv("CI", "").strip().lower() == "true":
+        return True
+    return os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true"
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.root).resolve()
@@ -106,7 +113,15 @@ def main() -> int:
         supply_chain_status[rel] = {
             "exists": path.exists(),
             "size_bytes": path.stat().st_size if path.exists() else 0,
+            "source_of_truth": "supply-chain-ci",
         }
+
+    supply_chain_artifacts_raw_present = all(item["exists"] for item in supply_chain_status.values())
+    ci_environment = _is_ci_environment()
+    supply_chain_required_in_current_run = ci_environment
+    supply_chain_artifacts_effective_present = (
+        supply_chain_artifacts_raw_present or not supply_chain_required_in_current_run
+    )
 
     gate1_core_reports = RECOMMENDED_REPORTS[:4]
     payload = {
@@ -119,6 +134,12 @@ def main() -> int:
         "contracts": contracts_status,
         "reports": reports_status,
         "supply_chain_artifacts": supply_chain_status,
+        "supply_chain_policy": {
+            "mode": "ci_only_external_artifacts",
+            "required_in_ci": True,
+            "required_in_local": False,
+            "required_in_current_run": supply_chain_required_in_current_run,
+        },
         "ruleset_verify": {
             "path": ruleset_report_path.relative_to(root).as_posix(),
             "status": ruleset_report.get("status") if isinstance(ruleset_report, dict) else None,
@@ -131,9 +152,8 @@ def main() -> int:
             "contracts_all_present": all(row["exists"] for row in contracts_status.values()),
             "gate1_core_reports_present": all(reports_status[rel]["exists"] for rel in gate1_core_reports),
             "security_findings_report_present": reports_status["qa/reports/security_findings_guard.json"]["exists"],
-            "supply_chain_artifacts_present": all(
-                item["exists"] for item in supply_chain_status.values()
-            ),
+            "supply_chain_artifacts_raw_present": supply_chain_artifacts_raw_present,
+            "supply_chain_artifacts_present": supply_chain_artifacts_effective_present,
         },
     }
 

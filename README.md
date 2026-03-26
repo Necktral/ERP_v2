@@ -384,6 +384,12 @@ Base path: `/api/fuel/`
 
 - Canónico: `/api/fuel/*`
 - Legacy con deprecación: `/api/backend/fuel/*` y `/api/backend/estacion-servicios/*`
+- `GET /api/fuel/health/` — Healthcheck del módulo (público)
+- `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
+- `POST /api/fuel/shifts/{shift_id}/close/` — Cerrar turno (permiso: `fuel.shift.close`)
+- `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
+- `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
+- `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
 
 ### Reporting / Analytics (R8)
 
@@ -392,13 +398,6 @@ Base path: `/api/fuel/`
 - Métricas operativas consolidadas: `/api/metrics/` (incluye `reporting.dataset_slo`, `reporting.failure_classes_last_window` y `dashboard.workspace_redeem_rate`)
 - Endpoints legacy contables `/api/accounting/reports/*` emiten headers `Deprecation`, `Sunset` y `Link` hacia `/api/reporting/catalog/`
 - Billing canónico: `/api/billing/*` y carril legacy explícito `/api/legacy/billing/*`
-
-- `GET /api/fuel/health/` — Healthcheck del módulo (público)
-- `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
-- `POST /api/fuel/shifts/{shift_id}/close/` — Cerrar turno (permiso: `fuel.shift.close`)
-- `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
-- `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
-- `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
 
 ### Reporting Kernel
 

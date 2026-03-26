@@ -93,6 +93,18 @@ Artefacto:
 
 - `qa/reports/route_contract_report.json`
 
+### Guard de consistencia API por heading en README
+
+Bloquea mezcla de secciones documentales (por ejemplo endpoints `fuel` bajo heading de `reporting`):
+
+```bash
+make qa-readme-section-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/readme_section_guard.json`
+
 ### Verificación estática veraz (ruff + mypy)
 
 Gate 1 ahora valida estáticos en dos capas:
@@ -168,6 +180,12 @@ make qa-export-u6-release-evidence QA_REPORTS_DIR=qa/reports
 Artefacto:
 
 - `qa/reports/release_evidence_u6.json`
+
+Política de artefactos supply-chain:
+
+- `qa_sbom_*`, `qa_*_u6.json` y `qa_supply_chain_artifacts.sha256` son **CI-only**.
+- En ejecución local, el consolidado los clasifica como externos/no bloqueantes.
+- En CI (`CI=true`), esos artefactos siguen siendo obligatorios.
 
 ### Guard de bootstrap de `PYTHONPATH` en runtime
 
@@ -252,6 +270,18 @@ Contrato:
 Artefacto:
 
 - `qa/reports/security_exceptions_guard.json`
+
+### Enforcement de hallazgos de seguridad (U6)
+
+Valida hallazgos `pip`/`npm` contra excepciones versionadas:
+
+```bash
+make qa-security-findings-enforce QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/security_findings_guard.json`
 
 ### Reglas de branch `master` (U6)
 

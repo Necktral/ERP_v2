@@ -42,6 +42,7 @@ cleanup_reports() {
     "${REPORTS_DIR}/mypy_delta.txt" \
     "${REPORTS_DIR}/reporting_contract_guard.json" \
     "${REPORTS_DIR}/route_contract_report.json" \
+    "${REPORTS_DIR}/readme_section_guard.json" \
     "${REPORTS_DIR}/pr_blast_radius.json" \
     "${REPORTS_DIR}/package_install.txt" \
     "${REPORTS_DIR}/package_imports.txt" \
@@ -120,6 +121,7 @@ if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-namespace-guard \
     && make_cmd qa-analytics-contract-guard \
     && make_cmd qa-route-contract-guard \
+    && make_cmd qa-readme-section-guard \
     && make_cmd qa-pr-blast-radius-guard \
     && make_cmd qa-reporting-registry-guard \
     && make_cmd qa-reporting-contract-version-guard \
@@ -130,6 +132,7 @@ if [[ "${run_status}" == "passed" ]]; then
     && make_cmd qa-github-required-checks-guard \
     && make_cmd qa-runner-hygiene-guard \
     && make_cmd qa-validate-security-exceptions \
+    && make_cmd qa-security-findings-enforce \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \

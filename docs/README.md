@@ -38,6 +38,7 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - [operacion/GO_LIVE_FASE10_PROCUREMENT_v1.0.md](operacion/GO_LIVE_FASE10_PROCUREMENT_v1.0.md) — Go-live operativo de procurement 4B.
 - [operacion/GO_LIVE_FASE11_INTERCOMPANY_AVANZADO_v1.0.md](operacion/GO_LIVE_FASE11_INTERCOMPANY_AVANZADO_v1.0.md) — Go-live de intercompany avanzado.
 - [operacion/GO_LIVE_FASE12_CIERRE_MENSUAL_CONTINUO_v1.0.md](operacion/GO_LIVE_FASE12_CIERRE_MENSUAL_CONTINUO_v1.0.md) — Cierre mensual continuo con gate unificado.
+- [operacion/ALERTAS_RCA_RELEASE_QA_v1.0.md](operacion/ALERTAS_RCA_RELEASE_QA_v1.0.md) — Matriz RCA de alertas release/QA (bloqueante, warning controlado, ruido esperado).
 - [operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md](operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md) — Secuencia maestra de cierre release/seguridad/staging y preparación productiva.
 - [operacion/PR_RELEASE_F1_F12_CHECKLIST.md](operacion/PR_RELEASE_F1_F12_CHECKLIST.md) — Checklist para apertura y cierre del PR de release.
 
