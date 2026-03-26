@@ -8,6 +8,7 @@ Precedente:
 import base64
 import datetime as dt
 import hashlib
+import hmac
 import json
 from typing import Any
 
@@ -85,5 +86,20 @@ def verify_ed25519_signature(*, public_key_raw: bytes, signature_b64: str, messa
         pk = Ed25519PublicKey.from_public_bytes(pk_bytes)
         pk.verify(sig, message)
         return True
+    except Exception:
+        return False
+
+
+def build_request_signing_message(*, ts: int, nonce: str, canonical_body_bytes: bytes) -> bytes:
+    body_hash = sha256_hex_bytes(canonical_body_bytes)
+    return f"{int(ts)}.{str(nonce)}.{body_hash}".encode("utf-8")
+
+
+def verify_hmac_signature_b64(*, secret_b64: str, message: bytes, signature_b64: str) -> bool:
+    try:
+        secret = b64decode_strict(secret_b64)
+        mac = hmac.new(secret, message, hashlib.sha256).digest()
+        expected = base64.b64encode(mac).decode("utf-8")
+        return hmac.compare_digest(expected, signature_b64)
     except Exception:
         return False

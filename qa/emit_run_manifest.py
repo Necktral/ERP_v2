@@ -35,6 +35,7 @@ ARTIFACTS = [
     ("pytest.xml", "gate2"),
     ("coverage.xml", "gate2"),
     ("coverage.txt", "gate2"),
+    ("sync_contract_guard.txt", "gate2"),
     ("coverage_by_domain.json", "gate2"),
     ("audit_integrity.json", "gate3"),
     ("reporting_r8_gate.json", "gate3"),

@@ -83,6 +83,7 @@
     "modulos.rbac->modulos.audit",
     "modulos.rbac->modulos.common",
     "modulos.rbac->modulos.iam",
+    "modulos.sync->modulos.sync_engine",
     "modulos.sync_engine->kernels.inventarios",
     "modulos.sync_engine->modulos.audit",
     "modulos.sync_engine->modulos.common",

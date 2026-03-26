@@ -5,6 +5,7 @@
 	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
 	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
+	qa-sync-contract-guard \
 	docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
@@ -209,6 +210,9 @@ qa-github-master-ruleset-apply:
 qa-backend-tests:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
+qa-sync-contract-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_contract.py | tee /app/$(QA_REPORTS_DIR)/sync_contract_guard.txt"
+
 qa-coverage-by-domain-guard:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/coverage_by_domain_guard.py --root /app --coverage-report /app/$(QA_REPORTS_DIR)/coverage.txt --baseline /app/qa/contracts/coverage_by_domain_baseline.json --output /app/$(QA_REPORTS_DIR)/coverage_by_domain.json"
 
@@ -228,7 +232,7 @@ qa-frontend-ci:
 qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-migration-safety-guard qa-frontend-ci
 
 # Gate 2: pruebas deterministas (pytest + cobertura)
-qa-ci-gate2: qa-ci-up qa-backend-tests qa-coverage-by-domain-guard
+qa-ci-gate2: qa-ci-up qa-backend-tests qa-sync-contract-guard qa-coverage-by-domain-guard
 
 # Gate 3: integridad de auditoría (reporte)
 qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact qa-export-u6-release-evidence

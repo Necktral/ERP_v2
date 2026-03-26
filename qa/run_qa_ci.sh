@@ -57,6 +57,7 @@ cleanup_reports() {
     "${REPORTS_DIR}/pytest.xml" \
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
+    "${REPORTS_DIR}/sync_contract_guard.txt" \
     "${REPORTS_DIR}/coverage_by_domain.json" \
     "${REPORTS_DIR}/audit_integrity.json" \
     "${REPORTS_DIR}/reporting_r8_gate.json" \
@@ -151,6 +152,7 @@ fi
 
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-backend-tests \
+    && make_cmd qa-sync-contract-guard \
     && make_cmd qa-coverage-by-domain-guard; then
     gate2_status="passed"
   else

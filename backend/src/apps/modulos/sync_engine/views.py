@@ -7,11 +7,16 @@ Precedente:
 
 from __future__ import annotations
 
+import copy
+import time
 from datetime import timedelta
 
+from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.db.models import Q
 import uuid
+from rest_framework import status
 from rest_framework.exceptions import NotFound, ParseError, PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -21,10 +26,18 @@ from apps.modulos.audit.writer import write_event
 from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
+from config.metrics import record_sync_batch
+from config.error_envelope import build_error_envelope
 
-from .models import Device, DeviceEnrollmentChallenge
-from .serializers import EnrollmentChallengeCreateIn, DeviceEnrollIn, SyncBatchIn
-from .signing import public_key_from_b64
+from .models import Device, DeviceEnrollmentChallenge, DeviceRequestNonce
+from .serializers import EnrollmentChallengeCreateIn, DeviceEnrollIn, SyncBatchIn, SyncV2BatchIn
+from .signing import (
+    build_request_signing_message,
+    canon_json,
+    public_key_from_b64,
+    verify_ed25519_signature,
+    verify_hmac_signature_b64,
+)
 from .services import process_batch, resolve_device
 
 
@@ -283,16 +296,188 @@ class SyncBatchView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "sync_batch"
 
+    def _error_response(self, request, *, status_code: int, reason: str, details: dict | None = None) -> Response:
+        payload = build_error_envelope(
+            request=request,
+            status_code=status_code,
+            exc=None,
+            details={"detail": reason, **(details or {})},
+        )
+        return Response(payload, status=status_code)
+
+    @staticmethod
+    def _record_batch_metric(*, channel: str, started_at: float, ok: bool, error_code: str = "") -> None:
+        duration_ms = max(0, int((time.perf_counter() - started_at) * 1000))
+        record_sync_batch(
+            channel=channel,
+            status="OK" if ok else "ERROR",
+            duration_ms=duration_ms,
+            error_code=error_code,
+        )
+
+    def _normalize_v2_commands(self, data: dict) -> list[dict]:
+        commands: list[dict] = []
+        for row in data.get("batch", []):
+            scope = row["scope"]
+            commands.append(
+                {
+                    "command_id": row["command_id"],
+                    "command_type": row["type"],
+                    "company_id": scope["company_id"],
+                    "branch_id": scope.get("branch_id"),
+                    "occurred_at": row["occurred_at"],
+                    "sequence": row.get("sequence"),
+                    "payload": row.get("payload") or {},
+                    "payload_hash": row.get("payload_hash") or "",
+                    "prev_hash": row.get("prev_hash") or "",
+                    "signature": row.get("command_sig") or "",
+                }
+            )
+        return commands
+
+    def _request_signing_body(self, payload: dict) -> bytes:
+        canonical_payload = copy.deepcopy(payload)
+        auth = canonical_payload.get("auth")
+        if isinstance(auth, dict):
+            auth["signature"] = ""
+            canonical_payload["auth"] = auth
+        return canon_json(canonical_payload).encode("utf-8")
+
+    def _validate_v2_request_auth(self, *, request, device: Device, payload_raw: dict, payload_v2: dict) -> Response | None:
+        max_skew_seconds = int(getattr(settings, "SYNC_V2_MAX_SKEW_SECONDS", 300))
+        ts = int(payload_v2["ts"])
+        now = int(timezone.now().timestamp())
+        if abs(now - ts) > max_skew_seconds:
+            return self._error_response(
+                request,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                reason="TS_OUT_OF_WINDOW",
+            )
+
+        auth = payload_v2["auth"]
+        signing_body = self._request_signing_body(payload_raw)
+        msg = build_request_signing_message(
+            ts=ts,
+            nonce=str(payload_v2["nonce"]),
+            canonical_body_bytes=signing_body,
+        )
+        scheme = str(auth["scheme"]).strip().lower()
+        signature = str(auth["signature"]).strip()
+
+        if scheme == "hmac":
+            secret = str(getattr(device, "hmac_secret_b64", "") or "").strip()
+            if not secret:
+                return self._error_response(
+                    request,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    reason="SYNC_DEVICE_NO_HMAC_SECRET",
+                )
+            ok = verify_hmac_signature_b64(
+                secret_b64=secret,
+                message=msg,
+                signature_b64=signature,
+            )
+        else:
+            pk_raw = bytes(device.public_key or b"")
+            if not pk_raw:
+                return self._error_response(
+                    request,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    reason="SYNC_DEVICE_NO_PUBLIC_KEY",
+                )
+            ok = verify_ed25519_signature(
+                public_key_raw=pk_raw,
+                signature_b64=signature,
+                message=msg,
+            )
+
+        if not ok:
+            return self._error_response(
+                request,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                reason="BAD_SIGNATURE",
+            )
+
+        try:
+            with transaction.atomic():
+                DeviceRequestNonce.objects.create(
+                    device=device,
+                    nonce=str(payload_v2["nonce"]),
+                    ts=ts,
+                )
+        except IntegrityError:
+            return self._error_response(
+                request,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                reason="REPLAY_DETECTED",
+            )
+        return None
+
     def post(self, request):
+        started_at = time.perf_counter()
+        channel = "sync_legacy"
+        raw_data = request.data if isinstance(request.data, dict) else {}
+        protocol_version = str(raw_data.get("protocol_version") or "").strip()
+        v2_accept_enabled = bool(getattr(settings, "SYNC_V2_ACCEPT_ENABLED", True))
+        v2_request_auth_enforced = bool(getattr(settings, "SYNC_V2_REQUEST_AUTH_ENFORCED", True))
+
+        if protocol_version == "2":
+            channel = "sync_v2"
+            if not v2_accept_enabled:
+                self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="SYNC_V2_DISABLED")
+                return self._error_response(
+                    request,
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    reason="SYNC_V2_DISABLED",
+                )
+
+            ser_v2 = SyncV2BatchIn(data=request.data)
+            ser_v2.is_valid(raise_exception=True)
+            data_v2 = ser_v2.validated_data
+
+            hdr_device_id = (request.headers.get("X-Device-Id") or "").strip()
+            body_device_id = str(data_v2["device_id"])
+            if hdr_device_id and hdr_device_id != body_device_id:
+                self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="DEVICE_ID_MISMATCH")
+                return self._error_response(
+                    request,
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    reason="DEVICE_ID_MISMATCH",
+                )
+            device_id = hdr_device_id or body_device_id
+            device = resolve_device(device_id=device_id)
+
+            if v2_request_auth_enforced:
+                auth_error = self._validate_v2_request_auth(
+                    request=request,
+                    device=device,
+                    payload_raw=raw_data,
+                    payload_v2=data_v2,
+                )
+                if auth_error is not None:
+                    err_payload = getattr(auth_error, "data", {}) or {}
+                    err_code = str((err_payload.get("error") or {}).get("message") or "AUTH_ERROR")
+                    self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code=err_code)
+                    return auth_error
+
+            out = process_batch(
+                request=request._request if hasattr(request, "_request") else request,
+                actor_user=getattr(request, "user", None),
+                device=device,
+                batch_id=data_v2["batch_id"],
+                sent_at=None,
+                commands=self._normalize_v2_commands(data_v2),
+                enforce_command_signature=not v2_request_auth_enforced,
+            )
+            self._record_batch_metric(channel=channel, started_at=started_at, ok=True)
+            return Response(out, status=200)
+
         ser = SyncBatchIn(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
 
         hdr_device_id = request.headers.get("X-Device-Id")
         body_device_id = data.get("device_id")
-
-        # Regla fuerte: el device_id efectivo se toma del header si está presente.
-        # Motivo: evita discrepancias entre infraestructura (gateway) y body.
         if hdr_device_id:
             device_id = hdr_device_id.strip()
         elif body_device_id:
@@ -301,7 +486,6 @@ class SyncBatchView(APIView):
             raise PermissionDenied("X-Device-Id requerido.")
 
         device = resolve_device(device_id=device_id)
-
         out = process_batch(
             request=request._request if hasattr(request, "_request") else request,
             actor_user=getattr(request, "user", None),
@@ -309,5 +493,7 @@ class SyncBatchView(APIView):
             batch_id=data["batch_id"],
             sent_at=data.get("sent_at"),
             commands=data["commands"],
+            enforce_command_signature=True,
         )
+        self._record_batch_metric(channel=channel, started_at=started_at, ok=True)
         return Response(out, status=200)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
-from collections import Counter
+from collections import Counter, deque
 from typing import Any
 
 
@@ -15,6 +15,10 @@ _legacy_prefix_counts: Counter[str] = Counter()
 _latency_sum_ms = 0
 _latency_max_ms = 0
 _total_requests = 0
+_sync_channel_counts: Counter[str] = Counter()
+_sync_error_counts: Counter[str] = Counter()
+_sync_replay_rejected = 0
+_sync_batch_latency_ms: deque[int] = deque(maxlen=5000)
 
 
 def _normalize_path(path: str) -> str:
@@ -57,10 +61,48 @@ def _top(counter: Counter[str], limit: int = 10) -> list[dict[str, Any]]:
     return [{"key": k, "count": v} for k, v in counter.most_common(limit)]
 
 
+def _percentile(values: list[int], q: float) -> float | None:
+    if not values:
+        return None
+    if q <= 0:
+        return float(min(values))
+    if q >= 1:
+        return float(max(values))
+    ordered = sorted(values)
+    idx = int(round((len(ordered) - 1) * q))
+    idx = max(0, min(idx, len(ordered) - 1))
+    return float(ordered[idx])
+
+
+def record_sync_batch(
+    *,
+    channel: str,
+    status: str,
+    duration_ms: int,
+    error_code: str = "",
+) -> None:
+    global _sync_replay_rejected
+    ch = str(channel or "").strip() or "unknown"
+    st = str(status or "").strip().upper() or "UNKNOWN"
+    err = str(error_code or "").strip()
+    with _lock:
+        _sync_channel_counts[ch] += 1
+        _sync_channel_counts[f"status:{st}"] += 1
+        _sync_batch_latency_ms.append(int(duration_ms))
+        if err:
+            _sync_error_counts[err] += 1
+            if err == "REPLAY_DETECTED":
+                _sync_replay_rejected += 1
+
+
 def snapshot() -> dict:
     with _lock:
         total = _total_requests
         avg_ms = int(_latency_sum_ms / total) if total else 0
+        sync_total = int(_sync_channel_counts.get("sync_v2", 0) + _sync_channel_counts.get("sync_legacy", 0))
+        sync_v2 = int(_sync_channel_counts.get("sync_v2", 0))
+        sync_legacy = int(_sync_channel_counts.get("sync_legacy", 0))
+        sync_v2_pct = round((sync_v2 * 100.0 / sync_total), 2) if sync_total else 0.0
         return {
             "uptime_seconds": int(time.time() - _start_time),
             "total_requests": total,
@@ -70,4 +112,13 @@ def snapshot() -> dict:
             "method_counts": dict(_method_counts),
             "top_paths": _top(_path_counts, limit=15),
             "legacy_api_counts": dict(_legacy_prefix_counts),
+            "sync": {
+                "requests_total": sync_total,
+                "requests_v2": sync_v2,
+                "requests_legacy": sync_legacy,
+                "v2_share_pct": sync_v2_pct,
+                "replay_rejected": int(_sync_replay_rejected),
+                "errors_by_code": dict(_sync_error_counts),
+                "batch_latency_p95_ms": _percentile(list(_sync_batch_latency_ms), 0.95),
+            },
         }

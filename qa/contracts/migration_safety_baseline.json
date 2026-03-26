@@ -553,6 +553,14 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "4a8faeaf351e2c3a34017d9e69c486f4b4eaa4cce2b6fc26aa744e48728c63c8"
+    },
+    "backend/src/apps/modulos/sync_engine/migrations/0002_sync_v2_request_auth.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "934f3523e156880a33e401b494d387b0748d69c6d24b0172061437faafe67f3a"
     }
   },
   "notes": [
