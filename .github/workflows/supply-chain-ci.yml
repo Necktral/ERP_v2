@@ -47,7 +47,7 @@ jobs:
       - name: Generate frontend SBOM + npm audit
         working-directory: frontend
         run: |
-          npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+          npm ci --ignore-scripts --no-fund --no-audit
           npm audit --json > ../qa_npm_audit_u6.json || true
           npx --yes @cyclonedx/cyclonedx-npm --output-file ../qa_sbom_frontend.json
 
