@@ -41,6 +41,12 @@ cleanup_reports() {
     "${REPORTS_DIR}/package_imports.txt" \
     "${REPORTS_DIR}/package_check.txt" \
     "${REPORTS_DIR}/architecture_dependency_guard.json" \
+    "${REPORTS_DIR}/action_pin_guard.json" \
+    "${REPORTS_DIR}/github_required_checks_guard.json" \
+    "${REPORTS_DIR}/runner_hygiene_guard.json" \
+    "${REPORTS_DIR}/security_exceptions_guard.json" \
+    "${REPORTS_DIR}/security_findings_guard.json" \
+    "${REPORTS_DIR}/release_evidence_u6.json" \
     "${REPORTS_DIR}/pytest.xml" \
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
@@ -108,6 +114,10 @@ if [[ "${run_status}" == "passed" ]]; then
     && make_cmd qa-pythonpath-bootstrap-guard \
     && make_cmd qa-backend-package-check \
     && make_cmd qa-architecture-dependency-guard \
+    && make_cmd qa-action-pin-guard \
+    && make_cmd qa-github-required-checks-guard \
+    && make_cmd qa-runner-hygiene-guard \
+    && make_cmd qa-validate-security-exceptions \
     && make_cmd qa-static-scan \
     && make_cmd qa-backend-bandit \
     && make_cmd qa-backend-ruff \
@@ -137,7 +147,8 @@ fi
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-audit-integrity \
     && make_cmd qa-reporting-r8-gate \
-    && make_cmd qa-verify-reporting-r8-gate-artifact; then
+    && make_cmd qa-verify-reporting-r8-gate-artifact \
+    && make_cmd qa-export-u6-release-evidence; then
     gate3_status="passed"
   else
     gate3_status="failed"

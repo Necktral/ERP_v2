@@ -17,6 +17,7 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Blueprint arquitectónico: [docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md](docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md)
 - Runbooks y operación release: [docs/operacion/README.md](docs/operacion/README.md)
 - Runbook U5 migraciones online-safe: [docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md](docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md)
+- Runbook U6 release governance + supply chain: [docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md](docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
 - Índice general: [docs/README.md](docs/README.md)
 
 ## Estado Release F1–F12 (2026-03-10)
@@ -233,6 +234,11 @@ Artefactos generados:
 - `qa/reports/package_check.txt`
 - `qa/reports/architecture_dependency_guard.json`
 - `qa/reports/migration_safety_guard.json`
+- `qa/reports/action_pin_guard.json`
+- `qa/reports/github_required_checks_guard.json`
+- `qa/reports/runner_hygiene_guard.json`
+- `qa/reports/security_exceptions_guard.json`
+- `qa/reports/release_evidence_u6.json`
 
 Guard contractual versionado de reporting (U2):
 
@@ -256,6 +262,36 @@ Rehearsal operativo de migraciones en DB efímera (U5):
 
 ```bash
 make qa-migration-rehearsal
+```
+
+Guard de pin SHA para workflows (U6):
+
+```bash
+make qa-action-pin-guard
+```
+
+Guard de checks requeridos GitHub (U6):
+
+```bash
+make qa-github-required-checks-guard
+```
+
+Guard de higiene post-runner (U6):
+
+```bash
+make qa-runner-hygiene-guard
+```
+
+Validación de excepciones de seguridad (U6):
+
+```bash
+make qa-validate-security-exceptions
+```
+
+Evidencia consolidada de release (U6):
+
+```bash
+make qa-export-u6-release-evidence
 ```
 
 ### Backend

@@ -4,7 +4,7 @@
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
-	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-namespace-guard qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
+	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-namespace-guard qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
 	docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
@@ -144,7 +144,7 @@ qa-pythonpath-bootstrap-guard:
 	python3 qa/pythonpath_bootstrap_guard.py --root .
 
 qa-backend-package-check:
-	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && pip install -e /app/backend --no-deps | tee /app/$(QA_REPORTS_DIR)/package_install.txt && cd /app/backend && python -c 'import config; import apps.kernels.reporting; print(\"PACKAGE_IMPORTS_OK\")' | tee /app/$(QA_REPORTS_DIR)/package_imports.txt && DJANGO_SETTINGS_MODULE=config.settings.dev python -m config.manage check --deploy | tee /app/$(QA_REPORTS_DIR)/package_check.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && find /app/backend/src -maxdepth 3 -type d -name '*.egg-info' -exec rm -rf {} + && rm -rf /tmp/nt_pkg_check_venv /tmp/nt_pkg_check_src && cp -R /app/backend /tmp/nt_pkg_check_src && python -m venv /tmp/nt_pkg_check_venv && /tmp/nt_pkg_check_venv/bin/python -m pip install --upgrade pip >/dev/null && /tmp/nt_pkg_check_venv/bin/pip install /tmp/nt_pkg_check_src --no-deps | tee /app/$(QA_REPORTS_DIR)/package_install.txt && cd /app/backend && /tmp/nt_pkg_check_venv/bin/python -c 'import config; import apps.kernels.reporting; print(\"PACKAGE_IMPORTS_OK\")' | tee /app/$(QA_REPORTS_DIR)/package_imports.txt && DJANGO_SETTINGS_MODULE=config.settings.dev python -m config.manage check | tee /app/$(QA_REPORTS_DIR)/package_check.txt && find /app/backend/src -maxdepth 3 -type d -name '*.egg-info' -exec rm -rf {} +"
 
 qa-architecture-dependency-guard:
 	python3 qa/architecture_dependency_guard.py --root . --baseline qa/contracts/architecture_dependency_baseline.json --output "$(QA_REPORTS_DIR)/architecture_dependency_guard.json"
@@ -170,6 +170,30 @@ qa-migration-safety-guard:
 qa-migration-rehearsal:
 	QA_REPORTS_DIR="$(QA_REPORTS_DIR)" bash ./qa/run_migration_rehearsal.sh
 
+qa-action-pin-guard:
+	python3 qa/action_pin_guard.py --root . --workflows-dir .github/workflows --output "$(QA_REPORTS_DIR)/action_pin_guard.json"
+
+qa-github-required-checks-guard:
+	python3 qa/github_required_checks_guard.py --root . --contract qa/contracts/github_required_checks.json --output "$(QA_REPORTS_DIR)/github_required_checks_guard.json"
+
+qa-runner-hygiene-guard:
+	python3 qa/qa_runner_hygiene_guard.py --root . --output "$(QA_REPORTS_DIR)/runner_hygiene_guard.json"
+
+qa-validate-security-exceptions:
+	python3 qa/validate_security_exceptions.py --root . --contract qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_exceptions_guard.json"
+
+qa-security-findings-enforce:
+	python3 qa/enforce_security_findings.py --root . --pip-report qa_pip_audit.json --npm-report qa_npm_audit.json --exceptions qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_findings_guard.json"
+
+qa-export-u6-release-evidence:
+	python3 qa/export_u6_release_evidence.py --root . --output "$(QA_REPORTS_DIR)/release_evidence_u6.json"
+
+qa-github-master-ruleset-verify:
+	python3 qa/manage_github_ruleset.py --root . --contract qa/contracts/github_master_ruleset.json --mode verify --output "$(QA_REPORTS_DIR)/github_master_ruleset_verify.json"
+
+qa-github-master-ruleset-apply:
+	python3 qa/manage_github_ruleset.py --root . --contract qa/contracts/github_master_ruleset.json --mode apply --output "$(QA_REPORTS_DIR)/github_master_ruleset_apply.json"
+
 qa-backend-tests:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
@@ -186,13 +210,13 @@ qa-frontend-ci:
 	docker compose --profile qa run --rm frontend_ci
 
 # Gate 1: calidad estática + typecheck
-qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-migration-safety-guard qa-frontend-ci
+qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-migration-safety-guard qa-frontend-ci
 
 # Gate 2: pruebas deterministas (pytest + cobertura)
 qa-ci-gate2: qa-ci-up qa-backend-tests
 
 # Gate 3: integridad de auditoría (reporte)
-qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact
+qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact qa-export-u6-release-evidence
 
 # Runner completo Gates 1–3
 qa-ci:

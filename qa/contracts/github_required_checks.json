@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "generated_at": "2026-03-25T00:00:00Z",
+  "required_checks": [
+    {
+      "workflow_file": ".github/workflows/qa-ci.yml",
+      "workflow_name": "QA CI (Gates 1–3)",
+      "job_id": "qa",
+      "check_context": "QA CI (Gates 1–3) / qa"
+    },
+    {
+      "workflow_file": ".github/workflows/security-ci.yml",
+      "workflow_name": "Security CI (Blocking)",
+      "job_id": "security",
+      "check_context": "Security CI (Blocking) / security"
+    },
+    {
+      "workflow_file": ".github/workflows/auth-load-simulation.yml",
+      "workflow_name": "Auth Load Simulation",
+      "job_id": "load-test",
+      "check_context": "Auth Load Simulation / load-test"
+    },
+    {
+      "workflow_file": ".github/workflows/pm-snapshot.yml",
+      "workflow_name": "PM Snapshot",
+      "job_id": "snapshot",
+      "check_context": "PM Snapshot / snapshot"
+    },
+    {
+      "workflow_file": ".github/workflows/supply-chain-ci.yml",
+      "workflow_name": "Supply Chain CI",
+      "job_id": "supply-chain",
+      "check_context": "Supply Chain CI / supply-chain"
+    }
+  ]
+}

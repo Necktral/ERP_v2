@@ -23,6 +23,10 @@ ARTIFACTS = [
     ("package_imports.txt", "gate1"),
     ("package_check.txt", "gate1"),
     ("architecture_dependency_guard.json", "gate1"),
+    ("action_pin_guard.json", "gate1"),
+    ("github_required_checks_guard.json", "gate1"),
+    ("runner_hygiene_guard.json", "gate1"),
+    ("security_exceptions_guard.json", "gate1"),
     ("pytest.xml", "gate2"),
     ("coverage.xml", "gate2"),
     ("coverage.txt", "gate2"),
@@ -30,6 +34,7 @@ ARTIFACTS = [
     ("reporting_r8_gate.json", "gate3"),
     ("reporting_r8_gate_guard.json", "gate3"),
     ("reporting_observability_snapshot.json", "gate3"),
+    ("release_evidence_u6.json", "gate3"),
     ("qa-ci-run.log", "setup"),
 ]
 

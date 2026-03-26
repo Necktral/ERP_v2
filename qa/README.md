@@ -118,6 +118,18 @@ Artefactos:
 - `qa/reports/migration_plan.txt`
 - `qa/reports/migration_rehearsal_summary.json`
 
+### Evidencia consolidada de release (U6)
+
+Genera snapshot de evidencia contractual/QA para auditoría de release:
+
+```bash
+make qa-export-u6-release-evidence QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/release_evidence_u6.json`
+
 ### Guard de bootstrap de `PYTHONPATH` en runtime
 
 Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/src`:
@@ -136,15 +148,94 @@ make qa-backend-package-check QA_REPORTS_DIR=qa/reports
 
 El check realiza:
 
-- `pip install -e /app/backend --no-deps`
+- instalación aislada en venv efímero (sin `pip install -e` sobre volumen del repo)
 - smoke import (`config`, `apps.kernels.reporting`)
-- smoke de comando canónico: `python -m config.manage check --deploy`
+- smoke de comando canónico: `python -m config.manage check`
 
 Artefactos:
 
 - `qa/reports/package_install.txt`
 - `qa/reports/package_imports.txt`
 - `qa/reports/package_check.txt`
+
+### Guard de pin SHA para GitHub Actions (U6)
+
+Gate 1 bloquea workflows con `uses:` sin pin por commit SHA (40 hex):
+
+```bash
+make qa-action-pin-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/action_pin_guard.json`
+
+### Guard de checks requeridos GitHub (U6)
+
+Valida contrato versionado de checks requeridos contra workflows reales:
+
+```bash
+make qa-github-required-checks-guard QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/github_required_checks.json`
+
+Artefacto:
+
+- `qa/reports/github_required_checks_guard.json`
+
+### Guard de higiene del runner QA (U6)
+
+Bloquea residuos críticos no versionados del runner (ej. `*.egg-info` en `backend/src`):
+
+```bash
+make qa-runner-hygiene-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/runner_hygiene_guard.json`
+
+### Contrato de excepciones de seguridad (U6)
+
+Valida excepciones versionadas con expiración obligatoria:
+
+```bash
+make qa-validate-security-exceptions QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/security_exceptions.json`
+
+Artefacto:
+
+- `qa/reports/security_exceptions_guard.json`
+
+### Reglas de branch `master` (U6)
+
+Verificación de policy real en GitHub contra contrato versionado:
+
+```bash
+make qa-github-master-ruleset-verify QA_REPORTS_DIR=qa/reports
+```
+
+Aplicación de policy (requiere permisos admin en el repo):
+
+```bash
+make qa-github-master-ruleset-apply QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/github_master_ruleset.json`
+
+Artefactos:
+
+- `qa/reports/github_master_ruleset_verify.json`
+- `qa/reports/github_master_ruleset_apply.json`
 
 ### Guard de fronteras arquitectónicas (U4)
 
