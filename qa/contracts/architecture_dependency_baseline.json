@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-03-26T00:43:29.343660+00:00",
+  "generated_at": "2026-03-27T00:43:03.557669+00:00",
   "ratchet_edges": [
     "kernels.accounting->kernels.facturacion",
     "kernels.accounting->kernels.reporting",
@@ -83,11 +83,19 @@
     "modulos.rbac->modulos.audit",
     "modulos.rbac->modulos.common",
     "modulos.rbac->modulos.iam",
+    "modulos.retail_pos->kernels.payments",
+    "modulos.retail_pos->modulos.audit",
+    "modulos.retail_pos->modulos.common",
+    "modulos.retail_pos->modulos.estacion_servicios",
+    "modulos.retail_pos->modulos.iam",
+    "modulos.retail_pos->modulos.integration",
     "modulos.sync->modulos.sync_engine",
     "modulos.sync_engine->kernels.inventarios",
+    "modulos.sync_engine->kernels.payments",
     "modulos.sync_engine->modulos.audit",
     "modulos.sync_engine->modulos.common",
-    "modulos.sync_engine->modulos.iam"
+    "modulos.sync_engine->modulos.iam",
+    "modulos.sync_engine->modulos.retail_pos"
   ],
   "notes": [
     "Baseline for architecture_dependency_guard ratchet.",
