@@ -156,6 +156,7 @@ call_api() {
   local extra_header="${8:-}"
 
   local response_file="${TMP_DIR}/${stage}_response.json"
+  local headers_file="${TMP_DIR}/${stage}_headers.txt"
   local meta_file="${TMP_DIR}/${stage}_meta.txt"
   local url="${BASE_URL}${path}"
   local args=(
@@ -170,6 +171,7 @@ call_api() {
     -H "Accept: application/json"
     -w "\n%{http_code} %{time_total}"
     -o "${response_file}"
+    -D "${headers_file}"
   )
   if [[ -n "${payload_file}" ]]; then
     args+=(-H "Content-Type: application/json" --data "@${payload_file}")
@@ -200,6 +202,7 @@ except Exception:
 PY
 )"
   LAST_RESPONSE_FILE="${response_file}"
+  LAST_HEADERS_FILE="${headers_file}"
   LAST_URL="${url}"
   add_trace "${stage}" "${method}" "${url}" "${payload_file}" "${response_file}" "${LAST_HTTP_STATUS}" "${LAST_LATENCY_MS}"
 }
@@ -285,7 +288,24 @@ print(data.get("access", ""))
 PY
 )"
 if [[ -z "${ACCESS_TOKEN}" ]]; then
-  fail "login" "Access token missing in login response"
+  ACCESS_TOKEN="$(python3 - <<'PY' "${LAST_HEADERS_FILE}"
+import re
+import sys
+
+raw = open(sys.argv[1], "r", encoding="utf-8").read()
+for line in raw.splitlines():
+    if line.lower().startswith("set-cookie:"):
+        cookie = line.split(":", 1)[1].strip()
+        match = re.match(r"nt_access=([^;]+)", cookie)
+        if match:
+            print(match.group(1))
+            raise SystemExit(0)
+print("")
+PY
+)"
+fi
+if [[ -z "${ACCESS_TOKEN}" ]]; then
+  fail "login" "Access token missing in login response/cookies"
 fi
 add_check "login" "passed" "${LAST_HTTP_STATUS}" "${LAST_LATENCY_MS}" "JWT token issued"
 
