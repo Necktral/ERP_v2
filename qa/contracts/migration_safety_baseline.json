@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-03-26T01:07:05.695886+00:00",
+  "generated_at": "2026-03-27T01:00:39.418327+00:00",
   "migrations": {
     "backend/src/apps/kernels/accounting/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
@@ -537,6 +537,38 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "21372373343788705ff4e93b6cbd44eb3989351c70c1d7024a15d3eca4aaa23c"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "083b4621362b311b773a4e2de33a1efb70728df9752a712479979ff1c61bb05c"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0002_posedgechallenge_posedgesession_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "fec2cc0eb0bee4e4bfc7f87460f2271657da56bacd82519463de7710303951ac"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0003_posticket_compensation_attempts_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "a55dd3791021a74dcc8cd601e452a8ddefdaeb48764d6374064d8ee942222711"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0004_posticket_ck_pos_ticket_comp_pending_state_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ef225810a290761c0d9f9e0de6d07d4255f84bbd72d575dc65e7e30a54def7d6"
     },
     "backend/src/apps/modulos/sync/migrations/0001_initial.py": {
       "risk_class": "expand",
