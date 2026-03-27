@@ -64,6 +64,7 @@ def _ticket_to_dict(ticket: PosTicket) -> dict:
         .prefetch_related("lines")
         .get(id=ticket.id)
     )
+    payment_intent = ticket.payment_intent
     return {
         "id": int(ticket.id),
         "status": str(ticket.status),
@@ -77,7 +78,7 @@ def _ticket_to_dict(ticket: PosTicket) -> dict:
         "customer_name": str(ticket.customer_name or ""),
         "customer_ref": str(ticket.customer_ref or ""),
         "sale_id": int(ticket.sale_id) if ticket.sale_id else None,
-        "payment_intent_id": str(ticket.payment_intent.payment_id) if ticket.payment_intent_id else "",
+        "payment_intent_id": str(payment_intent.payment_id) if payment_intent else "",
         "cash_movement_id": int(ticket.cash_movement_id) if ticket.cash_movement_id else None,
         "created_at": ticket.created_at,
         "updated_at": ticket.updated_at,

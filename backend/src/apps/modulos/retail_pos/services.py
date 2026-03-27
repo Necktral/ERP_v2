@@ -183,7 +183,7 @@ def _expire_stale_edge_state(*, company, branch) -> None:
     )
 
 
-_CAPABILITY_PRIORITY = {
+_CAPABILITY_PRIORITY: dict[str, int] = {
     PeripheralCapability.SUPPORTED: 3,
     PeripheralCapability.EXPERIMENTAL: 2,
     PeripheralCapability.UNSUPPORTED: 1,

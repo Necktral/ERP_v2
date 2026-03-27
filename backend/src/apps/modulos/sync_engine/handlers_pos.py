@@ -162,7 +162,7 @@ def handle_pos_ticket(ctx: dict[str, Any], payload: dict[str, Any]) -> HandlerRe
         "refs": {
             "ticket_id": int(ticket.id),
             "sale_id": int(ticket.sale_id) if ticket.sale_id else None,
-            "payment_id": str(ticket.payment_intent.payment_id) if ticket.payment_intent_id else "",
+            "payment_id": str(ticket.payment_intent.payment_id) if ticket.payment_intent else "",
             "status": str(ticket.status),
         }
     }
@@ -185,11 +185,12 @@ def handle_pos_payment_intent(ctx: dict[str, Any], payload: dict[str, Any]) -> H
         raise SyncRejectError("POS_INVALID_SCOPE", {"ticket_id": "unknown"})
 
     if ticket.payment_intent_id:
+        intent = ticket.payment_intent
         return {
             "refs": {
                 "ticket_id": int(ticket.id),
-                "payment_id": str(ticket.payment_intent.payment_id),
-                "status": str(ticket.payment_intent.status),
+                "payment_id": str(intent.payment_id) if intent else "",
+                "status": str(intent.status) if intent else "",
             }
         }
 

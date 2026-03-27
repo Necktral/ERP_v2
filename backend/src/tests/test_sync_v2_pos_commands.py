@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import copy
 import uuid
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -43,7 +44,7 @@ def _mk_org() -> tuple[OrgUnit, OrgUnit]:
     return company, branch
 
 
-def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, User]:
+def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, Any]:
     username = f"u_{uuid.uuid4().hex[:10]}"
     user = User.objects.create_user(username=username, email="sync-pos@test.com", password="pass12345")
 
@@ -72,7 +73,7 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     return client, user
 
 
-def _sign_v2_ed25519(body: dict, private_key: Ed25519PrivateKey) -> str:
+def _sign_v2_ed25519(body: dict[str, Any], private_key: Ed25519PrivateKey) -> str:
     payload = copy.deepcopy(body)
     payload["auth"]["signature"] = ""
     signing_body = canon_json(payload).encode("utf-8")
@@ -123,7 +124,7 @@ def test_sync_v2_pos_ticket_command_happy_path() -> None:
     )
 
     ts = int(timezone.now().timestamp())
-    body = {
+    body: dict[str, Any] = {
         "protocol_version": "2",
         "device_id": str(device.id),
         "ts": ts,
@@ -256,7 +257,7 @@ def test_sync_v2_pos_compensation_retry_command(monkeypatch) -> None:
     )
 
     ts = int(timezone.now().timestamp())
-    body = {
+    body: dict[str, Any] = {
         "protocol_version": "2",
         "device_id": str(device.id),
         "ts": ts,
@@ -321,7 +322,7 @@ def test_sync_v2_pos_compensation_retry_rejects_invalid_scope_code() -> None:
     )
 
     ts = int(timezone.now().timestamp())
-    body = {
+    body: dict[str, Any] = {
         "protocol_version": "2",
         "device_id": str(device.id),
         "ts": ts,
@@ -376,7 +377,7 @@ def test_sync_v2_pos_compensation_retry_rejects_schema_invalid_code() -> None:
     )
 
     ts = int(timezone.now().timestamp())
-    body = {
+    body: dict[str, Any] = {
         "protocol_version": "2",
         "device_id": str(device.id),
         "ts": ts,
