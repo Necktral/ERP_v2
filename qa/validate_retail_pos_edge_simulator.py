@@ -12,6 +12,10 @@ from pathlib import Path
 from typing import Any
 
 
+def _test_secret_b64() -> str:
+    return base64.b64encode(b"pos-edge-secret-test-key-001").decode("utf-8")
+
+
 def _build_expected_signature(
     *,
     secret_b64: str,
@@ -45,7 +49,7 @@ def _run_simulator(*, root: Path, profile: str) -> dict[str, Any]:
         "--connector-version",
         "0.2.0",
         "--secret-b64",
-        "cG9zLWVkZ2Utc2VjcmV0LXRlc3Qta2V5LTAwMQ==",
+        _test_secret_b64(),
         "--profile",
         profile,
     ]
@@ -70,7 +74,7 @@ def _validate_payload(*, payload: dict[str, Any], profile: str) -> list[str]:
         return errors
 
     expected_signature = _build_expected_signature(
-        secret_b64="cG9zLWVkZ2Utc2VjcmV0LXRlc3Qta2V5LTAwMQ==",
+        secret_b64=_test_secret_b64(),
         challenge_id=str(payload["challenge_id"]),
         nonce="nonce-edge-001",
         company_id=101,

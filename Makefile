@@ -222,15 +222,7 @@ qa-retail-pos-sync-contract-guard:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_pos_commands.py | tee /app/$(QA_REPORTS_DIR)/sync_pos_contract_guard.txt"
 
 qa-reports-dir-writable:
-	@mkdir -p "$(QA_REPORTS_DIR)"
-	@bash -lc 'set -euo pipefail; \
-		if [ -w "$(QA_REPORTS_DIR)" ]; then exit 0; fi; \
-		case "$(QA_REPORTS_DIR)" in \
-			/*) echo "[qa] reports dir is not writable: $(QA_REPORTS_DIR)"; exit 1 ;; \
-			*) echo "[qa] fixing report dir ownership for $(QA_REPORTS_DIR)"; \
-			   docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && chown -R $(HOST_UID):$(HOST_GID) /app/$(QA_REPORTS_DIR)";; \
-		esac; \
-		[ -w "$(QA_REPORTS_DIR)" ] || { echo "[qa] reports dir remains non-writable: $(QA_REPORTS_DIR)"; exit 1; }'
+	@python3 qa/ensure_reports_dir_writable.py --reports-dir "$(QA_REPORTS_DIR)" --host-uid "$(HOST_UID)" --host-gid "$(HOST_GID)"
 
 qa-retail-pos-frontend-queue-contract-guard: qa-reports-dir-writable
 	@mkdir -p "$(QA_REPORTS_DIR)"
