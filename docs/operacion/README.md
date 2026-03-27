@@ -34,6 +34,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Runbook Reporting R8 (gobierno + observabilidad)](REPORTING_R8_GOBIERNO_OBSERVABILIDAD_v1.0.md)
 - [Runbook U6 Release Governance + Supply Chain](U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
 - [RCA de alertas Release/QA](ALERTAS_RCA_RELEASE_QA_v1.0.md)
+- [Retail POS Spine Slice v1.0](RETAIL_POS_SPINE_SLICE_v1.0.md)
 - [Plan maestro F1-F12 + cierre operativo](PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md)
 - [Checklist PR release F1-F12](PR_RELEASE_F1_F12_CHECKLIST.md)
 
@@ -75,3 +76,6 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-03-24: Se agrega runbook operativo R8 de reporting/dashboard (`REPORTING_R8_GOBIERNO_OBSERVABILIDAD_v1.0.md`) con gate WARN→FAIL, telemetría y deprecación legacy contable.
 - 2026-03-25: Se agrega runbook U6 de gobernanza de release + supply chain (`U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md`) con controles bloqueantes, contrato de checks requeridos y evidencia consolidada de release.
 - 2026-03-26: Se agrega matriz RCA de alertas Release/QA (`ALERTAS_RCA_RELEASE_QA_v1.0.md`) con clasificación bloqueante/warn/ruido y acciones correctivas.
+- 2026-03-26: Se agrega runbook del slice `Retail POS Spine` (`RETAIL_POS_SPINE_SLICE_v1.0.md`) con endpoints, validación y pendientes de fases siguientes.
+- 2026-03-26: El slice `Retail POS Spine` agrega fase Edge (challenge/handshake/capabilities) y simulador QA `qa/simulate_retail_pos_edge.py`.
+- 2026-03-26: El slice `Retail POS Spine` agrega resiliencia de compensación (retry endpoint/ciclo) y cola offline frontend con backoff y deduplicación.

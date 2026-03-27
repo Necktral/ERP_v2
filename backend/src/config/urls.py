@@ -61,6 +61,7 @@ urlpatterns = [
     path("api/fuel/", include("apps.modulos.estacion_servicios.urls")),
     path("api/backend/fuel/", include("apps.modulos.estacion_servicios.urls")),
     path("api/backend/estacion-servicios/", include("apps.modulos.estacion_servicios.urls")),
+    path("api/retail/pos/", include("apps.modulos.retail_pos.urls")),
 ]
 
 urlpatterns += [

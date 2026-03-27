@@ -2,6 +2,21 @@
 
 Este directorio contiene artefactos de QA que complementan los tests unitarios/integración.
 
+## Simulador Edge Connector (Retail POS)
+
+Genera payload determinista para probar handshake de periféricos sin hardware físico:
+
+```bash
+python3 qa/simulate_retail_pos_edge.py \
+  --challenge-id <uuid> \
+  --nonce <nonce> \
+  --company-id <id> \
+  --branch-id <id> \
+  --connector-id edge-local-1 \
+  --secret-b64 <base64-secret> \
+  --profile fuel
+```
+
 ## QA Runner (Gates 1–3)
 
 El Makefile incluye un runner para CI/local que genera reportes en `qa/reports/`:
@@ -28,6 +43,101 @@ Contrato y artefactos:
 
 - baseline: `qa/contracts/coverage_by_domain_baseline.json`
 - reporte: `qa/reports/coverage_by_domain.json`
+
+## Contratos bloqueantes POS (Gate 2)
+
+Gate 2 incorpora guards bloqueantes para compensación/offline del slice POS:
+
+- backend contract:
+
+  ```bash
+  make qa-retail-pos-backend-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/retail_pos_backend_contract_guard.txt`
+
+- sync POS contract:
+
+  ```bash
+  make qa-retail-pos-sync-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/sync_pos_contract_guard.txt`
+
+- frontend queue contract:
+
+  ```bash
+  make qa-retail-pos-frontend-queue-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/frontend_pos_queue_contract_guard.txt`
+
+- edge simulator contract:
+
+  ```bash
+  make qa-retail-pos-edge-simulator-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefactos:
+  - `qa/reports/retail_pos_edge_simulator_guard.txt`
+  - `qa/reports/retail_pos_edge_simulator_guard.json`
+
+- edge handshake E2E contract (HTTP real):
+
+  ```bash
+  make qa-retail-pos-edge-e2e-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefactos:
+  - `qa/reports/retail_pos_edge_e2e_guard.txt`
+  - `qa/reports/retail_pos_edge_e2e_guard.json`
+  - `qa/reports/retail_pos_edge_e2e_request_response.json`
+
+Objetivo: bloquear merge con regresiones en `compensate/retry`, `POS_COMPENSATION_RETRY`, cola offline (dedupe/backoff/drain), contrato de simulación edge y flujo HTTP E2E `challenge + handshake`.
+
+### Pilot run Retail POS por sucursal (operativo)
+
+Runner de validación operativa por sucursal con flujo real:
+`shift -> session -> ticket -> checkout -> cockpit -> close` y modo rollback.
+
+- smoke:
+
+  ```bash
+  make qa-retail-pos-pilot-smoke QA_REPORTS_DIR=qa/reports
+  ```
+
+- rollback:
+
+  ```bash
+  make qa-retail-pos-pilot-rollback QA_REPORTS_DIR=qa/reports
+  ```
+
+Artefactos:
+
+- `qa/reports/retail_pos_pilot_smoke.json`
+- `qa/reports/retail_pos_pilot_smoke_trace.json`
+- `qa/reports/retail_pos_pilot_rollback.json`
+- `qa/reports/retail_pos_pilot_rollback_trace.json`
+
+### Validación canónica Sync + POS (sin módulos inexistentes)
+
+Para validar el slice Sync+POS con los tests reales de este repositorio, usa:
+
+```bash
+make qa-sync-pos-validation QA_REPORTS_DIR=qa/reports
+```
+
+Este target ejecuta únicamente módulos existentes en `backend/src/tests/`:
+
+- `test_sync_v2_contract.py`
+- `test_sync_v2_pos_commands.py`
+- `test_retail_pos_api.py`
+- `test_route_collision_guard.py`
+- `test_route_canonical_registry.py`
+
+Artefacto:
+
+- `qa/reports/sync_pos_validation.txt`
 
 - Recomendado (DB limpia, reproducible):
 

@@ -39,6 +39,12 @@ SUPPLY_CHAIN_ARTIFACTS = [
     "qa_supply_chain_artifacts.sha256",
 ]
 
+POS_CONTRACT_REPORTS = [
+    "qa/reports/retail_pos_backend_contract_guard.txt",
+    "qa/reports/sync_pos_contract_guard.txt",
+    "qa/reports/frontend_pos_queue_contract_guard.txt",
+]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build U6 release evidence artifact.")
@@ -116,6 +122,14 @@ def main() -> int:
             "source_of_truth": "supply-chain-ci",
         }
 
+    pos_contract_status = {}
+    for rel in POS_CONTRACT_REPORTS:
+        path = root / rel
+        pos_contract_status[rel] = {
+            "exists": path.exists(),
+            "size_bytes": path.stat().st_size if path.exists() else 0,
+        }
+
     supply_chain_artifacts_raw_present = all(item["exists"] for item in supply_chain_status.values())
     ci_environment = _is_ci_environment()
     supply_chain_required_in_current_run = ci_environment
@@ -134,6 +148,7 @@ def main() -> int:
         "contracts": contracts_status,
         "reports": reports_status,
         "supply_chain_artifacts": supply_chain_status,
+        "pos_contract_reports": pos_contract_status,
         "supply_chain_policy": {
             "mode": "ci_only_external_artifacts",
             "required_in_ci": True,
@@ -154,6 +169,7 @@ def main() -> int:
             "security_findings_report_present": reports_status["qa/reports/security_findings_guard.json"]["exists"],
             "supply_chain_artifacts_raw_present": supply_chain_artifacts_raw_present,
             "supply_chain_artifacts_present": supply_chain_artifacts_effective_present,
+            "pos_contract_reports_present": all(row["exists"] for row in pos_contract_status.values()),
         },
     }
 

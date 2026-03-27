@@ -58,6 +58,14 @@ cleanup_reports() {
     "${REPORTS_DIR}/coverage.xml" \
     "${REPORTS_DIR}/coverage.txt" \
     "${REPORTS_DIR}/sync_contract_guard.txt" \
+    "${REPORTS_DIR}/retail_pos_backend_contract_guard.txt" \
+    "${REPORTS_DIR}/sync_pos_contract_guard.txt" \
+    "${REPORTS_DIR}/frontend_pos_queue_contract_guard.txt" \
+    "${REPORTS_DIR}/retail_pos_edge_simulator_guard.txt" \
+    "${REPORTS_DIR}/retail_pos_edge_simulator_guard.json" \
+    "${REPORTS_DIR}/retail_pos_edge_e2e_guard.txt" \
+    "${REPORTS_DIR}/retail_pos_edge_e2e_guard.json" \
+    "${REPORTS_DIR}/retail_pos_edge_e2e_request_response.json" \
     "${REPORTS_DIR}/coverage_by_domain.json" \
     "${REPORTS_DIR}/audit_integrity.json" \
     "${REPORTS_DIR}/reporting_r8_gate.json" \
@@ -153,6 +161,11 @@ fi
 if [[ "${run_status}" == "passed" ]]; then
   if make_cmd qa-backend-tests \
     && make_cmd qa-sync-contract-guard \
+    && make_cmd qa-retail-pos-backend-contract-guard \
+    && make_cmd qa-retail-pos-sync-contract-guard \
+    && make_cmd qa-retail-pos-frontend-queue-contract-guard \
+    && make_cmd qa-retail-pos-edge-simulator-guard \
+    && make_cmd qa-retail-pos-edge-e2e-guard \
     && make_cmd qa-coverage-by-domain-guard; then
     gate2_status="passed"
   else

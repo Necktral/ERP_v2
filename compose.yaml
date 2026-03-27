@@ -62,6 +62,10 @@ services:
       DRF_THROTTLE_ME_ACL_READ: ${DRF_THROTTLE_ME_ACL_READ:-30/min}
       AXES_FAILURE_LIMIT: ${AXES_FAILURE_LIMIT:-15}
       AXES_COOLOFF_SECONDS: ${AXES_COOLOFF_SECONDS:-300}
+      AUTH_ALLOW_TRANSPORT_OVERRIDE: ${AUTH_ALLOW_TRANSPORT_OVERRIDE:-1}
+
+      # Edge handshake (QA/local). Base64 de "edge-secret" por defecto.
+      POS_EDGE_CONNECTOR_SHARED_SECRET: ${POS_EDGE_CONNECTOR_SHARED_SECRET:-ZWRnZS1zZWNyZXQ=}
     depends_on:
       db:
         condition: service_healthy

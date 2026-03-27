@@ -73,6 +73,11 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "BILLING_INVOICE_CREATED",
     "BILLING_INVOICE_ISSUED",
     "BILLING_INVOICE_VOIDED",
+    # RETAIL POS
+    "POS_SESSION_OPENED",
+    "POS_SESSION_CLOSED",
+    "POS_TICKET_CLOSED",
+    "POS_TICKET_VOIDED",
 }
 
 # Event Types (añadir)
@@ -220,6 +225,10 @@ ALLOWED_SUBJECT_TYPES: set[str] = {
     "CUSTOMER",
     "INVOICE",
     "PAYMENT",
+    # RETAIL POS
+    "POS_SESSION",
+    "POS_TICKET",
+    "POS_PERIPHERAL",
 }
 
 # Subject Types (añadir)

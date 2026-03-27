@@ -39,6 +39,8 @@ from .registry import get_handler
 from . import handlers_demo as _handlers_demo  # noqa: F401
 # Import por side-effect: registra handlers inventory en el registry.
 from . import handlers_inventory as _handlers_inventory  # noqa: F401
+# Import por side-effect: registra handlers POS en el registry.
+from . import handlers_pos as _handlers_pos  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,
@@ -542,27 +544,42 @@ def process_command(
             reason = str(e.reason_code)
             details: dict[str, Any] = dict(e.details or {})
 
-            row.result_status = AppliedCommand.ResultStatus.REJECTED
-            row.error = cast(dict[str, Any], {"reason": reason, **details})
-            row.save(update_fields=["result_status", "error"])
+            try:
+                row.result_status = AppliedCommand.ResultStatus.REJECTED
+                row.error = cast(dict[str, Any], {"reason": reason, **details})
+                row.save(update_fields=["result_status", "error"])
 
-            write_event(
-                request=request,
-                event_type="SYNC_COMMAND_REJECTED",
-                reason_code=reason,
-                actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
-                subject_type="DEVICE",
-                subject_id=str(device.id),
-                device_id=str(device.id),
-                offline_mode=True,
-                metadata={
-                    "command_id": str(command_id),
-                    "command_type": command_type,
-                    "company_id": company_id,
-                    "branch_id": branch_id,
-                    **details,
-                },
-            )
+                write_event(
+                    request=request,
+                    event_type="SYNC_COMMAND_REJECTED",
+                    reason_code=reason,
+                    actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
+                    subject_type="DEVICE",
+                    subject_id=str(device.id),
+                    device_id=str(device.id),
+                    offline_mode=True,
+                    metadata={
+                        "command_id": str(command_id),
+                        "command_type": command_type,
+                        "company_id": company_id,
+                        "branch_id": branch_id,
+                        **details,
+                    },
+                )
+            except Exception as persist_exc:  # noqa: BLE001
+                # Hardening: un rechazo contractual no debe degradar a SYNC_INTERNAL_ERROR.
+                logger.exception(
+                    "[SYNC_ENGINE][process_command] controlled reject persistence failed",
+                    extra={
+                        "request_id": str(getattr(request, "request_id", "") or ""),
+                        "company_id": company_id,
+                        "branch_id": branch_id,
+                        "command_id": str(command_id),
+                        "command_type": str(command_type),
+                        "reason": reason,
+                        "persist_error": str(persist_exc),
+                    },
+                )
 
             out: dict[str, Any] = {"command_id": str(command_id), "status": "REJECTED", "reason": reason}
             if details:
