@@ -10,7 +10,12 @@ from django.utils import timezone
 
 from .contracts import build_dataset_envelope
 from .domain_adapters import accounting as accounting_adapter
+from .domain_adapters import billing as billing_adapter
 from .domain_adapters import fuel as fuel_adapter
+from .domain_adapters import hr as hr_adapter
+from .domain_adapters import inventory as inventory_adapter
+from .domain_adapters import payments as payments_adapter
+from .domain_adapters import procurement as procurement_adapter
 from .enums import RunStatus
 from .exceptions import DatasetExecutionError, DatasetScopeError, ReportingValidationError
 from .lineage import build_lineage
@@ -144,6 +149,41 @@ def _adapter_run(*, spec: DatasetSpec, scope: ResolvedReportScope, filters: dict
             branch=scope.branch,
             filters=filters,
         )
+    if spec.domain_owner == "BILLING":
+        return billing_adapter.run_dataset(
+            dataset_key=spec.dataset_key,
+            company=scope.company,
+            branch=scope.branch,
+            filters=filters,
+        )
+    if spec.domain_owner == "INVENTORY":
+        return inventory_adapter.run_dataset(
+            dataset_key=spec.dataset_key,
+            company=scope.company,
+            branch=scope.branch,
+            filters=filters,
+        )
+    if spec.domain_owner == "HR":
+        return hr_adapter.run_dataset(
+            dataset_key=spec.dataset_key,
+            company=scope.company,
+            branch=scope.branch,
+            filters=filters,
+        )
+    if spec.domain_owner == "PAYMENTS":
+        return payments_adapter.run_dataset(
+            dataset_key=spec.dataset_key,
+            company=scope.company,
+            branch=scope.branch,
+            filters=filters,
+        )
+    if spec.domain_owner == "PROCUREMENT":
+        return procurement_adapter.run_dataset(
+            dataset_key=spec.dataset_key,
+            company=scope.company,
+            branch=scope.branch,
+            filters=filters,
+        )
     raise DatasetExecutionError(f"No existe adapter para domain_owner={spec.domain_owner}")
 
 
@@ -248,7 +288,9 @@ def execute_dataset(
         lineage = build_lineage(
             run_id=str(run.run_id),
             dataset_key=spec.dataset_key,
-            source_modules=list((adapter_payload.get("source_summary") or {}).get("source_modules") or [spec.domain_owner]),
+            source_modules=list(
+                (adapter_payload.get("source_summary") or {}).get("source_modules") or [spec.domain_owner]
+            ),
             semantic_version=spec.semantic_version,
             schema_version=spec.schema_version,
         )
