@@ -5,6 +5,7 @@ import uuid
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import InboxEvent
@@ -39,9 +40,10 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     resp = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
     assert resp.status_code == 200
     access = resp.data.get("access") if isinstance(resp.data, dict) else None
-    if isinstance(access, str) and access:
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    if not isinstance(access, str) or not access:
+        access = str(RefreshToken.for_user(user).access_token)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client

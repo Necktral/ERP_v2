@@ -134,6 +134,7 @@ def _serialize_intercompany(tx: IntercompanyTransaction) -> dict:
         "matched_amount_source": str(tx.matched_amount_source),
         "matched_amount_target": str(tx.matched_amount_target),
         "difference_amount": str(tx.difference_amount),
+        "effective_at": tx.effective_at,
         "description": tx.description,
         "created_by_id": tx.created_by_id,
         "confirmed_by_id": tx.confirmed_by_id,
@@ -708,6 +709,7 @@ class IntercompanyTransactionListCreateView(APIView):
                 reference_code=str(v.get("reference_code") or ""),
                 source_journal_entry_id=v.get("source_journal_entry_id"),
                 target_journal_entry_id=v.get("target_journal_entry_id"),
+                effective_at=v.get("effective_at"),
                 actor_user=request.user,
                 effective_company_id=int(request.company.id),
             )

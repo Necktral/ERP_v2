@@ -6,7 +6,7 @@
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
 	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
 		qa-sync-contract-guard qa-retail-pos-backend-contract-guard qa-retail-pos-sync-contract-guard qa-retail-pos-frontend-queue-contract-guard qa-retail-pos-edge-simulator-guard qa-retail-pos-edge-e2e-guard qa-retail-pos-pilot-smoke qa-retail-pos-pilot-rollback qa-sync-pos-validation qa-reports-dir-writable \
-		docker-clean docker-clean-all
+		fix-workspace-perms docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
 K6_IMAGE ?= grafana/k6
@@ -17,6 +17,8 @@ QA_PYTEST_DB_SLOT ?=
 QA_PYTEST_DB_BASE_NAME ?= test_erp_db
 HOST_UID ?= $(shell id -u)
 HOST_GID ?= $(shell id -g)
+QA_RUFF_CACHE_DIR ?= /tmp/qa_ruff_cache_erp
+QA_MYPY_CACHE_DIR ?= /tmp/qa_mypy_cache_erp
 REPORTING_R8_GATE_WARN_UNTIL ?= 2026-04-07
 REPORTING_R8_GATE_HARD_FAIL_FROM ?= 2026-04-08
 REPORTING_R8_GATE_WINDOW_HOURS ?= 24
@@ -168,10 +170,10 @@ qa-backend-bandit:
 	docker compose exec -T backend bash -lc 'set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && APPS_ROOT=""; for p in /app/backend/src/apps /app/src/apps /app/login_module/src/apps; do [ -d "$$p" ] && APPS_ROOT="$$p" && break; done; [ -n "$$APPS_ROOT" ] || { echo "apps root not found under /app" >&2; exit 2; }; EXCLUDES=$$(find "$$APPS_ROOT/modulos" -mindepth 2 -maxdepth 2 -type d -name migrations 2>/dev/null | tr "\n" "," | sed "s/,$$//"); bandit -q -r "$$APPS_ROOT" -x "$$EXCLUDES" -ll -ii -f txt | tee /app/$(QA_REPORTS_DIR)/bandit.txt'
 
 qa-backend-ruff:
-	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) $(QA_RUFF_CACHE_DIR) && RUFF_CACHE_DIR=$(QA_RUFF_CACHE_DIR) ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
 
 qa-backend-mypy:
-	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) $(QA_MYPY_CACHE_DIR) && cd /app && mypy --cache-dir $(QA_MYPY_CACHE_DIR) --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
 
 qa-verify-static-gate:
 	python3 qa/verify_static_gate_reports.py --reports-dir "$(QA_REPORTS_DIR)"
@@ -226,7 +228,7 @@ qa-reports-dir-writable:
 
 qa-retail-pos-frontend-queue-contract-guard: qa-reports-dir-writable
 	@mkdir -p "$(QA_REPORTS_DIR)"
-	@bash -lc 'set -o pipefail; docker compose --profile qa run --rm frontend_ci bash -lc "npm ci && npm run test -- src/services/__tests__/retail-pos-offline-queue.spec.ts" | tee "$(QA_REPORTS_DIR)/frontend_pos_queue_contract_guard.txt"'
+	@bash -lc 'set -o pipefail; HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci bash -lc "npm ci && npm run test -- src/services/__tests__/retail-pos-offline-queue.spec.ts" | tee "$(QA_REPORTS_DIR)/frontend_pos_queue_contract_guard.txt"'
 
 qa-retail-pos-edge-simulator-guard: qa-reports-dir-writable
 	@mkdir -p "$(QA_REPORTS_DIR)"
@@ -260,7 +262,7 @@ qa-verify-reporting-r8-gate-artifact:
 	python3 qa/verify_reporting_r8_gate_artifact.py --artifact "$(QA_REPORTS_DIR)/reporting_r8_gate.json" --output "$(QA_REPORTS_DIR)/reporting_r8_gate_guard.json"
 
 qa-frontend-ci:
-	docker compose --profile qa run --rm frontend_ci
+	HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci
 
 # Gate 1: calidad estática + typecheck
 qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-migration-safety-guard qa-frontend-ci
@@ -294,6 +296,9 @@ docker-clean-all:
 	@echo "[docker] down -v --remove-orphans (ELIMINA volúmenes)…"
 	@docker compose down -v --remove-orphans || true
 	@$(MAKE) docker-clean
+
+fix-workspace-perms:
+	@HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" bash ./scripts/fix_workspace_permissions.sh
 
 qa-load-user:
 	@if [ -z "$(PASSWORD)" ]; then echo "Set PASSWORD before running qa-load-user"; exit 1; fi

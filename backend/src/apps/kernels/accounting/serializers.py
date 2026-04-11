@@ -164,6 +164,7 @@ class IntercompanyCreateIn(serializers.Serializer):
     reference_code = serializers.CharField(max_length=96, required=False, allow_blank=True)
     source_journal_entry_id = serializers.IntegerField(min_value=1, required=False)
     target_journal_entry_id = serializers.IntegerField(min_value=1, required=False)
+    effective_at = serializers.DateTimeField(required=False)
 
     def validate(self, attrs):
         if attrs["amount"] <= 0:
