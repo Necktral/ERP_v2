@@ -391,6 +391,20 @@ Base path: `/api/fuel/`
 - `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
 - `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
 
+### Retail POS Spine (aditivo)
+
+Base path: `/api/retail/pos/`
+
+- `GET /api/retail/pos/health/` — Healthcheck del módulo POS.
+- `GET /api/retail/pos/sessions/current/` — Sesión POS activa por sucursal (`retail.pos.session.read`).
+- `POST /api/retail/pos/sessions/open/` — Apertura de sesión POS + caja (`retail.pos.session.open`).
+- `POST /api/retail/pos/sessions/{session_id}/close/` — Cierre POS + arqueo (`retail.pos.session.close`).
+- `GET /api/retail/pos/tickets/` y `POST /api/retail/pos/tickets/` — Listado/creación de tickets (`retail.pos.ticket.read` / `retail.pos.ticket.open`).
+- `POST /api/retail/pos/tickets/{ticket_id}/checkout/` — Checkout canónico POS (`retail.pos.ticket.checkout`).
+- `POST /api/retail/pos/voids/{ticket_id}/` — Anulación de ticket POS (`retail.pos.ticket.void`).
+- `GET/POST /api/retail/pos/peripherals/status/` — Estado/capabilities de periféricos (`retail.pos.peripherals.read` / `retail.pos.peripherals.manage`).
+- `GET /api/retail/pos/cockpit/` — Vista operativa táctica por sucursal (`retail.pos.ticket.read`).
+
 ### Reporting / Analytics (R8)
 
 - API canónica reporting: `/api/reporting/*`
