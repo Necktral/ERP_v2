@@ -56,7 +56,7 @@ def _headcount_payload(*, company, branch, filters: dict[str, Any]) -> dict[str,
     return {
         "grain": "position",
         "dimensions": ["position_name", "position_code"],
-        "measures": ["active_assignments", "unique_employees"],
+        "measures": ["active_assignments", "unique_employees", "total_active_employees"],
         "rows": rows,
         "totals": {
             "active_assignments": total_assignments,

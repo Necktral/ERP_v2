@@ -430,7 +430,8 @@
       "filters_schema": {},
       "measures": [
         "active_assignments",
-        "unique_employees"
+        "unique_employees",
+        "total_active_employees"
       ],
       "quality_policy": {
         "allow_empty_rows": true,
@@ -439,7 +440,8 @@
         ],
         "required_totals": [
           "active_assignments",
-          "unique_employees"
+          "unique_employees",
+          "total_active_employees"
         ]
       },
       "schema_version": "1.0.0",
@@ -481,6 +483,7 @@
         ],
         "required_totals": [
           "movement_count",
+          "qty_delta",
           "total_cost"
         ]
       },
@@ -542,7 +545,9 @@
       },
       "measures": [
         "payment_count",
-        "amount"
+        "amount",
+        "cash_sessions_total",
+        "cash_sessions_closed"
       ],
       "quality_policy": {
         "allow_empty_rows": true,
@@ -551,7 +556,9 @@
         ],
         "required_totals": [
           "payment_count",
-          "amount"
+          "amount",
+          "cash_sessions_total",
+          "cash_sessions_closed"
         ]
       },
       "schema_version": "1.0.0",

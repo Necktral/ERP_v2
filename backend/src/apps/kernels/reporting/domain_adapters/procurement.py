@@ -1,63 +1,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
-
-from django.utils import timezone
 
 from apps.modulos.compras.models import PurchaseDocument
 from apps.kernels.reporting.exceptions import DatasetExecutionError
 
-
-def _q2(value: Decimal) -> str:
-    return str(value.quantize(Decimal("0.01")))
-
-
-def _coerce_filter_date(value: Any, *, field_name: str) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    if isinstance(value, str):
-        raw = value.strip()
-        if not raw:
-            return None
-        try:
-            return date.fromisoformat(raw)
-        except ValueError as exc:
-            raise DatasetExecutionError(f"{field_name} debe estar en formato YYYY-MM-DD.") from exc
-    raise DatasetExecutionError(f"{field_name} inválido.")
-
-
-def _resolve_date_range(filters: dict[str, Any]) -> tuple[date, date]:
-    date_from = _coerce_filter_date(filters.get("date_from"), field_name="date_from")
-    date_to = _coerce_filter_date(filters.get("date_to"), field_name="date_to")
-    if date_from and not date_to:
-        date_to = date_from
-    if date_to and not date_from:
-        date_from = date_to
-    if not date_from and not date_to:
-        today = timezone.localdate()
-        return today, today
-    if date_from is None or date_to is None:
-        raise DatasetExecutionError("Rango de fechas inválido.")
-    return date_from, date_to
-
-
-def _resolve_bounds(*, date_from: date, date_to: date):
-    tz = timezone.get_current_timezone()
-    start = timezone.make_aware(datetime.combine(date_from, time.min), tz)
-    end = timezone.make_aware(datetime.combine(date_to, time.max), tz)
-    return start, end
+from .utils import q2, resolve_bounds, resolve_date_range
 
 
 def _purchases_payload(*, company, branch, filters: dict[str, Any]) -> dict[str, Any]:
-    date_from, date_to = _resolve_date_range(filters)
-    start, end = _resolve_bounds(date_from=date_from, date_to=date_to)
+    date_from, date_to = resolve_date_range(filters)
+    start, end = resolve_bounds(date_from=date_from, date_to=date_to)
 
     qs = PurchaseDocument.objects.filter(
         company=company,
@@ -104,9 +59,9 @@ def _purchases_payload(*, company, branch, filters: dict[str, Any]) -> dict[str,
                 "doc_type": row["doc_type"],
                 "status": row["status"],
                 "doc_count": int(row["doc_count"]),
-                "subtotal": _q2(row["subtotal"]),
-                "tax_total": _q2(row["tax_total"]),
-                "total": _q2(row["total"]),
+                "subtotal": q2(row["subtotal"]),
+                "tax_total": q2(row["tax_total"]),
+                "total": q2(row["total"]),
             }
         )
 
@@ -117,9 +72,9 @@ def _purchases_payload(*, company, branch, filters: dict[str, Any]) -> dict[str,
         "rows": rows,
         "totals": {
             "doc_count": grand_doc_count,
-            "subtotal": _q2(grand_subtotal),
-            "tax_total": _q2(grand_tax_total),
-            "total": _q2(grand_total),
+            "subtotal": q2(grand_subtotal),
+            "tax_total": q2(grand_tax_total),
+            "total": q2(grand_total),
         },
         "warnings": [],
         "source_summary": {"source_modules": ["PROCUREMENT"]},
