@@ -244,6 +244,49 @@
       "semantic_version": "1.0.0"
     },
     {
+      "dataset_key": "billing.summary.period",
+      "dimensions": [
+        "doc_type",
+        "status"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "doc_count",
+        "subtotal",
+        "tax_total",
+        "total"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "doc_type",
+          "status"
+        ],
+        "required_totals": [
+          "doc_count",
+          "subtotal",
+          "tax_total",
+          "total"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
       "dataset_key": "fuel.dispense_vs_sale.daily",
       "dimensions": [
         "date"
@@ -368,6 +411,190 @@
           "sales_cancelled",
           "total_amount",
           "liters_sold"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "hr.headcount.current",
+      "dimensions": [
+        "position_name",
+        "position_code"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {},
+      "measures": [
+        "active_assignments",
+        "unique_employees"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "position_name"
+        ],
+        "required_totals": [
+          "active_assignments",
+          "unique_employees"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "inventory.movements.period",
+      "dimensions": [
+        "movement_type",
+        "warehouse_code",
+        "sku",
+        "item_name",
+        "source_module"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "qty_delta",
+        "unit_cost",
+        "total_cost"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "movement_type"
+        ],
+        "required_totals": [
+          "movement_count",
+          "total_cost"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "inventory.stock_balance.current",
+      "dimensions": [
+        "warehouse_code",
+        "warehouse_name",
+        "sku",
+        "item_name",
+        "uom"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {},
+      "measures": [
+        "qty_on_hand",
+        "avg_cost",
+        "stock_value"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "sku"
+        ],
+        "required_totals": [
+          "qty_on_hand",
+          "stock_value"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "payments.collection.period",
+      "dimensions": [
+        "status"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "payment_count",
+        "amount"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "status"
+        ],
+        "required_totals": [
+          "payment_count",
+          "amount"
+        ]
+      },
+      "schema_version": "1.0.0",
+      "semantic_version": "1.0.0"
+    },
+    {
+      "dataset_key": "procurement.purchases.period",
+      "dimensions": [
+        "doc_type",
+        "status"
+      ],
+      "export_capabilities": [
+        "json",
+        "csv",
+        "xlsx"
+      ],
+      "filters_schema": {
+        "date_from": {
+          "required": false,
+          "type": "date"
+        },
+        "date_to": {
+          "required": false,
+          "type": "date"
+        }
+      },
+      "measures": [
+        "doc_count",
+        "subtotal",
+        "tax_total",
+        "total"
+      ],
+      "quality_policy": {
+        "allow_empty_rows": true,
+        "required_dimensions": [
+          "doc_type",
+          "status"
+        ],
+        "required_totals": [
+          "doc_count",
+          "subtotal",
+          "tax_total",
+          "total"
         ]
       },
       "schema_version": "1.0.0",
