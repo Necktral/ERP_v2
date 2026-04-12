@@ -1,3 +1,71 @@
+## 2026-04-11 — Gobernanza Codex v1.1 por tipo de cambio
+
+### Contexto
+
+Se endurece el estándar de handoff para reducir falsos bloqueos en cambios no críticos y aumentar trazabilidad en cambios cross-domain, migraciones/cierres y seguridad/supply-chain.
+
+### Cambios principales
+
+- Se actualiza `docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md` a versión operativa v1.1 con política por tipo de cambio:
+  - `docs_only`
+  - `single_domain_code`
+  - `cross_domain`
+  - `migrations_or_close_cycle`
+  - `security_or_supply_chain`
+- Se extiende `qa/contracts/codex_governance_contract.json` con:
+  - `change_type_rules`
+  - `required_sections_by_type`
+  - `required_gates_by_type`
+  - `forbidden_modes_by_type`
+  - `gate_evidence_reports`
+- Se evoluciona `qa/codex_governance_guard.py` para emitir:
+  - `change_type`
+  - `required_gates`
+  - `missing_gates`
+  - `forbidden_mode_violation`
+
+### Handoff gobernado (v1.1)
+
+- Diagnóstico del área: la v1.0 cubría zonas críticas, pero no diferenciaba exigencia por tipo de cambio.
+- Alcance exacto: guía, contrato y guard de gobernanza; sin cambios de API de negocio.
+- Contratos impactados: contrato operativo de QA `qa/contracts/codex_governance_contract.json`.
+- Pruebas / validación: `qa-codex-governance-guard`, `qa-architecture-dependency-guard`, `qa-ci-gate1`.
+- Riesgos remanentes: la calidad del resultado depende de mantener evidencia mínima de handoff en los archivos declarados.
+- Blast radius: el endurecimiento afecta solo la capa de gobernanza QA y no altera lógica de negocio.
+- Plan de rollback: revertir cambios de guía/contrato/guard y mantener `qa-ci-gate1` en comportamiento v1.0.
+- Estado de gates: esperado en verde con evidencia en `qa/reports/*`.
+- Estado de excepciones de seguridad: sin cambios de política funcional; se mantiene validación contractual vigente.
+
+### Trazabilidad
+
+- Hash base de ajuste v1.1: `7153c39`.
+
+## 2026-04-11 — Gobernanza Codex estricta + guard operativo
+
+### Contexto
+
+Se formaliza una política única de trabajo con Codex para evitar drift arquitectónico, especialmente en kernels críticos y módulos de control (`CEC`, `IAM`, migraciones).
+
+### Cambios principales
+
+- Se crea el runbook `docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md` con:
+  - instrucción persistente para Codex,
+  - plantilla de tarea por sesión,
+  - política de uso por modo (`Suggest`, `Auto Edit`, `Full Auto`),
+  - mapa de ownership (kernels + CEC/Shadow Ledger).
+- Se crea contrato operativo `qa/contracts/codex_governance_contract.json`.
+- Se agrega guard `qa/codex_governance_guard.py` y target `make qa-codex-governance-guard`.
+- Se integra el guard en `qa-ci-gate1` del `Makefile`.
+- Se actualizan índices de documentación (`README.md`, `docs/README.md`, `docs/operacion/README.md`).
+
+### Handoff gobernado (resumen)
+
+- Diagnóstico del área: faltaba una política ejecutable y verificable para handoff Codex en zonas críticas.
+- Alcance exacto: documentación operativa + contrato QA + guard + integración en Gate 1.
+- Contratos impactados: nuevo contrato `qa/contracts/codex_governance_contract.json` (sin cambios de API de negocio).
+- Pruebas / validación: corrida de `qa-codex-governance-guard` y guards de arquitectura/gate para confirmar integración.
+- Riesgos remanentes: la disciplina de handoff depende de que cada cambio crítico incluya evidencia con secciones mínimas.
+
 ## 2026-02-09 — WS5 paginación/indexes + WS6 CD + hardening 2FA/cookies
 
 ### Contexto

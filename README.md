@@ -18,6 +18,7 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Runbooks y operación release: [docs/operacion/README.md](docs/operacion/README.md)
 - Runbook U5 migraciones online-safe: [docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md](docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md)
 - Runbook U6 release governance + supply chain: [docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md](docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
+- Estándar de handoff y gobernanza Codex (v1.1): [docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md](docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md)
 - Índice general: [docs/README.md](docs/README.md)
 
 ## Estado Release F1–F12 (2026-03-10)

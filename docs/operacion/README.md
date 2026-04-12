@@ -33,6 +33,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Go-Live Fase 4/5 Billing-Inventory (staging/piloto)](GO_LIVE_BILLING_INVENTORY_F4_F5_v1.0.md)
 - [Runbook Reporting R8 (gobierno + observabilidad)](REPORTING_R8_GOBIERNO_OBSERVABILIDAD_v1.0.md)
 - [Runbook U6 Release Governance + Supply Chain](U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
+- [Gobernanza Codex + handoff estructurado](CODEX_GOVERNANCE_HANDOFF_v1.0.md)
 - [RCA de alertas Release/QA](ALERTAS_RCA_RELEASE_QA_v1.0.md)
 - [Retail POS Spine Slice v1.0](RETAIL_POS_SPINE_SLICE_v1.0.md)
 - [Plan maestro F1-F12 + cierre operativo](PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md)
@@ -79,3 +80,5 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-03-26: Se agrega runbook del slice `Retail POS Spine` (`RETAIL_POS_SPINE_SLICE_v1.0.md`) con endpoints, validación y pendientes de fases siguientes.
 - 2026-03-26: El slice `Retail POS Spine` agrega fase Edge (challenge/handshake/capabilities) y simulador QA `qa/simulate_retail_pos_edge.py`.
 - 2026-03-26: El slice `Retail POS Spine` agrega resiliencia de compensación (retry endpoint/ciclo) y cola offline frontend con backoff y deduplicación.
+- 2026-04-11: Se agrega estándar operativo `CODEX_GOVERNANCE_HANDOFF_v1.0.md` y guard bloqueante `qa-codex-governance-guard` para cambios en rutas críticas.
+- 2026-04-11: Se endurece estándar Codex a v1.1 por tipo de cambio (clasificación automática, secciones/gates por tipo y validación de modos prohibidos).
