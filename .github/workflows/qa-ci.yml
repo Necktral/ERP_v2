@@ -28,6 +28,9 @@ jobs:
           cp .env.example .env
 
       - name: Run QA gates (deterministic)
+        env:
+          FRONTEND_CI_HOME: /tmp/erpcrm_frontend_ci_home
+          NPM_CONFIG_CACHE: /tmp/erpcrm_frontend_ci_home/.npm
         run: |
           make qa-ci-ci
 

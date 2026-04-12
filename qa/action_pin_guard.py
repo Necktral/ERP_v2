@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-USES_RE = re.compile(r"^\s*uses:\s*([^\s#]+)")
+USES_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
 HEX40_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -42,7 +42,8 @@ def main() -> int:
     issues: list[dict[str, object]] = []
     scanned = 0
 
-    for workflow in sorted(workflows_dir.glob("*.yml")):
+    workflows = sorted({*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")})
+    for workflow in workflows:
         rel = workflow.relative_to(root).as_posix()
         lines = workflow.read_text(encoding="utf-8").splitlines()
         for lineno, line in enumerate(lines, start=1):

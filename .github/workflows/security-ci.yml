@@ -63,7 +63,8 @@ jobs:
 
       - name: Dependency scan (pip-audit)
         run: |
-          pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o qa_pip_audit.json
+          # collect-first: el bloqueo lo decide qa/enforce_security_findings.py
+          pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o qa_pip_audit.json || true
           python - <<'PY'
           import json
 

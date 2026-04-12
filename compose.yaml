@@ -148,10 +148,14 @@ services:
     profiles: ["qa"]
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app/frontend
+    environment:
+      HOME: "${FRONTEND_CI_HOME:-/tmp/erpcrm_frontend_ci_home}"
+      NPM_CONFIG_CACHE: "${NPM_CONFIG_CACHE:-/tmp/erpcrm_frontend_ci_home/.npm}"
     volumes:
       - ./frontend:/app/frontend
     command: >
       bash -lc "
+        mkdir -p \"$$HOME\" \"$$NPM_CONFIG_CACHE\" &&
         npm ci &&
         npm run lint &&
         npm run typecheck &&
