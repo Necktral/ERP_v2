@@ -30,6 +30,8 @@ describe('router routes', () => {
       UI_ROUTE_PATHS.analytics,
       UI_ROUTE_PATHS.fuelDashboard,
       UI_ROUTE_PATHS.fuelHealth,
+      UI_ROUTE_PATHS.retailPosTerminal,
+      UI_ROUTE_PATHS.retailPosCockpit,
       UI_ROUTE_PATHS.synchronizationEnrollment,
       UI_ROUTE_PATHS.synchronizationDevices,
     ];
@@ -68,6 +70,14 @@ describe('router routes', () => {
       {
         legacy: LEGACY_ROUTE_PATHS.fuelHealth,
         canonical: UI_ROUTE_PATHS.fuelHealth,
+      },
+      {
+        legacy: LEGACY_ROUTE_PATHS.retailPosTerminal,
+        canonical: UI_ROUTE_PATHS.retailPosTerminal,
+      },
+      {
+        legacy: LEGACY_ROUTE_PATHS.retailPosCockpit,
+        canonical: UI_ROUTE_PATHS.retailPosCockpit,
       },
       {
         legacy: LEGACY_ROUTE_PATHS.synchronizationEnrollment,

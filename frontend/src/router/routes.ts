@@ -163,6 +163,26 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: childPath(UI_ROUTE_PATHS.retailPosTerminal),
+        name: 'retail-pos-terminal',
+        component: () => import('pages/PosTerminalPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['retail.pos.ticket.read'],
+        },
+      },
+      {
+        path: childPath(UI_ROUTE_PATHS.retailPosCockpit),
+        name: 'retail-pos-cockpit',
+        component: () => import('pages/OperationalCockpitPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['retail.pos.ticket.read'],
+        },
+      },
+      {
         path: childPath(UI_ROUTE_PATHS.analytics),
         name: 'analytics',
         component: () => import('pages/AnalyticsPage.vue'),
@@ -221,6 +241,14 @@ const routes: RouteRecordRaw[] = [
       {
         path: childPath(LEGACY_ROUTE_PATHS.fuelHealth),
         redirect: redirectToCanonical(UI_ROUTE_PATHS.fuelHealth),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.retailPosTerminal),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.retailPosTerminal),
+      },
+      {
+        path: childPath(LEGACY_ROUTE_PATHS.retailPosCockpit),
+        redirect: redirectToCanonical(UI_ROUTE_PATHS.retailPosCockpit),
       },
       {
         path: childPath(LEGACY_ROUTE_PATHS.synchronizationEnrollment),

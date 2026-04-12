@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import hashlib
 import json
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from .models import (
     ChartOfAccount,
     ConsolidationEliminationLink,
     ConsolidationRun,
+    FiscalPeriod,
     IntercompanyDisputeCase,
     IntercompanyDisputeEvidence,
     IntercompanyDisputeReason,
@@ -114,6 +116,42 @@ def _load_journal_entry_for_company(*, entry_id: int | None, company: OrgUnit, f
     if row is None:
         raise Phase7BValidationError(f"{field_name} inválido o fuera de company={company.id}: {entry_id}")
     return row
+
+
+def _coerce_effective_at(value: datetime) -> datetime:
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
+
+
+def _resolve_effective_at(
+    *,
+    source_company: OrgUnit,
+    source_entry: JournalEntry | None,
+    explicit_effective_at: datetime | None,
+) -> datetime:
+    if explicit_effective_at is not None:
+        return _coerce_effective_at(explicit_effective_at)
+
+    if source_entry is not None:
+        if source_entry.period_id:
+            period = source_entry.period
+            last_day = calendar.monthrange(int(period.year), int(period.month))[1]
+            period_day = date(int(period.year), int(period.month), int(last_day))
+            return _coerce_effective_at(datetime.combine(period_day, time.min))
+        return _coerce_effective_at(datetime.combine(source_entry.entry_date, time.min))
+
+    open_period = (
+        FiscalPeriod.objects.filter(company=source_company, status=FiscalPeriod.Status.OPEN)
+        .order_by("-year", "-month", "-id")
+        .first()
+    )
+    if open_period is not None:
+        last_day = calendar.monthrange(int(open_period.year), int(open_period.month))[1]
+        period_day = date(int(open_period.year), int(open_period.month), int(last_day))
+        return _coerce_effective_at(datetime.combine(period_day, time.min))
+
+    return timezone.now()
 
 
 def _open_intercompany_exception(
@@ -374,6 +412,7 @@ def create_intercompany_transaction(
     reference_code: str = "",
     source_journal_entry_id: int | None = None,
     target_journal_entry_id: int | None = None,
+    effective_at: datetime | None = None,
     actor_user=None,
     effective_company_id: int | None = None,
 ) -> IntercompanyTransaction:
@@ -414,6 +453,11 @@ def create_intercompany_transaction(
             company=target_company,
             field_name="target_journal_entry_id",
         )
+        resolved_effective_at = _resolve_effective_at(
+            source_company=source_company,
+            source_entry=source_entry,
+            explicit_effective_at=effective_at,
+        )
         tx = IntercompanyTransaction.objects.create(
             source_company=source_company,
             target_company=target_company,
@@ -430,6 +474,7 @@ def create_intercompany_transaction(
             matched_amount_source=money,
             matched_amount_target=Decimal("0.00"),
             difference_amount=money,
+            effective_at=resolved_effective_at,
             description=str(description or "").strip(),
             created_by=actor_user,
         )
@@ -455,6 +500,7 @@ def create_intercompany_transaction(
                 "status": tx.status,
                 "source_account_code": tx.source_account_code,
                 "target_account_code": tx.target_account_code,
+                "effective_at": tx.effective_at.isoformat(),
             },
             company=source_company,
             actor_user=actor_user,
@@ -1415,7 +1461,7 @@ def run_consolidation(
             IntercompanyTransaction.objects.select_related("source_company", "target_company")
             .filter(source_company_id__in=scope_company_ids, target_company_id__in=scope_company_ids)
             .filter(status__in=[IntercompanyTransaction.Status.CONFIRMED, IntercompanyTransaction.Status.CLOSED])
-            .filter(created_at__gte=start_dt, created_at__lte=end_dt)
+            .filter(effective_at__gte=start_dt, effective_at__lte=end_dt)
             .order_by("created_at", "id")
         )
         account_pairs: set[tuple[int, str]] = set()

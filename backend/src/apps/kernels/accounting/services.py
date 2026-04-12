@@ -62,6 +62,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryTransferCompleted"),
 }
 PERIOD_CLOSE_FAILED_OUTBOX_MODULES = ("BILLING", "INVENTORY", "ACCOUNTING")
+PROJECTION_RULESET_CODE_PREFIX = "shadow_ledger_"
 logger = logging.getLogger(__name__)
 
 
@@ -321,6 +322,7 @@ def _select_active_rule_set_for_scope(*, company, normalized: dict[str, Any]) ->
     fiscal_mode = _infer_fiscal_mode(normalized)
     qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
+        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
     ).filter(
         Q(scope_company=company) | Q(scope_company__isnull=True),
         Q(effective_from__isnull=True) | Q(effective_from__lte=occurred_at),
@@ -724,6 +726,7 @@ def _select_active_rule_set(*, run: CloseRun, normalized: dict[str, Any]) -> Pos
     fiscal_mode = _infer_fiscal_mode(normalized)
     qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
+        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
     ).filter(
         Q(scope_company=run.company) | Q(scope_company__isnull=True),
         Q(effective_from__isnull=True) | Q(effective_from__lte=occurred_at),

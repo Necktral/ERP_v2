@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -510,6 +511,81 @@ def test_phase7b_intercompany_api_and_consolidation_reports():
     bs = client.get(f"/api/accounting/consolidation/reports/balance-sheet/?run_id={run_id}")
     assert bs.status_code == 200
     assert "assets" in bs.data
+
+
+@pytest.mark.django_db
+def test_phase7b_intercompany_create_api_accepts_effective_at():
+    company_a, branch_a, company_b, _branch_b = _mk_orgs()
+    _seed_coa(company=company_a)
+    _seed_coa(company=company_b)
+    actor = _mk_user("api_effective")
+
+    client = _mk_client(
+        user=actor,
+        company=company_a,
+        branch=branch_a,
+        perms=[
+            "accounting.intercompany.read",
+            "accounting.intercompany.write",
+        ],
+    )
+    _grant_intercompany_permission(
+        from_company=company_b,
+        to_company=company_a,
+        permission_code="accounting.intercompany.write",
+    )
+
+    response = client.post(
+        "/api/accounting/intercompany/transactions/",
+        {
+            "target_company_id": company_b.id,
+            "amount": "120.00",
+            "currency": "NIO",
+            "source_account_code": "4101",
+            "target_account_code": "5101",
+            "source_side": "CREDIT",
+            "target_side": "DEBIT",
+            "effective_at": "2026-03-15T10:30:00-06:00",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert str(response.data["effective_at"]).startswith("2026-03-15")
+
+
+@pytest.mark.django_db
+def test_phase7b_intercompany_default_effective_at_uses_open_period():
+    company_a, _branch_a, company_b, _branch_b = _mk_orgs()
+    _seed_coa(company=company_a)
+    _seed_coa(company=company_b)
+    actor = _mk_user("effective_default")
+
+    FiscalPeriod.objects.create(
+        company=company_a,
+        year=2025,
+        month=12,
+        status=FiscalPeriod.Status.OPEN,
+    )
+    _grant_intercompany_permission(
+        from_company=company_b,
+        to_company=company_a,
+        permission_code="accounting.intercompany.write",
+    )
+
+    tx = create_intercompany_transaction(
+        source_company_id=company_a.id,
+        target_company_id=company_b.id,
+        amount=Decimal("50.00"),
+        currency="NIO",
+        source_account_code="4101",
+        target_account_code="5101",
+        source_side="CREDIT",
+        target_side="DEBIT",
+        actor_user=actor,
+    )
+
+    assert tx.effective_at.date() == date(2025, 12, 31)
 
 
 @pytest.mark.django_db

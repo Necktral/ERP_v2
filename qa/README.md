@@ -2,22 +2,142 @@
 
 Este directorio contiene artefactos de QA que complementan los tests unitarios/integración.
 
+## Simulador Edge Connector (Retail POS)
+
+Genera payload determinista para probar handshake de periféricos sin hardware físico:
+
+```bash
+python3 qa/simulate_retail_pos_edge.py \
+  --challenge-id <uuid> \
+  --nonce <nonce> \
+  --company-id <id> \
+  --branch-id <id> \
+  --connector-id edge-local-1 \
+  --secret-b64 <base64-secret> \
+  --profile fuel
+```
+
 ## QA Runner (Gates 1–3)
 
 El Makefile incluye un runner para CI/local que genera reportes en `qa/reports/`:
 
-## Cobertura (Gate 2): alcance y criterio de éxito
+## Cobertura (Gate 2): modelo estratificado por dominio
 
-**Alcance (scope):** el reporte de coverage usa `.coveragerc` y está filtrado a `src/apps/sync_engine`.
-Eso significa que el **TOTAL** del reporte corresponde **solo** a ese módulo, no al backend completo.
+Gate 2 mantiene `coverage.xml`/`coverage.txt` y además ejecuta `qa-coverage-by-domain-guard` para medir dominios críticos:
 
-**Criterio de éxito recomendado (verificable):**
+- `apps.modulos.sync_engine`
+- `apps.kernels.reporting`
+- `apps.kernels.accounting`
+- `apps.modulos.accounts`
+- `apps.modulos.dashboard`
+- `apps.modulos.integration`
+- `apps.modulos.estacion_servicios`
 
-- Cobertura del scope definido **≥ 98%** (o **≥ 99%** si el objetivo es más estricto).
-- `make qa-ci-gate2` y `make qa-ci-gate3` pasan sin errores.
-- Sin regresión: no bajar la cobertura del scope ni en archivos tocados.
+Política aplicada:
 
-Si el KPI es “backend completo”, hay que **ampliar o ajustar** el `source` en `.coveragerc` y recalcular el %.
+- falla si un dominio crítico no tiene medición;
+- falla si la cobertura de dominio cae por debajo del baseline ratchet;
+- falla si archivos críticos tocados quedan bajo el floor configurado.
+
+Contrato y artefactos:
+
+- baseline: `qa/contracts/coverage_by_domain_baseline.json`
+- reporte: `qa/reports/coverage_by_domain.json`
+
+## Contratos bloqueantes POS (Gate 2)
+
+Gate 2 incorpora guards bloqueantes para compensación/offline del slice POS:
+
+- backend contract:
+
+  ```bash
+  make qa-retail-pos-backend-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/retail_pos_backend_contract_guard.txt`
+
+- sync POS contract:
+
+  ```bash
+  make qa-retail-pos-sync-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/sync_pos_contract_guard.txt`
+
+- frontend queue contract:
+
+  ```bash
+  make qa-retail-pos-frontend-queue-contract-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefacto: `qa/reports/frontend_pos_queue_contract_guard.txt`
+
+- edge simulator contract:
+
+  ```bash
+  make qa-retail-pos-edge-simulator-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefactos:
+  - `qa/reports/retail_pos_edge_simulator_guard.txt`
+  - `qa/reports/retail_pos_edge_simulator_guard.json`
+
+- edge handshake E2E contract (HTTP real):
+
+  ```bash
+  make qa-retail-pos-edge-e2e-guard QA_REPORTS_DIR=qa/reports
+  ```
+
+  Artefactos:
+  - `qa/reports/retail_pos_edge_e2e_guard.txt`
+  - `qa/reports/retail_pos_edge_e2e_guard.json`
+  - `qa/reports/retail_pos_edge_e2e_request_response.json`
+
+Objetivo: bloquear merge con regresiones en `compensate/retry`, `POS_COMPENSATION_RETRY`, cola offline (dedupe/backoff/drain), contrato de simulación edge y flujo HTTP E2E `challenge + handshake`.
+
+### Pilot run Retail POS por sucursal (operativo)
+
+Runner de validación operativa por sucursal con flujo real:
+`shift -> session -> ticket -> checkout -> cockpit -> close` y modo rollback.
+
+- smoke:
+
+  ```bash
+  make qa-retail-pos-pilot-smoke QA_REPORTS_DIR=qa/reports
+  ```
+
+- rollback:
+
+  ```bash
+  make qa-retail-pos-pilot-rollback QA_REPORTS_DIR=qa/reports
+  ```
+
+Artefactos:
+
+- `qa/reports/retail_pos_pilot_smoke.json`
+- `qa/reports/retail_pos_pilot_smoke_trace.json`
+- `qa/reports/retail_pos_pilot_rollback.json`
+- `qa/reports/retail_pos_pilot_rollback_trace.json`
+
+### Validación canónica Sync + POS (sin módulos inexistentes)
+
+Para validar el slice Sync+POS con los tests reales de este repositorio, usa:
+
+```bash
+make qa-sync-pos-validation QA_REPORTS_DIR=qa/reports
+```
+
+Este target ejecuta únicamente módulos existentes en `backend/src/tests/`:
+
+- `test_sync_v2_contract.py`
+- `test_sync_v2_pos_commands.py`
+- `test_retail_pos_api.py`
+- `test_route_collision_guard.py`
+- `test_route_canonical_registry.py`
+
+Artefacto:
+
+- `qa/reports/sync_pos_validation.txt`
 
 - Recomendado (DB limpia, reproducible):
 
@@ -39,6 +159,23 @@ Workflow sugerido en GitHub Actions: `.github/workflows/qa-ci.yml`.
   make qa-ci
   ```
 
+### Runner por perfiles (manifiestos reproducibles)
+
+Perfiles soportados:
+
+- `pr` -> `qa/manifests/pr_default.yaml`
+- `release` -> `qa/manifests/release_candidate.yaml`
+- `go_live` -> `qa/manifests/go_live_strict.yaml`
+- `rollback_rehearsal` -> `qa/manifests/rollback_rehearsal.yaml`
+
+Ejecución:
+
+```bash
+make qa-run-profile PROFILE=pr
+```
+
+El `run_manifest.json` registra `profile`, `manifest` y `overrides` efectivos.
+
 ### Guard de contrato Analytics (puerto/prefix/proxy)
 
 Se valida en Gate 1 que el contrato operativo de Analytics no derive:
@@ -53,6 +190,30 @@ Ejecución manual:
 ```bash
 make qa-analytics-contract-guard
 ```
+
+### Guard de contrato de rutas (canónico vs legacy)
+
+Valida colisiones de prefijos e inventario contractual de aliases legacy:
+
+```bash
+make qa-route-contract-guard
+```
+
+Artefacto:
+
+- `qa/reports/route_contract_report.json`
+
+### Guard de consistencia API por heading en README
+
+Bloquea mezcla de secciones documentales (por ejemplo endpoints `fuel` bajo heading de `reporting`):
+
+```bash
+make qa-readme-section-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/readme_section_guard.json`
 
 ### Verificación estática veraz (ruff + mypy)
 
@@ -85,12 +246,224 @@ Artefacto:
 
 - `qa/reports/makemigrations_check.txt`
 
+### Guard de seguridad de migraciones (U5)
+
+Gate 1 bloquea migraciones nuevas/modificadas sin metadata de riesgo o con reglas online-safe incumplidas.
+
+Baseline versionado:
+
+- `qa/contracts/migration_safety_baseline.json`
+- actualización solo por PR explícito de arquitectura/DB:
+  `python3 qa/migration_safety_guard.py --root . --baseline qa/contracts/migration_safety_baseline.json --write-baseline`
+
+Ejecución manual:
+
+```bash
+make qa-migration-safety-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/migration_safety_guard.json`
+
+### Rehearsal de migraciones en DB efímera (U5)
+
+Ensayo operativo no destructivo para validar plan y aplicación de migraciones:
+
+```bash
+make qa-migration-rehearsal QA_REPORTS_DIR=qa/reports
+```
+
+Artefactos:
+
+- `qa/reports/migration_plan.txt`
+- `qa/reports/migration_rehearsal_summary.json`
+
+### Evidencia consolidada de release (U6)
+
+Genera snapshot de evidencia contractual/QA para auditoría de release:
+
+```bash
+make qa-export-u6-release-evidence QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/release_evidence_u6.json`
+
+Política de artefactos supply-chain:
+
+- `qa_sbom_*`, `qa_*_u6.json` y `qa_supply_chain_artifacts.sha256` son **CI-only**.
+- En ejecución local, el consolidado los clasifica como externos/no bloqueantes.
+- En CI (`CI=true`), esos artefactos siguen siendo obligatorios.
+
 ### Guard de bootstrap de `PYTHONPATH` en runtime
 
 Gate 1 bloquea reintroducir hacks de `sys.path.insert(...)` dentro de `backend/src`:
 
 ```bash
 make qa-pythonpath-bootstrap-guard
+```
+
+### Packaging progresivo backend (U4)
+
+Gate 1 valida que el backend corre como paquete instalable (sin quitar compatibilidad de `backend/manage.py`):
+
+```bash
+make qa-backend-package-check QA_REPORTS_DIR=qa/reports
+```
+
+El check realiza:
+
+- instalación aislada en venv efímero (sin `pip install -e` sobre volumen del repo)
+- smoke import (`config`, `apps.kernels.reporting`)
+- smoke de comando canónico: `python -m config.manage check`
+
+Artefactos:
+
+- `qa/reports/package_install.txt`
+- `qa/reports/package_imports.txt`
+- `qa/reports/package_check.txt`
+
+### Guard de pin SHA para GitHub Actions (U6)
+
+Gate 1 bloquea workflows con `uses:` sin pin por commit SHA (40 hex):
+
+```bash
+make qa-action-pin-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/action_pin_guard.json`
+
+### Guard de checks requeridos GitHub (U6)
+
+Valida contrato versionado de checks requeridos contra workflows reales:
+
+```bash
+make qa-github-required-checks-guard QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/github_required_checks.json`
+
+Artefacto:
+
+- `qa/reports/github_required_checks_guard.json`
+
+### Guard de higiene del runner QA (U6)
+
+Bloquea residuos críticos no versionados del runner (ej. `*.egg-info` en `backend/src`):
+
+```bash
+make qa-runner-hygiene-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/runner_hygiene_guard.json`
+
+### Contrato de excepciones de seguridad (U6)
+
+Valida excepciones versionadas con expiración obligatoria:
+
+```bash
+make qa-validate-security-exceptions QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/security_exceptions.json`
+
+Artefacto:
+
+- `qa/reports/security_exceptions_guard.json`
+
+### Enforcement de hallazgos de seguridad (U6)
+
+Valida hallazgos `pip`/`npm` contra excepciones versionadas:
+
+```bash
+make qa-security-findings-enforce QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/security_findings_guard.json`
+
+### Reglas de branch `master` (U6)
+
+Verificación de policy real en GitHub contra contrato versionado:
+
+```bash
+make qa-github-master-ruleset-verify QA_REPORTS_DIR=qa/reports
+```
+
+Aplicación de policy (requiere permisos admin en el repo):
+
+```bash
+make qa-github-master-ruleset-apply QA_REPORTS_DIR=qa/reports
+```
+
+Contrato:
+
+- `qa/contracts/github_master_ruleset.json`
+
+Artefactos:
+
+- `qa/reports/github_master_ruleset_verify.json`
+- `qa/reports/github_master_ruleset_apply.json`
+
+### AI Review (advisory)
+
+Workflow: `.github/workflows/ai-review.yml` (`AI Review (Advisory)`).
+
+- No es check bloqueante.
+- No forma parte de `required_checks`.
+- Si falta `OPENAI_API_KEY`, se reporta como omitido sin afectar merge.
+
+### Guard de fronteras arquitectónicas (U4)
+
+Gate 1 incorpora guard AST con política dual:
+
+- hard-fail inmediato para imports prohibidos en `apps.kernels.reporting` hacia dominios transaccionales fuera de `domain_adapters/*`;
+- ratchet global de dependencias cruzadas (bloquea nuevas aristas fuera del baseline).
+
+Baseline versionado:
+
+- `qa/contracts/architecture_dependency_baseline.json`
+- actualización solo por PR explícito de arquitectura:
+  `python3 qa/architecture_dependency_guard.py --root . --baseline qa/contracts/architecture_dependency_baseline.json --write-baseline`
+
+Ejecución manual:
+
+```bash
+make qa-architecture-dependency-guard QA_REPORTS_DIR=qa/reports
+```
+
+Artefacto:
+
+- `qa/reports/architecture_dependency_guard.json`
+
+### Guard de compat legacy de kernels
+
+`namespace_layout_guard` ahora emite inventario de deuda legacy y bloquea nuevos usos fuera de policy:
+
+- policy: `qa/kernel_compat_policy.py`
+- artefacto: `qa/reports/kernel_compat_usage.json`
+
+Ejecución:
+
+```bash
+make qa-namespace-guard
+```
+
+Modo estricto (retiro total):
+
+```bash
+make qa-kernel-compat-strict
 ```
 
 ### Guard de contrato de registry (`reporting`)
@@ -127,6 +500,22 @@ Artefacto:
 
 - `qa/reports/reporting_contract_guard.json`
 
+### Guard de blast radius de PR
+
+Clasifica el alcance del cambio y aplica policy para cambios `high/extreme`:
+
+```bash
+make qa-pr-blast-radius-guard
+```
+
+Artefacto:
+
+- `qa/reports/pr_blast_radius.json`
+
+Regla actual:
+
+- `high/extreme` requiere ADR o design note en `docs/adr/*` o `docs/design/*`.
+
 Nota: el “Gate 3” del runner de CI es **integridad de auditoría** (comando `audit_verify_chain`). El target `make qa-gate3` de este README es un **Gate 3 de carga** (k6 smoke+stress).
 
 ### Gate R8 (reporting calidad + SLO)
@@ -135,11 +524,13 @@ Gate adicional de R8 (incluido en `qa-ci-gate3`) para `reporting/dashboard`:
 
 ```bash
 make qa-reporting-r8-gate
+make qa-verify-reporting-r8-gate-artifact
 ```
 
 Artefacto generado:
 
 - `qa/reports/reporting_r8_gate.json`
+- `qa/reports/reporting_r8_gate_guard.json`
 
 Política de enforcement:
 
@@ -151,6 +542,23 @@ Thresholds por defecto:
 - `snapshot p95 <= 800ms`
 - `near-realtime/cache p95 <= 1500ms`
 - `error_rate < 0.5%`
+
+Taxonomía normalizada de `failure_class`:
+
+- `none`
+- `quality_breach`
+- `latency_regression`
+- `app_error`
+- `infra_error`
+
+Prioridad de clasificación cuando coexisten brechas:
+
+- `infra_error > app_error > latency_regression > quality_breach`
+
+Contrato adicional del artefacto `reporting_r8_gate.json`:
+
+- `trigger_metric` obligatorio cuando `failure_class != none`.
+- `breaches` estructurado por dataset/policy/métrica cuando aplica.
 
 ### Aislamiento de base de datos de tests (anti-colisión)
 

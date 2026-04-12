@@ -40,6 +40,8 @@ class Device(models.Model):
 
     # Ed25519 public key: 32 bytes
     public_key = models.BinaryField(max_length=64, editable=False)
+    # Opcional para compatibilidad request-level HMAC (Sync v2 / wrappers legacy).
+    hmac_secret_b64 = models.CharField(max_length=256, blank=True, default="")
 
     min_app_version = models.CharField(max_length=32, default="", blank=True)
     meta = models.JSONField(default=dict, blank=True)
@@ -156,6 +158,29 @@ class DeviceEnrollmentChallenge(models.Model):
         if self.used_at is not None:
             return False
         return timezone.now() <= self.expires_at
+
+
+class DeviceRequestNonce(models.Model):
+    """
+    Anti-replay request-level para Sync v2.
+
+    Invariante contractual:
+    - (device, nonce) debe ser único.
+    """
+
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="request_nonces")
+    nonce = models.CharField(max_length=128)
+    ts = models.BigIntegerField()  # unix epoch seconds
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "sync_engine"
+        constraints = [
+            models.UniqueConstraint(fields=["device", "nonce"], name="uq_sync_engine_device_nonce"),
+        ]
+        indexes = [
+            models.Index(fields=["device", "created_at"], name="sync_engine_device__48b6a5_idx"),
+        ]
 
 
 class AppliedCommand(models.Model):

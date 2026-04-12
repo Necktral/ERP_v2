@@ -3,9 +3,10 @@
 	qa-branch-hygiene qa-branch-hygiene-cleanup-plan qa-branch-hygiene-cleanup \
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live \
-	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci \
-	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-makemigrations-check qa-backend-mypy-baseline-refresh qa-backend-tests qa-static-scan qa-namespace-guard qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate \
-	docker-clean docker-clean-all
+	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
+	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-codex-governance-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
+		qa-sync-contract-guard qa-retail-pos-backend-contract-guard qa-retail-pos-sync-contract-guard qa-retail-pos-frontend-queue-contract-guard qa-retail-pos-edge-simulator-guard qa-retail-pos-edge-e2e-guard qa-retail-pos-pilot-smoke qa-retail-pos-pilot-rollback qa-sync-pos-validation qa-reports-dir-writable \
+		fix-workspace-perms docker-clean docker-clean-all
 
 BASE_URL ?= http://localhost:8000/api
 K6_IMAGE ?= grafana/k6
@@ -14,6 +15,10 @@ QA_REPORTS_DIR ?= qa/reports
 QA_KEEP_FRONTEND ?= 1
 QA_PYTEST_DB_SLOT ?=
 QA_PYTEST_DB_BASE_NAME ?= test_erp_db
+HOST_UID ?= $(shell id -u)
+HOST_GID ?= $(shell id -g)
+QA_RUFF_CACHE_DIR ?= /tmp/qa_ruff_cache_erp
+QA_MYPY_CACHE_DIR ?= /tmp/qa_mypy_cache_erp
 REPORTING_R8_GATE_WARN_UNTIL ?= 2026-04-07
 REPORTING_R8_GATE_HARD_FAIL_FROM ?= 2026-04-08
 REPORTING_R8_GATE_WINDOW_HOURS ?= 24
@@ -123,10 +128,25 @@ qa-static-scan:
 	docker compose exec -T backend bash -lc "chmod +x /app/qa/static_scan_backend.sh && /app/qa/static_scan_backend.sh /app"
 
 qa-namespace-guard:
-	python3 qa/namespace_layout_guard.py --root .
+	python3 qa/namespace_layout_guard.py --root . --output "$(QA_REPORTS_DIR)/kernel_compat_usage.json"
+
+qa-kernel-compat-strict:
+	python3 qa/namespace_layout_guard.py --root . --strict --output "$(QA_REPORTS_DIR)/kernel_compat_usage.json"
 
 qa-analytics-contract-guard:
 	python3 qa/analytics_contract_guard.py --root .
+
+qa-route-contract-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/route_contract_guard.py --root /app --output /app/$(QA_REPORTS_DIR)/route_contract_report.json"
+
+qa-readme-section-guard:
+	python3 qa/readme_section_guard.py --readme README.md --output "$(QA_REPORTS_DIR)/readme_section_guard.json"
+
+qa-pr-blast-radius-guard:
+	python3 qa/pr_blast_radius_guard.py --root . --output "$(QA_REPORTS_DIR)/pr_blast_radius.json"
+
+qa-codex-governance-guard:
+	python3 qa/codex_governance_guard.py --root . --contract qa/contracts/codex_governance_contract.json --output "$(QA_REPORTS_DIR)/codex_governance_guard.json"
 
 qa-reporting-registry-guard:
 	docker compose exec -T backend bash -lc "python /app/qa/reporting_registry_contract_guard.py --root /app --mode auto"
@@ -135,19 +155,28 @@ qa-reporting-registry-guard-host:
 	python3 qa/reporting_registry_contract_guard.py --root . --mode ast
 
 qa-reporting-contract-version-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/reporting_contract_version_guard.py --root /app --baseline qa/contracts/reporting_dataset_contract_baseline.json --output /app/$(QA_REPORTS_DIR)/reporting_contract_guard.json"
+
+qa-reporting-contract-version-guard-host:
 	python3 qa/reporting_contract_version_guard.py --root . --baseline qa/contracts/reporting_dataset_contract_baseline.json --output "$(QA_REPORTS_DIR)/reporting_contract_guard.json"
 
 qa-pythonpath-bootstrap-guard:
 	python3 qa/pythonpath_bootstrap_guard.py --root .
 
+qa-backend-package-check:
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && find /app/backend/src -maxdepth 3 -type d -name '*.egg-info' -exec rm -rf {} + && rm -rf /tmp/nt_pkg_check_venv /tmp/nt_pkg_check_src && cp -R /app/backend /tmp/nt_pkg_check_src && python -m venv /tmp/nt_pkg_check_venv && /tmp/nt_pkg_check_venv/bin/python -m pip install --upgrade pip >/dev/null && /tmp/nt_pkg_check_venv/bin/pip install /tmp/nt_pkg_check_src --no-deps | tee /app/$(QA_REPORTS_DIR)/package_install.txt && cd /app/backend && /tmp/nt_pkg_check_venv/bin/python -c 'import config; import apps.kernels.reporting; print(\"PACKAGE_IMPORTS_OK\")' | tee /app/$(QA_REPORTS_DIR)/package_imports.txt && DJANGO_SETTINGS_MODULE=config.settings.dev python -m config.manage check | tee /app/$(QA_REPORTS_DIR)/package_check.txt && find /app/backend/src -maxdepth 3 -type d -name '*.egg-info' -exec rm -rf {} +"
+
+qa-architecture-dependency-guard:
+	python3 qa/architecture_dependency_guard.py --root . --baseline qa/contracts/architecture_dependency_baseline.json --output "$(QA_REPORTS_DIR)/architecture_dependency_guard.json"
+
 qa-backend-bandit:
 	docker compose exec -T backend bash -lc 'set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && APPS_ROOT=""; for p in /app/backend/src/apps /app/src/apps /app/login_module/src/apps; do [ -d "$$p" ] && APPS_ROOT="$$p" && break; done; [ -n "$$APPS_ROOT" ] || { echo "apps root not found under /app" >&2; exit 2; }; EXCLUDES=$$(find "$$APPS_ROOT/modulos" -mindepth 2 -maxdepth 2 -type d -name migrations 2>/dev/null | tr "\n" "," | sed "s/,$$//"); bandit -q -r "$$APPS_ROOT" -x "$$EXCLUDES" -ll -ii -f txt | tee /app/$(QA_REPORTS_DIR)/bandit.txt'
 
 qa-backend-ruff:
-	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) $(QA_RUFF_CACHE_DIR) && RUFF_CACHE_DIR=$(QA_RUFF_CACHE_DIR) ruff check /app/backend/src | tee /app/$(QA_REPORTS_DIR)/ruff.txt"
 
 qa-backend-mypy:
-	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app && mypy --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
+	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) $(QA_MYPY_CACHE_DIR) && cd /app && mypy --cache-dir $(QA_MYPY_CACHE_DIR) --config-file mypy.ini backend/src | tee /app/$(QA_REPORTS_DIR)/mypy.txt"
 
 qa-verify-static-gate:
 	python3 qa/verify_static_gate_reports.py --reports-dir "$(QA_REPORTS_DIR)"
@@ -155,8 +184,76 @@ qa-verify-static-gate:
 qa-makemigrations-check:
 	docker compose exec -T backend bash -lc "set -o pipefail && mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py makemigrations --check --dry-run --noinput | tee /app/$(QA_REPORTS_DIR)/makemigrations_check.txt"
 
+qa-migration-safety-guard:
+	python3 qa/migration_safety_guard.py --root . --baseline qa/contracts/migration_safety_baseline.json --output "$(QA_REPORTS_DIR)/migration_safety_guard.json"
+
+qa-migration-rehearsal:
+	QA_REPORTS_DIR="$(QA_REPORTS_DIR)" bash ./qa/run_migration_rehearsal.sh
+
+qa-action-pin-guard:
+	python3 qa/action_pin_guard.py --root . --workflows-dir .github/workflows --output "$(QA_REPORTS_DIR)/action_pin_guard.json"
+
+qa-github-required-checks-guard:
+	python3 qa/github_required_checks_guard.py --root . --contract qa/contracts/github_required_checks.json --output "$(QA_REPORTS_DIR)/github_required_checks_guard.json"
+
+qa-runner-hygiene-guard:
+	python3 qa/qa_runner_hygiene_guard.py --root . --output "$(QA_REPORTS_DIR)/runner_hygiene_guard.json"
+
+qa-validate-security-exceptions:
+	python3 qa/validate_security_exceptions.py --root . --contract qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_exceptions_guard.json"
+
+qa-security-findings-enforce:
+	python3 qa/enforce_security_findings.py --root . --pip-report qa_pip_audit.json --npm-report qa_npm_audit.json --exceptions qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_findings_guard.json"
+
+qa-export-u6-release-evidence:
+	python3 qa/export_u6_release_evidence.py --root . --output "$(QA_REPORTS_DIR)/release_evidence_u6.json"
+
+qa-github-master-ruleset-verify:
+	python3 qa/manage_github_ruleset.py --root . --contract qa/contracts/github_master_ruleset.json --mode verify --output "$(QA_REPORTS_DIR)/github_master_ruleset_verify.json"
+
+qa-github-master-ruleset-apply:
+	python3 qa/manage_github_ruleset.py --root . --contract qa/contracts/github_master_ruleset.json --mode apply --output "$(QA_REPORTS_DIR)/github_master_ruleset_apply.json"
+
 qa-backend-tests:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
+
+qa-sync-contract-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_contract.py | tee /app/$(QA_REPORTS_DIR)/sync_contract_guard.txt"
+
+qa-retail-pos-backend-contract-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_retail_pos_api.py | tee /app/$(QA_REPORTS_DIR)/retail_pos_backend_contract_guard.txt"
+
+qa-retail-pos-sync-contract-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_pos_commands.py | tee /app/$(QA_REPORTS_DIR)/sync_pos_contract_guard.txt"
+
+qa-reports-dir-writable:
+	@python3 qa/ensure_reports_dir_writable.py --reports-dir "$(QA_REPORTS_DIR)" --host-uid "$(HOST_UID)" --host-gid "$(HOST_GID)"
+
+qa-retail-pos-frontend-queue-contract-guard: qa-reports-dir-writable
+	@mkdir -p "$(QA_REPORTS_DIR)"
+	@bash -lc 'set -o pipefail; HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci bash -lc "npm ci && npm run test -- src/services/__tests__/retail-pos-offline-queue.spec.ts" | tee "$(QA_REPORTS_DIR)/frontend_pos_queue_contract_guard.txt"'
+
+qa-retail-pos-edge-simulator-guard: qa-reports-dir-writable
+	@mkdir -p "$(QA_REPORTS_DIR)"
+	@bash -lc 'set -o pipefail; python3 qa/validate_retail_pos_edge_simulator.py --root . --output "$(QA_REPORTS_DIR)/retail_pos_edge_simulator_guard.json" | tee "$(QA_REPORTS_DIR)/retail_pos_edge_simulator_guard.txt"'
+
+qa-retail-pos-edge-e2e-guard: qa-reports-dir-writable
+	@mkdir -p "$(QA_REPORTS_DIR)"
+	@bash -lc 'set -o pipefail; QA_REPORTS_DIR="$(QA_REPORTS_DIR)" bash ./qa/run_retail_pos_edge_e2e.sh | tee "$(QA_REPORTS_DIR)/retail_pos_edge_e2e_guard.txt"'
+
+qa-retail-pos-pilot-smoke: qa-reports-dir-writable
+	@mkdir -p "$(QA_REPORTS_DIR)"
+	@bash -lc 'set -o pipefail; QA_REPORTS_DIR="$(QA_REPORTS_DIR)" bash ./qa/run_retail_pos_pilot_rollout.sh smoke | tee "$(QA_REPORTS_DIR)/retail_pos_pilot_smoke.log"'
+
+qa-retail-pos-pilot-rollback: qa-reports-dir-writable
+	@mkdir -p "$(QA_REPORTS_DIR)"
+	@bash -lc 'set -o pipefail; QA_REPORTS_DIR="$(QA_REPORTS_DIR)" bash ./qa/run_retail_pos_pilot_rollout.sh rollback | tee "$(QA_REPORTS_DIR)/retail_pos_pilot_rollback.log"'
+
+qa-sync-pos-validation:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_contract.py src/tests/test_sync_v2_pos_commands.py src/tests/test_retail_pos_api.py src/tests/test_route_collision_guard.py src/tests/test_route_canonical_registry.py | tee /app/$(QA_REPORTS_DIR)/sync_pos_validation.txt"
+
+qa-coverage-by-domain-guard:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/coverage_by_domain_guard.py --root /app --coverage-report /app/$(QA_REPORTS_DIR)/coverage.txt --baseline /app/qa/contracts/coverage_by_domain_baseline.json --output /app/$(QA_REPORTS_DIR)/coverage_by_domain.json"
 
 qa-audit-integrity:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py audit_verify_chain --seed-minimal --format json --output /app/$(QA_REPORTS_DIR)/audit_integrity.json"
@@ -164,21 +261,27 @@ qa-audit-integrity:
 qa-reporting-r8-gate:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && python manage.py export_reporting_observability_snapshot --window-hours $(REPORTING_R8_GATE_WINDOW_HOURS) --output /app/$(QA_REPORTS_DIR)/reporting_observability_snapshot.json && python manage.py reporting_r8_gate --window-hours $(REPORTING_R8_GATE_WINDOW_HOURS) --warn-until $(REPORTING_R8_GATE_WARN_UNTIL) --hard-fail-from $(REPORTING_R8_GATE_HARD_FAIL_FROM) --snapshot-p95-max-ms $(REPORTING_R8_GATE_SNAPSHOT_P95_MAX_MS) --near-realtime-p95-max-ms $(REPORTING_R8_GATE_NEAR_RT_P95_MAX_MS) --error-rate-max-pct $(REPORTING_R8_GATE_ERROR_RATE_MAX_PCT) --output /app/$(QA_REPORTS_DIR)/reporting_r8_gate.json"
 
+qa-verify-reporting-r8-gate-artifact:
+	python3 qa/verify_reporting_r8_gate_artifact.py --artifact "$(QA_REPORTS_DIR)/reporting_r8_gate.json" --output "$(QA_REPORTS_DIR)/reporting_r8_gate_guard.json"
+
 qa-frontend-ci:
-	docker compose --profile qa run --rm frontend_ci
+	HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci
 
 # Gate 1: calidad estática + typecheck
-qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-frontend-ci
+qa-ci-gate1: qa-ci-up qa-namespace-guard qa-analytics-contract-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-codex-governance-guard qa-reporting-registry-guard qa-reporting-contract-version-guard qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-static-scan qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-makemigrations-check qa-migration-safety-guard qa-frontend-ci
 
 # Gate 2: pruebas deterministas (pytest + cobertura)
-qa-ci-gate2: qa-ci-up qa-backend-tests
+qa-ci-gate2: qa-ci-up qa-backend-tests qa-sync-contract-guard qa-retail-pos-backend-contract-guard qa-retail-pos-sync-contract-guard qa-retail-pos-frontend-queue-contract-guard qa-retail-pos-edge-simulator-guard qa-retail-pos-edge-e2e-guard qa-coverage-by-domain-guard
 
 # Gate 3: integridad de auditoría (reporte)
-qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate
+qa-ci-gate3: qa-ci-up qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact qa-export-u6-release-evidence
 
 # Runner completo Gates 1–3
 qa-ci:
 	QA_REPORTS_DIR="$(QA_REPORTS_DIR)" QA_FRESH_DB="$(QA_FRESH_DB)" QA_KEEP_FRONTEND="$(QA_KEEP_FRONTEND)" bash ./qa/run_qa_ci.sh
+
+qa-run-profile:
+	PROFILE=$${PROFILE:-pr}; QA_REPORTS_DIR="$(QA_REPORTS_DIR)" QA_FRESH_DB="$(QA_FRESH_DB)" QA_KEEP_FRONTEND="$(QA_KEEP_FRONTEND)" bash ./qa/run_pipeline_profile.sh "$$PROFILE"
 
 # --- Docker helpers (dev/local) ---
 
@@ -196,6 +299,9 @@ docker-clean-all:
 	@echo "[docker] down -v --remove-orphans (ELIMINA volúmenes)…"
 	@docker compose down -v --remove-orphans || true
 	@$(MAKE) docker-clean
+
+fix-workspace-perms:
+	@HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" bash ./scripts/fix_workspace_permissions.sh
 
 qa-load-user:
 	@if [ -z "$(PASSWORD)" ]; then echo "Set PASSWORD before running qa-load-user"; exit 1; fi

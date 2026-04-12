@@ -64,6 +64,56 @@ def create_payment_intent(
         return intent, False
 
 
+def capture_payment_intent(
+    *,
+    request,
+    actor,
+    payment_id,
+    provider_txn_id: str = "",
+    metadata: dict | None = None,
+) -> PaymentIntent:
+    company = request.company
+    branch = _branch_from_request(request)
+    with transaction.atomic():
+        intent = get_object_or_404(
+            PaymentIntent.objects.select_for_update(),
+            payment_id=payment_id,
+            company=company,
+            branch=branch,
+        )
+        if intent.status == PaymentIntent.Status.CAPTURED:
+            return intent
+        if intent.status in (PaymentIntent.Status.FAILED, PaymentIntent.Status.REFUNDED):
+            raise ValueError("Payment intent no se puede capturar en su estado actual.")
+
+        intent.status = PaymentIntent.Status.CAPTURED
+        intent.captured_at = timezone.now()
+        if provider_txn_id:
+            intent.provider_txn_id = provider_txn_id
+        if metadata:
+            merged = dict(intent.metadata or {})
+            merged.update(dict(metadata))
+            intent.metadata = merged
+        intent.save(update_fields=["status", "captured_at", "provider_txn_id", "metadata", "updated_at"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="PaymentCaptured",
+            payload={
+                "payment_id": str(intent.payment_id),
+                "amount": str(intent.amount),
+                "currency": intent.currency,
+                "status": intent.status,
+                "provider_txn_id": intent.provider_txn_id,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        return intent
+
+
 def open_cash_session(*, request, actor, opening_amount: Decimal = Decimal("0.00"), notes: str = "") -> CashSession:
     company = request.company
     branch = _branch_from_request(request)

@@ -16,6 +16,9 @@ Sistema ERP/CRM modular con backend Django + DRF y frontend Quasar. Incluye RBAC
 - Estado ejecutivo: [docs/contexto_nucleos.md](docs/contexto_nucleos.md)
 - Blueprint arquitectónico: [docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md](docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md)
 - Runbooks y operación release: [docs/operacion/README.md](docs/operacion/README.md)
+- Runbook U5 migraciones online-safe: [docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md](docs/operacion/MIGRATION_ONLINE_SAFE_U5_v1.0.md)
+- Runbook U6 release governance + supply chain: [docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md](docs/operacion/U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
+- Estándar de handoff y gobernanza Codex (v1.1): [docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md](docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md)
 - Índice general: [docs/README.md](docs/README.md)
 
 ## Estado Release F1–F12 (2026-03-10)
@@ -217,6 +220,14 @@ El repo incluye un runner determinista para CI/local (lint + typecheck + tests +
   make qa-ci
   ```
 
+- Runner por perfiles (manifiestos reproducibles):
+
+  ```bash
+  make qa-run-profile PROFILE=pr
+  make qa-run-profile PROFILE=release
+  make qa-run-profile PROFILE=go_live
+  ```
+
 Artefactos generados:
 
 - `qa/reports/static_scan.txt`
@@ -225,14 +236,98 @@ Artefactos generados:
 - `qa/reports/pytest.xml`
 - `qa/reports/coverage.xml`
 - `qa/reports/coverage.txt`
+- `qa/reports/coverage_by_domain.json`
 - `qa/reports/audit_integrity.json`
 - `qa/reports/reporting_r8_gate.json`
+- `qa/reports/reporting_r8_gate_guard.json`
 - `qa/reports/reporting_contract_guard.json`
+- `qa/reports/route_contract_report.json`
+- `qa/reports/kernel_compat_usage.json`
+- `qa/reports/pr_blast_radius.json`
+- `qa/reports/package_check.txt`
+- `qa/reports/architecture_dependency_guard.json`
+- `qa/reports/migration_safety_guard.json`
+- `qa/reports/action_pin_guard.json`
+- `qa/reports/github_required_checks_guard.json`
+- `qa/reports/runner_hygiene_guard.json`
+- `qa/reports/security_exceptions_guard.json`
+- `qa/reports/release_evidence_u6.json`
 
 Guard contractual versionado de reporting (U2):
 
 ```bash
 make qa-reporting-contract-version-guard
+```
+
+Guard de fronteras arquitectónicas (U4):
+
+```bash
+make qa-architecture-dependency-guard
+```
+
+Guard de contrato de rutas (canónico vs legacy):
+
+```bash
+make qa-route-contract-guard
+```
+
+Guard de compat legacy de kernels:
+
+```bash
+make qa-namespace-guard
+make qa-kernel-compat-strict   # modo retiro total
+```
+
+Guard de seguridad de migraciones (U5):
+
+```bash
+make qa-migration-safety-guard
+```
+
+Rehearsal operativo de migraciones en DB efímera (U5):
+
+```bash
+make qa-migration-rehearsal
+```
+
+Guard de pin SHA para workflows (U6):
+
+```bash
+make qa-action-pin-guard
+```
+
+Guard de checks requeridos GitHub (U6):
+
+```bash
+make qa-github-required-checks-guard
+```
+
+Guard de blast radius de PR:
+
+```bash
+make qa-pr-blast-radius-guard
+```
+
+AI Review:
+
+- Workflow: `AI Review (Advisory)` (no bloqueante, fuera de required checks).
+
+Guard de higiene post-runner (U6):
+
+```bash
+make qa-runner-hygiene-guard
+```
+
+Validación de excepciones de seguridad (U6):
+
+```bash
+make qa-validate-security-exceptions
+```
+
+Evidencia consolidada de release (U6):
+
+```bash
+make qa-export-u6-release-evidence
 ```
 
 ### Backend
@@ -254,6 +349,16 @@ make qa-reporting-contract-version-guard
   source system_wis/bin/activate
   cd backend
   ruff check .
+  ```
+
+- Comando canónico empaquetado (U4):
+  ```bash
+  cd backend
+  python -m config.manage check
+  ```
+  Compatibilidad vigente:
+  ```bash
+  python backend/manage.py check
   ```
 
 ### Frontend
@@ -278,19 +383,36 @@ make qa-reporting-contract-version-guard
 
 Base path: `/api/fuel/`
 
-### Reporting / Analytics (R8)
-
-- API canónica reporting: `/api/reporting/*`
-- Dashboard gateway: `/api/backend/dashboard/*`
-- Métricas operativas consolidadas: `/api/metrics/` (incluye bloques `reporting` y `dashboard`)
-- Endpoints legacy contables `/api/accounting/reports/*` emiten headers `Deprecation`, `Sunset` y `Link` hacia `/api/reporting/catalog/`
-
+- Canónico: `/api/fuel/*`
+- Legacy con deprecación: `/api/backend/fuel/*` y `/api/backend/estacion-servicios/*`
 - `GET /api/fuel/health/` — Healthcheck del módulo (público)
 - `POST /api/fuel/shifts/open/` — Abrir turno (permiso: `fuel.shift.open`)
 - `POST /api/fuel/shifts/{shift_id}/close/` — Cerrar turno (permiso: `fuel.shift.close`)
 - `POST /api/fuel/dispenses/` — Registrar despacho (permiso: `fuel.dispense.create`)
 - `POST /api/fuel/sales/` — Crear venta (permiso: `fuel.sale.create`)
 - `POST /api/fuel/sales/{sale_id}/cancel/` — Cancelar venta (permiso: `fuel.sale.void`)
+
+### Retail POS Spine (aditivo)
+
+Base path: `/api/retail/pos/`
+
+- `GET /api/retail/pos/health/` — Healthcheck del módulo POS.
+- `GET /api/retail/pos/sessions/current/` — Sesión POS activa por sucursal (`retail.pos.session.read`).
+- `POST /api/retail/pos/sessions/open/` — Apertura de sesión POS + caja (`retail.pos.session.open`).
+- `POST /api/retail/pos/sessions/{session_id}/close/` — Cierre POS + arqueo (`retail.pos.session.close`).
+- `GET /api/retail/pos/tickets/` y `POST /api/retail/pos/tickets/` — Listado/creación de tickets (`retail.pos.ticket.read` / `retail.pos.ticket.open`).
+- `POST /api/retail/pos/tickets/{ticket_id}/checkout/` — Checkout canónico POS (`retail.pos.ticket.checkout`).
+- `POST /api/retail/pos/voids/{ticket_id}/` — Anulación de ticket POS (`retail.pos.ticket.void`).
+- `GET/POST /api/retail/pos/peripherals/status/` — Estado/capabilities de periféricos (`retail.pos.peripherals.read` / `retail.pos.peripherals.manage`).
+- `GET /api/retail/pos/cockpit/` — Vista operativa táctica por sucursal (`retail.pos.ticket.read`).
+
+### Reporting / Analytics (R8)
+
+- API canónica reporting: `/api/reporting/*`
+- Dashboard gateway: `/api/backend/dashboard/*`
+- Métricas operativas consolidadas: `/api/metrics/` (incluye `reporting.dataset_slo`, `reporting.failure_classes_last_window` y `dashboard.workspace_redeem_rate`)
+- Endpoints legacy contables `/api/accounting/reports/*` emiten headers `Deprecation`, `Sunset` y `Link` hacia `/api/reporting/catalog/`
+- Billing canónico: `/api/billing/*` y carril legacy explícito `/api/legacy/billing/*`
 
 ### Reporting Kernel
 

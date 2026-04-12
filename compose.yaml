@@ -11,8 +11,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # Opcional (más seguro/estricto al inicializar):
       # POSTGRES_INITDB_ARGS: "--data-checksums"
-    ports:
-      - "5432:5432"
+    # Evita colisiones con Postgres locales en host; backend accede por red interna (db:5432).
+    expose:
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -62,6 +63,10 @@ services:
       DRF_THROTTLE_ME_ACL_READ: ${DRF_THROTTLE_ME_ACL_READ:-30/min}
       AXES_FAILURE_LIMIT: ${AXES_FAILURE_LIMIT:-15}
       AXES_COOLOFF_SECONDS: ${AXES_COOLOFF_SECONDS:-300}
+      AUTH_ALLOW_TRANSPORT_OVERRIDE: ${AUTH_ALLOW_TRANSPORT_OVERRIDE:-1}
+
+      # Edge handshake (QA/local). Base64 de "edge-secret" por defecto.
+      POS_EDGE_CONNECTOR_SHARED_SECRET: ${POS_EDGE_CONNECTOR_SHARED_SECRET:-ZWRnZS1zZWNyZXQ=}
     depends_on:
       db:
         condition: service_healthy
@@ -115,6 +120,7 @@ services:
     image: node:22-bullseye-slim
     container_name: erpcrm_frontend
     restart: unless-stopped
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app/frontend
     environment:
       # El navegador accede al backend por el puerto publicado del host.
@@ -140,12 +146,16 @@ services:
     image: node:22-bullseye-slim
     container_name: erpcrm_frontend_ci
     profiles: ["qa"]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app/frontend
+    environment:
+      HOME: "${FRONTEND_CI_HOME:-/tmp/erpcrm_frontend_ci_home}"
+      NPM_CONFIG_CACHE: "${NPM_CONFIG_CACHE:-/tmp/erpcrm_frontend_ci_home/.npm}"
     volumes:
       - ./frontend:/app/frontend
-      - frontend_node_modules:/app/frontend/node_modules
     command: >
       bash -lc "
+        mkdir -p \"$$HOME\" \"$$NPM_CONFIG_CACHE\" &&
         npm ci &&
         npm run lint &&
         npm run typecheck &&
@@ -167,4 +177,3 @@ services:
 
 volumes:
   pgdata:
-  frontend_node_modules:

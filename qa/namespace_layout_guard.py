@@ -2,9 +2,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from qa.kernel_compat_policy import DEFAULT_POLICY, KERNEL_COMPAT_APPS, allowed_references
+except ModuleNotFoundError:  # pragma: no cover - direct script invocation fallback
+    from kernel_compat_policy import DEFAULT_POLICY, KERNEL_COMPAT_APPS, allowed_references
 
 
 MODULOS_CORE_APPS = (
@@ -23,7 +30,6 @@ MODULOS_CORE_APPS = (
     "compras",
     "estacion_servicios",
 )
-KERNEL_COMPAT_APPS = ("accounting", "facturacion", "inventarios", "payments")
 EXPECTED_MODULOS_APPS = set(MODULOS_CORE_APPS + KERNEL_COMPAT_APPS)
 EXPECTED_KERNEL_APPS = set(KERNEL_COMPAT_APPS + ("reporting",))
 
@@ -36,15 +42,15 @@ DOTTED_RE = re.compile(
 LEGACY_PATH_RE = re.compile(
     r"backend/src/apps/(?P<app>common|audit|rbac|accounts|iam|org|hr|cec|integration|sync|sync_engine)(?:/|\b)"
 )
+_KERNEL_COMPAT_PATTERN = "|".join(KERNEL_COMPAT_APPS)
 KERNEL_COMPAT_IMPORT_RE = re.compile(
-    r"\b(?:from|import)\s+apps\.modulos\.(?P<app>accounting|facturacion|inventarios|payments)\b"
+    rf"\b(?:from|import)\s+apps\.modulos\.(?P<app>{_KERNEL_COMPAT_PATTERN})\b"
 )
 KERNEL_COMPAT_DOTTED_RE = re.compile(
-    r"['\"]apps\.modulos\.(?P<app>accounting|facturacion|inventarios|payments)\."
+    rf"['\"]apps\.modulos\.(?P<app>{_KERNEL_COMPAT_PATTERN})\."
 )
-KERNEL_COMPAT_PATH_RE = re.compile(r"backend/src/apps/modulos/(?P<app>accounting|facturacion|inventarios|payments)")
+KERNEL_COMPAT_PATH_RE = re.compile(rf"backend/src/apps/modulos/(?P<app>{_KERNEL_COMPAT_PATTERN})")
 TEXT_EXTENSIONS = {".py", ".sh", ".yml", ".yaml", ".ini", ".toml", ".txt"}
-KERNEL_COMPAT_ALLOWED_REFERENCES = {"backend/src/tests/test_kernel_namespace_compat.py"}
 
 
 def _readable_files(root: Path) -> list[Path]:
@@ -121,8 +127,9 @@ def _check_layout(root: Path) -> list[str]:
     return violations
 
 
-def _check_imports(root: Path) -> list[str]:
+def _check_imports(root: Path, *, compat_allowed_references: set[str]) -> tuple[list[str], list[dict[str, object]]]:
     violations: list[str] = []
+    compat_usage: list[dict[str, object]] = []
     for file_path in _readable_files(root):
         try:
             content = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -151,9 +158,19 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_IMPORT_RE.search(line)
             if m:
                 app = m.group("app")
+                is_allowed = rel in compat_allowed_references
+                compat_usage.append(
+                    {
+                        "file": rel,
+                        "line": i,
+                        "app": app,
+                        "usage_type": "import",
+                        "status": "allowed" if is_allowed else "prohibited",
+                    }
+                )
                 if (
                     rel != f"backend/src/apps/modulos/{app}/__init__.py"
-                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                    and rel not in compat_allowed_references
                 ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel compat import detected (apps.modulos.{app}); "
@@ -162,9 +179,19 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_DOTTED_RE.search(line)
             if m:
                 app = m.group("app")
+                is_allowed = rel in compat_allowed_references
+                compat_usage.append(
+                    {
+                        "file": rel,
+                        "line": i,
+                        "app": app,
+                        "usage_type": "dotted_path",
+                        "status": "allowed" if is_allowed else "prohibited",
+                    }
+                )
                 if (
                     rel != f"backend/src/apps/modulos/{app}/__init__.py"
-                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                    and rel not in compat_allowed_references
                 ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel dotted path detected (apps.modulos.{app}.*); "
@@ -173,15 +200,25 @@ def _check_imports(root: Path) -> list[str]:
             m = KERNEL_COMPAT_PATH_RE.search(line)
             if m:
                 app = m.group("app")
+                is_allowed = rel in compat_allowed_references
+                compat_usage.append(
+                    {
+                        "file": rel,
+                        "line": i,
+                        "app": app,
+                        "usage_type": "filesystem_path",
+                        "status": "allowed" if is_allowed else "prohibited",
+                    }
+                )
                 if (
                     rel != f"backend/src/apps/modulos/{app}/__init__.py"
-                    and rel not in KERNEL_COMPAT_ALLOWED_REFERENCES
+                    and rel not in compat_allowed_references
                 ):
                     violations.append(
                         f"{rel}:{i}: legacy kernel path backend/src/apps/modulos/{app}; "
                         f"use backend/src/apps/kernels/{app}"
                     )
-    return violations
+    return violations, compat_usage
 
 
 def main() -> int:
@@ -189,11 +226,41 @@ def main() -> int:
         description="Validate backend namespace/layout split to apps.modulos.* + apps.kernels.*"
     )
     parser.add_argument("--root", default=".", help="Repository root path")
+    parser.add_argument(
+        "--output",
+        default="qa/reports/kernel_compat_usage.json",
+        help="Output JSON with compat usage inventory",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict mode: no legacy compat usage allowed",
+    )
     args = parser.parse_args()
     root = Path(args.root).resolve()
+    output_path = (root / args.output).resolve()
+
+    enforcement = "strict" if args.strict else DEFAULT_POLICY.enforcement_level
+    compat_allowed_refs = allowed_references(enforcement_level=enforcement)
 
     violations = _check_layout(root)
-    violations.extend(_check_imports(root))
+    import_violations, compat_usage = _check_imports(root, compat_allowed_references=compat_allowed_refs)
+    violations.extend(import_violations)
+
+    payload = {
+        "status": "failed" if violations else "passed",
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+        "enforcement_level": enforcement,
+        "retirement_deadline": DEFAULT_POLICY.retirement_deadline,
+        "allowed_whitelist": sorted(compat_allowed_refs),
+        "legacy_compat_apps": list(KERNEL_COMPAT_APPS),
+        "compat_usage": compat_usage,
+        "allowed_usage_count": sum(1 for row in compat_usage if row["status"] == "allowed"),
+        "prohibited_usage_count": sum(1 for row in compat_usage if row["status"] != "allowed"),
+        "violations": violations,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     if violations:
         print("[qa] namespace/layout guard failed")
@@ -202,6 +269,11 @@ def main() -> int:
         return 2
 
     print("[qa] namespace/layout guard passed")
+    if compat_usage:
+        print(
+            f"[qa] kernel compat usage: total={len(compat_usage)} "
+            f"allowed={payload['allowed_usage_count']} prohibited={payload['prohibited_usage_count']}"
+        )
     return 0
 
 

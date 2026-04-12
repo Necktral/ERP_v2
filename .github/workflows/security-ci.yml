@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Secret scan (gitleaks)
         run: |
@@ -48,7 +48,7 @@ jobs:
             --exit-code 1
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: "3.10"
           cache: "pip"
@@ -63,10 +63,10 @@ jobs:
 
       - name: Dependency scan (pip-audit)
         run: |
-          pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o qa_pip_audit.json
+          # collect-first: el bloqueo lo decide qa/enforce_security_findings.py
+          pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o qa_pip_audit.json || true
           python - <<'PY'
           import json
-          import sys
 
           data = json.load(open('qa_pip_audit.json', 'r', encoding='utf-8'))
           def severity_score(vuln):
@@ -90,16 +90,11 @@ jobs:
                   if fix_versions and is_high_or_critical(vuln):
                       failures.append((dep.get('name'), vuln.get('id'), fix_versions))
 
-          if failures:
-              print('Blocking vulnerabilities with fixes available:')
-              for name, vid, fixes in failures:
-                  print(f'- {name} {vid} fix_versions={fixes}')
-              sys.exit(2)
-          print('pip-audit OK: no high/critical with fix available')
+          print(f'pip-audit findings high/critical+fix: {len(failures)}')
           PY
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@0a44ba7841725637a19e28fa30b79a866c81b0a6 # v4.0.4
         with:
           node-version: "22"
           cache: "npm"
@@ -127,12 +122,34 @@ jobs:
               }
           }
 
-          if (failures.length > 0) {
-              console.error('Blocking vulnerabilities with fixes available:');
-              for (const f of failures) {
-                  console.error(`- ${f.name} severity=${f.severity} fix=${JSON.stringify(f.fix)}`);
-              }
-              process.exit(2);
-          }
-          console.log('npm audit OK: no high/critical with fix available');
+          console.log(`npm audit findings high/critical+fix: ${failures.length}`);
           NODE
+
+      - name: Validate security exceptions contract
+        run: |
+          python3 qa/validate_security_exceptions.py \
+            --root . \
+            --contract qa/contracts/security_exceptions.json \
+            --output qa_security_exceptions_guard.json
+
+      - name: Enforce security findings policy
+        run: |
+          python3 qa/enforce_security_findings.py \
+            --root . \
+            --pip-report qa_pip_audit.json \
+            --npm-report qa_npm_audit.json \
+            --exceptions qa/contracts/security_exceptions.json \
+            --output qa_security_findings_guard.json
+
+      - name: Upload security evidence
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: security-ci-reports
+          path: |
+            qa_gitleaks.json
+            qa_pip_audit.json
+            qa_npm_audit.json
+            qa_security_exceptions_guard.json
+            qa_security_findings_guard.json
+          if-no-files-found: warn

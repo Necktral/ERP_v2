@@ -1,0 +1,610 @@
+{
+  "version": 1,
+  "generated_at": "2026-03-27T01:00:39.418327+00:00",
+  "migrations": {
+    "backend/src/apps/kernels/accounting/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "e1b52fa3c810006c1a7caa2d4fb079e637be8814a77d0b8c0e17227a91716ba7"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0002_shadow_ledger_phase4a.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "d59ddeafdaa5c2bc519f0d1b527d800d3eb9123b66d619c9af85e3580472756d"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0003_phase5_sod_actor_trace.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "609beb825380bfa55c625f24dbb70a09aac7ea5847371ecd05b033f7c9b88d6e"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0004_phase7a_gl_core.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "bf79830fce06eaa39b84b735d5e7f4d1f51a7d693616e9483ea014260678d20a"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0005_phase7b_intercompany_consolidation.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "b1cb1eba9bc27fff8b8388802dff6334aca4647a2b5c3365a99792ed4b8b20fe"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0006_phase7b_performance_indexes.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ee5658296e7b762d927e9f7fd428a020789a41ac0d08e321d9bd69367b005e5e"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0007_phase11_intercompany_advanced.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "4f98c58bbee6c683dcbbc936ec71bcf979e0d8eb4defe5639324dcc2ea41d21c"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0008_operational_posting_config.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "99efdf0aa6f9ba0e82c8faf00996cc18ceed69bca15efb618b2b14237fcc3d38"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0009_rename_acc_coa_comp_type_act_idx_accounting__company_41d161_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "64c5cc65d504d7c70e78c982b1bfc31e103a51cedfec040f350d33cb3401ba6e"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0010_intercompany_effective_at.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "207858bfb75d5a7351ce468d53247010503310ff862b3ab27b6faf2822e0080b"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ff3d5687bd69458b1d189368a89ab1495a01a89939ebca6f991c0046a16585fd"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0002_phase6_adapter_b.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "793877f7aa9c4b19b72da0d881f71c09b7bfeb6f24115fd1de138994e452a867"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0003_accounting_links.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "586ea59a88eb693048a98db035348c2d8fed5e41c1a5efc172b79a660be2f78e"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0004_billingdocument_source_refs.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "4d0529a918fa7617adbb7c510f587fcb3b81e97caa6830910edba8cb4f2eefb2"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0005_rename_facturacion_company_99f3f6_idx_facturacion_company_e59730_idx_and_more.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "071ff30e3614de82c1290ac0b7c4ad977a6274b733f06fae49d50a786a1fa0d9"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "baaa626724a64cb2f81ef58859008095701790811911e8b1e5845a434c7d695c"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0002_stockmovement_accounting_links.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "666e029097571a535c743ca39ce7285269edf522f19af2757cf97bcc21ac5b4b"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0003_remove_inventoryitem_uniq_inv_sku_per_company_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "c0794a7cece31270b1b7a4523126be4a05c6680547e45517f91e7d2274f08e53"
+    },
+    "backend/src/apps/kernels/payments/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "fa354faf0e59020f93ee3d3619178eaa58380c1fd27553446b00fb84abe9322c"
+    },
+    "backend/src/apps/kernels/payments/migrations/0002_rename_payments_ca_session_80ee8d_idx_payments_ca_session_c5f759_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "278611396ea6b2f36bfc71c9bb8735e869cdb3297025d7a35bc76c749c06785c"
+    },
+    "backend/src/apps/kernels/reporting/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ca9f1dc11fa8af0f22cce7e606b8cba3054c6ce78c7702dbf36ec74a9358c37e"
+    },
+    "backend/src/apps/kernels/reporting/migrations/0002_reportrun_result_payload_json_reportexportlog_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3690fd391fae2292f416ced63129158a938cd41ef7a744445ea41b8f519c0d80"
+    },
+    "backend/src/apps/kernels/reporting/migrations/0003_dataset_quality_fields.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "a09a6ec466402791a5b6e7c126cf3b87c7e6c1b27a08a268085623c05d1902a2"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "f5c277ce59880d06f744baa898fc541e819c035a48005469a4345fe29bef620a"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0002_user_must_change_password.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "db9c115fae150f3227fb778459bf44cd553c52bf2ee0369cf3049189b3a93461"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0003_user_is_setup_complete.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "40a766bbe3319beeee53c6004300c6b43f54d4327a761cdb824a32d332acfff4"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0004_refresh_token_session.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "155c268c2ce4953f24888bc709d95211898de8900a543a81b363b210b894f968"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0005_user_totp_fields.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "df4acaa7009e16827c1778f85fec88ca9fc0fcb71f1689d70f9d41fa0225b61e"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0006_two_factor_challenge.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "59c4aa5b196474dc553f56fcd272eba51ef3c9af87d5cd6d5c6c086148bd2ca5"
+    },
+    "backend/src/apps/modulos/accounts/migrations/0007_rename_accounts_re_user_id_6cc004_idx_accounts_re_user_id_7e85a1_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "774e1d41c217a0c302af967ff46f990222c50862a779b23f3c69c700720f9c77"
+    },
+    "backend/src/apps/modulos/audit/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ec9d534305cea103475f7939148d9c1784505a100b6af8d04490cd39212325b7"
+    },
+    "backend/src/apps/modulos/audit/migrations/0002_audit_event_signature_key_id.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "859e161897a103fd77320ae527a1351779ea3f56a528ce5f5035577f9d3f423c"
+    },
+    "backend/src/apps/modulos/cec/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3c6c368a3441ef9c08e85f548b848a16e8f56ead68c4d4a5748608b8263a657e"
+    },
+    "backend/src/apps/modulos/cec/migrations/0002_phase3_fields.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "cdc9a77f1bcad7a7bf5ef164e012fd76cc1ae9318d327daa43c0edfcfbf40673"
+    },
+    "backend/src/apps/modulos/cec/migrations/0003_rename_cec_cecexc_status_826f17_idx_cec_cecexce_status_20932b_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "28aa811261b2aa849cabee0e9a067baa642794c7ff334a8d6305f8091f447c52"
+    },
+    "backend/src/apps/modulos/compras/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "e6e8c6436ff65552564f937013c194d35a882b8e03767ba4509769a81019e95f"
+    },
+    "backend/src/apps/modulos/dashboard/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "44b139a07597e70d7bc04ddb2f1e4ac2d83d9827232709502b9f456e02b68cd7"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "60dd796ae9e788a107257b902a64a0a0418e675840d74f58d31d6f185973b2ca"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0002_uom_and_precision.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "33cb823e76df6506c7eb8a75cd2f4d70164e6d627b82a101db4cbc020c9d98c4"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0003_price_uom_and_field_renames.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "813e603ef8a29af3b8fe8dc8f04aa7dcfe946de1f033f74187c0ef8e1d0b18db"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0004_backfill_entered_fields_and_enforce_not_null.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "bb355a0c76cb6193f365237286c9be12d4a6fc16644ea528ceaca9050f7af40f"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0005_amounts_dual_entered_and_canonical.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "c747231e083924cb0a3ba716bbd4a1f741ac89a8679019c48e547d04d853443d"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0006_fuel_uom_preference_unified.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "96c4c35895c40d6b0c08866e37f1ae40c08fe8265106f50ccd431292b7db0ed7"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0007_alter_fueluompreference_user_related_name.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "34e0655fa8724e3bbad2b95d6e3ec2f18925c50764f78447b95f1fb1561acbf3"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0008_fuelsale_billing_and_inventory_links.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "4f9669ab3f0d9f55fd9c1fa71454644e8edf31faa00d151513d958a3bbbf456a"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0009_fuelsale_compensation_state.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "227c00160e84615e27789f6134d309e706dcf91e876bf0126eee66dc4ad09b07"
+    },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0010_rename_estacion_se_company__c8e61a_idx_estacion_se_company_54b2c6_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "01905e4c3a4828818e252e9b1357d64db3418f0b38f473986c0fc690e2054de5"
+    },
+    "backend/src/apps/modulos/hr/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "5254fe84e7373acc9dacd57661131d2542915d4efefeeb9c2c427bf41682ee03"
+    },
+    "backend/src/apps/modulos/hr/migrations/0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "6458a993bf1e732a8d24b78a139e70fc1a4b56295e3bdfaec2dd44684e256cf3"
+    },
+    "backend/src/apps/modulos/hr/migrations/0003_employmentassignment_employee_active_started_idx.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "5e2f801839c9bb62f79baafa30e089e0317e09a35cd7124b3a7109611bdf95b3"
+    },
+    "backend/src/apps/modulos/hr/migrations/0004_rename_hr_employassign_emp_active_start_idx_hr_employme_employe_4b785a_idx.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "0e855c26476e08e8917ee33722f80a2796d56ac0ae19805b3955232bc34cdeea"
+    },
+    "backend/src/apps/modulos/iam/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "abb041dafaf9666eb9fde955b2ce280605d342e53a818ab53f78e21530a06dd8"
+    },
+    "backend/src/apps/modulos/iam/migrations/0002_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "7abff4ad09b5c2e7d0fe1083a8437faf57b13bbf95ddc8175656caf589e00e86"
+    },
+    "backend/src/apps/modulos/iam/migrations/0003_orgunit_parent_type_name_idx.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "1cc18569fd2be55ef494fc69c6dccd90d1674f6f07ad86823edc57ef74ed280a"
+    },
+    "backend/src/apps/modulos/iam/migrations/0004_rename_iam_orgunit_parent_type_name_idx_iam_orgunit_parent__f0840d_idx.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3a2c4557c70732c4200ab9fb7c25ca55f94aa9c377b7efd688eef4b47d09fce9"
+    },
+    "backend/src/apps/modulos/integration/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "c31ac87621b243395701e2c78de4f3b73565023124be54734e5575bce0d4cad1"
+    },
+    "backend/src/apps/modulos/integration/migrations/0002_outbox_next_attempt_at.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "f9d0b8236d4d432d50da360ff9f4d88b84c16930ca91968df2dd114a0f692335"
+    },
+    "backend/src/apps/modulos/integration/migrations/0003_rename_integratio_consume_6ab9e4_idx_integration_consume_253f49_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "addbf5e091f37b91beccd7b8adb7efeda9dddfaeae198bc1d7adb88bf060f5a4"
+    },
+    "backend/src/apps/modulos/org/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "eb43db9224789a7aadbb9fa940c145a8c185a974e54df11ba55543949e15850f"
+    },
+    "backend/src/apps/modulos/org/migrations/0002_alter_branchprofile_id_alter_companyprofile_id.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "379f869b709e70033a82dd1e342cbdc848ead8a4304787a6ec463ba72f35b725"
+    },
+    "backend/src/apps/modulos/org/migrations/0003_branchprofile_fuel_uom_defaults.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "bc98a8d2e82f296540308a076b616f0df286a24580239b00ea6ddef0a4119466"
+    },
+    "backend/src/apps/modulos/org/migrations/0004_user_fuel_uom_preference.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ba9cec4d52dc0654f3a81082768f0a2268ae220ba42ab8733bf30f762e5bbd1c"
+    },
+    "backend/src/apps/modulos/org/migrations/0005_rename_idx_userfueluompref_user_branch_org_userfue_user_id_f9159c_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "fb0edce75dec517b8c1ebf75794946eff1ee846379abebd7812a933f035616c6"
+    },
+    "backend/src/apps/modulos/rbac/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "d8b361c8cb54ca97991f3b5edae5c9f027393a876c4fdd1ba9ba38942b529077"
+    },
+    "backend/src/apps/modulos/rbac/migrations/0002_roleassignment_origin.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "f0a1c0ae324f7b2d942a8a665314c632b7c9bc19d44d4ff94ba06ea2e4ac0073"
+    },
+    "backend/src/apps/modulos/rbac/migrations/0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "04cb7d9de4cca9fbff2bd996c3bbd6d48b729cd0fb1e2248470882bb7bcd5f7a"
+    },
+    "backend/src/apps/modulos/rbac/migrations/0004_role_permission_active_indexes.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "c670a76929297b557cf8a8c23e0f272b5b45734ebc274f056b449441494289ca"
+    },
+    "backend/src/apps/modulos/rbac/migrations/0005_rename_rbac_perm_active_code_idx_rbac_permis_is_acti_42ab9f_idx_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "21372373343788705ff4e93b6cbd44eb3989351c70c1d7024a15d3eca4aaa23c"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "083b4621362b311b773a4e2de33a1efb70728df9752a712479979ff1c61bb05c"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0002_posedgechallenge_posedgesession_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "fec2cc0eb0bee4e4bfc7f87460f2271657da56bacd82519463de7710303951ac"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0003_posticket_compensation_attempts_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "a55dd3791021a74dcc8cd601e452a8ddefdaeb48764d6374064d8ee942222711"
+    },
+    "backend/src/apps/modulos/retail_pos/migrations/0004_posticket_ck_pos_ticket_comp_pending_state_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ef225810a290761c0d9f9e0de6d07d4255f84bbd72d575dc65e7e30a54def7d6"
+    },
+    "backend/src/apps/modulos/sync/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "b18b3545e0605ba59daf820f0187ebf70ee6d5391bb91ddbd1ba3dca4316524c"
+    },
+    "backend/src/apps/modulos/sync_engine/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "4a8faeaf351e2c3a34017d9e69c486f4b4eaa4cce2b6fc26aa744e48728c63c8"
+    },
+    "backend/src/apps/modulos/sync_engine/migrations/0002_sync_v2_request_auth.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "934f3523e156880a33e401b494d387b0748d69c6d24b0172061437faafe67f3a"
+    }
+  },
+  "notes": [
+    "U5 migration safety baseline.",
+    "Any migration drift/new file requires explicit metadata update in PR."
+  ]
+}

@@ -1,0 +1,293 @@
+{
+  "version": 2,
+  "name": "codex_governance_contract",
+  "updated_at": "2026-04-11T21:05:00-06:00",
+  "default_change_type": "single_domain_code",
+  "critical_path_patterns": [
+    "backend/src/apps/kernels/accounting/**",
+    "backend/src/apps/kernels/payments/**",
+    "backend/src/apps/modulos/cec/**",
+    "backend/src/apps/modulos/iam/**",
+    "backend/src/apps/**/migrations/**"
+  ],
+  "docs_path_patterns": [
+    "docs/**",
+    "README.md",
+    "BITACORA.md",
+    ".vscode/**"
+  ],
+  "code_path_patterns": [
+    "backend/**",
+    "frontend/**",
+    "qa/**",
+    "scripts/**",
+    ".github/workflows/**",
+    "Makefile",
+    "compose*.yaml"
+  ],
+  "evidence_file_patterns": [
+    "BITACORA.md",
+    "docs/operacion/CODEX_GOVERNANCE_HANDOFF_v1.0.md",
+    "docs/operacion/HANDOFF_*.md",
+    "docs/operacion/evidencia/**/*.md"
+  ],
+  "required_handoff_sections": [
+    {
+      "id": "diagnostico",
+      "keywords_any": [
+        "diagnóstico del área",
+        "diagnostico del area",
+        "diagnóstico"
+      ]
+    },
+    {
+      "id": "alcance",
+      "keywords_any": [
+        "alcance exacto",
+        "alcance"
+      ]
+    },
+    {
+      "id": "contratos_impactados",
+      "keywords_any": [
+        "contratos impactados",
+        "contrato impactado"
+      ]
+    },
+    {
+      "id": "pruebas_validacion",
+      "keywords_any": [
+        "pruebas / validación",
+        "pruebas/validación",
+        "pruebas y validación",
+        "validación"
+      ]
+    },
+    {
+      "id": "riesgos_remanentes",
+      "keywords_any": [
+        "riesgos remanentes",
+        "riesgo remanente"
+      ]
+    },
+    {
+      "id": "blast_radius",
+      "keywords_any": [
+        "blast radius",
+        "radio de impacto"
+      ]
+    },
+    {
+      "id": "rollback_plan",
+      "keywords_any": [
+        "plan de rollback",
+        "rollback"
+      ]
+    },
+    {
+      "id": "gates_estado",
+      "keywords_any": [
+        "estado de gates",
+        "gates en verde",
+        "gates"
+      ]
+    },
+    {
+      "id": "security_exception_status",
+      "keywords_any": [
+        "excepciones de seguridad",
+        "security exceptions",
+        "estado de excepciones"
+      ]
+    }
+  ],
+  "change_type_rules": [
+    {
+      "id": "migrations_or_close_cycle",
+      "priority": 120,
+      "any_path_patterns": [
+        "backend/src/apps/**/migrations/**",
+        "backend/src/apps/kernels/accounting/management/commands/run_*_cycle.py",
+        "backend/src/apps/kernels/accounting/management/commands/run_consolidated_close.py",
+        "backend/src/apps/kernels/accounting/management/commands/verify_*_go_live.py"
+      ]
+    },
+    {
+      "id": "security_or_supply_chain",
+      "priority": 110,
+      "any_path_patterns": [
+        ".gitleaks.toml",
+        "qa/contracts/security_exceptions.json",
+        "qa/enforce_security_findings.py",
+        "qa/validate_security_exceptions.py",
+        ".github/workflows/security-ci.yml",
+        ".github/workflows/supply-chain-ci.yml"
+      ]
+    },
+    {
+      "id": "cross_domain",
+      "priority": 100,
+      "domain_count_gte": 2,
+      "non_docs_changes_required": true
+    },
+    {
+      "id": "single_domain_code",
+      "priority": 90,
+      "code_changes_required": true
+    },
+    {
+      "id": "docs_only",
+      "priority": 80,
+      "all_paths_match_patterns": [
+        "docs/**",
+        "README.md",
+        "BITACORA.md",
+        ".vscode/**"
+      ]
+    }
+  ],
+  "required_sections_by_type": {
+    "docs_only": [],
+    "single_domain_code": [
+      "diagnostico",
+      "alcance",
+      "contratos_impactados",
+      "pruebas_validacion",
+      "riesgos_remanentes"
+    ],
+    "cross_domain": [
+      "diagnostico",
+      "alcance",
+      "contratos_impactados",
+      "pruebas_validacion",
+      "riesgos_remanentes",
+      "blast_radius"
+    ],
+    "migrations_or_close_cycle": [
+      "diagnostico",
+      "alcance",
+      "contratos_impactados",
+      "pruebas_validacion",
+      "riesgos_remanentes",
+      "rollback_plan",
+      "gates_estado"
+    ],
+    "security_or_supply_chain": [
+      "diagnostico",
+      "alcance",
+      "contratos_impactados",
+      "pruebas_validacion",
+      "riesgos_remanentes",
+      "security_exception_status",
+      "gates_estado"
+    ]
+  },
+  "required_gates_by_type": {
+    "docs_only": [],
+    "single_domain_code": [
+      "qa-architecture-dependency-guard",
+      "qa-route-contract-guard"
+    ],
+    "cross_domain": [
+      "qa-architecture-dependency-guard",
+      "qa-route-contract-guard",
+      "qa-pr-blast-radius-guard"
+    ],
+    "migrations_or_close_cycle": [
+      "qa-architecture-dependency-guard",
+      "qa-makemigrations-check",
+      "qa-migration-safety-guard"
+    ],
+    "security_or_supply_chain": [
+      "qa-validate-security-exceptions",
+      "qa-security-findings-enforce"
+    ]
+  },
+  "gate_evidence_reports": {
+    "qa-readme-section-guard": [
+      {
+        "path": "qa/reports/readme_section_guard.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-architecture-dependency-guard": [
+      {
+        "path": "qa/reports/architecture_dependency_guard.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-route-contract-guard": [
+      {
+        "path": "qa/reports/route_contract_report.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-pr-blast-radius-guard": [
+      {
+        "path": "qa/reports/pr_blast_radius.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-makemigrations-check": [
+      {
+        "path": "qa/reports/makemigrations_check.txt",
+        "kind": "text_exists"
+      }
+    ],
+    "qa-migration-safety-guard": [
+      {
+        "path": "qa/reports/migration_safety_guard.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-validate-security-exceptions": [
+      {
+        "path": "qa/reports/security_exceptions_guard.json",
+        "kind": "json_status"
+      }
+    ],
+    "qa-security-findings-enforce": [
+      {
+        "path": "qa/reports/security_findings_guard.json",
+        "kind": "json_status"
+      }
+    ]
+  },
+  "forbidden_modes_by_type": {
+    "docs_only": [],
+    "single_domain_code": [
+      "full_auto"
+    ],
+    "cross_domain": [
+      "full_auto"
+    ],
+    "migrations_or_close_cycle": [
+      "full_auto"
+    ],
+    "security_or_supply_chain": [
+      "full_auto"
+    ]
+  },
+  "mode_markers": {
+    "suggest": [
+      "modo_usado=suggest",
+      "modo_ejecucion:suggest",
+      "modo de ejecucion: suggest"
+    ],
+    "auto_edit": [
+      "modo_usado=auto_edit",
+      "modo_ejecucion:auto_edit",
+      "modo de ejecucion: auto edit"
+    ],
+    "full_auto": [
+      "modo_usado=full_auto",
+      "modo_ejecucion:full_auto",
+      "modo de ejecucion: full auto"
+    ]
+  },
+  "notes": [
+    "Cross-domain permitido solo con contrato y guard de dependencias en verde.",
+    "docs_only no exige handoff largo para evitar falsos bloqueos.",
+    "El guard valida gates por evidencia en qa/reports cuando el tipo los requiere."
+  ]
+}

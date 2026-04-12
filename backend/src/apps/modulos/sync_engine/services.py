@@ -39,6 +39,8 @@ from .registry import get_handler
 from . import handlers_demo as _handlers_demo  # noqa: F401
 # Import por side-effect: registra handlers inventory en el registry.
 from . import handlers_inventory as _handlers_inventory  # noqa: F401
+# Import por side-effect: registra handlers POS en el registry.
+from . import handlers_pos as _handlers_pos  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,
@@ -102,7 +104,14 @@ def ensure_scope_matches(*, device: Device, company_id: int, branch_id: int | No
 
 
 def process_batch(
-    *, request, actor_user, device: Device, batch_id, sent_at, commands: list[dict[str, Any]]
+    *,
+    request,
+    actor_user,
+    device: Device,
+    batch_id,
+    sent_at,
+    commands: list[dict[str, Any]],
+    enforce_command_signature: bool = True,
 ) -> dict[str, Any]:
     policy = get_policy()
     if len(commands) > policy.max_commands_per_batch:
@@ -157,7 +166,14 @@ def process_batch(
 
     for c in commands:
         try:
-            r = process_command(request=request, actor_user=actor_user, device=device, cmd=c, policy=policy)
+            r = process_command(
+                request=request,
+                actor_user=actor_user,
+                device=device,
+                cmd=c,
+                policy=policy,
+                enforce_command_signature=enforce_command_signature,
+            )
         except Exception as e:
             # 1) auditar
             write_event(
@@ -220,7 +236,15 @@ def process_batch(
     }
 
 
-def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any], policy: SyncPolicy) -> dict[str, Any]:
+def process_command(
+    *,
+    request,
+    actor_user,
+    device: Device,
+    cmd: dict[str, Any],
+    policy: SyncPolicy,
+    enforce_command_signature: bool = True,
+) -> dict[str, Any]:
     """Procesa un comando individual.
 
     Precondición:
@@ -242,7 +266,7 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
     occurred_at = cmd["occurred_at"]
     sequence = cmd.get("sequence")
     payload = cmd["payload"]
-    signature = cmd["signature"]
+    signature = str(cmd.get("signature") or "")
     prev_hash = cmd.get("prev_hash") or ""
 
     # Límite de payload (regla fuerte: evita batches gigantes y firma sobre datos arbitrarios)
@@ -326,33 +350,40 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
                 details={"payload_hash": "mismatch"},
             )
 
-        # Mensaje firmado estable: evita ambigüedad de JSON (orden de keys, espacios, etc.)
-        msg = build_command_signing_message(
-            command_id=str(command_id),
-            command_type=command_type,
-            company_id=int(company_id),
-            branch_id=int(branch_id) if branch_id is not None else None,
-            occurred_at=occurred_at_canonical(occurred_at),
-            sequence=int(sequence) if sequence is not None else None,
-            payload_hash=computed_payload_hash,
-            prev_hash=prev_hash,
-        )
-        if not verify_ed25519_signature(public_key_raw=device.public_key, signature_b64=signature, message=msg):
-            return _reject_with_db(
-                request=request,
-                actor_user=actor_user,
-                device=device,
-                command_id=command_id,
-                company_id=company_id,
-                branch_id=branch_id,
+        # Firma por comando:
+        # - legacy: obligatoria
+        # - v2 request-level: opcional (si viene, se verifica)
+        if enforce_command_signature or signature:
+            msg = build_command_signing_message(
+                command_id=str(command_id),
                 command_type=command_type,
-                occurred_at=occurred_at,
-                sequence=sequence,
+                company_id=int(company_id),
+                branch_id=int(branch_id) if branch_id is not None else None,
+                occurred_at=occurred_at_canonical(occurred_at),
+                sequence=int(sequence) if sequence is not None else None,
                 payload_hash=computed_payload_hash,
                 prev_hash=prev_hash,
-                reason="SYNC_INVALID_SIGNATURE",
-                details={},
             )
+            if not signature or not verify_ed25519_signature(
+                public_key_raw=device.public_key,
+                signature_b64=signature,
+                message=msg,
+            ):
+                return _reject_with_db(
+                    request=request,
+                    actor_user=actor_user,
+                    device=device,
+                    command_id=command_id,
+                    company_id=company_id,
+                    branch_id=branch_id,
+                    command_type=command_type,
+                    occurred_at=occurred_at,
+                    sequence=sequence,
+                    payload_hash=computed_payload_hash,
+                    prev_hash=prev_hash,
+                    reason="SYNC_INVALID_SIGNATURE",
+                    details={},
+                )
     except (ValueError, TypeError) as e:
         # Errores típicos de canonicalización/firma/base64
         return _reject_with_db(
@@ -513,27 +544,42 @@ def process_command(*, request, actor_user, device: Device, cmd: dict[str, Any],
             reason = str(e.reason_code)
             details: dict[str, Any] = dict(e.details or {})
 
-            row.result_status = AppliedCommand.ResultStatus.REJECTED
-            row.error = cast(dict[str, Any], {"reason": reason, **details})
-            row.save(update_fields=["result_status", "error"])
+            try:
+                row.result_status = AppliedCommand.ResultStatus.REJECTED
+                row.error = cast(dict[str, Any], {"reason": reason, **details})
+                row.save(update_fields=["result_status", "error"])
 
-            write_event(
-                request=request,
-                event_type="SYNC_COMMAND_REJECTED",
-                reason_code=reason,
-                actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
-                subject_type="DEVICE",
-                subject_id=str(device.id),
-                device_id=str(device.id),
-                offline_mode=True,
-                metadata={
-                    "command_id": str(command_id),
-                    "command_type": command_type,
-                    "company_id": company_id,
-                    "branch_id": branch_id,
-                    **details,
-                },
-            )
+                write_event(
+                    request=request,
+                    event_type="SYNC_COMMAND_REJECTED",
+                    reason_code=reason,
+                    actor_user=actor_user if getattr(actor_user, "is_authenticated", False) else None,
+                    subject_type="DEVICE",
+                    subject_id=str(device.id),
+                    device_id=str(device.id),
+                    offline_mode=True,
+                    metadata={
+                        "command_id": str(command_id),
+                        "command_type": command_type,
+                        "company_id": company_id,
+                        "branch_id": branch_id,
+                        **details,
+                    },
+                )
+            except Exception as persist_exc:  # noqa: BLE001
+                # Hardening: un rechazo contractual no debe degradar a SYNC_INTERNAL_ERROR.
+                logger.exception(
+                    "[SYNC_ENGINE][process_command] controlled reject persistence failed",
+                    extra={
+                        "request_id": str(getattr(request, "request_id", "") or ""),
+                        "company_id": company_id,
+                        "branch_id": branch_id,
+                        "command_id": str(command_id),
+                        "command_type": str(command_type),
+                        "reason": reason,
+                        "persist_error": str(persist_exc),
+                    },
+                )
 
             out: dict[str, Any] = {"command_id": str(command_id), "status": "REJECTED", "reason": reason}
             if details:

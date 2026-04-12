@@ -18,6 +18,13 @@ paths = [
 ]
 
 [[allowlists]]
+description = "Generated QA reports are ephemeral and may include test tokens"
+paths = [
+  '''^qa/reports/''',
+  '''^/repo/qa/reports/''',
+]
+
+[[allowlists]]
 description = "Generated root-level security scanner outputs"
 paths = [
   '''^qa_gitleaks\.json$''',

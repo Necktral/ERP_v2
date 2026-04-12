@@ -47,7 +47,7 @@ class SyncCommandIn(serializers.Serializer):
     payload_hash = serializers.CharField(required=False, allow_blank=True, max_length=64)
 
     prev_hash = serializers.CharField(required=False, allow_blank=True, max_length=64)
-    signature = serializers.CharField()
+    signature = serializers.CharField(required=False, allow_blank=True)
 
 
 class SyncBatchIn(serializers.Serializer):
@@ -61,3 +61,41 @@ class SyncBatchIn(serializers.Serializer):
     device_id = serializers.UUIDField(required=False)
     sent_at = serializers.DateTimeField(required=False)
     commands = SyncCommandIn(many=True)
+
+
+class SyncV2AuthIn(serializers.Serializer):
+    scheme = serializers.ChoiceField(choices=("hmac", "ed25519"))
+    signature = serializers.CharField()
+    key_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
+
+
+class SyncV2CommandScopeIn(serializers.Serializer):
+    company_id = serializers.IntegerField()
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class SyncV2CommandIn(serializers.Serializer):
+    command_id = serializers.UUIDField()
+    type = serializers.CharField(max_length=64)
+    scope = SyncV2CommandScopeIn()
+    occurred_at = serializers.DateTimeField()
+    payload = serializers.JSONField()
+    payload_hash = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    sequence = serializers.IntegerField(required=False, allow_null=True)
+    prev_hash = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    command_sig = serializers.CharField(required=False, allow_blank=True)
+
+
+class SyncV2BatchIn(serializers.Serializer):
+    protocol_version = serializers.CharField()
+    device_id = serializers.UUIDField()
+    ts = serializers.IntegerField()
+    nonce = serializers.CharField(max_length=128)
+    auth = SyncV2AuthIn()
+    batch_id = serializers.UUIDField()
+    batch = SyncV2CommandIn(many=True)
+
+    def validate_protocol_version(self, value: str) -> str:
+        if str(value) != "2":
+            raise serializers.ValidationError("protocol_version must be '2'.")
+        return "2"

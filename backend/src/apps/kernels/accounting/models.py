@@ -595,6 +595,8 @@ class IntercompanyTransaction(models.Model):
     matched_amount_source = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     matched_amount_target = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     difference_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+    # Fecha efectiva contable del movimiento intercompany para consolidación por periodo.
+    effective_at = models.DateTimeField(default=timezone.now, db_index=True)
     description = models.CharField(max_length=255, blank=True, default="")
     metadata_json = models.JSONField(default=dict)
     created_by = models.ForeignKey(

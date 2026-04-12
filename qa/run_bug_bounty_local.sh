@@ -10,6 +10,12 @@ PYTEST_DB_BASE_NAME="${PYTEST_DB_BASE_NAME:-test_erp_db}"
 mkdir -p "${OUT_DIR}"
 
 echo "[bug-bounty] output=${OUT_DIR}"
+echo "[bug-bounty] preflight=docker compose up db+backend + backend ready"
+(
+  cd "${ROOT_DIR}"
+  docker compose up -d --build db backend
+  docker compose exec -T backend python /app/qa/wait_backend_ready.py
+)
 
 {
   echo "git_status:"
@@ -58,25 +64,35 @@ static_scan_rc=0
 
 manage_check_rc=0
 (
-  cd "${ROOT_DIR}/backend"
-  python3 manage.py check > "${OUT_DIR}/20_django_check.txt" 2>&1
+  cd "${ROOT_DIR}"
+  docker compose exec -T backend bash -lc "cd /app/backend && python3 manage.py check" \
+    > "${OUT_DIR}/20_django_check.txt" 2>&1
 ) || manage_check_rc=$?
 
 audit_chain_rc=0
 (
-  cd "${ROOT_DIR}/backend"
-  python3 manage.py audit_verify_chain --seed-minimal --format json > "${OUT_DIR}/21_audit_integrity.json" 2>&1
+  cd "${ROOT_DIR}"
+  docker compose exec -T backend bash -lc \
+    "cd /app/backend && python3 manage.py audit_verify_chain --seed-minimal --format json" \
+    > "${OUT_DIR}/21_audit_integrity.json" 2>&1
 ) || audit_chain_rc=$?
 
 security_pytest_rc=0
 echo "[bug-bounty] pytest test_db_slot=${PYTEST_DB_SLOT:-<auto>} test_db_base=${PYTEST_DB_BASE_NAME}" \
   > "${OUT_DIR}/22_security_pytest.txt"
-PYTEST_DB_SLOT="${PYTEST_DB_SLOT}" PYTEST_DB_BASE_NAME="${PYTEST_DB_BASE_NAME}" pytest -q \
-  "${ROOT_DIR}/backend/tests/test_axes_lockout.py" \
-  "${ROOT_DIR}/backend/tests/test_2fa_challenge.py" \
-  "${ROOT_DIR}/backend/tests/test_access_denied_audit.py" \
-  "${ROOT_DIR}/backend/tests/test_audit_chain_integrity.py" \
-  >> "${OUT_DIR}/22_security_pytest.txt" 2>&1 || security_pytest_rc=$?
+(
+  cd "${ROOT_DIR}"
+  docker compose exec -T \
+    -e DJANGO_SETTINGS_MODULE=config.settings.test \
+    -e PYTEST_DB_SLOT="${PYTEST_DB_SLOT}" \
+    -e PYTEST_DB_BASE_NAME="${PYTEST_DB_BASE_NAME}" \
+    backend bash -lc \
+    "cd /app/backend && pytest -q \
+      /app/backend/tests/test_axes_lockout.py \
+      /app/backend/tests/test_2fa_challenge.py \
+      /app/backend/tests/test_access_denied_audit.py \
+      /app/backend/tests/test_audit_chain_integrity.py"
+) >> "${OUT_DIR}/22_security_pytest.txt" 2>&1 || security_pytest_rc=$?
 
 BUG_BOUNTY_OUT="${OUT_DIR}" \
 GITLEAKS_RC="${gitleaks_rc}" \
@@ -150,7 +166,7 @@ audit_data = load_json(out / "21_audit_integrity.json")
 audit_chain_pass = bool(isinstance(audit_data, dict) and audit_data.get("ok") is True)
 
 security_pytest = (out / "22_security_pytest.txt").read_text(encoding="utf-8", errors="ignore")
-security_pytest_pass = "failed" not in security_pytest.lower()
+security_pytest_pass = int(os.environ["SECURITY_PYTEST_RC"]) == 0
 
 static_scan_text = (out / "14_static_scan.txt").read_text(encoding="utf-8", errors="ignore")
 static_scan_pass = "Static scan OK:" in static_scan_text

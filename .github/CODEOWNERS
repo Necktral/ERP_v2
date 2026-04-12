@@ -8,7 +8,9 @@
 
 # Quality and CI
 /qa/ @Necktral
+/qa/contracts/ @Necktral
 /.github/workflows/ @Necktral
+/docs/operacion/ @Necktral
 
 # Frontend analytics host
 /frontend/ @Necktral

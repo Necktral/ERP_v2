@@ -196,6 +196,16 @@ def seed_rbac_v01() -> SeedResult:
         "fuel.reports.view": "Ver reportes del módulo Estación.",
         "fuel.reports.export": "Exportar reportes del módulo Estación.",
         "fuel.uom_preferences.manage": "Gestionar preferencias UOM de combustible.",
+        # RETAIL POS
+        "retail.pos.session.open": "Abrir sesión POS por sucursal.",
+        "retail.pos.session.read": "Ver sesión POS activa y estado de caja.",
+        "retail.pos.session.close": "Cerrar sesión POS y arqueo.",
+        "retail.pos.ticket.open": "Crear ticket POS.",
+        "retail.pos.ticket.read": "Ver tickets POS.",
+        "retail.pos.ticket.checkout": "Ejecutar checkout POS.",
+        "retail.pos.ticket.void": "Anular ticket POS.",
+        "retail.pos.peripherals.read": "Ver estado de periféricos POS.",
+        "retail.pos.peripherals.manage": "Registrar/actualizar estado de periféricos POS.",
     }
 
     permissions.update(
@@ -678,6 +688,47 @@ def seed_rbac_v01() -> SeedResult:
         ):
             if code not in codes:
                 codes.append(code)
+
+    retail_perms_full = [
+        "retail.pos.session.open",
+        "retail.pos.session.read",
+        "retail.pos.session.close",
+        "retail.pos.ticket.open",
+        "retail.pos.ticket.read",
+        "retail.pos.ticket.checkout",
+        "retail.pos.ticket.void",
+        "retail.pos.peripherals.read",
+        "retail.pos.peripherals.manage",
+    ]
+    retail_perms_operator = [
+        "retail.pos.session.open",
+        "retail.pos.session.read",
+        "retail.pos.ticket.open",
+        "retail.pos.ticket.read",
+        "retail.pos.ticket.checkout",
+        "retail.pos.ticket.void",
+        "retail.pos.peripherals.read",
+    ]
+    retail_perms_auditor = [
+        "retail.pos.session.read",
+        "retail.pos.ticket.read",
+        "retail.pos.peripherals.read",
+    ]
+
+    role_retail_matrix = {
+        "company_admin": retail_perms_full,
+        "branch_manager": retail_perms_full,
+        "cashier": retail_perms_operator,
+        "fuel_admin": retail_perms_full,
+        "fuel_supervisor": retail_perms_full,
+        "fuel_cashier": retail_perms_operator,
+        "fuel_auditor": retail_perms_auditor,
+    }
+    for role_name, codes_to_add in role_retail_matrix.items():
+        current = role_to_perms.get(role_name, [])
+        for code in codes_to_add:
+            if code not in current:
+                current.append(code)
 
     roles_created = roles_updated = perms_created = perms_updated = roleperms_created = 0
 

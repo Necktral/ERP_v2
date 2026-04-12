@@ -11,7 +11,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.kernels.accounting.models import EconomicEvent, JournalDraft
+from apps.kernels.accounting.models import EconomicEvent, JournalDraft, PostingRuleSet
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
@@ -184,3 +184,55 @@ def test_phase10_procurement_shadow_projection_is_deterministic():
     call_command("project_shadow_ledger", run_id=str(run.run_id))
     assert EconomicEvent.objects.count() == ee_count
     assert JournalDraft.objects.count() == jd_count
+
+
+@pytest.mark.django_db
+def test_phase10_projection_ignores_fx_revaluation_ruleset():
+    company, branch = _mk_scope()
+    client, user = _mk_client(company=company, branch=branch, perm_codes=_procurement_perms())
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    PostingRuleSet.objects.create(
+        code="fx_revaluation_system",
+        version=999,
+        status=PostingRuleSet.Status.ACTIVE,
+        fiscal_mode=PostingRuleSet.FiscalMode.BOTH,
+        scope_company=company,
+        rules_json={"schema_version": 1, "purpose": "FX revaluation technical system rule set", "rules": []},
+        effective_from=timezone.now(),
+    )
+
+    created = client.post(
+        "/api/procurement/docs/",
+        {
+            "doc_type": "SUPPLIER_INVOICE",
+            "series": "P",
+            "currency": "NIO",
+            "supplier_name": "Proveedor FX",
+            "supplier_ref": "PRV-FX-001",
+            "external_ref": "INV-FX-001",
+            "subtotal": "120.00",
+            "tax_total": "18.00",
+            "total": "138.00",
+            "idempotency_key": "proc-fx-001",
+        },
+        format="json",
+    )
+    assert created.status_code == 201
+    doc_id = int(created.data["id"])
+    posted = client.post(f"/api/procurement/docs/{doc_id}/post/", {}, format="json")
+    assert posted.status_code == 200
+
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    event = (
+        EconomicEvent.objects.filter(company=company, source_module="PROCUREMENT", event_type="ProcurementDocumentPosted")
+        .order_by("-id")
+        .first()
+    )
+    assert event is not None
+    draft = JournalDraft.objects.filter(economic_event=event).first()
+    assert draft is not None
+    assert str(draft.rule_set.code).startswith("shadow_ledger_")
