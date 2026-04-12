@@ -48,7 +48,7 @@ run_phase9() {
   COMPANY_ID="${COMPANY_ID}" \
   BRANCH_ID="${BRANCH_ID}" \
   PYTHON_BIN="${PYTHON_BIN}" \
-  "${ROOT_DIR}/qa/run_phase9_go_live.sh" full
+  bash "${ROOT_DIR}/qa/run_phase9_go_live.sh" full
 }
 
 run_phase10() {
@@ -56,7 +56,7 @@ run_phase10() {
   COMPANY_ID="${COMPANY_ID}" \
   BRANCH_ID="${BRANCH_ID}" \
   PYTHON_BIN="${PYTHON_BIN}" \
-  "${ROOT_DIR}/qa/run_phase10_go_live.sh" full
+  bash "${ROOT_DIR}/qa/run_phase10_go_live.sh" full
 }
 
 run_phase11() {
@@ -64,7 +64,7 @@ run_phase11() {
   COMPANY_ID="${COMPANY_ID}" \
   BRANCH_ID="${BRANCH_ID}" \
   PYTHON_BIN="${PYTHON_BIN}" \
-  "${ROOT_DIR}/qa/run_phase11_go_live.sh" full
+  bash "${ROOT_DIR}/qa/run_phase11_go_live.sh" full
 }
 
 run_phase12() {
@@ -78,7 +78,7 @@ run_phase12() {
   REQUIRED_PERIODS="${REQUIRED_PERIODS:-3}" \
   FX_BLOCKED_POLICY="${FX_BLOCKED_POLICY:-ALERT}" \
   PYTHON_BIN="${PYTHON_BIN}" \
-  "${ROOT_DIR}/qa/run_phase12_go_live.sh" full
+  bash "${ROOT_DIR}/qa/run_phase12_go_live.sh" full
 }
 
 case "${MODE}" in

@@ -71,44 +71,48 @@ run_security() {
 JSON
 }
 
+to_container_path() {
+  local host_path="$1"
+  if [[ "${host_path}" == "${ROOT_DIR}"* ]]; then
+    printf '/app%s\n' "${host_path#${ROOT_DIR}}"
+    return 0
+  fi
+  printf '%s\n' "${host_path}"
+}
+
 run_staging_recert() {
-  mkdir -p "${OUT_DIR}/staging_recert"
+  local staging_dir_host="${OUT_DIR}/staging_recert"
+  local staging_dir_container
+  local preflight_out
+  local snapshot_out
+  local cmd
+
+  mkdir -p "${staging_dir_host}"
+  staging_dir_container="$(to_container_path "${staging_dir_host}")"
+  preflight_out="${staging_dir_container}/11_preflight.json"
+  snapshot_out="${staging_dir_container}/12_snapshot.json"
+
+  printf -v cmd 'cd /app/backend && python3 manage.py export_staging_preflight_manifest --company-id %q --branch-id %q --max-inbox-failed 0 --max-outbox-failed 0 --max-missing-lines 0 --max-stale-revaluation 0 --max-open-intercompany 0 --max-disputed 0 --output %q && python3 manage.py export_finance_operational_snapshot --company-id %q --branch-id %q --max-inbox-failed 0 --max-outbox-failed 0 --max-missing-lines 0 --max-stale-revaluation 0 --max-open-intercompany 0 --max-disputed 0 --output %q' \
+    "${COMPANY_ID}" "${BRANCH_ID}" "${preflight_out}" \
+    "${COMPANY_ID}" "${BRANCH_ID}" "${snapshot_out}"
+
   (
-    cd "${APP_DIR}"
-    "${PYTHON_BIN}" manage.py export_staging_preflight_manifest \
-      --company-id "${COMPANY_ID}" \
-      --branch-id "${BRANCH_ID}" \
-      --max-inbox-failed 0 \
-      --max-outbox-failed 0 \
-      --max-missing-lines 0 \
-      --max-stale-revaluation 0 \
-      --max-open-intercompany 0 \
-      --max-disputed 0 \
-      --output "${OUT_DIR}/staging_recert/11_preflight.json"
+    cd "${ROOT_DIR}"
+    docker compose exec -T backend bash -lc "${cmd}"
 
-    "${PYTHON_BIN}" manage.py export_finance_operational_snapshot \
-      --company-id "${COMPANY_ID}" \
-      --branch-id "${BRANCH_ID}" \
-      --max-inbox-failed 0 \
-      --max-outbox-failed 0 \
-      --max-missing-lines 0 \
-      --max-stale-revaluation 0 \
-      --max-open-intercompany 0 \
-      --max-disputed 0 \
-      --output "${OUT_DIR}/staging_recert/12_snapshot.json"
+    docker compose exec -T \
+      -e OUT_DIR="${staging_dir_container}" \
+      -e COMPANY_ID="${COMPANY_ID}" \
+      -e BRANCH_ID="${BRANCH_ID}" \
+      -e PARENT_COMPANY_ID="${PARENT_COMPANY_ID}" \
+      -e COMPANY_IDS="${COMPANY_IDS}" \
+      -e YEAR="${YEAR}" \
+      -e MONTH="${MONTH}" \
+      -e REQUIRED_PERIODS="${REQUIRED_PERIODS:-3}" \
+      -e FX_BLOCKED_POLICY="${FX_BLOCKED_POLICY:-ALERT}" \
+      -e PYTHON_BIN="python3" \
+      backend bash -lc "cd /app && bash /app/qa/run_post_f8_phases.sh all"
   )
-
-  OUT_DIR="${OUT_DIR}/staging_recert" \
-  COMPANY_ID="${COMPANY_ID}" \
-  BRANCH_ID="${BRANCH_ID}" \
-  PARENT_COMPANY_ID="${PARENT_COMPANY_ID}" \
-  COMPANY_IDS="${COMPANY_IDS}" \
-  YEAR="${YEAR}" \
-  MONTH="${MONTH}" \
-  REQUIRED_PERIODS="${REQUIRED_PERIODS:-3}" \
-  FX_BLOCKED_POLICY="${FX_BLOCKED_POLICY:-ALERT}" \
-  PYTHON_BIN="${PYTHON_BIN}" \
-  "${ROOT_DIR}/qa/run_post_f8_phases.sh" all
 }
 
 run_summary() {
