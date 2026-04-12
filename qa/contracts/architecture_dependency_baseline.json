@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-03-27T00:43:03.557669+00:00",
+  "generated_at": "2026-04-12T02:06:00.000000+00:00",
   "ratchet_edges": [
     "kernels.accounting->kernels.facturacion",
     "kernels.accounting->kernels.reporting",
@@ -28,9 +28,14 @@
     "kernels.payments->modulos.iam",
     "kernels.payments->modulos.integration",
     "kernels.reporting->kernels.accounting",
+    "kernels.reporting->kernels.facturacion",
+    "kernels.reporting->kernels.inventarios",
+    "kernels.reporting->kernels.payments",
     "kernels.reporting->modulos.common",
+    "kernels.reporting->modulos.compras",
     "kernels.reporting->modulos.dashboard",
     "kernels.reporting->modulos.estacion_servicios",
+    "kernels.reporting->modulos.hr",
     "kernels.reporting->modulos.iam",
     "kernels.reporting->modulos.rbac",
     "modulos.accounts->modulos.audit",
