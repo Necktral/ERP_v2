@@ -20,6 +20,15 @@ function findChild(path: string): RouteRecordRaw | undefined {
 }
 
 describe('router routes', () => {
+  it('declares public device enroll route for PWA onboarding', () => {
+    const publicRoute = routes.find((route) => route.path === '/device/enroll');
+    expect(publicRoute).toBeDefined();
+    expect(Array.isArray(publicRoute?.children)).toBe(true);
+    const child = publicRoute?.children?.[0];
+    expect(child).toBeDefined();
+    expect(child?.meta?.requiresAuth).toBe(false);
+  });
+
   it('declares canonical routes for navigation', () => {
     const canonicalRoutes = [
       UI_ROUTE_PATHS.humanResourcesEmployees,

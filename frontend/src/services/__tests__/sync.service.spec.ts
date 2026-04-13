@@ -18,4 +18,13 @@ describe('sync.service enrollment QR', () => {
     });
     expect(value).toBe('CODE-456');
   });
+
+  it('usa deep_link cuando no hay enrollment_uri', () => {
+    const value = resolveEnrollmentQrContent({
+      enrollment_code: 'CODE-789',
+      enrollment_uri: '',
+      enrollment_deep_link: 'necktral-sync://enroll?code=CODE-789',
+    });
+    expect(value).toBe('necktral-sync://enroll?code=CODE-789');
+  });
 });

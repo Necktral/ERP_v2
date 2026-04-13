@@ -11,6 +11,7 @@ export type EnrollmentChallengeResponse = {
   challenge_id: string;
   enrollment_code: string;
   enrollment_uri?: string | null;
+  enrollment_deep_link?: string | null;
   expires_at: string;
   company_id: number;
   branch_id: number | null;
@@ -61,9 +62,12 @@ export async function createEnrollmentChallenge(payload: EnrollmentChallengeRequ
   return data;
 }
 
-export function resolveEnrollmentQrContent(payload: Pick<EnrollmentChallengeResponse, 'enrollment_code' | 'enrollment_uri'>) {
+export function resolveEnrollmentQrContent(
+  payload: Pick<EnrollmentChallengeResponse, 'enrollment_code' | 'enrollment_uri' | 'enrollment_deep_link'>,
+) {
   const uri = typeof payload.enrollment_uri === 'string' ? payload.enrollment_uri.trim() : '';
-  return uri || payload.enrollment_code;
+  const deepLink = typeof payload.enrollment_deep_link === 'string' ? payload.enrollment_deep_link.trim() : '';
+  return uri || deepLink || payload.enrollment_code;
 }
 
 export async function enrollDevice(payload: DeviceEnrollRequest) {

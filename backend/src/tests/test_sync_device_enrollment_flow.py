@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db import close_old_connections
 from django.db import connections
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -87,6 +88,7 @@ def _public_key_b64() -> str:
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_ENROLL_WEB_BASE_URL="https://pwa.example.test")
 def test_enrollment_challenge_create_requires_permission_and_context():
     company, branch = _mk_org()
     client_with_perm = _client_with_permission(company=company, perm_code="sync.device.enroll")
@@ -106,11 +108,18 @@ def test_enrollment_challenge_create_requires_permission_and_context():
     assert "challenge_id" in ok.data
     assert "enrollment_code" in ok.data
     assert "enrollment_uri" in ok.data
+    assert "enrollment_deep_link" in ok.data
     enrollment_uri = str(ok.data["enrollment_uri"])
     parsed = urlparse(enrollment_uri)
-    assert parsed.scheme == "necktral-sync"
-    assert parsed.netloc == "enroll"
-    assert parse_qs(parsed.query).get("code") == [ok.data["enrollment_code"]]
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "pwa.example.test"
+    assert parsed.fragment.startswith("/device/enroll?code=")
+    fragment_query = parsed.fragment.split("?", 1)[1]
+    assert parse_qs(fragment_query).get("code") == [ok.data["enrollment_code"]]
+    parsed_deep = urlparse(str(ok.data["enrollment_deep_link"]))
+    assert parsed_deep.scheme == "necktral-sync"
+    assert parsed_deep.netloc == "enroll"
+    assert parse_qs(parsed_deep.query).get("code") == [ok.data["enrollment_code"]]
     assert isinstance(ok.data.get("trace"), dict)
     assert ok.data["trace"]["request_id"] == ok["X-Request-Id"]
     uuid.UUID(str(ok.data["trace"]["audit_event_id"]))

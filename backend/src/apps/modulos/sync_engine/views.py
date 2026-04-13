@@ -45,6 +45,16 @@ from .services import process_batch, resolve_device
 trace_logger = logging.getLogger("apps.modulos.sync.trace")
 
 
+def _sync_enrollment_links(code_plain: str) -> tuple[str, str]:
+    code_param = quote(code_plain, safe="")
+    deep_link = f"necktral-sync://enroll?code={code_param}"
+    web_base = str(getattr(settings, "SYNC_ENROLL_WEB_BASE_URL", "") or "").strip().rstrip("/")
+    if not web_base:
+        return deep_link, deep_link
+    web_link = f"{web_base}/#/device/enroll?code={code_param}"
+    return web_link, deep_link
+
+
 def _sync_trace_payload(
     request,
     *,
@@ -169,11 +179,13 @@ class EnrollmentChallengeCreateView(APIView):
             audit_event_id=str(audit_event.event_id),
         )
 
+        enrollment_uri, enrollment_deep_link = _sync_enrollment_links(code_plain)
         return Response(
             {
                 "challenge_id": str(ch.id),
                 "enrollment_code": code_plain,  # solo se entrega aquí
-                "enrollment_uri": f"necktral-sync://enroll?code={quote(code_plain, safe='')}",
+                "enrollment_uri": enrollment_uri,
+                "enrollment_deep_link": enrollment_deep_link,
                 "expires_at": ch.expires_at.isoformat(),
                 "company_id": company.id,
                 "branch_id": getattr(branch, "id", None),

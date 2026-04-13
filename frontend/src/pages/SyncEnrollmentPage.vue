@@ -60,6 +60,15 @@
             <div v-if="challengeResult" class="q-mt-md">
               <q-input :model-value="challengeResult.enrollment_code" readonly outlined dense label="Codigo" />
               <q-input
+                v-if="challengeResult.enrollment_uri"
+                class="q-mt-sm"
+                :model-value="challengeResult.enrollment_uri"
+                readonly
+                outlined
+                dense
+                label="URL de enrolamiento PWA"
+              />
+              <q-input
                 class="q-mt-sm"
                 :model-value="challengeResult.expires_at"
                 readonly

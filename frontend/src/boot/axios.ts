@@ -50,6 +50,8 @@ const CONTEXT_EXEMPT_PREFIXES = [
   '/auth/me/acl/',
   '/auth/bootstrap/',
   '/auth/password/',
+  '/sync/enroll/',
+  '/sync/batch/',
   '/schema/',
 ];
 

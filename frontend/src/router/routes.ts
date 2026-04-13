@@ -37,6 +37,17 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/device/enroll',
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        component: () => import('pages/DeviceEnrollPage.vue'),
+        meta: { requiresAuth: false },
+      },
+    ],
+  },
+  {
     path: '/login',
     component: () => import('layouts/AuthLayout.vue'),
     children: [
