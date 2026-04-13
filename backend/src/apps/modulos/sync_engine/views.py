@@ -11,6 +11,7 @@ import copy
 import logging
 import time
 from datetime import timedelta
+from urllib.parse import quote
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -172,6 +173,7 @@ class EnrollmentChallengeCreateView(APIView):
             {
                 "challenge_id": str(ch.id),
                 "enrollment_code": code_plain,  # solo se entrega aquí
+                "enrollment_uri": f"necktral-sync://enroll?code={quote(code_plain, safe='')}",
                 "expires_at": ch.expires_at.isoformat(),
                 "company_id": company.id,
                 "branch_id": getattr(branch, "id", None),

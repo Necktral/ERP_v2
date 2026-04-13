@@ -17,6 +17,9 @@
             <div class="text-caption text-grey-7 q-mb-md">
               Crea un codigo one-time para registrar dispositivos.
             </div>
+            <div class="text-caption text-grey-7 q-mb-sm">
+              Si no abre la app sync al escanear, usa el enrolamiento manual.
+            </div>
 
             <q-input
               v-model.number="challengeForm.expires_in_minutes"
@@ -138,6 +141,7 @@ import { useContextStore } from 'src/stores/context.store';
 import {
   createEnrollmentChallenge,
   enrollDevice,
+  resolveEnrollmentQrContent,
   type DeviceEnrollResponse,
   type EnrollmentChallengeResponse,
 } from 'src/services/sync.service';
@@ -183,7 +187,7 @@ async function onCreateChallenge() {
       branch_id: challengeForm.branch_id || null,
     });
     challengeResult.value = data;
-    challengeQrDataUrl.value = await QRCode.toDataURL(data.enrollment_code, { margin: 1, width: 280 });
+    challengeQrDataUrl.value = await QRCode.toDataURL(resolveEnrollmentQrContent(data), { margin: 1, width: 280 });
   } catch (e) {
     challengeError.value = extractErrorMessage(e);
   } finally {

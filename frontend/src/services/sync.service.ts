@@ -10,6 +10,7 @@ export type EnrollmentChallengeRequest = {
 export type EnrollmentChallengeResponse = {
   challenge_id: string;
   enrollment_code: string;
+  enrollment_uri?: string | null;
   expires_at: string;
   company_id: number;
   branch_id: number | null;
@@ -58,6 +59,11 @@ export type DeviceListResponse = {
 export async function createEnrollmentChallenge(payload: EnrollmentChallengeRequest) {
   const { data } = await api.post<EnrollmentChallengeResponse>('/sync/enrollment/challenges/', payload);
   return data;
+}
+
+export function resolveEnrollmentQrContent(payload: Pick<EnrollmentChallengeResponse, 'enrollment_code' | 'enrollment_uri'>) {
+  const uri = typeof payload.enrollment_uri === 'string' ? payload.enrollment_uri.trim() : '';
+  return uri || payload.enrollment_code;
 }
 
 export async function enrollDevice(payload: DeviceEnrollRequest) {

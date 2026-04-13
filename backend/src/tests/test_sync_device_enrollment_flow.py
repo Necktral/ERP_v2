@@ -5,6 +5,7 @@ import logging
 import threading
 import uuid
 from datetime import timedelta
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -104,6 +105,12 @@ def test_enrollment_challenge_create_requires_permission_and_context():
     assert ok.status_code == 201
     assert "challenge_id" in ok.data
     assert "enrollment_code" in ok.data
+    assert "enrollment_uri" in ok.data
+    enrollment_uri = str(ok.data["enrollment_uri"])
+    parsed = urlparse(enrollment_uri)
+    assert parsed.scheme == "necktral-sync"
+    assert parsed.netloc == "enroll"
+    assert parse_qs(parsed.query).get("code") == [ok.data["enrollment_code"]]
     assert isinstance(ok.data.get("trace"), dict)
     assert ok.data["trace"]["request_id"] == ok["X-Request-Id"]
     uuid.UUID(str(ok.data["trace"]["audit_event_id"]))
