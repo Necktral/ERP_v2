@@ -25,6 +25,13 @@ paths = [
 ]
 
 [[allowlists]]
+description = "QA simulation scripts include non-secret key identifiers"
+paths = [
+  '''^qa/product_lifecycle_full_cycle\.py$''',
+  '''^/repo/qa/product_lifecycle_full_cycle\.py$''',
+]
+
+[[allowlists]]
 description = "Generated root-level security scanner outputs"
 paths = [
   '''^qa_gitleaks\.json$''',

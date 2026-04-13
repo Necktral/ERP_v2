@@ -1462,7 +1462,7 @@ def run_consolidation(
             .filter(source_company_id__in=scope_company_ids, target_company_id__in=scope_company_ids)
             .filter(status__in=[IntercompanyTransaction.Status.CONFIRMED, IntercompanyTransaction.Status.CLOSED])
             .filter(effective_at__gte=start_dt, effective_at__lte=end_dt)
-            .order_by("created_at", "id")
+            .order_by("effective_at", "created_at", "id")
         )
         account_pairs: set[tuple[int, str]] = set()
         for tx in tx_rows:

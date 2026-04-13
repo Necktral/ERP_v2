@@ -857,6 +857,42 @@ Defaults del Gate 3 (overrideables en `make`):
 - `STRESS_LOGIN_RATE_TARGET=5` (logins/seg)
 - `STRESS_SUSTAIN=60s`
 
+### Product Lifecycle full cycle (check contable estricto)
+
+Runner canónico:
+
+```bash
+make qa-product-lifecycle-full-cycle PASSWORD=<PASS>
+```
+
+El step `accounting.auto_draft_from_cash_movement` valida evidencia contable real
+de drafts proyectados sobre pares operativos:
+
+- `BILLING.DocumentIssued`
+- `INVENTORY.InventoryMovementPosted`
+
+Criterio de PASS:
+
+- `delta_total >= min_total_delta`
+- cobertura mínima por par (`delta_por_par >= min_delta`)
+
+El runner aplica polling corto por consistencia eventual y, si no se cumple el
+criterio dentro de la ventana, el step falla y el ciclo completo queda en `FAIL`
+(ya no se tolera warning para este check).
+
+Parámetros del contrato (`qa/contracts/product_lifecycle_full_cycle_contract.json`):
+
+- `accounting_auto_draft_validation.required_event_pairs`
+- `accounting_auto_draft_validation.min_total_delta`
+- `accounting_auto_draft_validation.max_wait_seconds`
+- `accounting_auto_draft_validation.poll_interval_seconds`
+
+Interpretación en evidencia:
+
+- `20_product_lifecycle_functional.json`: revisar el step
+  `accounting.auto_draft_from_cash_movement` y su `detail` (before/after/deltas).
+- `31_product_lifecycle_log.md`: el estado del step refleja PASS/FAIL bloqueante.
+
 ### Overrides QA (throttles)
 
 Si Gate 3 falla por 429 bajo k6 (un solo usuario con alto RPS), el cuello suele ser

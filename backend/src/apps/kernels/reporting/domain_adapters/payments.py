@@ -4,6 +4,8 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
+from django.db.models import Count, Sum
+
 from apps.kernels.payments.models import CashSession, PaymentIntent
 from apps.kernels.reporting.exceptions import DatasetExecutionError
 
@@ -22,14 +24,19 @@ def _collection_payload(*, company, branch, filters: dict[str, Any]) -> dict[str
     if branch is not None:
         pay_qs = pay_qs.filter(branch=branch)
 
-    agg: dict[str, dict[str, Any]] = defaultdict(lambda: {"status": "", "count": 0, "amount": Decimal("0.00")})
-
-    for pi in pay_qs.order_by("status"):
-        key = str(pi.status)
-        row = agg[key]
-        row["status"] = key
-        row["count"] += 1
-        row["amount"] += Decimal(pi.amount)
+    agg: dict[str, dict[str, Any]] = defaultdict(dict)
+    grouped = (
+        pay_qs.values("status")
+        .annotate(payment_count=Count("id"), amount_sum=Sum("amount"))
+        .order_by("status")
+    )
+    for row in grouped:
+        key = str(row.get("status") or "")
+        agg[key] = {
+            "status": key,
+            "count": int(row.get("payment_count") or 0),
+            "amount": Decimal(row.get("amount_sum") or Decimal("0.00")),
+        }
 
     rows: list[dict[str, Any]] = []
     total_count = 0

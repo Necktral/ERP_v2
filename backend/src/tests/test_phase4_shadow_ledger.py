@@ -7,9 +7,11 @@ from io import StringIO
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.kernels.accounting.models import DraftValidationResult, EconomicEvent, JournalDraft, PostingRuleSet
+from apps.kernels.accounting.services import build_rules_json_v1, evaluate_shadow_ledger_hard_cut_readiness
 from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
@@ -89,6 +91,137 @@ def test_seed_posting_rules_v1_is_idempotent():
     assert rule_set.rules_json["version"] == "1.0"
     assert isinstance(rule_set.rules_json.get("rules"), list)
     assert len(rule_set.rules_json["rules"]) > 0
+    assert rule_set.rule_family == PostingRuleSet.RuleFamily.SHADOW
+
+
+@pytest.mark.django_db
+@override_settings(ACCOUNTING_SHADOW_PREFIX_FALLBACK_ENABLED=True)
+def test_project_shadow_ledger_fallbacks_to_shadow_prefix_when_rule_family_missing():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_fallback", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    PostingRuleSet.objects.filter(code="shadow_ledger_v1", scope_company=company).update(
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY
+    )
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    billing_event = _mk_billing_issued_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=billing_event.event_id)
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert str(draft.rule_set.code).startswith("shadow_ledger_")
+    assert draft.rule_set.rule_family == PostingRuleSet.RuleFamily.PRIMARY
+
+
+@pytest.mark.django_db
+@override_settings(
+    ACCOUNTING_SHADOW_PREFIX_FALLBACK_ENABLED=True,
+    ACCOUNTING_SHADOW_PREFIX_FALLBACK_STRICT=True,
+)
+def test_project_shadow_ledger_strict_mode_blocks_prefix_fallback(caplog):
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_fallback_strict", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    PostingRuleSet.objects.filter(code="shadow_ledger_v1", scope_company=company).update(
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY
+    )
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_issued_event(company=company, branch=branch, user=user)
+
+    caplog.set_level("WARNING", logger="apps.kernels.accounting.services")
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+
+    assert run.status == CloseRun.Status.REOPENED_EXCEPTION
+    assert CECException.objects.filter(
+        close_run=run,
+        source_module="ACCOUNTING",
+        code="SHADOW_RULESET_NOT_FOUND",
+        status=CECException.Status.OPEN,
+    ).count() == 1
+    assert any(
+        bool(getattr(record, "legacy_shadow_fallback_detected", False))
+        and bool(getattr(record, "strict_mode", False))
+        for record in caplog.records
+    )
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_disables_prefix_fallback_by_default():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_fallback_disabled", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    PostingRuleSet.objects.filter(code="shadow_ledger_v1", scope_company=company).update(
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY
+    )
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_issued_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+
+    assert run.status == CloseRun.Status.REOPENED_EXCEPTION
+    assert CECException.objects.filter(
+        close_run=run,
+        source_module="ACCOUNTING",
+        code="SHADOW_RULESET_NOT_FOUND",
+        status=CECException.Status.OPEN,
+    ).count() == 1
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_prioritizes_shadow_rule_family():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_rule_family", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    PostingRuleSet.objects.create(
+        code="shadow_ledger_manual_fallback",
+        version=999,
+        status=PostingRuleSet.Status.ACTIVE,
+        fiscal_mode=PostingRuleSet.FiscalMode.BOTH,
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY,
+        scope_company=company,
+        rules_json=build_rules_json_v1(),
+        effective_from=timezone.now(),
+    )
+
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    billing_event = _mk_billing_issued_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=billing_event.event_id)
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert draft.rule_set.rule_family == PostingRuleSet.RuleFamily.SHADOW
+
+
+@pytest.mark.django_db
+def test_shadow_ledger_hard_cut_readiness_reports_legacy_rulesets():
+    company, _branch = _mk_scope()
+    call_command("seed_posting_rules_v1", company_id=company.id)
+
+    PostingRuleSet.objects.filter(code="shadow_ledger_v1", scope_company=company).update(
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY
+    )
+    not_ready = evaluate_shadow_ledger_hard_cut_readiness(company=company)
+    assert not_ready["ready_for_hard_cut"] is False
+    assert int(not_ready["legacy_ruleset_count"]) > 0
+
+    PostingRuleSet.objects.filter(code="shadow_ledger_v1", scope_company=company).update(
+        rule_family=PostingRuleSet.RuleFamily.SHADOW
+    )
+    ready = evaluate_shadow_ledger_hard_cut_readiness(company=company)
+    assert ready["ready_for_hard_cut"] is True
+    assert int(ready["legacy_ruleset_count"]) == 0
 
 
 @pytest.mark.django_db

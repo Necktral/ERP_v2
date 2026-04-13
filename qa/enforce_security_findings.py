@@ -40,10 +40,19 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def _load_json(path: Path) -> dict[str, Any]:
+def _load_json(*, path: Path, label: str, issues: list[str]) -> dict[str, Any]:
     if not path.exists():
+        issues.append(f"{label} report not found: {path}")
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        issues.append(f"{label} report invalid JSON: {exc}")
+        return {}
+    if not isinstance(payload, dict):
+        issues.append(f"{label} report must be a JSON object")
+        return {}
+    return payload
 
 
 def _pip_is_high_or_critical(vuln: dict[str, Any]) -> bool:
@@ -107,14 +116,20 @@ def main() -> int:
     exceptions_path = (root / args.exceptions).resolve()
     output_path = (root / args.output).resolve()
 
-    contract = _load_json(exceptions_path)
-    rules, issues = _load_rules(contract)
+    issues: list[str] = []
+    contract = _load_json(path=exceptions_path, label="exceptions", issues=issues)
+    rules, contract_issues = _load_rules(contract)
+    issues.extend(contract_issues)
 
     unresolved: list[dict[str, Any]] = []
     excepted: list[dict[str, Any]] = []
 
-    pip_payload = _load_json(pip_report_path)
-    for dep in pip_payload.get("dependencies", []):
+    pip_payload = _load_json(path=pip_report_path, label="pip", issues=issues)
+    pip_dependencies = pip_payload.get("dependencies")
+    if not isinstance(pip_dependencies, list):
+        issues.append("pip report missing required list: dependencies")
+        pip_dependencies = []
+    for dep in pip_dependencies:
         pkg = str(dep.get("name", "")).strip()
         for vuln in dep.get("vulns", []):
             if not isinstance(vuln, dict):
@@ -137,8 +152,12 @@ def main() -> int:
             else:
                 unresolved.append(finding)
 
-    npm_payload = _load_json(npm_report_path)
-    for pkg, info in (npm_payload.get("vulnerabilities") or {}).items():
+    npm_payload = _load_json(path=npm_report_path, label="npm", issues=issues)
+    npm_vulnerabilities = npm_payload.get("vulnerabilities")
+    if not isinstance(npm_vulnerabilities, dict):
+        issues.append("npm report missing required object: vulnerabilities")
+        npm_vulnerabilities = {}
+    for pkg, info in npm_vulnerabilities.items():
         if not isinstance(info, dict):
             continue
         severity = str(info.get("severity", "")).lower()

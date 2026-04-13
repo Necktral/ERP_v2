@@ -2,9 +2,9 @@
 	qa-load-user qa-load-reset-axes qa-load-smoke qa-load-stress qa-gate3 qa-gate3-security qa-gate3-performance qa-gate3-run \
 	qa-branch-hygiene qa-branch-hygiene-cleanup-plan qa-branch-hygiene-cleanup \
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
-	qa-operational-go-live \
+	qa-operational-go-live qa-product-lifecycle-full-cycle \
 	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
-	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-codex-governance-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
+	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-codex-governance-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-security-audits qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
 		qa-sync-contract-guard qa-retail-pos-backend-contract-guard qa-retail-pos-sync-contract-guard qa-retail-pos-frontend-queue-contract-guard qa-retail-pos-edge-simulator-guard qa-retail-pos-edge-e2e-guard qa-retail-pos-pilot-smoke qa-retail-pos-pilot-rollback qa-sync-pos-validation qa-reports-dir-writable \
 		fix-workspace-perms docker-clean docker-clean-all
 
@@ -19,6 +19,8 @@ HOST_UID ?= $(shell id -u)
 HOST_GID ?= $(shell id -g)
 QA_RUFF_CACHE_DIR ?= /tmp/qa_ruff_cache_erp
 QA_MYPY_CACHE_DIR ?= /tmp/qa_mypy_cache_erp
+QA_PIP_AUDIT_REPORT ?= qa_pip_audit.json
+QA_NPM_AUDIT_REPORT ?= qa_npm_audit.json
 REPORTING_R8_GATE_WARN_UNTIL ?= 2026-04-07
 REPORTING_R8_GATE_HARD_FAIL_FROM ?= 2026-04-08
 REPORTING_R8_GATE_WINDOW_HOURS ?= 24
@@ -199,11 +201,15 @@ qa-github-required-checks-guard:
 qa-runner-hygiene-guard:
 	python3 qa/qa_runner_hygiene_guard.py --root . --output "$(QA_REPORTS_DIR)/runner_hygiene_guard.json"
 
-qa-validate-security-exceptions:
-	python3 qa/validate_security_exceptions.py --root . --contract qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_exceptions_guard.json"
+qa-security-audits:
+	docker compose exec -T backend bash -lc "set -o pipefail && cd /app && python -m pip install --upgrade pip >/dev/null && pip install pip-audit >/dev/null && pip-audit -r requirements/base.txt -r requirements/prod.txt -f json -o /app/$(QA_PIP_AUDIT_REPORT) || true"
+	docker run --rm --user "$(HOST_UID):$(HOST_GID)" -e HOME=/tmp -v "$(PWD)":/app -w /app/frontend node:22-bullseye-slim bash -lc "set -o pipefail && npm ci --ignore-scripts --no-fund --no-audit && npm audit --json > /app/$(QA_NPM_AUDIT_REPORT) || true"
 
-qa-security-findings-enforce:
-	python3 qa/enforce_security_findings.py --root . --pip-report qa_pip_audit.json --npm-report qa_npm_audit.json --exceptions qa/contracts/security_exceptions.json --output "$(QA_REPORTS_DIR)/security_findings_guard.json"
+qa-validate-security-exceptions:
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/validate_security_exceptions.py --root /app --contract qa/contracts/security_exceptions.json --output /app/$(QA_REPORTS_DIR)/security_exceptions_guard.json"
+
+qa-security-findings-enforce: qa-security-audits
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && python /app/qa/enforce_security_findings.py --root /app --pip-report $(QA_PIP_AUDIT_REPORT) --npm-report $(QA_NPM_AUDIT_REPORT) --exceptions qa/contracts/security_exceptions.json --output /app/$(QA_REPORTS_DIR)/security_findings_guard.json"
 
 qa-export-u6-release-evidence:
 	python3 qa/export_u6_release_evidence.py --root . --output "$(QA_REPORTS_DIR)/release_evidence_u6.json"
@@ -477,3 +483,18 @@ qa-operational-go-live:
 	PASSWORD=$(PASSWORD) \
 	REQUIRED_DAYS=$${REQUIRED_DAYS:-7} \
 	./qa/run_operational_go_live.sh full
+
+qa-product-lifecycle-full-cycle:
+	@if [ -z "$(PASSWORD)" ]; then \
+		echo "Set PASSWORD antes de qa-product-lifecycle-full-cycle"; \
+		exit 1; \
+	fi
+	BASE_URL=$(BASE_URL) \
+	PASSWORD=$(PASSWORD) \
+	FRESH_DB=$${FRESH_DB:-1} \
+	SIM_SEED=$${SIM_SEED:-20260412} \
+	OUT_DIR=$${OUT_DIR:-} \
+	BUG_TS=$${BUG_TS:-} \
+	PRODUCT_LIFECYCLE_ADMIN_USERNAME=$${PRODUCT_LIFECYCLE_ADMIN_USERNAME:-root_lifecycle} \
+	PRODUCT_LIFECYCLE_ADMIN_PASSWORD=$${PRODUCT_LIFECYCLE_ADMIN_PASSWORD:-Tmp!Lifecycle2026} \
+	./qa/run_product_lifecycle_full_cycle.sh full

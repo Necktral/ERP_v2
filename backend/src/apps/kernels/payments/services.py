@@ -1,40 +1,86 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any, Protocol, cast
+from uuid import UUID
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.shortcuts import get_object_or_404
+from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.modulos.integration.services import publish_outbox_event
+from apps.modulos.iam.models import OrgUnit
 
 from .models import CashMovement, CashSession, PaymentIntent
 
 
-def _branch_from_request(request):
+class PaymentsDomainError(ValueError):
+    """Error de dominio base para el módulo de pagos."""
+
+
+class PaymentsNotFoundError(PaymentsDomainError):
+    """Entidad no encontrada dentro del scope de pagos."""
+
+
+class PaymentsInvalidStateError(PaymentsDomainError):
+    """Transición inválida de estado."""
+
+
+class PaymentsConflictError(PaymentsDomainError):
+    """Conflicto de concurrencia o unicidad de negocio."""
+
+
+class PaymentsValidationError(PaymentsDomainError):
+    """Error de validación de entrada de dominio."""
+
+
+class ActorPrincipal(Protocol):
+    id: Any
+
+
+def _coerce_actor_for_fk(*, actor: ActorPrincipal, field_name: str) -> Any:
+    actor_id = getattr(actor, "id", None)
+    if actor_id is None:
+        raise PaymentsValidationError(f"{field_name} requiere actor con id no nulo.")
+    return cast(Any, actor)
+
+
+def _branch_from_request(request: HttpRequest) -> OrgUnit:
     branch = getattr(request, "branch", None)
     if branch is None:
-        raise ValueError("X-Branch-Id requerido")
+        raise PaymentsValidationError("X-Branch-Id requerido")
+    if not isinstance(branch, OrgUnit):
+        raise PaymentsValidationError("X-Branch-Id inválido")
     return branch
 
 
-def create_payment_intent(
+def _scope_from_request(request: HttpRequest) -> tuple[OrgUnit, OrgUnit]:
+    company = getattr(request, "company", None)
+    if company is None:
+        raise PaymentsValidationError("X-Company-Id requerido")
+    if not isinstance(company, OrgUnit):
+        raise PaymentsValidationError("X-Company-Id inválido")
+    branch = _branch_from_request(request)
+    return company, branch
+
+
+def create_payment_intent_for_scope(
     *,
-    request,
-    actor,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    request: HttpRequest | None = None,
     amount: Decimal,
     currency: str = "NIO",
     idempotency_key: str = "",
     external_ref: str = "",
     provider: str = "",
 ) -> tuple[PaymentIntent, bool]:
-    company = request.company
-    branch = _branch_from_request(request)
     with transaction.atomic():
         if idempotency_key:
             existing = PaymentIntent.objects.filter(company=company, idempotency_key=idempotency_key).first()
-            if existing:
+            if existing is not None:
                 return existing, True
 
         intent = PaymentIntent.objects.create(
@@ -64,30 +110,60 @@ def create_payment_intent(
         return intent, False
 
 
-def capture_payment_intent(
+def create_payment_intent(
     *,
-    request,
-    actor,
-    payment_id,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    amount: Decimal,
+    currency: str = "NIO",
+    idempotency_key: str = "",
+    external_ref: str = "",
+    provider: str = "",
+) -> tuple[PaymentIntent, bool]:
+    company, branch = _scope_from_request(request)
+    return create_payment_intent_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        request=request,
+        amount=amount,
+        currency=currency,
+        idempotency_key=idempotency_key,
+        external_ref=external_ref,
+        provider=provider,
+    )
+
+
+def capture_payment_intent_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    request: HttpRequest | None = None,
     provider_txn_id: str = "",
-    metadata: dict | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> PaymentIntent:
-    company = request.company
-    branch = _branch_from_request(request)
     with transaction.atomic():
-        intent = get_object_or_404(
-            PaymentIntent.objects.select_for_update(),
-            payment_id=payment_id,
-            company=company,
-            branch=branch,
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(
+                payment_id=payment_id,
+                company=company,
+                branch=branch,
+            )
+            .first()
         )
+        if intent is None:
+            raise PaymentsNotFoundError("Payment intent no encontrado.")
         if intent.status == PaymentIntent.Status.CAPTURED:
             return intent
         if intent.status in (PaymentIntent.Status.FAILED, PaymentIntent.Status.REFUNDED):
-            raise ValueError("Payment intent no se puede capturar en su estado actual.")
+            raise PaymentsInvalidStateError("Payment intent no se puede capturar en su estado actual.")
 
         intent.status = PaymentIntent.Status.CAPTURED
         intent.captured_at = timezone.now()
+        intent.updated_at = timezone.now()
         if provider_txn_id:
             intent.provider_txn_id = provider_txn_id
         if metadata:
@@ -114,22 +190,49 @@ def capture_payment_intent(
         return intent
 
 
-def open_cash_session(*, request, actor, opening_amount: Decimal = Decimal("0.00"), notes: str = "") -> CashSession:
-    company = request.company
-    branch = _branch_from_request(request)
+def capture_payment_intent(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    provider_txn_id: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> PaymentIntent:
+    company, branch = _scope_from_request(request)
+    return capture_payment_intent_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        request=request,
+        payment_id=payment_id,
+        provider_txn_id=provider_txn_id,
+        metadata=metadata,
+    )
+
+
+def open_cash_session_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    request: HttpRequest | None = None,
+    opening_amount: Decimal = Decimal("0.00"),
+    notes: str = "",
+) -> CashSession:
     with transaction.atomic():
+        actor_fk = _coerce_actor_for_fk(actor=actor, field_name="opened_by")
         existing = CashSession.objects.select_for_update().filter(
             company=company,
             branch=branch,
             status=CashSession.Status.OPEN,
         )
         if existing.exists():
-            raise ValueError("Ya existe una cash session OPEN para esta sucursal.")
+            raise PaymentsConflictError("Ya existe una cash session OPEN para esta sucursal.")
 
         session = CashSession.objects.create(
             company=company,
             branch=branch,
-            opened_by=actor,
+            opened_by=actor_fk,
             status=CashSession.Status.OPEN,
             opening_amount=opening_amount,
             expected_amount=opening_amount,
@@ -149,23 +252,47 @@ def open_cash_session(*, request, actor, opening_amount: Decimal = Decimal("0.00
         return session
 
 
-def post_cash_movement(
+def open_cash_session(
     *,
-    request,
-    actor,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    opening_amount: Decimal = Decimal("0.00"),
+    notes: str = "",
+) -> CashSession:
+    company, branch = _scope_from_request(request)
+    return open_cash_session_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        request=request,
+        opening_amount=opening_amount,
+        notes=notes,
+    )
+
+
+def post_cash_movement_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
     session_id: int,
     movement_type: str,
     amount: Decimal,
+    request: HttpRequest | None = None,
     reference: str = "",
     reason: str = "",
 ) -> CashMovement:
-    company = request.company
-    branch = _branch_from_request(request)
-
     with transaction.atomic():
-        session = get_object_or_404(CashSession.objects.select_for_update(), id=session_id, company=company, branch=branch)
+        actor_fk = _coerce_actor_for_fk(actor=actor, field_name="created_by")
+        session = (
+            CashSession.objects.select_for_update()
+            .filter(id=session_id, company=company, branch=branch)
+            .first()
+        )
+        if session is None:
+            raise PaymentsNotFoundError("Cash session no encontrada.")
         if session.status not in (CashSession.Status.OPEN, CashSession.Status.COUNT_PENDING):
-            raise ValueError("Cash session no permite movimientos en su estado actual.")
+            raise PaymentsInvalidStateError("Cash session no permite movimientos en su estado actual.")
 
         mov = CashMovement.objects.create(
             session=session,
@@ -173,7 +300,7 @@ def post_cash_movement(
             amount=amount,
             reference=reference or "",
             reason=reason or "",
-            created_by=actor,
+            created_by=actor_fk,
         )
 
         sign = Decimal("1")
@@ -200,12 +327,49 @@ def post_cash_movement(
         return mov
 
 
-def close_cash_session(*, request, actor, session_id: int, counted_amount: Decimal, notes: str = "") -> CashSession:
-    company = request.company
-    branch = _branch_from_request(request)
+def post_cash_movement(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    session_id: int,
+    movement_type: str,
+    amount: Decimal,
+    reference: str = "",
+    reason: str = "",
+) -> CashMovement:
+    company, branch = _scope_from_request(request)
+    return post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session_id,
+        movement_type=movement_type,
+        amount=amount,
+        request=request,
+        reference=reference,
+        reason=reason,
+    )
 
+
+def close_cash_session_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    session_id: int,
+    counted_amount: Decimal,
+    request: HttpRequest | None = None,
+    notes: str = "",
+) -> CashSession:
     with transaction.atomic():
-        session = get_object_or_404(CashSession.objects.select_for_update(), id=session_id, company=company, branch=branch)
+        actor_fk = _coerce_actor_for_fk(actor=actor, field_name="closed_by")
+        session = (
+            CashSession.objects.select_for_update()
+            .filter(id=session_id, company=company, branch=branch)
+            .first()
+        )
+        if session is None:
+            raise PaymentsNotFoundError("Cash session no encontrada.")
         if session.status == CashSession.Status.CLOSED:
             return session
         if session.status not in (
@@ -213,10 +377,10 @@ def close_cash_session(*, request, actor, session_id: int, counted_amount: Decim
             CashSession.Status.COUNT_PENDING,
             CashSession.Status.REVIEW_PENDING,
         ):
-            raise ValueError("Estado de cash session inválido para cierre.")
+            raise PaymentsInvalidStateError("Estado de cash session inválido para cierre.")
 
         session.status = CashSession.Status.CLOSED
-        session.closed_by = actor
+        session.closed_by = actor_fk
         session.closed_at = timezone.now()
         session.counted_amount = counted_amount
         session.difference_amount = Decimal(counted_amount) - Decimal(session.expected_amount)
@@ -225,7 +389,7 @@ def close_cash_session(*, request, actor, session_id: int, counted_amount: Decim
         try:
             session.clean()
         except ValidationError as exc:
-            raise ValueError(str(exc)) from exc
+            raise PaymentsValidationError(str(exc)) from exc
         session.save(
             update_fields=[
                 "status",
@@ -252,3 +416,23 @@ def close_cash_session(*, request, actor, session_id: int, counted_amount: Decim
             branch=branch,
         )
         return session
+
+
+def close_cash_session(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    session_id: int,
+    counted_amount: Decimal,
+    notes: str = "",
+) -> CashSession:
+    company, branch = _scope_from_request(request)
+    return close_cash_session_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session_id,
+        counted_amount=counted_amount,
+        request=request,
+        notes=notes,
+    )

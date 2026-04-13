@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "name": "product_lifecycle_full_cycle",
+  "default_allowed_statuses": [200, 201],
+  "status_overrides": {
+    "iam.bootstrap_status": [200],
+    "iam.bootstrap_init": [201],
+    "iam.login_plain": [200],
+    "iam.bootstrap_org": [200],
+    "iam.2fa_enable": [200],
+    "iam.2fa_confirm": [200],
+    "iam.login_2fa_challenge": [202],
+    "iam.login_2fa_challenge_retry": [202],
+    "iam.2fa_verify": [200],
+    "iam.2fa_verify_denied": [400],
+    "iam.refresh": [200],
+    "iam.logout": [204],
+
+    "org.create_company": [201],
+    "org.create_branch": [201],
+
+    "hr.create_position": [201],
+    "hr.create_employee": [201],
+    "hr.create_assignment": [201],
+    "hr.provision_user": [201],
+    "hr.reset_temp_password": [200],
+    "hr.revoke_access": [200],
+
+    "fuel.shift_open": [201],
+    "fuel.shift_close": [200],
+    "fuel.shift_report": [200],
+    "fuel.daily_report": [200],
+
+    "retail.pos_session_open": [201],
+    "retail.pos_session_close": [200],
+    "retail.ticket_open": [201],
+    "retail.ticket_checkout": [200],
+    "retail.ticket_void": [200],
+    "retail.ticket_comp_retry": [200],
+
+    "sync.edge_challenge": [201],
+    "sync.edge_handshake": [201],
+    "sync.edge_capabilities": [200],
+    "sync.edge_bad_signature": [401],
+
+    "accounting.coa_upsert": [200],
+    "accounting.fx_rate_upsert": [200, 201],
+    "accounting.intercompany_create": [201],
+    "accounting.intercompany_confirm": [200],
+    "accounting.intercompany_reconcile": [200],
+    "accounting.intercompany_close": [200],
+    "accounting.consolidation_run": [200, 201],
+    "accounting.consolidation_tb": [200],
+    "accounting.consolidation_pnl": [200],
+    "accounting.report_tb": [200],
+    "accounting.report_pnl": [200],
+    "accounting.journal_entry_reverse": [200, 201]
+  },
+  "required_modules": [
+    "iam",
+    "organization",
+    "hr",
+    "retail_fuel",
+    "sync",
+    "accounting"
+  ],
+  "orphan_checks_required": [
+    "pos_ticket_closed_missing_sale_or_payment",
+    "fuel_sale_without_dispense",
+    "journal_entry_without_lines",
+    "intercompany_or_consolidation_inconsistency"
+  ],
+  "pass_criteria": {
+    "orphan_checks_total_max": 0,
+    "required_sections": [
+      "functional",
+      "load",
+      "security"
+    ]
+  },
+  "accounting_auto_draft_validation": {
+    "required_event_pairs": [
+      {
+        "source_module": "BILLING",
+        "event_type": "DocumentIssued",
+        "min_delta": 1
+      },
+      {
+        "source_module": "INVENTORY",
+        "event_type": "InventoryMovementPosted",
+        "min_delta": 1
+      }
+    ],
+    "min_total_delta": 2,
+    "max_wait_seconds": 20,
+    "poll_interval_seconds": 2
+  }
+}

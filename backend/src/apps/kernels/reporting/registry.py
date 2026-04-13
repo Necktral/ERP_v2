@@ -347,7 +347,7 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
         scope_level=ScopeLevel.BRANCH,
         kernel_permissions=("report.dataset.read",),
         domain_permissions=("hr.report.read",),
-        filters_schema={},
+        filters_schema={"as_of": {"type": "date", "required": False}},
         dimensions=["position_name", "position_code"],
         measures=["active_assignments", "unique_employees", "total_active_employees"],
         grain="position",
@@ -361,6 +361,7 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
             "required_dimensions": ["position_name"],
             "allow_empty_rows": True,
         },
+        schema_version="1.1.0",
     ),
     # ── Payments ────────────────────────────────────────────────────
     DatasetSpec(
@@ -384,7 +385,9 @@ DATASET_REGISTRY: tuple[DatasetSpec, ...] = (
             "required_totals": ["payment_count", "amount", "cash_sessions_total", "cash_sessions_closed"],
             "required_dimensions": ["status"],
             "allow_empty_rows": True,
+            "global_totals_only_measures": ["cash_sessions_total", "cash_sessions_closed"],
         },
+        semantic_version="1.1.0",
     ),
     # ── Procurement ─────────────────────────────────────────────────
     DatasetSpec(

@@ -4,6 +4,8 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
+from django.db.models import Count, Sum
+
 from apps.modulos.compras.models import PurchaseDocument
 from apps.kernels.reporting.exceptions import DatasetExecutionError
 
@@ -19,28 +21,29 @@ def _purchases_payload(*, company, branch, filters: dict[str, Any]) -> dict[str,
         branch=branch,
         created_at__gte=start,
         created_at__lte=end,
-    ).order_by("doc_type", "status")
-
-    agg: dict[tuple[str, str], dict[str, Any]] = defaultdict(
-        lambda: {
-            "doc_type": "",
-            "status": "",
-            "doc_count": 0,
-            "subtotal": Decimal("0.00"),
-            "tax_total": Decimal("0.00"),
-            "total": Decimal("0.00"),
-        }
     )
 
-    for doc in qs:
-        key = (str(doc.doc_type), str(doc.status))
-        row = agg[key]
-        row["doc_type"] = str(doc.doc_type)
-        row["status"] = str(doc.status)
-        row["doc_count"] += 1
-        row["subtotal"] += Decimal(doc.subtotal)
-        row["tax_total"] += Decimal(doc.tax_total)
-        row["total"] += Decimal(doc.total)
+    agg: dict[tuple[str, str], dict[str, Any]] = defaultdict(dict)
+    grouped = (
+        qs.values("doc_type", "status")
+        .annotate(
+            doc_count=Count("id"),
+            subtotal_sum=Sum("subtotal"),
+            tax_total_sum=Sum("tax_total"),
+            total_sum=Sum("total"),
+        )
+        .order_by("doc_type", "status")
+    )
+    for row in grouped:
+        key = (str(row.get("doc_type") or ""), str(row.get("status") or ""))
+        agg[key] = {
+            "doc_type": key[0],
+            "status": key[1],
+            "doc_count": int(row.get("doc_count") or 0),
+            "subtotal": Decimal(row.get("subtotal_sum") or Decimal("0.00")),
+            "tax_total": Decimal(row.get("tax_total_sum") or Decimal("0.00")),
+            "total": Decimal(row.get("total_sum") or Decimal("0.00")),
+        }
 
     rows: list[dict[str, Any]] = []
     grand_doc_count = 0

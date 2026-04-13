@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.kernels.accounting.models import (
     ChartOfAccount,
     CompanyAccountingConfig,
+    ConsolidationEliminationLink,
     ConsolidationRun,
     EconomicEvent,
     FiscalPeriod,
@@ -65,12 +67,19 @@ def _mk_client(*, user: Any, company: OrgUnit, branch: OrgUnit, perms: list[str]
     RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=branch, defaults={"is_active": True})
 
     client = APIClient()
-    resp = client.post("/api/auth/login/", {"username": user.username, "password": "pass12345"}, format="json")
+    # Fuerza transporte header para evitar deriva por defaults de entorno (cookie/header) en CI local.
+    resp = client.post(
+        "/api/auth/login/",
+        {"username": user.username, "password": "pass12345"},
+        format="json",
+        HTTP_X_AUTH_TRANSPORT="header",
+    )
     assert resp.status_code == 200
     access = resp.data.get("access") if isinstance(resp.data, dict) else None
     if isinstance(access, str) and access:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
         client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    client.defaults["HTTP_X_AUTH_TRANSPORT"] = "header"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
@@ -341,6 +350,93 @@ def test_phase7b_consolidation_happy_path_and_idempotent():
 
 
 @pytest.mark.django_db
+def test_phase7b_consolidation_orders_intercompany_by_effective_at_then_created_at():
+    company_a, branch_a, company_b, branch_b = _mk_orgs()
+    coa_a = _seed_coa(company=company_a)
+    coa_b = _seed_coa(company=company_b)
+    actor = _mk_user("actor_order")
+
+    source_entry = _post_entry(
+        company=company_a,
+        branch=branch_a,
+        actor=actor,
+        line1_account=coa_a["1301"],
+        line1_side="DEBIT",
+        line2_account=coa_a["4101"],
+        line2_side="CREDIT",
+        amount=Decimal("100.00"),
+    )
+    target_entry = _post_entry(
+        company=company_b,
+        branch=branch_b,
+        actor=actor,
+        line1_account=coa_b["5101"],
+        line1_side="DEBIT",
+        line2_account=coa_b["2109"],
+        line2_side="CREDIT",
+        amount=Decimal("100.00"),
+    )
+    _grant_intercompany_permission(
+        from_company=company_b,
+        to_company=company_a,
+        permission_code="accounting.intercompany.write",
+    )
+
+    tx_late_effective = create_intercompany_transaction(
+        source_company_id=company_a.id,
+        target_company_id=company_b.id,
+        amount=Decimal("100.00"),
+        source_account_code="4101",
+        target_account_code="5101",
+        source_side="CREDIT",
+        target_side="DEBIT",
+        source_journal_entry_id=source_entry.id,
+        target_journal_entry_id=target_entry.id,
+        actor_user=actor,
+        effective_at=timezone.make_aware(datetime(2026, 3, 20, 12, 0, 0)),
+    )
+    tx_early_effective = create_intercompany_transaction(
+        source_company_id=company_a.id,
+        target_company_id=company_b.id,
+        amount=Decimal("100.00"),
+        source_account_code="4101",
+        target_account_code="5101",
+        source_side="CREDIT",
+        target_side="DEBIT",
+        source_journal_entry_id=source_entry.id,
+        target_journal_entry_id=target_entry.id,
+        actor_user=actor,
+        effective_at=timezone.make_aware(datetime(2026, 3, 10, 12, 0, 0)),
+    )
+    IntercompanyTransaction.objects.filter(pk=tx_late_effective.pk).update(
+        created_at=timezone.make_aware(datetime(2026, 3, 1, 9, 0, 0))
+    )
+    IntercompanyTransaction.objects.filter(pk=tx_early_effective.pk).update(
+        created_at=timezone.make_aware(datetime(2026, 3, 30, 18, 0, 0))
+    )
+
+    confirm_intercompany_transaction(tx_id=str(tx_late_effective.tx_id), actor_user=actor, allow_same_actor=True)
+    confirm_intercompany_transaction(tx_id=str(tx_early_effective.tx_id), actor_user=actor, allow_same_actor=True)
+
+    result = run_consolidation(
+        parent_company_id=company_a.id,
+        year=2026,
+        month=3,
+        company_ids=[company_a.id, company_b.id],
+        strict=True,
+        actor_user=actor,
+    )
+    assert result.status == ConsolidationRun.Status.COMPLETED
+
+    ordered_tx_ids = list(
+        ConsolidationEliminationLink.objects.filter(consolidation_run__run_id=result.run_id)
+        .order_by("id")
+        .values_list("intercompany_transaction__tx_id", flat=True)
+    )
+    assert ordered_tx_ids == [tx_early_effective.tx_id, tx_late_effective.tx_id]
+
+
+@pytest.mark.django_db
 def test_phase7b_consolidation_blocked_when_intercompany_account_codes_missing():
     company_a, branch_a, company_b, branch_b = _mk_orgs()
     coa_a = _seed_coa(company=company_a)
@@ -586,6 +682,57 @@ def test_phase7b_intercompany_default_effective_at_uses_open_period():
     )
 
     assert tx.effective_at.date() == date(2025, 12, 31)
+    assert timezone.localtime(tx.effective_at).time().isoformat() == "00:00:00"
+
+
+@pytest.mark.django_db
+def test_phase7b_intercompany_default_effective_at_from_source_period_uses_midnight():
+    company_a, branch_a, company_b, branch_b = _mk_orgs()
+    coa_a = _seed_coa(company=company_a)
+    coa_b = _seed_coa(company=company_b)
+    actor = _mk_user("effective_source_period")
+
+    source_entry = _post_entry(
+        company=company_a,
+        branch=branch_a,
+        actor=actor,
+        line1_account=coa_a["1301"],
+        line1_side="DEBIT",
+        line2_account=coa_a["4101"],
+        line2_side="CREDIT",
+        amount=Decimal("100.00"),
+    )
+    target_entry = _post_entry(
+        company=company_b,
+        branch=branch_b,
+        actor=actor,
+        line1_account=coa_b["5101"],
+        line1_side="DEBIT",
+        line2_account=coa_b["2109"],
+        line2_side="CREDIT",
+        amount=Decimal("100.00"),
+    )
+    _grant_intercompany_permission(
+        from_company=company_b,
+        to_company=company_a,
+        permission_code="accounting.intercompany.write",
+    )
+
+    tx = create_intercompany_transaction(
+        source_company_id=company_a.id,
+        target_company_id=company_b.id,
+        amount=Decimal("100.00"),
+        source_account_code="4101",
+        target_account_code="5101",
+        source_side="CREDIT",
+        target_side="DEBIT",
+        source_journal_entry_id=source_entry.id,
+        target_journal_entry_id=target_entry.id,
+        actor_user=actor,
+    )
+
+    assert tx.effective_at.date() == date(2026, 3, 31)
+    assert timezone.localtime(tx.effective_at).time().isoformat() == "00:00:00"
 
 
 @pytest.mark.django_db

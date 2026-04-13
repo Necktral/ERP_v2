@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,7 +11,41 @@ from apps.modulos.common.permissions import rbac_permission
 
 from .models import CashSession, PaymentIntent
 from .serializers import CashMovementCreateIn, CashSessionCloseIn, CashSessionOpenIn, PaymentIntentCreateIn
-from .services import close_cash_session, create_payment_intent, open_cash_session, post_cash_movement
+from .services import (
+    PaymentsConflictError,
+    PaymentsDomainError,
+    PaymentsInvalidStateError,
+    PaymentsNotFoundError,
+    PaymentsValidationError,
+    close_cash_session,
+    create_payment_intent,
+    open_cash_session,
+    post_cash_movement,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+def _status_for_payments_error(exc: PaymentsDomainError, *, request, view_name: str) -> int:
+    if isinstance(exc, PaymentsNotFoundError):
+        return status.HTTP_404_NOT_FOUND
+    if isinstance(exc, (PaymentsConflictError, PaymentsInvalidStateError)):
+        return status.HTTP_409_CONFLICT
+    if isinstance(exc, PaymentsValidationError):
+        return status.HTTP_400_BAD_REQUEST
+    logger.warning(
+        "payments domain error no clasificado mapeado a 400",
+        extra={
+            "payments_error_unclassified": True,
+            "error_class": exc.__class__.__name__,
+            "view_name": str(view_name),
+            "path": str(getattr(request, "path", "") or ""),
+            "company_id": getattr(getattr(request, "company", None), "id", None),
+            "branch_id": getattr(getattr(request, "branch", None), "id", None),
+        },
+    )
+    return status.HTTP_400_BAD_REQUEST
 
 
 class HealthView(APIView):
@@ -67,8 +103,11 @@ class PaymentIntentListCreateView(APIView):
                 external_ref=v.get("external_ref", "") or "",
                 provider=v.get("provider", "") or "",
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PaymentsDomainError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=_status_for_payments_error(exc, request=request, view_name="PaymentIntentListCreateView.post"),
+            )
 
         return Response(
             {
@@ -127,8 +166,11 @@ class CashSessionOpenView(APIView):
                 opening_amount=v.get("opening_amount") or 0,
                 notes=v.get("notes", "") or "",
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PaymentsDomainError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=_status_for_payments_error(exc, request=request, view_name="CashSessionOpenView.post"),
+            )
 
         return Response({"id": session.id, "status": session.status}, status=status.HTTP_201_CREATED)
 
@@ -148,8 +190,11 @@ class CashSessionCloseView(APIView):
                 counted_amount=v["counted_amount"],
                 notes=v.get("notes", "") or "",
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PaymentsDomainError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=_status_for_payments_error(exc, request=request, view_name="CashSessionCloseView.post"),
+            )
 
         return Response(
             {
@@ -180,8 +225,11 @@ class CashMovementCreateView(APIView):
                 reference=v.get("reference", "") or "",
                 reason=v.get("reason", "") or "",
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except PaymentsDomainError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=_status_for_payments_error(exc, request=request, view_name="CashMovementCreateView.post"),
+            )
 
         return Response(
             {

@@ -427,7 +427,12 @@
         "csv",
         "xlsx"
       ],
-      "filters_schema": {},
+      "filters_schema": {
+        "as_of": {
+          "required": false,
+          "type": "date"
+        }
+      },
       "measures": [
         "active_assignments",
         "unique_employees",
@@ -444,7 +449,7 @@
           "total_active_employees"
         ]
       },
-      "schema_version": "1.0.0",
+      "schema_version": "1.1.0",
       "semantic_version": "1.0.0"
     },
     {
@@ -551,6 +556,10 @@
       ],
       "quality_policy": {
         "allow_empty_rows": true,
+        "global_totals_only_measures": [
+          "cash_sessions_total",
+          "cash_sessions_closed"
+        ],
         "required_dimensions": [
           "status"
         ],
@@ -562,7 +571,7 @@
         ]
       },
       "schema_version": "1.0.0",
-      "semantic_version": "1.0.0"
+      "semantic_version": "1.1.0"
     },
     {
       "dataset_key": "procurement.purchases.period",

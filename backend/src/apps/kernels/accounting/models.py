@@ -97,10 +97,15 @@ class PostingRuleSet(models.Model):
         B = "B", "Fiscal B"
         BOTH = "BOTH", "Both"
 
+    class RuleFamily(models.TextChoices):
+        PRIMARY = "PRIMARY", "Primary"
+        SHADOW = "SHADOW", "Shadow"
+
     code = models.CharField(max_length=64)
     version = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     fiscal_mode = models.CharField(max_length=8, choices=FiscalMode.choices, default=FiscalMode.BOTH)
+    rule_family = models.CharField(max_length=16, choices=RuleFamily.choices, default=RuleFamily.PRIMARY)
 
     scope_company = models.ForeignKey(
         OrgUnit,

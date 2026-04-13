@@ -7,6 +7,7 @@ and measures.
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -206,6 +207,41 @@ class TestInventoryAdapter:
                 filters={},
             )
 
+    def test_stock_balance_total_uses_unrounded_accumulation(self):
+        from apps.kernels.inventarios.models import InventoryItem, StockBalance, Warehouse
+
+        company, branch = _mk_org()
+        wh = Warehouse.objects.create(company=company, branch=branch, name="Bodega 1", code="WH01")
+        item_a = InventoryItem.objects.create(company=company, sku="SKU-DRIFT-A", name="Producto Drift A")
+        item_b = InventoryItem.objects.create(company=company, sku="SKU-DRIFT-B", name="Producto Drift B")
+        StockBalance.objects.create(
+            company=company,
+            branch=branch,
+            warehouse=wh,
+            item=item_a,
+            qty_on_hand=Decimal("1.0000"),
+            avg_cost=Decimal("0.004900"),
+        )
+        StockBalance.objects.create(
+            company=company,
+            branch=branch,
+            warehouse=wh,
+            item=item_b,
+            qty_on_hand=Decimal("1.0000"),
+            avg_cost=Decimal("0.004900"),
+        )
+
+        result = inventory_adapter.run_dataset(
+            dataset_key="inventory.stock_balance.current",
+            company=company,
+            branch=branch,
+            filters={},
+        )
+        assert len(result["rows"]) == 2
+        # Cada fila redondea a 0.00, pero el total conserva precisión acumulada y redondea al final.
+        assert all(Decimal(row["stock_value"]) == Decimal("0.00") for row in result["rows"])
+        assert Decimal(result["totals"]["stock_value"]) == Decimal("0.01")
+
 
 # ── HR adapter ──────────────────────────────────────────────────
 
@@ -256,6 +292,44 @@ class TestHRAdapter:
                 branch=branch,
                 filters={},
             )
+
+    def test_headcount_as_of_respects_started_and_ended_at(self):
+        from apps.modulos.hr.models import Employee, EmploymentAssignment, JobPosition
+
+        company, branch = _mk_org()
+        pos = JobPosition.objects.create(company=company, name="Cashier", code="CSH")
+        emp_old = Employee.objects.create(company=company, first_name="Old", last_name="Worker", is_active=False)
+        emp_new = Employee.objects.create(company=company, first_name="New", last_name="Worker")
+        assignment_old = EmploymentAssignment.objects.create(employee=emp_old, position=pos, branch=branch, is_active=False)
+        assignment_new = EmploymentAssignment.objects.create(employee=emp_new, position=pos, branch=branch, is_active=True)
+        EmploymentAssignment.objects.filter(pk=assignment_old.pk).update(
+            started_at=timezone.make_aware(datetime(2026, 1, 1, 8, 0, 0)),
+            ended_at=timezone.make_aware(datetime(2026, 2, 15, 18, 0, 0)),
+        )
+        EmploymentAssignment.objects.filter(pk=assignment_new.pk).update(
+            started_at=timezone.make_aware(datetime(2026, 2, 16, 8, 0, 0)),
+            ended_at=None,
+        )
+
+        old_result = hr_adapter.run_dataset(
+            dataset_key="hr.headcount.current",
+            company=company,
+            branch=branch,
+            filters={"as_of": "2026-02-10"},
+        )
+        new_result = hr_adapter.run_dataset(
+            dataset_key="hr.headcount.current",
+            company=company,
+            branch=branch,
+            filters={"as_of": "2026-03-10"},
+        )
+
+        assert int(old_result["totals"]["unique_employees"]) == 1
+        assert int(old_result["totals"]["total_active_employees"]) == 1
+        assert old_result["effective_filters"]["as_of"] == "2026-02-10"
+        assert int(new_result["totals"]["unique_employees"]) == 1
+        assert int(new_result["totals"]["total_active_employees"]) == 1
+        assert new_result["effective_filters"]["as_of"] == "2026-03-10"
 
 
 # ── Payments adapter ────────────────────────────────────────────
@@ -320,6 +394,42 @@ class TestPaymentsAdapter:
                 branch=branch,
                 filters={},
             )
+
+    def test_payments_global_cash_session_measures_stay_in_totals(self):
+        from apps.kernels.payments.models import CashSession, PaymentIntent
+
+        company, branch = _mk_org()
+        today = timezone.localdate()
+        user = User.objects.create_user(username="payments_adapter_user", password="x")
+        PaymentIntent.objects.create(
+            company=company,
+            branch=branch,
+            amount=Decimal("75.00"),
+            status=PaymentIntent.Status.CAPTURED,
+        )
+        CashSession.objects.create(
+            company=company,
+            branch=branch,
+            status=CashSession.Status.CLOSED,
+            opening_amount=Decimal("0.00"),
+            expected_amount=Decimal("75.00"),
+            counted_amount=Decimal("75.00"),
+            difference_amount=Decimal("0.00"),
+            opened_by=user,
+            closed_by=user,
+            closed_at=timezone.now(),
+        )
+
+        result = payments_adapter.run_dataset(
+            dataset_key="payments.collection.period",
+            company=company,
+            branch=branch,
+            filters={"date_from": today.isoformat(), "date_to": today.isoformat()},
+        )
+        assert "cash_sessions_total" in result["totals"]
+        assert "cash_sessions_closed" in result["totals"]
+        assert all("cash_sessions_total" not in row for row in result["rows"])
+        assert all("cash_sessions_closed" not in row for row in result["rows"])
 
 
 # ── Procurement adapter ─────────────────────────────────────────

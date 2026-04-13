@@ -66,6 +66,41 @@ PROJECTION_RULESET_CODE_PREFIX = "shadow_ledger_"
 logger = logging.getLogger(__name__)
 
 
+def _shadow_projection_rules_qs(base_qs, *, company_id: int | None = None, branch_id: int | None = None):
+    shadow_qs = base_qs.filter(rule_family=PostingRuleSet.RuleFamily.SHADOW)
+    if shadow_qs.exists():
+        return shadow_qs
+
+    fallback_enabled = bool(getattr(settings, "ACCOUNTING_SHADOW_PREFIX_FALLBACK_ENABLED", False))
+    strict_mode = bool(getattr(settings, "ACCOUNTING_SHADOW_PREFIX_FALLBACK_STRICT", False))
+    if not fallback_enabled:
+        return base_qs.none()
+
+    fallback_qs = base_qs.filter(
+        rule_family=PostingRuleSet.RuleFamily.PRIMARY,
+        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
+    )
+    if fallback_qs.exists():
+        candidates = list(fallback_qs.values_list("code", "version", "scope_company_id")[:10])
+        logger.warning(
+            "accounting.shadow_ledger ruleset fallback por prefijo activo; "
+            "configura rule_family=SHADOW para retirar compatibilidad transicional.",
+            extra={
+                "legacy_shadow_fallback_detected": True,
+                "strict_mode": bool(strict_mode),
+                "company_id": company_id,
+                "branch_id": branch_id,
+                "rule_candidates": [
+                    {"code": str(code), "version": int(version), "scope_company_id": scope_company_id}
+                    for code, version, scope_company_id in candidates
+                ],
+            },
+        )
+    if strict_mode and fallback_qs.exists():
+        return base_qs.none()
+    return fallback_qs
+
+
 class AccountingConflictError(ValueError):
     """Error de dominio para conflictos de estado/transición en accounting."""
 
@@ -320,13 +355,17 @@ def _normalize_operational_event_for_link(
 def _select_active_rule_set_for_scope(*, company, normalized: dict[str, Any]) -> PostingRuleSet | None:
     occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
     fiscal_mode = _infer_fiscal_mode(normalized)
-    qs = PostingRuleSet.objects.filter(
+    base_qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
-        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
     ).filter(
         Q(scope_company=company) | Q(scope_company__isnull=True),
         Q(effective_from__isnull=True) | Q(effective_from__lte=occurred_at),
         Q(effective_to__isnull=True) | Q(effective_to__gte=occurred_at),
+    )
+    qs = _shadow_projection_rules_qs(
+        base_qs,
+        company_id=getattr(company, "id", None),
+        branch_id=_extract_path(normalized, "scope.branch_id"),
     )
 
     if fiscal_mode in (PostingRuleSet.FiscalMode.A, PostingRuleSet.FiscalMode.B):
@@ -724,13 +763,17 @@ def _infer_fiscal_mode(normalized: dict[str, Any]) -> str:
 def _select_active_rule_set(*, run: CloseRun, normalized: dict[str, Any]) -> PostingRuleSet | None:
     occurred_at = datetime.fromisoformat(str(normalized["occurred_at"]).replace("Z", "+00:00"))
     fiscal_mode = _infer_fiscal_mode(normalized)
-    qs = PostingRuleSet.objects.filter(
+    base_qs = PostingRuleSet.objects.filter(
         status=PostingRuleSet.Status.ACTIVE,
-        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
     ).filter(
         Q(scope_company=run.company) | Q(scope_company__isnull=True),
         Q(effective_from__isnull=True) | Q(effective_from__lte=occurred_at),
         Q(effective_to__isnull=True) | Q(effective_to__gte=occurred_at),
+    )
+    qs = _shadow_projection_rules_qs(
+        base_qs,
+        company_id=getattr(run, "company_id", None),
+        branch_id=getattr(run, "branch_id", None),
     )
 
     if fiscal_mode in (PostingRuleSet.FiscalMode.A, PostingRuleSet.FiscalMode.B):
@@ -1610,11 +1653,32 @@ def seed_posting_rules_v1_for_company(*, company) -> tuple[PostingRuleSet, bool]
         version=next_version,
         status=PostingRuleSet.Status.ACTIVE,
         fiscal_mode=PostingRuleSet.FiscalMode.BOTH,
+        rule_family=PostingRuleSet.RuleFamily.SHADOW,
         scope_company=company,
         rules_json=rules_json,
         effective_from=timezone.now(),
     )
     return created, True
+
+
+def evaluate_shadow_ledger_hard_cut_readiness(*, company=None) -> dict[str, Any]:
+    legacy_qs = PostingRuleSet.objects.filter(
+        status=PostingRuleSet.Status.ACTIVE,
+        code__startswith=PROJECTION_RULESET_CODE_PREFIX,
+    ).exclude(rule_family=PostingRuleSet.RuleFamily.SHADOW)
+    if company is not None:
+        legacy_qs = legacy_qs.filter(scope_company=company)
+
+    legacy_count = int(legacy_qs.count())
+    sample = list(
+        legacy_qs.order_by("id")
+        .values("id", "code", "version", "scope_company_id")[:20]
+    )
+    return {
+        "ready_for_hard_cut": legacy_count == 0,
+        "legacy_ruleset_count": legacy_count,
+        "legacy_ruleset_samples": sample,
+    }
 
 
 @dataclass(frozen=True)
@@ -2479,6 +2543,17 @@ def reverse_journal_entry(
                 "reversal_date": str(reversal_local_date),
             },
         )
+
+        cfg = get_or_create_accounting_config(company=original.company)
+        functional_currency = str(cfg.functional_currency or "NIO").upper() or "NIO"
+        try:
+            ensure_journal_entry_lines(
+                entry=reversal_entry,
+                draft=reversal_draft,
+                functional_currency=functional_currency,
+            )
+        except Phase7ValidationError as exc:
+            raise AccountingConflictError(f"Reversal lines invalid: {exc}") from exc
 
         publish_outbox_event(
             source_module="ACCOUNTING",

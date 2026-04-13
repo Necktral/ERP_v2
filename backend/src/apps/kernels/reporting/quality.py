@@ -51,7 +51,20 @@ def evaluate_dataset_quality(*, spec: DatasetSpec, envelope: dict[str, Any]) -> 
     policy = dict(spec.quality_policy or {})
     required_totals = _as_list(policy.get("required_totals"))
     required_dimensions = _as_list(policy.get("required_dimensions"))
+    global_totals_only_measures = _as_list(policy.get("global_totals_only_measures"))
     allow_empty_rows = bool(policy.get("allow_empty_rows", True))
+
+    invalid_global_totals = [key for key in global_totals_only_measures if key not in required_totals]
+    if invalid_global_totals:
+        add_check(
+            "global_totals_only_contract",
+            QualityStatus.FAIL,
+            "global_totals_only_measures debe estar incluido en required_totals.",
+            expected=required_totals,
+            observed=invalid_global_totals,
+        )
+    else:
+        add_check("global_totals_only_contract", QualityStatus.PASS, "Contrato de global_totals_only_measures válido.")
 
     required_contract_keys = ("dataset_key", "rows", "totals", "dimensions", "measures", "lineage")
     missing_contract_keys = [key for key in required_contract_keys if key not in envelope]
@@ -109,6 +122,40 @@ def evaluate_dataset_quality(*, spec: DatasetSpec, envelope: dict[str, Any]) -> 
         add_check("required_dimensions_schema", QualityStatus.PASS, "Dimensiones requeridas declaradas.")
 
     rows = list(envelope.get("rows") or [])
+    measures = _as_list(envelope.get("measures"))
+    missing_global_measures = [key for key in global_totals_only_measures if key not in measures]
+    missing_global_totals = [key for key in global_totals_only_measures if key not in totals]
+    non_numeric_global_totals = [key for key in global_totals_only_measures if key in totals and not _is_numeric(totals.get(key))]
+    if missing_global_measures:
+        add_check(
+            "global_totals_only_measures",
+            QualityStatus.FAIL,
+            "Hay medidas globales no declaradas en envelope.measures.",
+            expected=global_totals_only_measures,
+            observed=missing_global_measures,
+        )
+    elif missing_global_totals or non_numeric_global_totals:
+        add_check(
+            "global_totals_only_measures",
+            QualityStatus.FAIL,
+            "Hay medidas globales ausentes/no numéricas en envelope.totals.",
+            expected=global_totals_only_measures,
+            observed=missing_global_totals + non_numeric_global_totals,
+        )
+    else:
+        add_check("global_totals_only_measures", QualityStatus.PASS, "Medidas globales válidas en totales.")
+
+    global_in_rows = [key for key in global_totals_only_measures if any(key in (row or {}) for row in rows)]
+    if global_in_rows:
+        add_check(
+            "global_totals_only_rows",
+            QualityStatus.FAIL,
+            "Se encontraron medidas globales dentro de filas; invalida la semántica del dataset.",
+            observed=global_in_rows,
+        )
+    else:
+        add_check("global_totals_only_rows", QualityStatus.PASS, "No hay medidas globales incrustadas en filas.")
+
     if not rows and not allow_empty_rows:
         add_check(
             "empty_rows",

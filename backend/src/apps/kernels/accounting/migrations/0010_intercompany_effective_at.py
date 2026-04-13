@@ -25,12 +25,8 @@ def backfill_effective_at(apps, schema_editor):
     journal_entry_model = apps.get_model("accounting", "JournalEntry")
     db_alias = schema_editor.connection.alias
 
-    source_entry_map = {
-        int(row["id"]): row["entry_date"]
-        for row in journal_entry_model.objects.using(db_alias).values("id", "entry_date")
-    }
-
     pending = []
+    pending_source_ids: set[int] = set()
     queryset = intercompany_tx_model.objects.using(db_alias).all().only(
         "id",
         "created_at",
@@ -38,19 +34,35 @@ def backfill_effective_at(apps, schema_editor):
         "effective_at",
     )
 
+    def _flush_batch() -> None:
+        if not pending:
+            return
+        source_entry_map: dict[int, object] = {}
+        if pending_source_ids:
+            for row in journal_entry_model.objects.using(db_alias).filter(id__in=sorted(pending_source_ids)).values(
+                "id", "entry_date"
+            ):
+                source_entry_map[int(row["id"])] = row["entry_date"]
+
+        for tx in pending:
+            source_entry_date = source_entry_map.get(int(tx.source_journal_entry_id)) if tx.source_journal_entry_id else None
+            tx.effective_at = _resolve_effective_at(
+                created_at=tx.created_at,
+                source_entry_date=source_entry_date,
+            )
+        intercompany_tx_model.objects.using(db_alias).bulk_update(pending, ["effective_at"], batch_size=BATCH_SIZE)
+        pending.clear()
+        pending_source_ids.clear()
+
     for tx in queryset.iterator(chunk_size=BATCH_SIZE):
-        source_entry_date = source_entry_map.get(int(tx.source_journal_entry_id)) if tx.source_journal_entry_id else None
-        tx.effective_at = _resolve_effective_at(
-            created_at=tx.created_at,
-            source_entry_date=source_entry_date,
-        )
         pending.append(tx)
+        if tx.source_journal_entry_id:
+            pending_source_ids.add(int(tx.source_journal_entry_id))
         if len(pending) >= BATCH_SIZE:
-            intercompany_tx_model.objects.using(db_alias).bulk_update(pending, ["effective_at"], batch_size=BATCH_SIZE)
-            pending.clear()
+            _flush_batch()
 
     if pending:
-        intercompany_tx_model.objects.using(db_alias).bulk_update(pending, ["effective_at"], batch_size=BATCH_SIZE)
+        _flush_batch()
 
 
 def noop_reverse(apps, schema_editor):

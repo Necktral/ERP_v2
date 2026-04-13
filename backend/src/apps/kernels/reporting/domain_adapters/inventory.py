@@ -23,7 +23,7 @@ def _stock_balance_payload(*, company, branch, filters: dict[str, Any]) -> dict[
     for bal in qs:
         qty = Decimal(bal.qty_on_hand)
         avg_cost = Decimal(bal.avg_cost)
-        value = (qty * avg_cost).quantize(Decimal("0.01"))
+        value = qty * avg_cost
         total_qty += qty
         total_value += value
         rows.append(
