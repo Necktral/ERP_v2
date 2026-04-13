@@ -1,0 +1,1 @@
+{"note": "Solo se verific\u00f3 staging/local contenedor.", "reason": "TARGET_ENV_ACCESS_NOT_AVAILABLE", "staging_local_readiness": {"legacy_ruleset_count": 0, "legacy_ruleset_samples": [], "ready_for_hard_cut": true}, "status": "blocked"}
