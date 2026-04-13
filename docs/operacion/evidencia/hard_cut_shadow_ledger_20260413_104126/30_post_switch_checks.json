@@ -1,0 +1,15 @@
+{
+  "pytest_phase4_phase2_payments_services": 0,
+  "mypy_touched_files": 0,
+  "ruff_touched_files": 0,
+  "qa_architecture_dependency_guard": 0,
+  "qa_ci_gate1": 0,
+  "all_pass": true,
+  "logs": {
+    "pytest": "docs/operacion/evidencia/hard_cut_shadow_ledger_20260413_104126/pytest_phase6.log",
+    "mypy": "docs/operacion/evidencia/hard_cut_shadow_ledger_20260413_104126/mypy_phase6.log",
+    "ruff": "docs/operacion/evidencia/hard_cut_shadow_ledger_20260413_104126/ruff_phase6.log",
+    "architecture_guard": "docs/operacion/evidencia/hard_cut_shadow_ledger_20260413_104126/architecture_dependency_guard.log",
+    "qa_ci_gate1": "docs/operacion/evidencia/hard_cut_shadow_ledger_20260413_104126/qa_ci_gate1.log"
+  }
+}
