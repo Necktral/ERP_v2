@@ -40,7 +40,12 @@ def test_sync_devices_list_returns_devices_for_company():
     )
 
     client = APIClient()
-    login = client.post("/api/auth/login/", {"username": "owner_list", "password": "pass12345"}, format="json")
+    login = client.post(
+        "/api/auth/login/",
+        {"username": "owner_list", "password": "pass12345"},
+        format="json",
+        HTTP_X_AUTH_TRANSPORT="header",
+    )
     assert login.status_code == 200
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
 
@@ -66,7 +71,12 @@ def test_sync_devices_list_denied_without_permission_is_audited():
     RoleAssignment.objects.get_or_create(user=user, role=role, org_unit=company, defaults={"is_active": True})
 
     client = APIClient()
-    login = client.post("/api/auth/login/", {"username": "owner_no_list", "password": "pass12345"}, format="json")
+    login = client.post(
+        "/api/auth/login/",
+        {"username": "owner_no_list", "password": "pass12345"},
+        format="json",
+        HTTP_X_AUTH_TRANSPORT="header",
+    )
     assert login.status_code == 200
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
 

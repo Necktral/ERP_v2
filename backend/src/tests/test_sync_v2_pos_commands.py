@@ -62,12 +62,18 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     RoleAssignment.objects.create(user=user, role=role, org_unit=branch, is_active=True)
 
     client = APIClient(raise_request_exception=True)
-    login = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
+    login = client.post(
+        "/api/auth/login/",
+        {"username": username, "password": "pass12345"},
+        format="json",
+        HTTP_X_AUTH_TRANSPORT="header",
+    )
     assert login.status_code == 200
     access = login.data.get("access") if isinstance(login.data, dict) else None
     if isinstance(access, str) and access:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
         client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    client.defaults["HTTP_X_AUTH_TRANSPORT"] = "header"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client, user

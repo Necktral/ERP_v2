@@ -131,38 +131,39 @@ class DeviceEnrollView(APIView):
 
         code_plain = str(data["enrollment_code"])
         code_hash = DeviceEnrollmentChallenge.sha256_hex(code_plain)
-
-        ch = (
-            DeviceEnrollmentChallenge.objects.select_related("company", "branch")
-            .filter(enrollment_code_hash=code_hash)
-            .first()
-        )
-        if not ch:
-            raise PermissionDenied("Código inválido.")
-        if not ch.is_valid_now():
-            raise PermissionDenied("Código expirado o ya usado.")
-
         try:
             pk_raw = public_key_from_b64(data["public_key_b64"])
         except Exception as e:
             raise ParseError(str(e))
 
-        label = str(data.get("label") or ch.label_hint or "")
-        meta = data.get("meta") or {}
+        with transaction.atomic():
+            # Lock row directly without outer-join on nullable relations (PostgreSQL restriction).
+            ch = (
+                DeviceEnrollmentChallenge.objects.select_for_update()
+                .filter(enrollment_code_hash=code_hash)
+                .first()
+            )
+            if not ch:
+                raise PermissionDenied("Código inválido.")
+            if not ch.is_valid_now():
+                raise PermissionDenied("Código expirado o ya usado.")
 
-        device = Device.objects.create(
-            company=ch.company,
-            branch=ch.branch,
-            label=label,
-            status=Device.Status.ACTIVE,
-            public_key=bytes(pk_raw),
-            meta=meta,
-            enrolled_by_user=ch.created_by_user,
-        )
+            label = str(data.get("label") or ch.label_hint or "")
+            meta = data.get("meta") or {}
 
-        ch.used_at = timezone.now()
-        ch.used_by_device = device
-        ch.save(update_fields=["used_at", "used_by_device"])
+            device = Device.objects.create(
+                company_id=ch.company_id,
+                branch_id=ch.branch_id,
+                label=label,
+                status=Device.Status.ACTIVE,
+                public_key=bytes(pk_raw),
+                meta=meta,
+                enrolled_by_user_id=ch.created_by_user_id,
+            )
+
+            ch.used_at = timezone.now()
+            ch.used_by_device = device
+            ch.save(update_fields=["used_at", "used_by_device"])
 
         write_event(
             request=request,
