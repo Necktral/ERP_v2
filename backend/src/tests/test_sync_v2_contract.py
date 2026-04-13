@@ -4,6 +4,7 @@ import base64
 import copy
 import hashlib
 import hmac
+import logging
 import os
 import uuid
 
@@ -109,6 +110,9 @@ def test_sync_batch_v2_ed25519_happy_and_replay():
     assert r1.data["device_id"] == str(device.id)
     assert r1.data["results"][0]["status"] == "APPLIED"
     assert r1.data["results"][0]["refs"]["pong"] is True
+    assert isinstance(r1.data.get("trace"), dict)
+    assert r1.data["trace"]["request_id"] == r1["X-Request-Id"]
+    assert r1.data["trace"]["channel"] == "sync_v2"
 
     r2 = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
     assert r2.status_code == 401
@@ -117,7 +121,7 @@ def test_sync_batch_v2_ed25519_happy_and_replay():
 
 
 @pytest.mark.django_db
-def test_sync_batch_v2_rejects_bad_signature():
+def test_sync_batch_v2_rejects_bad_signature(caplog):
     client = APIClient()
     company, branch = _mk_scope()
 
@@ -143,10 +147,15 @@ def test_sync_batch_v2_rejects_bad_signature():
     )
     body["auth"]["signature"] = base64.b64encode(os.urandom(64)).decode("utf-8")
 
+    caplog.set_level(logging.WARNING, logger="apps.modulos.sync.trace")
     res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
     assert res.status_code == 401
     payload = res.json()
     assert payload["error"]["message"] == "BAD_SIGNATURE"
+    warning_logs = [r for r in caplog.records if r.name == "apps.modulos.sync.trace" and r.msg == "sync_batch_auth_rejected"]
+    assert warning_logs
+    assert any(getattr(r, "reason", "") == "BAD_SIGNATURE" for r in warning_logs)
+    assert not any(hasattr(r, "signature") for r in warning_logs)
 
 
 @pytest.mark.django_db
@@ -235,6 +244,10 @@ def test_sync_hmac_wrapper_mode_executes_core_and_keeps_legacy_shape():
     assert payload["device_id"] == str(legacy_id)
     assert payload["results"][0]["result"]["status"] == "OK"
     assert payload["results"][0]["result"]["data"]["pong"] is True
+    assert isinstance(payload.get("trace"), dict)
+    assert payload["trace"]["request_id"] == res["X-Request-Id"]
+    assert payload["trace"]["channel"] == "sync_legacy"
+    assert payload["trace"]["legacy_wrapper"] is True
     assert res["Deprecation"] == "true"
     assert "Sunset" in res
     assert "deprecation" in res["Link"]

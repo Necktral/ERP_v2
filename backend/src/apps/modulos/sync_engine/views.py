@@ -8,6 +8,7 @@ Precedente:
 from __future__ import annotations
 
 import copy
+import logging
 import time
 from datetime import timedelta
 
@@ -39,6 +40,60 @@ from .signing import (
     verify_hmac_signature_b64,
 )
 from .services import process_batch, resolve_device
+
+trace_logger = logging.getLogger("apps.modulos.sync.trace")
+
+
+def _sync_trace_payload(
+    request,
+    *,
+    channel: str | None = None,
+    audit_event_id: str | None = None,
+    legacy_wrapper: bool | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {"request_id": str(getattr(request, "request_id", "") or "")}
+    if channel is not None:
+        payload["channel"] = channel
+    if audit_event_id is not None:
+        payload["audit_event_id"] = audit_event_id
+    if legacy_wrapper is not None:
+        payload["legacy_wrapper"] = legacy_wrapper
+    return payload
+
+
+def _sync_trace_log(
+    *,
+    level: int,
+    message: str,
+    request,
+    reason: str,
+    company_id: int | None = None,
+    branch_id: int | None = None,
+    device_id: str | None = None,
+    challenge_id: str | None = None,
+    channel: str | None = None,
+    audit_event_id: str | None = None,
+) -> None:
+    extra: dict[str, object] = {
+        "request_id": str(getattr(request, "request_id", "") or ""),
+        "path": str(getattr(request, "path", "") or ""),
+        "method": str(getattr(request, "method", "") or ""),
+        "reason": reason,
+        "view_name": "sync_engine",
+    }
+    if company_id is not None:
+        extra["company_id"] = company_id
+    if branch_id is not None:
+        extra["branch_id"] = branch_id
+    if device_id is not None:
+        extra["device_id"] = device_id
+    if challenge_id is not None:
+        extra["challenge_id"] = challenge_id
+    if channel is not None:
+        extra["channel"] = channel
+    if audit_event_id is not None:
+        extra["audit_event_id"] = audit_event_id
+    trace_logger.log(level, message, extra=extra)
 
 
 class EnrollmentChallengeCreateView(APIView):
@@ -91,7 +146,7 @@ class EnrollmentChallengeCreateView(APIView):
             label_hint=str(data.get("label_hint") or ""),
         )
 
-        write_event(
+        audit_event = write_event(
             request=request,
             event_type="SYNC_ENROLL_CHALLENGE_CREATED",
             reason_code="SYNC_OK",
@@ -102,6 +157,16 @@ class EnrollmentChallengeCreateView(APIView):
             offline_mode=False,
             metadata={"challenge_id": str(ch.id), "company_id": company.id, "branch_id": getattr(branch, "id", None)},
         )
+        _sync_trace_log(
+            level=logging.INFO,
+            message="sync_enroll_challenge_created",
+            request=request,
+            reason="SYNC_OK",
+            company_id=company.id,
+            branch_id=getattr(branch, "id", None),
+            challenge_id=str(ch.id),
+            audit_event_id=str(audit_event.event_id),
+        )
 
         return Response(
             {
@@ -110,6 +175,10 @@ class EnrollmentChallengeCreateView(APIView):
                 "expires_at": ch.expires_at.isoformat(),
                 "company_id": company.id,
                 "branch_id": getattr(branch, "id", None),
+                "trace": _sync_trace_payload(
+                    request=request,
+                    audit_event_id=str(audit_event.event_id),
+                ),
             },
             status=201,
         )
@@ -144,8 +213,24 @@ class DeviceEnrollView(APIView):
                 .first()
             )
             if not ch:
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_device_enroll_rejected",
+                    request=request,
+                    reason="SYNC_ENROLL_INVALID_CODE",
+                )
                 raise PermissionDenied("Código inválido.")
             if not ch.is_valid_now():
+                reject_reason = "SYNC_ENROLL_USED_CODE" if ch.used_at is not None else "SYNC_ENROLL_EXPIRED_CODE"
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_device_enroll_rejected",
+                    request=request,
+                    reason=reject_reason,
+                    company_id=ch.company_id,
+                    branch_id=ch.branch_id,
+                    challenge_id=str(ch.id),
+                )
                 raise PermissionDenied("Código expirado o ya usado.")
 
             label = str(data.get("label") or ch.label_hint or "")
@@ -165,7 +250,7 @@ class DeviceEnrollView(APIView):
             ch.used_by_device = device
             ch.save(update_fields=["used_at", "used_by_device"])
 
-        write_event(
+        audit_event = write_event(
             request=request,
             event_type="SYNC_DEVICE_ENROLLED",
             reason_code="SYNC_OK",
@@ -179,6 +264,17 @@ class DeviceEnrollView(APIView):
                 "branch_id": device.branch_id,
                 "label": device.label,
             },
+        )
+        _sync_trace_log(
+            level=logging.INFO,
+            message="sync_device_enrolled",
+            request=request,
+            reason="SYNC_OK",
+            company_id=device.company_id,
+            branch_id=device.branch_id,
+            device_id=str(device.id),
+            challenge_id=str(ch.id),
+            audit_event_id=str(audit_event.event_id),
         )
 
         from apps.modulos.sync_engine.services import get_policy
@@ -197,6 +293,10 @@ class DeviceEnrollView(APIView):
                     "max_device_clock_skew_seconds": policy.max_device_clock_skew_seconds,
                     "seq_tolerant": policy.seq_tolerant,
                 },
+                "trace": _sync_trace_payload(
+                    request=request,
+                    audit_event_id=str(audit_event.event_id),
+                ),
             },
             status=201,
         )
@@ -349,6 +449,16 @@ class SyncBatchView(APIView):
         ts = int(payload_v2["ts"])
         now = int(timezone.now().timestamp())
         if abs(now - ts) > max_skew_seconds:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_batch_auth_rejected",
+                request=request,
+                reason="TS_OUT_OF_WINDOW",
+                company_id=device.company_id,
+                branch_id=device.branch_id,
+                device_id=str(device.id),
+                channel="sync_v2",
+            )
             return self._error_response(
                 request,
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -368,6 +478,16 @@ class SyncBatchView(APIView):
         if scheme == "hmac":
             secret = str(getattr(device, "hmac_secret_b64", "") or "").strip()
             if not secret:
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_batch_auth_rejected",
+                    request=request,
+                    reason="SYNC_DEVICE_NO_HMAC_SECRET",
+                    company_id=device.company_id,
+                    branch_id=device.branch_id,
+                    device_id=str(device.id),
+                    channel="sync_v2",
+                )
                 return self._error_response(
                     request,
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -381,6 +501,16 @@ class SyncBatchView(APIView):
         else:
             pk_raw = bytes(device.public_key or b"")
             if not pk_raw:
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_batch_auth_rejected",
+                    request=request,
+                    reason="SYNC_DEVICE_NO_PUBLIC_KEY",
+                    company_id=device.company_id,
+                    branch_id=device.branch_id,
+                    device_id=str(device.id),
+                    channel="sync_v2",
+                )
                 return self._error_response(
                     request,
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -393,6 +523,16 @@ class SyncBatchView(APIView):
             )
 
         if not ok:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_batch_auth_rejected",
+                request=request,
+                reason="BAD_SIGNATURE",
+                company_id=device.company_id,
+                branch_id=device.branch_id,
+                device_id=str(device.id),
+                channel="sync_v2",
+            )
             return self._error_response(
                 request,
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -407,6 +547,16 @@ class SyncBatchView(APIView):
                     ts=ts,
                 )
         except IntegrityError:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_batch_auth_rejected",
+                request=request,
+                reason="REPLAY_DETECTED",
+                company_id=device.company_id,
+                branch_id=device.branch_id,
+                device_id=str(device.id),
+                channel="sync_v2",
+            )
             return self._error_response(
                 request,
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -439,6 +589,14 @@ class SyncBatchView(APIView):
             hdr_device_id = (request.headers.get("X-Device-Id") or "").strip()
             body_device_id = str(data_v2["device_id"])
             if hdr_device_id and hdr_device_id != body_device_id:
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_batch_auth_rejected",
+                    request=request,
+                    reason="DEVICE_ID_MISMATCH",
+                    device_id=hdr_device_id,
+                    channel=channel,
+                )
                 self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="DEVICE_ID_MISMATCH")
                 return self._error_response(
                     request,
@@ -470,6 +628,7 @@ class SyncBatchView(APIView):
                 commands=self._normalize_v2_commands(data_v2),
                 enforce_command_signature=not v2_request_auth_enforced,
             )
+            out["trace"] = _sync_trace_payload(request=request, channel=channel)
             self._record_batch_metric(channel=channel, started_at=started_at, ok=True)
             return Response(out, status=200)
 
@@ -496,5 +655,6 @@ class SyncBatchView(APIView):
             commands=data["commands"],
             enforce_command_signature=True,
         )
+        out["trace"] = _sync_trace_payload(request=request, channel=channel)
         self._record_batch_metric(channel=channel, started_at=started_at, ok=True)
         return Response(out, status=200)

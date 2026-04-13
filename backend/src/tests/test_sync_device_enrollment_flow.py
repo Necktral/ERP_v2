@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import threading
 import uuid
 from datetime import timedelta
@@ -103,6 +104,9 @@ def test_enrollment_challenge_create_requires_permission_and_context():
     assert ok.status_code == 201
     assert "challenge_id" in ok.data
     assert "enrollment_code" in ok.data
+    assert isinstance(ok.data.get("trace"), dict)
+    assert ok.data["trace"]["request_id"] == ok["X-Request-Id"]
+    uuid.UUID(str(ok.data["trace"]["audit_event_id"]))
     assert DeviceEnrollmentChallenge.objects.filter(id=ok.data["challenge_id"]).exists()
 
     forbidden = client_without_perm.post(
@@ -117,7 +121,7 @@ def test_enrollment_challenge_create_requires_permission_and_context():
 
 
 @pytest.mark.django_db
-def test_device_enroll_valid_invalid_expired_and_used_code():
+def test_device_enroll_valid_invalid_expired_and_used_code(caplog):
     company, branch = _mk_org()
     creator = User.objects.create_user(username=f"creator_{uuid.uuid4().hex[:8]}", password="x")
 
@@ -142,6 +146,9 @@ def test_device_enroll_valid_invalid_expired_and_used_code():
     assert first.status_code == 201
     assert first.data["company_id"] == company.id
     assert first.data["branch_id"] == branch.id
+    assert isinstance(first.data.get("trace"), dict)
+    assert first.data["trace"]["request_id"] == first["X-Request-Id"]
+    uuid.UUID(str(first.data["trace"]["audit_event_id"]))
 
     challenge.refresh_from_db()
     assert challenge.used_at is not None
@@ -150,6 +157,7 @@ def test_device_enroll_valid_invalid_expired_and_used_code():
     second = client.post("/api/sync/enroll/", payload, format="json")
     assert second.status_code == 403
 
+    caplog.set_level(logging.WARNING, logger="apps.modulos.sync.trace")
     invalid = client.post(
         "/api/sync/enroll/",
         {
@@ -159,6 +167,11 @@ def test_device_enroll_valid_invalid_expired_and_used_code():
         format="json",
     )
     assert invalid.status_code == 403
+    invalid_logs = [r for r in caplog.records if r.name == "apps.modulos.sync.trace" and r.msg == "sync_device_enroll_rejected"]
+    assert invalid_logs
+    assert any(getattr(r, "reason", "") == "SYNC_ENROLL_INVALID_CODE" for r in invalid_logs)
+    assert not any(hasattr(r, "enrollment_code") for r in invalid_logs)
+    assert not any(hasattr(r, "public_key_b64") for r in invalid_logs)
 
     expired_code = "qa-enroll-expired-code"
     DeviceEnrollmentChallenge.objects.create(

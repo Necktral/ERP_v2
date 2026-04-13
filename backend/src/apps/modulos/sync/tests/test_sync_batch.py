@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import logging
 import os
 import uuid
 
@@ -55,6 +56,10 @@ def test_sync_batch_happy_path(settings):
     assert payload["device_id"] == str(device.id)
     assert payload["results"][0]["result"]["status"] == "OK"
     assert payload["results"][0]["result"]["data"]["pong"] is True
+    assert isinstance(payload.get("trace"), dict)
+    assert payload["trace"]["request_id"] == res["X-Request-Id"]
+    assert payload["trace"]["channel"] == "sync_legacy"
+    assert payload["trace"]["legacy_wrapper"] is False
 
 
 @pytest.mark.django_db
@@ -86,7 +91,7 @@ def test_sync_batch_bad_signature_rejected():
 
 
 @pytest.mark.django_db
-def test_sync_batch_replay_nonce_rejected():
+def test_sync_batch_replay_nonce_rejected(caplog):
     client = APIClient()
 
     secret = base64.b64encode(os.urandom(32)).decode("utf-8")
@@ -103,6 +108,7 @@ def test_sync_batch_replay_nonce_rejected():
 
     url = "/api/sync-hmac/batch/"
 
+    caplog.set_level(logging.WARNING, logger="apps.modulos.sync.trace")
     # 1st request OK
     r1 = client.post(
         url,
@@ -129,6 +135,11 @@ def test_sync_batch_replay_nonce_rejected():
     payload = r2.json()
     assert payload["error"]["code"] == "AUTH_UNAUTHENTICATED"
     assert payload["error"]["message"] == "REPLAY_DETECTED"
+    warning_logs = [r for r in caplog.records if r.name == "apps.modulos.sync.trace" and r.msg == "sync_hmac_batch_auth_rejected"]
+    assert warning_logs
+    assert any(getattr(r, "reason", "") == "REPLAY_DETECTED" for r in warning_logs)
+    assert not any(hasattr(r, "nonce") for r in warning_logs)
+    assert not any(hasattr(r, "signature") for r in warning_logs)
 
 
 @pytest.mark.django_db

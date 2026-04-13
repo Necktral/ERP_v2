@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 import time
 
@@ -21,6 +22,50 @@ from .serializers import SyncBatchSerializer
 from .signing import canonical_string, verify_hmac_signature
 
 MAX_SKEW_SECONDS = 300  # 5 minutos
+trace_logger = logging.getLogger("apps.modulos.sync.trace")
+
+
+def _sync_trace_payload(
+    request,
+    *,
+    channel: str,
+    legacy_wrapper: bool,
+) -> dict[str, object]:
+    return {
+        "request_id": str(getattr(request, "request_id", "") or ""),
+        "channel": channel,
+        "legacy_wrapper": legacy_wrapper,
+    }
+
+
+def _sync_trace_log(
+    *,
+    level: int,
+    message: str,
+    request,
+    reason: str,
+    device_id: str | None = None,
+    company_id: int | None = None,
+    branch_id: int | None = None,
+    legacy_wrapper: bool | None = None,
+) -> None:
+    extra: dict[str, object] = {
+        "request_id": str(getattr(request, "request_id", "") or ""),
+        "path": str(getattr(request, "path", "") or ""),
+        "method": str(getattr(request, "method", "") or ""),
+        "reason": reason,
+        "channel": "sync_legacy",
+        "view_name": "sync_hmac",
+    }
+    if device_id is not None:
+        extra["device_id"] = device_id
+    if company_id is not None:
+        extra["company_id"] = company_id
+    if branch_id is not None:
+        extra["branch_id"] = branch_id
+    if legacy_wrapper is not None:
+        extra["legacy_wrapper"] = legacy_wrapper
+    trace_logger.log(level, message, extra=extra)
 
 
 class SyncBatchView(APIView):
@@ -120,6 +165,12 @@ class SyncBatchView(APIView):
         sig = request.headers.get("X-Device-Signature")
 
         if not (device_id and ts_raw and nonce and sig):
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="MISSING_HEADERS",
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="MISSING_HEADERS")
             return self._error_response(
                 request,
@@ -138,6 +189,13 @@ class SyncBatchView(APIView):
         try:
             ts = int(ts_raw)
         except ValueError:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="INVALID_TS",
+                device_id=str(device_id or ""),
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="INVALID_TS")
             return self._error_response(
                 request,
@@ -147,6 +205,13 @@ class SyncBatchView(APIView):
 
         now = int(timezone.now().timestamp())
         if abs(now - ts) > MAX_SKEW_SECONDS:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="TS_OUT_OF_WINDOW",
+                device_id=str(device_id),
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="TS_OUT_OF_WINDOW")
             return self._error_response(
                 request,
@@ -157,6 +222,13 @@ class SyncBatchView(APIView):
         # 2) Device
         device = DeviceEnrollment.objects.filter(id=device_id, is_active=True).first()
         if not device:
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="UNKNOWN_OR_INACTIVE_DEVICE",
+                device_id=str(device_id),
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="UNKNOWN_OR_INACTIVE_DEVICE")
             return self._error_response(
                 request,
@@ -168,6 +240,13 @@ class SyncBatchView(APIView):
         raw_body = request.body or b""
         canonical = canonical_string(ts=ts, nonce=nonce, raw_body=raw_body)
         if not verify_hmac_signature(device.secret_b64, canonical, sig):
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="BAD_SIGNATURE",
+                device_id=str(device.id),
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="BAD_SIGNATURE")
             return self._error_response(
                 request,
@@ -182,6 +261,13 @@ class SyncBatchView(APIView):
                 DeviceRequestNonce.objects.create(device=device, nonce=nonce, ts=ts)
         except IntegrityError:
             # unique constraint => replay
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason="REPLAY_DETECTED",
+                device_id=str(device.id),
+            )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="REPLAY_DETECTED")
             return self._error_response(
                 request,
@@ -219,7 +305,23 @@ class SyncBatchView(APIView):
                 self._core_to_legacy_response(legacy_device=device, core_out=core_out),
                 status=status.HTTP_200_OK,
             )
+            if isinstance(response.data, dict):
+                response.data["trace"] = _sync_trace_payload(
+                    request=request,
+                    channel="sync_legacy",
+                    legacy_wrapper=True,
+                )
             self._apply_deprecation_headers(response)
+            _sync_trace_log(
+                level=logging.INFO,
+                message="sync_hmac_batch_processed",
+                request=request,
+                reason="SYNC_OK",
+                device_id=str(device.id),
+                company_id=core_device.company_id,
+                branch_id=core_device.branch_id,
+                legacy_wrapper=True,
+            )
             self._record_batch_metric(started_at=started_at, ok=True)
             return response
 
@@ -236,5 +338,19 @@ class SyncBatchView(APIView):
             except CommandError as e:
                 results.append({"command_id": cmd.command_id, "result": {"status": "ERROR", "error": str(e)}})
 
+        payload = {"device_id": str(device.id), "results": results}
+        payload["trace"] = _sync_trace_payload(
+            request=request,
+            channel="sync_legacy",
+            legacy_wrapper=False,
+        )
+        _sync_trace_log(
+            level=logging.INFO,
+            message="sync_hmac_batch_processed",
+            request=request,
+            reason="SYNC_OK",
+            device_id=str(device.id),
+            legacy_wrapper=False,
+        )
         self._record_batch_metric(started_at=started_at, ok=True)
-        return Response({"device_id": str(device.id), "results": results}, status=status.HTTP_200_OK)
+        return Response(payload, status=status.HTTP_200_OK)
