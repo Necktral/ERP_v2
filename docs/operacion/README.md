@@ -36,8 +36,33 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Gobernanza Codex + handoff estructurado](CODEX_GOVERNANCE_HANDOFF_v1.0.md)
 - [RCA de alertas Release/QA](ALERTAS_RCA_RELEASE_QA_v1.0.md)
 - [Retail POS Spine Slice v1.0](RETAIL_POS_SPINE_SLICE_v1.0.md)
+- [Centro de Operación Unificada (COU) Multidispositivo v1.0](COU_MULTIDISPOSITIVO_v1.0.md)
+- [Norma Interna Multidispositivo (Producto, UX y Gobernanza) v1.0](NORMA_GOBERNANZA_MULTIDISPOSITIVO_v1.0.md)
+- [Norma Interna de Diseño y Operación del Sistema Web Empresarial v1.0](NORMA_DISENO_OPERACION_SISTEMA_EMPRESARIAL_v1.0.md)
+- [Diseño Empresarial Multidispositivo ERP/CRM (internet-first) v1.0](DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md)
+- [Arquitectura de Implementación Multidispositivo (Frontend + Backend) v1.0](ARQUITECTURA_IMPLEMENTACION_MULTIDISPOSITIVO_v1.0.md)
+- [Diseño de Inventario Multidispositivo (core operacional) v1.0](INVENTARIO_MULTIDISPOSITIVO_v1.0.md)
+- [Diseño de Facturación Multidispositivo (internet-first) v1](FACTURACION_MULTIDISPOSITIVO_v1.0.md)
+- [Diseño de Estación de Servicios Multidispositivo (internet-first) v1](ESTACION_SERVICIOS_MULTIDISPOSITIVO_v1.0.md)
+- [Diseño de Reporting y Dashboards Multidispositivo (internet-first) v1.0](REPORTING_DASHBOARDS_MULTIDISPOSITIVO_v1.0.md)
+- [Contratos Funcionales Compartidos Laptop/Móvil (ERP Web) v1.0](CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md)
+- [Backlog Profesional Multidispositivo (Inventarios, Facturación, Estación, Reportes, Dashboard) v1.0](BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md)
+- [Prompts adaptados al stack real (Quasar/Vue/Pinia + Django/DRF)](PROMPTS_STACK_REAL.md)
 - [Plan maestro F1-F12 + cierre operativo](PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md)
 - [Checklist PR release F1-F12](PR_RELEASE_F1_F12_CHECKLIST.md)
+
+## Set canónico multidispositivo (orden recomendado)
+
+1. [Diseño Empresarial Multidispositivo ERP/CRM (internet-first) v1.0](DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md)
+2. [Norma Interna de Diseño y Operación del Sistema Web Empresarial v1.0](NORMA_DISENO_OPERACION_SISTEMA_EMPRESARIAL_v1.0.md)
+3. [Arquitectura de Implementación Multidispositivo (Frontend + Backend) v1.0](ARQUITECTURA_IMPLEMENTACION_MULTIDISPOSITIVO_v1.0.md)
+4. [Contratos Funcionales Compartidos Laptop/Móvil (ERP Web) v1.0](CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md)
+5. [Backlog Profesional Multidispositivo (Inventarios, Facturación, Estación, Reportes, Dashboard) v1.0](BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md)
+6. Diseños de módulo:
+   - [Inventario Multidispositivo v1.0](INVENTARIO_MULTIDISPOSITIVO_v1.0.md)
+   - [Facturación Multidispositivo v1.0](FACTURACION_MULTIDISPOSITIVO_v1.0.md)
+   - [Estación de Servicios Multidispositivo v1.0](ESTACION_SERVICIOS_MULTIDISPOSITIVO_v1.0.md)
+   - [Reporting y Dashboards Multidispositivo v1.0](REPORTING_DASHBOARDS_MULTIDISPOSITIVO_v1.0.md)
 
 ## Reglas
 
@@ -82,3 +107,15 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-03-26: El slice `Retail POS Spine` agrega resiliencia de compensación (retry endpoint/ciclo) y cola offline frontend con backoff y deduplicación.
 - 2026-04-11: Se agrega estándar operativo `CODEX_GOVERNANCE_HANDOFF_v1.0.md` y guard bloqueante `qa-codex-governance-guard` para cambios en rutas críticas.
 - 2026-04-11: Se endurece estándar Codex a v1.1 por tipo de cambio (clasificación automática, secciones/gates por tipo y validación de modos prohibidos).
+- 2026-04-14: Se agrega propuesta operativa `Centro de Operación Unificada (COU) Multidispositivo` (`COU_MULTIDISPOSITIVO_v1.0.md`) para estrategia internet-first con UX diferenciada por dispositivo y lógica de negocio unificada.
+- 2026-04-14: Se agrega norma interna vinculante `NORMA_GOBERNANZA_MULTIDISPOSITIVO_v1.0.md` con reglas rectoras de producto, seguridad, UX dual-shell, consistencia de datos, transacciones, trazabilidad y escalabilidad.
+- 2026-04-14: Se agrega norma marco `NORMA_DISENO_OPERACION_SISTEMA_EMPRESARIAL_v1.0.md` con objetivo, alcance, principios funcionales/UX, reglas de seguridad, operacion por modulo, auditoria, consistencia, restricciones, decisiones obligatorias y anti-patrones prohibidos.
+- 2026-04-14: Se agrega documento maestro `DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md` con arquitectura funcional, criterios laptop/movil, reglas de seguridad/auditoria, propuesta de navegacion, riesgos y backlog inicial de implementacion.
+- 2026-04-14: Se agrega arquitectura tecnica `ARQUITECTURA_IMPLEMENTACION_MULTIDISPOSITIVO_v1.0.md` con estructura modular frontend/backend, rutas publicas/privadas, estrategia dual-shell, stores, capa API, sesion/permisos/contexto, layouts y plan de implementacion paso a paso.
+- 2026-04-14: Se agrega diseno ejecutable `INVENTARIO_MULTIDISPOSITIVO_v1.0.md` para modulo core de inventarios con separacion Workbench/Taskflow, validaciones, permisos, trazabilidad y plan de pruebas.
+- 2026-04-14: Se agrega diseno funcional empresarial `FACTURACION_MULTIDISPOSITIVO_v1.0.md` para operacion internet-first en desktop/movil con alcance, operaciones criticas, permisos, trazabilidad, riesgos y criterios de aceptacion.
+- 2026-04-14: Se agrega diseno operativo `ESTACION_SERVICIOS_MULTIDISPOSITIVO_v1.0.md` para operacion de pista/caja/cierre con UX separada por dispositivo, control de incidencias y trazabilidad end-to-end.
+- 2026-04-14: Se agrega diseno operativo `REPORTING_DASHBOARDS_MULTIDISPOSITIVO_v1.0.md` para separacion UX desktop/movil en dashboards y reportes con KPI moviles, analitica avanzada en laptop, limites de densidad y contrato de trazabilidad.
+- 2026-04-14: Se agrega contrato funcional maestro `CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md` para unificar modulos, capacidades, acciones, permisos, contexto, contratos API y eventos auditables cross-device.
+- 2026-04-14: Se agrega backlog de delivery `BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md` con epicas, capacidades, historias, aceptacion, dependencias, riesgos y orden de implementacion por valor/riesgo/dependencia tecnica.
+- 2026-04-14: Cierre de bateria de prompts multidispositivo: se consolida set canonico de documentos y se agrega guia `PROMPTS_STACK_REAL.md` para ejecucion alineada al stack real (Quasar/Vue/Pinia + Django/DRF).
