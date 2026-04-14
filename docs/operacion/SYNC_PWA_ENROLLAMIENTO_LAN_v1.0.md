@@ -8,7 +8,7 @@ Establecer un procedimiento operativo, reproducible y no-breaking para ejecutar 
 Fuente de verdad: variables de entorno consumidas por `backend` y `frontend` en Docker.
 
 - `SYNC_ENROLL_WEB_BASE_URL=http://<IP_HOST>:3000`
-- `VITE_API_BASE_URL=http://<IP_HOST>:8000/api`
+- `VITE_API_BASE_URL=/api` (recomendado para LAN, same-origin por proxy devServer)
 - `DJANGO_ALLOWED_HOSTS` debe incluir `<IP_HOST>`
 - `DJANGO_CORS_ALLOWED_ORIGINS` debe incluir `http://<IP_HOST>:3000`
 - `DJANGO_CSRF_TRUSTED_ORIGINS` debe incluir `http://<IP_HOST>:3000`
@@ -17,7 +17,7 @@ Ejemplo LAN local:
 
 ```env
 SYNC_ENROLL_WEB_BASE_URL=http://172.31.136.92:3000
-VITE_API_BASE_URL=http://172.31.136.92:8000/api
+VITE_API_BASE_URL=/api
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,172.31.136.92
 DJANGO_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://172.31.136.92:3000
 DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://172.31.136.92:3000
@@ -26,6 +26,7 @@ DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://172.31.136.92:3000
 Notas:
 - `.env` local no se versiona.
 - Si cambia la IP LAN, actualizar estas variables y reiniciar servicios.
+- El frontend resuelve `/api/*` por proxy interno a `backend:8000`, evitando problemas de cookies entre puertos.
 
 ## Arranque Docker (backend/frontend)
 
@@ -93,6 +94,7 @@ Checklist de correlación mínima:
 - limpiar datos del sitio para `http://<IP_HOST>:3000` y `http://<IP_HOST>:8000`
 - reintentar
 - para enrolamiento PWA, usar directamente `#/device/enroll` (ruta pública), no forzar flujo de login
+- verificar que `VITE_API_BASE_URL=/api` (same-origin) esté activo en el contenedor frontend
 
 ### 3) No usar login para `/device/enroll`
 `/device/enroll` está diseñado para operación pública controlada de alta de dispositivo. El login web no es requisito para ese paso.

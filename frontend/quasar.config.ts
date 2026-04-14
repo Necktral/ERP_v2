@@ -83,6 +83,10 @@ export default defineConfig((/* ctx */) => {
       port: 3000,
       open: true, // abre el navegador automáticamente
       proxy: {
+        '/api': {
+          target: 'http://backend:8000',
+          changeOrigin: true,
+        },
         '/analytics': {
           target: 'http://dash_analytics:8050',
           changeOrigin: true,

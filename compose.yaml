@@ -123,8 +123,8 @@ services:
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /app/frontend
     environment:
-      # URL API pública para el navegador (LAN/staging); configurable por .env.
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api}
+      # API por defecto same-origin vía proxy devServer (/api). Override opcional por .env.
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     depends_on:
       backend:
         condition: service_healthy
