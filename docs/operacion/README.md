@@ -34,6 +34,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Runbook Reporting R8 (gobierno + observabilidad)](REPORTING_R8_GOBIERNO_OBSERVABILIDAD_v1.0.md)
 - [Runbook U6 Release Governance + Supply Chain](U6_RELEASE_GOVERNANCE_SUPPLY_CHAIN_v1.0.md)
 - [Gobernanza Codex + handoff estructurado](CODEX_GOVERNANCE_HANDOFF_v1.0.md)
+- [CODEX Master Pack v1.0 (source of truth operativo para delegacion)](CODEX_MASTER_PACK_v1.0.md)
 - [RCA de alertas Release/QA](ALERTAS_RCA_RELEASE_QA_v1.0.md)
 - [Retail POS Spine Slice v1.0](RETAIL_POS_SPINE_SLICE_v1.0.md)
 - [Centro de Operación Unificada (COU) Multidispositivo v1.0](COU_MULTIDISPOSITIVO_v1.0.md)
@@ -53,16 +54,21 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 
 ## Set canónico multidispositivo (orden recomendado)
 
-1. [Diseño Empresarial Multidispositivo ERP/CRM (internet-first) v1.0](DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md)
-2. [Norma Interna de Diseño y Operación del Sistema Web Empresarial v1.0](NORMA_DISENO_OPERACION_SISTEMA_EMPRESARIAL_v1.0.md)
-3. [Arquitectura de Implementación Multidispositivo (Frontend + Backend) v1.0](ARQUITECTURA_IMPLEMENTACION_MULTIDISPOSITIVO_v1.0.md)
-4. [Contratos Funcionales Compartidos Laptop/Móvil (ERP Web) v1.0](CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md)
-5. [Backlog Profesional Multidispositivo (Inventarios, Facturación, Estación, Reportes, Dashboard) v1.0](BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md)
-6. Diseños de módulo:
+1. [CODEX Master Pack v1.0 (source of truth operativo)](CODEX_MASTER_PACK_v1.0.md)
+2. [Diseño Empresarial Multidispositivo ERP/CRM (internet-first) v1.0](DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md)
+3. [Norma Interna de Diseño y Operación del Sistema Web Empresarial v1.0](NORMA_DISENO_OPERACION_SISTEMA_EMPRESARIAL_v1.0.md)
+4. [Arquitectura de Implementación Multidispositivo (Frontend + Backend) v1.0](ARQUITECTURA_IMPLEMENTACION_MULTIDISPOSITIVO_v1.0.md)
+5. [Contratos Funcionales Compartidos Laptop/Móvil (ERP Web) v1.0](CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md)
+6. [Backlog Profesional Multidispositivo (Inventarios, Facturación, Estación, Reportes, Dashboard) v1.0](BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md)
+7. Diseños de módulo:
    - [Inventario Multidispositivo v1.0](INVENTARIO_MULTIDISPOSITIVO_v1.0.md)
    - [Facturación Multidispositivo v1.0](FACTURACION_MULTIDISPOSITIVO_v1.0.md)
    - [Estación de Servicios Multidispositivo v1.0](ESTACION_SERVICIOS_MULTIDISPOSITIVO_v1.0.md)
    - [Reporting y Dashboards Multidispositivo v1.0](REPORTING_DASHBOARDS_MULTIDISPOSITIVO_v1.0.md)
+
+Soporte de delegación (no canónico):
+- [Prompts adaptados al stack real](PROMPTS_STACK_REAL.md)
+- [Gobernanza Codex + handoff estructurado](CODEX_GOVERNANCE_HANDOFF_v1.0.md)
 
 ## Reglas
 
@@ -119,3 +125,4 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - 2026-04-14: Se agrega contrato funcional maestro `CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md` para unificar modulos, capacidades, acciones, permisos, contexto, contratos API y eventos auditables cross-device.
 - 2026-04-14: Se agrega backlog de delivery `BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md` con epicas, capacidades, historias, aceptacion, dependencias, riesgos y orden de implementacion por valor/riesgo/dependencia tecnica.
 - 2026-04-14: Cierre de bateria de prompts multidispositivo: se consolida set canonico de documentos y se agrega guia `PROMPTS_STACK_REAL.md` para ejecucion alineada al stack real (Quasar/Vue/Pinia + Django/DRF).
+- 2026-04-14: Se consolida `CODEX_MASTER_PACK_v1.0.md` como source of truth operativo para delegacion por slices (context card, reglas no negociables, 4 bloques oficiales, handoff A-F y matriz de gates).

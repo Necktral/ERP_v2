@@ -87,6 +87,7 @@ Regla base:
 
 Referencia normativa obligatoria:
 
+- `docs/operacion/CODEX_MASTER_PACK_v1.0.md` (source of truth operativo para ejecucion por slices en Codex: carril publico/privado, bootstrap unificado, dual-shell y secuencia oficial de modulos).
 - `docs/operacion/DISENO_EMPRESARIAL_MULTIDISPOSITIVO_ERP_CRM_v1.0.md` (documento maestro enterprise para arquitectura funcional, criterios desktop/movil, seguridad, auditoria, navegacion, riesgos y backlog inicial).
 - `docs/operacion/NORMA_GOBERNANZA_MULTIDISPOSITIVO_v1.0.md` (source of truth de reglas de producto, seguridad, trazabilidad y UX por dispositivo).
 - `docs/operacion/INVENTARIO_MULTIDISPOSITIVO_v1.0.md` (diseno funcional ejecutable para inventarios Workbench/Taskflow).
