@@ -9,6 +9,8 @@ import routes from './routes';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
+import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
+import { isAxiosError } from 'axios';
 
 export default route(function () {
   const createHistory = process.env.SERVER
@@ -27,6 +29,7 @@ export default route(function () {
     const auth = useAuthStore();
     const acl = useAclStore();
     const ctx = useContextStore();
+    const sessionBootstrap = useSessionBootstrapStore();
 
     auth.initFromStorage();
     ctx.initFromStorage();
@@ -55,74 +58,48 @@ export default route(function () {
       return true;
     }
 
-    // 1) Si requiere auth, asegurar sesión por cookies antes de decidir
-    if (!auth.isAuthenticated) {
-      await auth.ensureSession();
-    }
-
-    // 1.1) Si requiere auth y no hay sesión → login
-    if (!auth.isAuthenticated) {
-      if (to.path !== '/login') return { path: '/login' };
-      return true;
-    }
-
-    // Ensure user details are loaded if authenticated (solo cuando se requiere auth)
-    if (!auth.user) {
+    // 1) Bootstrap de sesión: fuente única para user/contexto/capabilities/shell.
+    if (!sessionBootstrap.loaded) {
       try {
-        await auth.fetchMe();
-      } catch {
+        await sessionBootstrap.loadSession();
+      } catch (error) {
+        if (isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+          auth.hardClearLocal();
+        }
         return { path: '/login' };
       }
     }
 
-    // --- Onboarding / Bootstrap Logic ---
-
-    // 0.5) Authenticated: Security & Setup checks
-    if (auth.isAuthenticated) {
-      // Enforce password change
-      if (auth.user?.must_change_password) {
-        if (to.path !== '/password-change' && to.path !== '/logout') {
-          return { path: '/password-change' };
-        }
-      }
-
-      // Enforce setup completion (if user has no companies or explicit flag)
-      // We need ACL loaded to know companies.
-      if (acl.loaded) {
-        // ACL is loaded in step 2 usually, but we check here if loaded
-        if (auth.user?.is_setup_complete === false) {
-          if (!to.path.startsWith('/bootstrap') && to.path !== '/logout') {
-            return { path: '/bootstrap' };
-          }
-        }
+    // 2) Redirecciones de seguridad y setup se deciden solo desde bootstrap.
+    if (auth.user?.must_change_password) {
+      if (to.path !== '/password-change' && to.path !== '/logout') {
+        return { path: '/password-change' };
       }
     }
 
-    // 2) Si hay sesión y ACL no está cargado, cargarlo
-    if (auth.isAuthenticated && !acl.loaded) {
-      try {
-        await acl.loadAcl();
-      } catch {
-        // Si no podemos cargar ACL, forzamos logout
-        await auth.logout();
-        return { path: '/login' };
+    if (sessionBootstrap.payload?.bootstrap_state?.setup_required) {
+      if (!to.path.startsWith('/bootstrap') && to.path !== '/logout') {
+        return { path: '/bootstrap' };
       }
     }
 
-    // 3) Si tenemos ACL y no hay contexto, intentar autoselección si el ACL lo recomienda
-    if (auth.isAuthenticated && acl.loaded && !ctx.activeCompanyId) {
-      const recCompany = acl.recommendedCompanyId;
-      const recBranch = acl.recommendedBranchId;
-
-      if (recCompany) ctx.setContext(recCompany, recBranch ?? null);
+    if (!acl.loaded) {
+      return { path: '/login' };
     }
 
-    // 4) Si la ruta requiere contexto y no hay company → select-context
+    // 3) Contexto operativo requerido
+    const requiresContextSelection =
+      sessionBootstrap.payload?.effective_context?.requires_context_selection ?? false;
+    if (requiresContextSelection && !ctx.activeCompanyId && to.path !== '/select-context') {
+      return { path: '/select-context' };
+    }
+
     if (requiresContext && !ctx.activeCompanyId) {
       if (to.path !== '/select-context') return { path: '/select-context' };
       return true;
     }
 
+    // 4) ACL por ruta
     const required = to.meta?.requiredPermissions as string[] | undefined;
     if (required && required.length > 0) {
       const companyId = ctx.activeCompanyId;

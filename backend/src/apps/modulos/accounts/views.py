@@ -1,6 +1,8 @@
 import hashlib
+import re
 import uuid
 from datetime import datetime, timedelta, timezone as dt_timezone
+from typing import Any
 
 from django.conf import settings
 from django.core.signing import BadSignature, SignatureExpired
@@ -40,6 +42,21 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+_MOBILE_UA_RE = re.compile(r"(android|iphone|ipad|ipod|mobile)", re.IGNORECASE)
+
+_MODULE_PERMISSION_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("organization", ("org.",)),
+    ("human_resources", ("hr.",)),
+    ("audit", ("audit.",)),
+    ("fuel", ("fuel.",)),
+    ("retail_pos", ("retail.pos.",)),
+    ("analytics", ("report.dashboard.",)),
+    ("reporting", ("report.",)),
+    ("synchronization", ("sync.",)),
+    ("inventory", ("inventory.",)),
+    ("billing", ("billing.",)),
+)
 
 
 def _token_jti(token: RefreshToken) -> str:
@@ -93,6 +110,130 @@ def _request_auth_transport(request) -> str:
         if override in ("header", "cookie"):
             return override
     return getattr(settings, "AUTH_TOKEN_TRANSPORT", "header")
+
+
+def _request_source_device(request) -> str:
+    raw = (request.headers.get("X-Source-Device") or "").strip()
+    return raw or "web-spa"
+
+
+def _normalize_device_class(raw: str) -> str | None:
+    token = (raw or "").strip().lower()
+    if token in {"desktop", "mobile"}:
+        return token
+    return None
+
+
+def _request_device_class(request) -> str:
+    explicit = _normalize_device_class(
+        request.headers.get("X-Device-Class") or request.query_params.get("device_class") or ""
+    )
+    if explicit:
+        return explicit
+
+    user_agent = request.META.get("HTTP_USER_AGENT", "") or ""
+    if _MOBILE_UA_RE.search(user_agent):
+        return "mobile"
+    return "desktop"
+
+
+def _channel(request) -> str:
+    raw = (request.headers.get("X-Channel") or "").strip().lower()
+    return raw or "web"
+
+
+def _normalized_acl_snapshot(user) -> dict[str, Any]:
+    """
+    Normaliza IDs del ACL a string para consumo frontend consistente.
+    """
+    snapshot = build_acl_snapshot(user)
+    companies = snapshot.get("companies") or []
+
+    normalized_companies: list[dict[str, Any]] = []
+    for company in companies:
+        company_id = str(company.get("company_id"))
+        branches = company.get("branches") or []
+        normalized_branches = [
+            {
+                "branch_id": str(branch.get("branch_id")),
+                "branch_name": branch.get("branch_name"),
+            }
+            for branch in branches
+        ]
+        normalized_companies.append(
+            {
+                "company_id": company_id,
+                "company_name": company.get("company_name"),
+                "branches": normalized_branches,
+                "permissions": list(company.get("permissions") or []),
+            }
+        )
+
+    admin_caps_by_company_raw = snapshot.get("admin_caps_by_company") or {}
+    admin_caps_by_company = {str(k): v for k, v in admin_caps_by_company_raw.items()}
+
+    recommended_company = snapshot.get("recommended_company_id")
+    recommended_branch = snapshot.get("recommended_branch_id")
+
+    return {
+        "user_id": str(snapshot.get("user_id")),
+        "username": snapshot.get("username", ""),
+        "server_time": snapshot.get("server_time", ""),
+        "acl_version": snapshot.get("acl_version", ""),
+        "companies": normalized_companies,
+        "admin_caps_by_company": admin_caps_by_company,
+        "recommended_company_id": str(recommended_company) if recommended_company is not None else None,
+        "recommended_branch_id": str(recommended_branch) if recommended_branch is not None else None,
+    }
+
+
+def _resolve_effective_context(
+    request, acl_snapshot: dict[str, Any]
+) -> tuple[dict[str, Any], set[str]]:
+    companies = acl_snapshot.get("companies") or []
+    by_company = {str(c.get("company_id")): c for c in companies}
+
+    recommended_company_id = acl_snapshot.get("recommended_company_id")
+    recommended_branch_id = acl_snapshot.get("recommended_branch_id")
+
+    header_company = (request.headers.get("X-Company-Id") or "").strip()
+    header_branch = (request.headers.get("X-Branch-Id") or "").strip()
+
+    active_company_id: str | None = None
+    active_branch_id: str | None = None
+
+    if header_company and header_company in by_company:
+        active_company_id = header_company
+        branch_ids = {str(b.get("branch_id")) for b in (by_company[header_company].get("branches") or [])}
+        if header_branch and header_branch in branch_ids:
+            active_branch_id = header_branch
+
+    selected_company_id = active_company_id or recommended_company_id
+    if not selected_company_id and companies:
+        selected_company_id = str(companies[0].get("company_id"))
+
+    selected_permissions = set(
+        (by_company.get(str(selected_company_id), {}) or {}).get("permissions") or []
+    )
+
+    requires_context_selection = bool(len(companies) > 1 and not active_company_id)
+
+    context_payload = {
+        "company_id": active_company_id,
+        "branch_id": active_branch_id,
+        "recommended_company_id": recommended_company_id,
+        "recommended_branch_id": recommended_branch_id,
+        "requires_context_selection": requires_context_selection,
+    }
+    return context_payload, selected_permissions
+
+
+def _allowed_modules_for_permissions(permissions: set[str]) -> list[str]:
+    allowed: list[str] = ["dashboard"]
+    for module_key, prefixes in _MODULE_PERMISSION_PREFIXES:
+        if any(any(permission.startswith(prefix) for prefix in prefixes) for permission in permissions):
+            allowed.append(module_key)
+    return allowed
 
 
 def _require_secure_cookie_transport(request, *, transport: str) -> Response | None:
@@ -951,3 +1092,51 @@ class MeACLView(APIView):
 
     def get(self, request):
         return Response(build_acl_snapshot(request.user), status=status.HTTP_200_OK)
+
+
+class BootstrapSessionView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "me_acl_read"
+
+    def get(self, request):
+        user_payload = MeSerializer.from_user(request.user)
+        acl_snapshot = _normalized_acl_snapshot(request.user)
+        effective_context, selected_permissions = _resolve_effective_context(request, acl_snapshot)
+
+        device_class = _request_device_class(request)
+        source_device = _request_source_device(request)
+        channel = _channel(request)
+
+        response_payload = {
+            "user": {
+                "id": user_payload["id"],
+                "username": user_payload["username"],
+                "must_change_password": user_payload["must_change_password"],
+                "is_setup_complete": user_payload["is_setup_complete"],
+            },
+            "device": {
+                "device_class": device_class,
+                "source_device": source_device,
+            },
+            "bootstrap_state": {
+                "is_fresh": False,
+                "setup_required": not bool(user_payload["is_setup_complete"]),
+            },
+            "effective_context": effective_context,
+            "capabilities": {
+                "acl_snapshot": acl_snapshot,
+            },
+            "allowed_modules": _allowed_modules_for_permissions(selected_permissions),
+            "feature_flags": {
+                "desktop_shell_enabled": True,
+                "mobile_shell_enabled": True,
+            },
+            "shell_mode": "mobile" if device_class == "mobile" else "desktop",
+            "trace": {
+                "request_id": getattr(request, "request_id", "") or "",
+                "audit_event_id": "",
+                "channel": channel,
+                "source_device": source_device,
+            },
+        }
+        return Response(response_payload, status=status.HTTP_200_OK)

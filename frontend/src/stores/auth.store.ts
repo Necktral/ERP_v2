@@ -4,6 +4,7 @@ import { api, authApi } from 'src/boot/axios';
 import { clearTokens } from 'src/core/storage/auth';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
+import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -36,6 +37,16 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    applyBootstrapUser(user: {
+      id: number;
+      username: string;
+      must_change_password: boolean;
+      is_setup_complete: boolean;
+    }) {
+      this.user = user;
+      this.status = 'authenticated';
+    },
+
     initFromStorage() {
       if (this.hydrated) return;
       this.status = 'anonymous';
@@ -143,14 +154,17 @@ export const useAuthStore = defineStore('auth', {
     hardClearLocal() {
       const acl = useAclStore();
       const ctx = useContextStore();
+      const sessionBootstrap = useSessionBootstrapStore();
 
       this.status = 'anonymous';
+      this.user = null;
       this.twoFactor.required = false;
       this.twoFactor.challenge = null;
       clearTokens();
 
       acl.clearAcl();
       ctx.clear();
+      sessionBootstrap.clear();
     },
   },
 });

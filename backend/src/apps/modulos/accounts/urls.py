@@ -4,6 +4,7 @@ from .views import (
     LoginView,
     LogoutView,
     MeACLView,
+    BootstrapSessionView,
     MeView,
     RefreshView,
     BootstrapStatusView,
@@ -22,6 +23,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", MeView.as_view(), name="auth-me"),
     path("me/acl/", MeACLView.as_view(), name="me-acl"),
+    path("bootstrap/session/", BootstrapSessionView.as_view(), name="auth-bootstrap-session"),
     # Onboarding / bootstrap
     path("bootstrap/status/", BootstrapStatusView.as_view(), name="auth-bootstrap-status"),
     path("bootstrap/init/", BootstrapInitView.as_view(), name="auth-bootstrap-init"),

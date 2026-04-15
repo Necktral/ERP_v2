@@ -22,6 +22,9 @@
           <q-badge v-if="contextLabel" outline class="q-mr-sm">
             {{ contextLabel }}
           </q-badge>
+          <q-badge outline class="q-mr-sm">
+            {{ shellBadgeLabel }}
+          </q-badge>
 
           <q-btn flat dense round icon="tune" aria-label="Ajustes de interfaz">
             <q-menu>
@@ -96,7 +99,7 @@
 
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered class="app-drawer">
       <q-list padding>
-        <q-item-label header>Navegacion</q-item-label>
+        <q-item-label header>{{ isMobileShell ? 'Taskflow' : 'Workbench' }}</q-item-label>
 
         <q-item clickable :to="routes.dashboard" exact>
           <q-item-section avatar>
@@ -112,40 +115,42 @@
           <q-item-section>Contexto operativo</q-item-section>
         </q-item>
 
-        <q-separator spaced />
+        <template v-if="!isMobileShell">
+          <q-separator spaced />
 
-        <q-item-label header>{{ labels.organization }}</q-item-label>
-        <q-item clickable :to="routes.organizationCompanies">
-          <q-item-section avatar><q-icon name="domain" /></q-item-section>
-          <q-item-section>Empresas</q-item-section>
-        </q-item>
-        <q-item clickable :to="routes.organizationCompanyProfile">
-          <q-item-section avatar><q-icon name="apartment" /></q-item-section>
-          <q-item-section>Perfil de empresa</q-item-section>
-        </q-item>
-        <q-item clickable :to="routes.organizationBranches">
-          <q-item-section avatar><q-icon name="store" /></q-item-section>
-          <q-item-section>Sucursales</q-item-section>
-        </q-item>
+          <q-item-label header>{{ labels.organization }}</q-item-label>
+          <q-item clickable :to="routes.organizationCompanies">
+            <q-item-section avatar><q-icon name="domain" /></q-item-section>
+            <q-item-section>Empresas</q-item-section>
+          </q-item>
+          <q-item clickable :to="routes.organizationCompanyProfile">
+            <q-item-section avatar><q-icon name="apartment" /></q-item-section>
+            <q-item-section>Perfil de empresa</q-item-section>
+          </q-item>
+          <q-item clickable :to="routes.organizationBranches">
+            <q-item-section avatar><q-icon name="store" /></q-item-section>
+            <q-item-section>Sucursales</q-item-section>
+          </q-item>
 
-        <q-separator spaced />
+          <q-separator spaced />
 
-        <q-item-label header>{{ labels.humanResources }}</q-item-label>
-        <q-item clickable :to="routes.humanResourcesPositions">
-          <q-item-section avatar><q-icon name="work" /></q-item-section>
-          <q-item-section>Puestos</q-item-section>
-        </q-item>
-        <q-item clickable :to="routes.humanResourcesEmployees">
-          <q-item-section avatar><q-icon name="badge" /></q-item-section>
-          <q-item-section>Empleados</q-item-section>
-        </q-item>
+          <q-item-label header>{{ labels.humanResources }}</q-item-label>
+          <q-item clickable :to="routes.humanResourcesPositions">
+            <q-item-section avatar><q-icon name="work" /></q-item-section>
+            <q-item-section>Puestos</q-item-section>
+          </q-item>
+          <q-item clickable :to="routes.humanResourcesEmployees">
+            <q-item-section avatar><q-icon name="badge" /></q-item-section>
+            <q-item-section>Empleados</q-item-section>
+          </q-item>
 
-        <q-separator spaced />
+          <q-separator spaced />
 
-        <q-item clickable :to="routes.auditLog" :disable="!canAuditRead">
-          <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
-          <q-item-section>Auditoria</q-item-section>
-        </q-item>
+          <q-item clickable :to="routes.auditLog" :disable="!canAuditRead">
+            <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
+            <q-item-section>Auditoria</q-item-section>
+          </q-item>
+        </template>
 
         <q-separator spaced />
 
@@ -171,13 +176,15 @@
           <q-item-section>Cockpit operativo</q-item-section>
         </q-item>
 
-        <q-separator spaced />
+        <template v-if="!isMobileShell">
+          <q-separator spaced />
 
-        <q-item-label header>{{ labels.analytics }}</q-item-label>
-        <q-item clickable :to="routes.analytics" :disable="!canAnalyticsRead">
-          <q-item-section avatar><q-icon name="insights" /></q-item-section>
-          <q-item-section>Workspace analytics</q-item-section>
-        </q-item>
+          <q-item-label header>{{ labels.analytics }}</q-item-label>
+          <q-item clickable :to="routes.analytics" :disable="!canAnalyticsRead">
+            <q-item-section avatar><q-icon name="insights" /></q-item-section>
+            <q-item-section>Workspace analytics</q-item-section>
+          </q-item>
+        </template>
 
         <q-separator spaced />
 
@@ -207,12 +214,14 @@ import { BUSINESS_LABELS, UI_ROUTE_PATHS } from 'src/shared/ui/business-terms';
 import { useAuthStore } from 'src/stores/auth.store';
 import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
+import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
 import { useUiStore } from 'src/stores/ui.store';
 
 const router = useRouter();
 const auth = useAuthStore();
 const acl = useAclStore();
 const ctx = useContextStore();
+const sessionBootstrap = useSessionBootstrapStore();
 const ui = useUiStore();
 
 const labels = BUSINESS_LABELS;
@@ -250,6 +259,9 @@ const layoutClasses = computed(() => ({
   'density-compact': ui.density === 'compact',
   'density-comfortable': ui.density === 'comfortable',
 }));
+
+const isMobileShell = computed(() => sessionBootstrap.isMobileShell);
+const shellBadgeLabel = computed(() => (isMobileShell.value ? 'Taskflow móvil' : 'Workbench desktop'));
 
 const contextLabel = computed(() => {
   const companyId = ctx.activeCompanyId;

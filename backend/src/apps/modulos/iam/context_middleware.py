@@ -32,6 +32,7 @@ class OrgContextMiddleware:
         "/api/auth/logout/",
         "/api/auth/me/",
         "/api/auth/me/acl/",
+        "/api/auth/bootstrap/",
         "/api/schema/",
         "/api/docs/",
     )

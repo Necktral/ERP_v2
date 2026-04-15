@@ -21,10 +21,13 @@ export const useContextStore = defineStore('context', {
       this.hydrated = true;
     },
 
-    setContext(companyId: string, branchId?: string | null) {
-      this.activeCompanyId = companyId;
-      this.activeBranchId = branchId ?? null;
-      writeContext({ companyId, branchId: branchId ?? null });
+    setContext(companyId: string | number, branchId?: string | number | null) {
+      const normalizedCompanyId = String(companyId);
+      const normalizedBranchId = branchId != null ? String(branchId) : null;
+
+      this.activeCompanyId = normalizedCompanyId;
+      this.activeBranchId = normalizedBranchId;
+      writeContext({ companyId: normalizedCompanyId, branchId: normalizedBranchId });
     },
 
     clear() {
