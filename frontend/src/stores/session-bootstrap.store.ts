@@ -46,6 +46,8 @@ type BootstrapSessionResponse = {
 function detectDeviceClass(): DeviceClass {
   if (typeof window === 'undefined') return 'desktop';
 
+  // Solo sugiere `device_class` al servidor; la decision final de `shell_mode`
+  // siempre la toma backend en `/auth/bootstrap/session/`.
   const byViewport = window.matchMedia?.('(max-width: 1023px)').matches ?? false;
   const ua = navigator.userAgent || '';
   const byUserAgent = /android|iphone|ipad|ipod|mobile/i.test(ua);
@@ -85,15 +87,24 @@ export const useSessionBootstrapStore = defineStore('sessionBootstrap', {
 
       this.loading = true;
       try {
+        const ctx = useContextStore();
         const deviceClass = detectDeviceClass();
         const sourceDevice = `web-spa-${deviceClass}`;
+        const bootstrapHeaders: Record<string, string> = {
+          'X-Device-Class': deviceClass,
+          'X-Source-Device': sourceDevice,
+          'X-Channel': 'web',
+        };
+
+        if (ctx.activeCompanyId) {
+          bootstrapHeaders['X-Company-Id'] = String(ctx.activeCompanyId);
+        }
+        if (ctx.activeBranchId) {
+          bootstrapHeaders['X-Branch-Id'] = String(ctx.activeBranchId);
+        }
 
         const { data } = await api.get<BootstrapSessionResponse>('/auth/bootstrap/session/', {
-          headers: {
-            'X-Device-Class': deviceClass,
-            'X-Source-Device': sourceDevice,
-            'X-Channel': 'web',
-          },
+          headers: bootstrapHeaders,
         });
 
         this.payload = data;
@@ -101,7 +112,6 @@ export const useSessionBootstrapStore = defineStore('sessionBootstrap', {
 
         const auth = useAuthStore();
         const acl = useAclStore();
-        const ctx = useContextStore();
 
         auth.applyBootstrapUser(data.user);
         acl.hydrateSnapshot(data.capabilities.acl_snapshot);

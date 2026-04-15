@@ -125,6 +125,12 @@ def _normalize_device_class(raw: str) -> str | None:
 
 
 def _request_device_class(request) -> str:
+    """
+    Resolución canónica v1 para clase de dispositivo:
+    1) X-Device-Class válido (`desktop|mobile`)
+    2) Fallback por User-Agent
+    3) Default determinista `desktop`
+    """
     explicit = _normalize_device_class(
         request.headers.get("X-Device-Class") or request.query_params.get("device_class") or ""
     )
@@ -1131,6 +1137,7 @@ class BootstrapSessionView(APIView):
                 "desktop_shell_enabled": True,
                 "mobile_shell_enabled": True,
             },
+            # `shell_mode` es siempre derivado del `device_class` resuelto por servidor.
             "shell_mode": "mobile" if device_class == "mobile" else "desktop",
             "trace": {
                 "request_id": getattr(request, "request_id", "") or "",

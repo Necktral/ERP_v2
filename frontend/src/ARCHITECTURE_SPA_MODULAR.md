@@ -122,6 +122,27 @@ Referencia normativa obligatoria:
 - Movil: listas resumidas, filtros rapidos predefinidos y busqueda contextual.
 - Regla: el backend define semantica de filtros/resultados; la UI define forma de interaccion.
 
+### Matriz canonica `modulo -> permisos minimos -> shell`
+
+Esta matriz se aplica por interseccion: `allowed_modules` (bootstrap) + permiso ACL por ruta/accion.
+
+| Modulo | Permiso minimo de lectura | Shell habilitado |
+|---|---|---|
+| `dashboard` | contexto valido (sin permiso explicito extra) | `desktop`, `mobile` |
+| `organization` | `org.company.read` | `desktop` |
+| `human_resources` | `hr.employee.read` | `desktop` |
+| `audit` | `audit.read` | `desktop` |
+| `fuel` | `fuel.shift.read` | `desktop`, `mobile` |
+| `retail_pos` | `retail.pos.ticket.read` | `desktop`, `mobile` |
+| `analytics`/`reporting` | `report.dashboard.read` | `desktop` |
+| `synchronization` | `sync.device.enroll` o `sync.device.revoke` | `desktop`, `mobile` |
+
+Reglas:
+
+- `shell_mode` lo define servidor en bootstrap; frontend no compite con una politica paralela.
+- La visibilidad de menu no reemplaza autorizacion backend; las rutas siguen protegidas por ACL.
+- La activacion de inventarios/facturacion/estacion se agrega en esta matriz al habilitar cada slice funcional.
+
 ## Contratos tecnicos UX/API (aditivos, no-breaking)
 
 - Metadata de comando:

@@ -101,7 +101,7 @@
       <q-list padding>
         <q-item-label header>{{ isMobileShell ? 'Taskflow' : 'Workbench' }}</q-item-label>
 
-        <q-item clickable :to="routes.dashboard" exact>
+        <q-item clickable :to="routes.dashboard" exact :disable="!canDashboardAccess">
           <q-item-section avatar>
             <q-icon name="dashboard" />
           </q-item-section>
@@ -115,36 +115,36 @@
           <q-item-section>Contexto operativo</q-item-section>
         </q-item>
 
-        <template v-if="!isMobileShell">
+        <template v-if="!isMobileShell && (canOrganizationAccess || canHumanResourcesAccess || canAuditRead)">
           <q-separator spaced />
 
-          <q-item-label header>{{ labels.organization }}</q-item-label>
-          <q-item clickable :to="routes.organizationCompanies">
+          <q-item-label header v-if="canOrganizationAccess">{{ labels.organization }}</q-item-label>
+          <q-item clickable :to="routes.organizationCompanies" :disable="!canOrganizationAccess">
             <q-item-section avatar><q-icon name="domain" /></q-item-section>
             <q-item-section>Empresas</q-item-section>
           </q-item>
-          <q-item clickable :to="routes.organizationCompanyProfile">
+          <q-item clickable :to="routes.organizationCompanyProfile" :disable="!canOrganizationAccess">
             <q-item-section avatar><q-icon name="apartment" /></q-item-section>
             <q-item-section>Perfil de empresa</q-item-section>
           </q-item>
-          <q-item clickable :to="routes.organizationBranches">
+          <q-item clickable :to="routes.organizationBranches" :disable="!canOrganizationAccess">
             <q-item-section avatar><q-icon name="store" /></q-item-section>
             <q-item-section>Sucursales</q-item-section>
           </q-item>
 
-          <q-separator spaced />
+          <q-separator spaced v-if="canHumanResourcesAccess" />
 
-          <q-item-label header>{{ labels.humanResources }}</q-item-label>
-          <q-item clickable :to="routes.humanResourcesPositions">
+          <q-item-label header v-if="canHumanResourcesAccess">{{ labels.humanResources }}</q-item-label>
+          <q-item clickable :to="routes.humanResourcesPositions" :disable="!canHumanResourcesAccess">
             <q-item-section avatar><q-icon name="work" /></q-item-section>
             <q-item-section>Puestos</q-item-section>
           </q-item>
-          <q-item clickable :to="routes.humanResourcesEmployees">
+          <q-item clickable :to="routes.humanResourcesEmployees" :disable="!canHumanResourcesAccess">
             <q-item-section avatar><q-icon name="badge" /></q-item-section>
             <q-item-section>Empleados</q-item-section>
           </q-item>
 
-          <q-separator spaced />
+          <q-separator spaced v-if="canAuditRead" />
 
           <q-item clickable :to="routes.auditLog" :disable="!canAuditRead">
             <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
@@ -152,9 +152,9 @@
           </q-item>
         </template>
 
-        <q-separator spaced />
+        <q-separator spaced v-if="canFuelRead" />
 
-        <q-item-label header>{{ labels.fuel }}</q-item-label>
+        <q-item-label header v-if="canFuelRead">{{ labels.fuel }}</q-item-label>
         <q-item clickable :to="routes.fuelDashboard" :disable="!canFuelRead">
           <q-item-section avatar><q-icon name="local_gas_station" /></q-item-section>
           <q-item-section>Tablero de operacion</q-item-section>
@@ -164,9 +164,9 @@
           <q-item-section>Estado del modulo</q-item-section>
         </q-item>
 
-        <q-separator spaced />
+        <q-separator spaced v-if="canRetailPosRead" />
 
-        <q-item-label header>{{ labels.retailPos }}</q-item-label>
+        <q-item-label header v-if="canRetailPosRead">{{ labels.retailPos }}</q-item-label>
         <q-item clickable :to="routes.retailPosTerminal" :disable="!canRetailPosRead">
           <q-item-section avatar><q-icon name="point_of_sale" /></q-item-section>
           <q-item-section>Terminal POS</q-item-section>
@@ -176,7 +176,7 @@
           <q-item-section>Cockpit operativo</q-item-section>
         </q-item>
 
-        <template v-if="!isMobileShell">
+        <template v-if="!isMobileShell && canAnalyticsRead">
           <q-separator spaced />
 
           <q-item-label header>{{ labels.analytics }}</q-item-label>
@@ -186,9 +186,9 @@
           </q-item>
         </template>
 
-        <q-separator spaced />
+        <q-separator spaced v-if="canSyncEnroll || canSyncManage" />
 
-        <q-item-label header>{{ labels.synchronization }}</q-item-label>
+        <q-item-label header v-if="canSyncEnroll || canSyncManage">{{ labels.synchronization }}</q-item-label>
         <q-item clickable :to="routes.synchronizationEnrollment" :disable="!canSyncEnroll">
           <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
           <q-item-section>Enrolamiento</q-item-section>
@@ -262,6 +262,17 @@ const layoutClasses = computed(() => ({
 
 const isMobileShell = computed(() => sessionBootstrap.isMobileShell);
 const shellBadgeLabel = computed(() => (isMobileShell.value ? 'Taskflow móvil' : 'Workbench desktop'));
+const allowedModules = computed(() => new Set(sessionBootstrap.payload?.allowed_modules ?? []));
+
+function hasModuleEnabled(moduleCode: string): boolean {
+  return allowedModules.value.has(moduleCode);
+}
+
+function hasCompanyPermission(permissionCode: string): boolean {
+  const companyId = ctx.activeCompanyId;
+  if (!companyId) return false;
+  return acl.hasPermission(companyId, permissionCode);
+}
 
 const contextLabel = computed(() => {
   const companyId = ctx.activeCompanyId;
@@ -275,40 +286,34 @@ const contextLabel = computed(() => {
   return `${companyName} · ${branchName}`;
 });
 
-const canAuditRead = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'audit.read');
-});
+const canDashboardAccess = computed(() => hasModuleEnabled('dashboard'));
+const canOrganizationAccess = computed(
+  () => hasModuleEnabled('organization') && hasCompanyPermission('org.company.read'),
+);
+const canHumanResourcesAccess = computed(
+  () => hasModuleEnabled('human_resources') && hasCompanyPermission('hr.employee.read'),
+);
+const canAuditRead = computed(() => hasModuleEnabled('audit') && hasCompanyPermission('audit.read'));
 
 const canFuelRead = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'fuel.shift.read');
+  return hasModuleEnabled('fuel') && hasCompanyPermission('fuel.shift.read');
 });
 
 const canRetailPosRead = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'retail.pos.ticket.read');
+  return hasModuleEnabled('retail_pos') && hasCompanyPermission('retail.pos.ticket.read');
 });
 
 const canAnalyticsRead = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'report.dashboard.read');
+  const analyticsEnabled = hasModuleEnabled('analytics') || hasModuleEnabled('reporting');
+  return analyticsEnabled && hasCompanyPermission('report.dashboard.read');
 });
 
 const canSyncEnroll = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'sync.device.enroll');
+  return hasModuleEnabled('synchronization') && hasCompanyPermission('sync.device.enroll');
 });
 
 const canSyncManage = computed(() => {
-  const companyId = ctx.activeCompanyId;
-  if (!companyId) return false;
-  return acl.hasPermission(companyId, 'sync.device.revoke');
+  return hasModuleEnabled('synchronization') && hasCompanyPermission('sync.device.revoke');
 });
 
 async function onLogout() {

@@ -39,13 +39,13 @@ import { isAxiosError } from 'axios';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/stores/auth.store';
-import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
+import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
 
 const router = useRouter();
 const auth = useAuthStore();
-const acl = useAclStore();
 const ctx = useContextStore();
+const sessionBootstrap = useSessionBootstrapStore();
 
 const code = ref('');
 const loading = ref(false);
@@ -57,13 +57,20 @@ async function onSubmit() {
 
   try {
     await auth.verifyTwoFactor(code.value.trim());
-    await acl.loadAcl();
 
-    const recCompany = acl.recommendedCompanyId;
-    const recBranch = acl.recommendedBranchId;
+    await sessionBootstrap.loadSession({ force: true });
 
-    if (recCompany) {
-      ctx.setContext(recCompany, recBranch ?? null);
+    if (auth.user?.must_change_password) {
+      await router.replace('/password-change');
+      return;
+    }
+
+    if (sessionBootstrap.payload?.bootstrap_state?.setup_required) {
+      await router.replace('/bootstrap');
+      return;
+    }
+
+    if (ctx.activeCompanyId) {
       await router.replace('/dashboard');
       return;
     }
