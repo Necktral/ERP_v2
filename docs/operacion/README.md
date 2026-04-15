@@ -49,6 +49,7 @@ Esta sección contiene documentación de **operación del negocio** (playbooks, 
 - [Contratos Funcionales Compartidos Laptop/Móvil (ERP Web) v1.0](CONTRATOS_FUNCIONALES_COMPARTIDOS_LAPTOP_MOVIL_v1.0.md)
 - [Backlog Profesional Multidispositivo (Inventarios, Facturación, Estación, Reportes, Dashboard) v1.0](BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md)
 - [Prompts adaptados al stack real (Quasar/Vue/Pinia + Django/DRF)](PROMPTS_STACK_REAL.md)
+- [Cierre de sesión móvil autenticada por HTTPS v1.0](SESION_MOVIL_AUTENTICADA_HTTPS_v1.0.md)
 - [Plan maestro F1-F12 + cierre operativo](PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md)
 - [Checklist PR release F1-F12](PR_RELEASE_F1_F12_CHECKLIST.md)
 
@@ -126,3 +127,4 @@ Soporte de delegación (no canónico):
 - 2026-04-14: Se agrega backlog de delivery `BACKLOG_MULTIDISPOSITIVO_INVENTARIO_FACTURACION_ESTACION_REPORTING_DASHBOARD_v1.0.md` con epicas, capacidades, historias, aceptacion, dependencias, riesgos y orden de implementacion por valor/riesgo/dependencia tecnica.
 - 2026-04-14: Cierre de bateria de prompts multidispositivo: se consolida set canonico de documentos y se agrega guia `PROMPTS_STACK_REAL.md` para ejecucion alineada al stack real (Quasar/Vue/Pinia + Django/DRF).
 - 2026-04-14: Se consolida `CODEX_MASTER_PACK_v1.0.md` como source of truth operativo para delegacion por slices (context card, reglas no negociables, 4 bloques oficiales, handoff A-F y matriz de gates).
+- 2026-04-14: Se agrega runbook de cierre `SESION_MOVIL_AUTENTICADA_HTTPS_v1.0.md` y se actualiza `SYNC_PWA_ENROLLAMIENTO_LAN_v1.0.md` para separar carril público de enroll y carril privado autenticado con HTTPS obligatorio en LAN/Prod.

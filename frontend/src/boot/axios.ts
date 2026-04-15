@@ -18,10 +18,35 @@ declare module 'vue' {
   }
 }
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api';
 const AUTH_TRANSPORT = 'cookie';
 const CSRF_COOKIE_NAME = import.meta.env.VITE_CSRF_COOKIE_NAME || 'nt_csrf';
+const RAW_API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api';
+
+function resolveApiBaseUrl(raw: string): string {
+  const normalized = (raw || '').trim() || '/api';
+  if (AUTH_TRANSPORT !== 'cookie') return normalized;
+
+  // Con auth por cookie, priorizamos same-origin para evitar drift de sesión en móvil.
+  if (typeof window === 'undefined') return normalized;
+  if (!/^https?:\/\//i.test(normalized)) return normalized;
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.origin !== window.location.origin) {
+      console.warn(
+        `[auth-cookie] VITE_API_BASE_URL cross-origin (${parsed.origin}) detectado; se fuerza /api para sesión estable.`,
+      );
+      return '/api';
+    }
+  } catch {
+    return '/api';
+  }
+
+  return normalized;
+}
+
+const API_BASE_URL = resolveApiBaseUrl(RAW_API_BASE_URL);
 
 function readCookie(name: string): string | null {
   const m = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
@@ -55,6 +80,15 @@ const CONTEXT_EXEMPT_PREFIXES = [
   '/schema/',
 ];
 
+const AUTH_REFRESH_EXEMPT_PREFIXES = [
+  '/auth/login/',
+  '/auth/refresh/',
+  '/auth/logout/',
+  '/auth/bootstrap/',
+  '/sync/enroll/',
+  '/sync/batch/',
+];
+
 function getPath(config: AxiosRequestConfig): string {
   const url = config.url ?? '';
   // Si url es relativa ("/auth/login/"), esto ya sirve.
@@ -71,9 +105,24 @@ function isContextExempt(path: string): boolean {
   return CONTEXT_EXEMPT_PREFIXES.some((p) => path.startsWith(p));
 }
 
+function isAuthRefreshExempt(path: string): boolean {
+  return AUTH_REFRESH_EXEMPT_PREFIXES.some((p) => path.startsWith(p));
+}
+
 export default boot(({ app, router }) => {
   app.config.globalProperties.$axios = axios;
   app.config.globalProperties.$api = api;
+
+  if (
+    AUTH_TRANSPORT === 'cookie' &&
+    typeof window !== 'undefined' &&
+    window.location.protocol !== 'https:' &&
+    !['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ) {
+    console.warn(
+      '[auth-cookie] Contexto no HTTPS detectado para sesión autenticada. En LAN/prod se requiere HTTPS para estabilidad y seguridad.',
+    );
+  }
 
   api.interceptors.request.use((config) => {
     const auth = useAuthStore();
@@ -83,6 +132,9 @@ export default boot(({ app, router }) => {
     ctx.initFromStorage();
 
     const path = getPath(config);
+    if (isAuthRefreshExempt(path)) {
+      config._skipAuthRefresh = true;
+    }
 
     if (AUTH_TRANSPORT === 'cookie') {
       const csrf = readCookie(CSRF_COOKIE_NAME);
@@ -119,8 +171,13 @@ export default boot(({ app, router }) => {
       if (!original) return Promise.reject(error);
 
       const status = error.response?.status;
+      const path = getPath(original);
 
       // 401: intentar refresh una vez, y reintentar request
+      if (status === 401 && isAuthRefreshExempt(path)) {
+        return Promise.reject(error);
+      }
+
       if (status === 401 && !original._retry && !original._skipAuthRefresh) {
         original._retry = true;
 

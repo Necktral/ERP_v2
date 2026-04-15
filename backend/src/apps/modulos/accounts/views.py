@@ -95,6 +95,22 @@ def _request_auth_transport(request) -> str:
     return getattr(settings, "AUTH_TOKEN_TRANSPORT", "header")
 
 
+def _require_secure_cookie_transport(request, *, transport: str) -> Response | None:
+    if transport != "cookie":
+        return None
+
+    if not bool(getattr(settings, "AUTH_COOKIE_REQUIRE_HTTPS", False)):
+        return None
+
+    if request.is_secure():
+        return None
+
+    return Response(
+        {"detail": "HTTPS requerido para autenticación por cookie en este entorno."},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 def _is_admin_user(user) -> bool:
     return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
 
@@ -168,6 +184,18 @@ class LoginView(APIView):
 
     def post(self, request):
         transport = _request_auth_transport(request)
+        insecure = _require_secure_cookie_transport(request, transport=transport)
+        if insecure is not None:
+            write_event(
+                request=request,
+                event_type="AUTH_LOGIN_FAILURE",
+                reason_code="INSECURE_TRANSPORT",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "login", "transport": transport},
+            )
+            return insecure
         # Axes usa request.POST para extraer el username. En JSON, request.POST viene vacío.
         qd = QueryDict("", mutable=True)
         qd.update({"username": request.data.get("username") or request.data.get("email") or ""})
@@ -241,6 +269,18 @@ class RefreshView(TokenRefreshView):
 
     def post(self, request, *args, **kwargs):
         transport = _request_auth_transport(request)
+        insecure = _require_secure_cookie_transport(request, transport=transport)
+        if insecure is not None:
+            write_event(
+                request=request,
+                event_type="AUTH_TOKEN_REFRESH_FAILURE",
+                reason_code="INSECURE_TRANSPORT",
+                actor_user=None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "refresh", "transport": transport},
+            )
+            return insecure
         refresh_token = None
         if transport == "cookie":
             refresh_cookie = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
@@ -387,6 +427,18 @@ class LogoutView(APIView):
 
     def post(self, request):
         transport = _request_auth_transport(request)
+        insecure = _require_secure_cookie_transport(request, transport=transport)
+        if insecure is not None:
+            write_event(
+                request=request,
+                event_type="AUTH_LOGOUT_FAILURE",
+                reason_code="INSECURE_TRANSPORT",
+                actor_user=request.user if getattr(request, "user", None) else None,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "logout", "transport": transport},
+            )
+            return insecure
         refresh = request.data.get("refresh")
         if transport == "cookie":
             refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH_NAME)
@@ -605,6 +657,18 @@ class TwoFactorVerifyView(APIView):
         )
 
         transport = _request_auth_transport(request)
+        insecure = _require_secure_cookie_transport(request, transport=transport)
+        if insecure is not None:
+            write_event(
+                request=request,
+                event_type="AUTH_2FA_FAILED",
+                reason_code="INSECURE_TRANSPORT",
+                actor_user=user,
+                subject_type="SESSION",
+                subject_id="",
+                metadata={"stage": "2fa_verify", "transport": transport},
+            )
+            return insecure
         if transport == "cookie":
             response = Response({"ok": True}, status=status.HTTP_200_OK)
             set_auth_cookies(response, access=str(refresh.access_token), refresh=str(refresh))

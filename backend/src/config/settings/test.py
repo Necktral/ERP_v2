@@ -16,6 +16,8 @@ SIMPLE_JWT = {
 
 # Tests: mantener header para facilitar clientes no-browser
 AUTH_TOKEN_TRANSPORT = "header"
+# Tests: no exigir HTTPS por defecto en cookie transport salvo override explícito por caso.
+AUTH_COOKIE_REQUIRE_HTTPS = False
 
 # Tests: permitir host por defecto de APIClient
 ALLOWED_HOSTS = list(ALLOWED_HOSTS) + ["testserver"]

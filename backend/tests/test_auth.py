@@ -1,5 +1,7 @@
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.modulos.audit.models import AuditEvent
@@ -137,3 +139,63 @@ def test_logout_is_idempotent_when_refresh_belongs_to_another_user():
     assert ev.reason_code == "TOKEN_MISMATCH"
     assert ev.metadata.get("stage") == "logout"
     assert ev.metadata.get("detail") == "refresh_owner_mismatch"
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_TOKEN_TRANSPORT="cookie", AUTH_COOKIE_REQUIRE_HTTPS=True)
+def test_login_cookie_transport_rejects_insecure_http():
+    User.objects.create_user(username="u_cookie_http", password="pass12345")
+
+    client = APIClient()
+    r = client.post("/api/auth/login/", {"username": "u_cookie_http", "password": "pass12345"}, format="json")
+    assert r.status_code == 400
+    assert r.data.get("detail") == "HTTPS requerido para autenticación por cookie en este entorno."
+    assert settings.AUTH_COOKIE_ACCESS_NAME not in client.cookies
+    assert settings.AUTH_COOKIE_REFRESH_NAME not in client.cookies
+
+    ev = AuditEvent.objects.filter(event_type="AUTH_LOGIN_FAILURE").latest("timestamp_server")
+    assert ev.reason_code == "INSECURE_TRANSPORT"
+    assert ev.metadata.get("stage") == "login"
+    assert ev.metadata.get("transport") == "cookie"
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_TOKEN_TRANSPORT="cookie", AUTH_COOKIE_REQUIRE_HTTPS=True)
+def test_login_cookie_transport_allows_secure_https_request():
+    User.objects.create_user(username="u_cookie_https", password="pass12345")
+
+    client = APIClient()
+    r = client.post(
+        "/api/auth/login/",
+        {"username": "u_cookie_https", "password": "pass12345"},
+        format="json",
+        secure=True,
+    )
+    assert r.status_code == 200
+    assert r.data.get("ok") is True
+    assert settings.AUTH_COOKIE_ACCESS_NAME in client.cookies
+    assert settings.AUTH_COOKIE_REFRESH_NAME in client.cookies
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_TOKEN_TRANSPORT="cookie", AUTH_COOKIE_REQUIRE_HTTPS=True)
+def test_refresh_cookie_transport_rejects_insecure_http():
+    User.objects.create_user(username="u_cookie_refresh", password="pass12345")
+
+    client = APIClient()
+    login = client.post(
+        "/api/auth/login/",
+        {"username": "u_cookie_refresh", "password": "pass12345"},
+        format="json",
+        secure=True,
+    )
+    assert login.status_code == 200
+
+    refresh = client.post("/api/auth/refresh/", {}, format="json")
+    assert refresh.status_code == 400
+    assert refresh.data.get("detail") == "HTTPS requerido para autenticación por cookie en este entorno."
+
+    ev = AuditEvent.objects.filter(event_type="AUTH_TOKEN_REFRESH_FAILURE").latest("timestamp_server")
+    assert ev.reason_code == "INSECURE_TRANSPORT"
+    assert ev.metadata.get("stage") == "refresh"
+    assert ev.metadata.get("transport") == "cookie"

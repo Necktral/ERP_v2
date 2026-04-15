@@ -11,7 +11,7 @@ Esta carpeta contiene la configuración del backend Django/DRF.
 
 ## Variables de entorno relevantes
 
-- Auth/Cookies: `AUTH_TOKEN_TRANSPORT`, `AUTH_COOKIE_*`
+- Auth/Cookies: `AUTH_TOKEN_TRANSPORT`, `AUTH_COOKIE_*`, `AUTH_COOKIE_REQUIRE_HTTPS`
 - Throttling: `DRF_THROTTLE_*` y scopes (`auth_login`, `auth_refresh`, `auth_logout`, `auth_sensitive`, `me_read`, `me_acl_read`, `admin_writes`, `heavy_reads`)
 - Auditoría: `AUDIT_HMAC_KEYS` (keyring) y fallback `AUDIT_HMAC_KEY`
 - Observabilidad: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_PROFILES_SAMPLE_RATE`, `SENTRY_RELEASE`

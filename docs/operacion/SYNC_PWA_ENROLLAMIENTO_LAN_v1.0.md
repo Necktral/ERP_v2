@@ -9,6 +9,7 @@ Fuente de verdad: variables de entorno consumidas por `backend` y `frontend` en 
 
 - `SYNC_ENROLL_WEB_BASE_URL=http://<IP_HOST>:3000`
 - `VITE_API_BASE_URL=/api` (recomendado para LAN, same-origin por proxy devServer)
+- `AUTH_COOKIE_REQUIRE_HTTPS=1` para carril privado autenticado en móvil
 - `DJANGO_ALLOWED_HOSTS` debe incluir `<IP_HOST>`
 - `DJANGO_CORS_ALLOWED_ORIGINS` debe incluir `http://<IP_HOST>:3000`
 - `DJANGO_CSRF_TRUSTED_ORIGINS` debe incluir `http://<IP_HOST>:3000`
@@ -90,14 +91,20 @@ Checklist de correlación mínima:
 ### 2) `login=200` pero `GET /auth/me` y `POST /auth/refresh` dan `401`
 **Causa frecuente**: cookies no reenviadas por navegador móvil (restricción de privacidad/cookies o residuos de sesión).
 
+**Causa estructural adicional**: carril privado autenticado en HTTP cuando el entorno exige cookies seguras (HTTPS obligatorio).
+
 **Acción**:
 - limpiar datos del sitio para `http://<IP_HOST>:3000` y `http://<IP_HOST>:8000`
 - reintentar
 - para enrolamiento PWA, usar directamente `#/device/enroll` (ruta pública), no forzar flujo de login
 - verificar que `VITE_API_BASE_URL=/api` (same-origin) esté activo en el contenedor frontend
+- para login/me/refresh en móvil, usar `https://<HOST>` con certificado válido y CORS/CSRF en HTTPS
 
 ### 3) No usar login para `/device/enroll`
 `/device/enroll` está diseñado para operación pública controlada de alta de dispositivo. El login web no es requisito para ese paso.
+
+### 3.1) Carril privado móvil requiere HTTPS
+Para sesión autenticada (`/auth/login`, `/auth/me`, `/auth/refresh` + módulos privados), HTTP en LAN no es modo válido en esta fase.
 
 ### 4) Compatibilidad WebCrypto/Ed25519
 Algunos dispositivos/navegadores exigen contexto seguro para operaciones criptográficas avanzadas.
