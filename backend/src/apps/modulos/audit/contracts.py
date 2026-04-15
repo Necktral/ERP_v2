@@ -179,6 +179,7 @@ ALLOWED_REASON_CODES: set[str] = {
     # BILLING (reglas)
     "INVOICE_NOT_DRAFT",
     "SERIES_EXHAUSTED",
+    "INSECURE_TRANSPORT",
 }
 
 # Reason Codes (añadir)

@@ -223,6 +223,9 @@ qa-github-master-ruleset-apply:
 qa-backend-tests:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; coverage run --rcfile /app/backend/.coveragerc -m pytest --junitxml=/app/$(QA_REPORTS_DIR)/pytest.xml && coverage xml --rcfile /app/backend/.coveragerc -o /app/$(QA_REPORTS_DIR)/coverage.xml && coverage report --rcfile /app/backend/.coveragerc | tee /app/$(QA_REPORTS_DIR)/coverage.txt"
 
+qa-auth-mobile-cookie-tests: qa-ci-up
+	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q tests/test_auth.py tests/test_2fa_challenge.py | tee /app/$(QA_REPORTS_DIR)/auth_mobile_cookie_https_tests.txt"
+
 qa-sync-contract-guard:
 	docker compose exec -T backend bash -lc "mkdir -p /app/$(QA_REPORTS_DIR) && cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; pytest -q src/tests/test_sync_v2_contract.py | tee /app/$(QA_REPORTS_DIR)/sync_contract_guard.txt"
 

@@ -14,6 +14,11 @@ Politica obligatoria en esta fase:
 - **HTTPS obligatorio tambien en LAN** para autenticacion por cookie.
 - El flujo publico de enrolamiento (`/device/enroll`, `/api/sync/enroll/`, `/api/sync/batch/`) se mantiene separado.
 
+Acta canónica de certificacion:
+
+- [ACTA_CERTIFICACION_MOVIL_HTTPS_20260414.md](ACTA_CERTIFICACION_MOVIL_HTTPS_20260414.md)
+- Estado actual: **implementado y endurecido**, pendiente de certificacion operativa final en movil real (LAN HTTPS y Staging/Prod HTTPS).
+
 ## Matriz efectiva por entorno
 
 | Entorno | Esquema requerido | AUTH_COOKIE_SECURE | AUTH_COOKIE_REQUIRE_HTTPS | CORS/CSRF expected | Resultado esperado |
@@ -66,6 +71,13 @@ Criterio de cierre:
 
 - LAN HTTPS y Staging/Prod deben quedar en PASS completo.
 - Si LAN intenta HTTP con `AUTH_COOKIE_REQUIRE_HTTPS=1`, el rechazo debe ser explicito y trazable (esperado).
+- La certificacion oficial versionada se registra en el acta del dia con evidencia por caso.
+
+## Ejecucion automatizada canónica (container)
+
+Para este cierre, las pruebas Django se ejecutan en backend container (no host local):
+
+- `make qa-auth-mobile-cookie-tests`
 
 ## Que si / que no
 

@@ -149,7 +149,11 @@ def test_login_cookie_transport_rejects_insecure_http():
     client = APIClient()
     r = client.post("/api/auth/login/", {"username": "u_cookie_http", "password": "pass12345"}, format="json")
     assert r.status_code == 400
-    assert r.data.get("detail") == "HTTPS requerido para autenticación por cookie en este entorno."
+    detail = r.data.get("detail")
+    if not detail:
+        error = r.data.get("error") or {}
+        detail = (error.get("details") or {}).get("detail") or error.get("message")
+    assert detail == "HTTPS requerido para autenticación por cookie en este entorno."
     assert settings.AUTH_COOKIE_ACCESS_NAME not in client.cookies
     assert settings.AUTH_COOKIE_REFRESH_NAME not in client.cookies
 
@@ -191,9 +195,21 @@ def test_refresh_cookie_transport_rejects_insecure_http():
     )
     assert login.status_code == 200
 
-    refresh = client.post("/api/auth/refresh/", {}, format="json")
+    csrf_cookie = client.cookies.get(settings.AUTH_COOKIE_CSRF_NAME)
+    assert csrf_cookie is not None
+
+    refresh = client.post(
+        "/api/auth/refresh/",
+        {},
+        format="json",
+        HTTP_X_CSRF_TOKEN=csrf_cookie.value,
+    )
     assert refresh.status_code == 400
-    assert refresh.data.get("detail") == "HTTPS requerido para autenticación por cookie en este entorno."
+    detail = refresh.data.get("detail")
+    if not detail:
+        error = refresh.data.get("error") or {}
+        detail = (error.get("details") or {}).get("detail") or error.get("message")
+    assert detail == "HTTPS requerido para autenticación por cookie en este entorno."
 
     ev = AuditEvent.objects.filter(event_type="AUTH_TOKEN_REFRESH_FAILURE").latest("timestamp_server")
     assert ev.reason_code == "INSECURE_TRANSPORT"
