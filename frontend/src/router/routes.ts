@@ -194,6 +194,17 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: childPath(UI_ROUTE_PATHS.billingDocuments),
+        name: 'facturacion-documentos',
+        component: () => import('pages/BillingDocumentsPage.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresContext: true,
+          requiredPermissions: ['billing.doc.read'],
+          requiredModules: ['billing'],
+        },
+      },
+      {
         path: childPath(UI_ROUTE_PATHS.analytics),
         name: 'analytics',
         component: () => import('pages/AnalyticsPage.vue'),

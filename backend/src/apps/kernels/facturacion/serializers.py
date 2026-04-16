@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import BillingDocument, BranchFiscalConfig, DocType, FiscalMode
+from .models import BillingDocument, BranchFiscalConfig, DocStatus, DocType, FiscalMode
 
 
 class LineInSerializer(serializers.Serializer):
@@ -22,6 +22,19 @@ class DocCreateSerializer(serializers.Serializer):
     is_fiscal = serializers.BooleanField(required=False, default=False)
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
     lines = LineInSerializer(many=True)
+
+
+class DocListQuerySerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=DocStatus.choices, required=False)
+    doc_type = serializers.ChoiceField(choices=DocType.choices, required=False)
+    q = serializers.CharField(max_length=160, required=False, allow_blank=True)
+    date_from = serializers.DateField(required=False, input_formats=["%Y-%m-%d"])
+    date_to = serializers.DateField(required=False, input_formats=["%Y-%m-%d"])
+    ordering = serializers.ChoiceField(
+        choices=["-created_at", "created_at", "-id", "id", "-total", "total"],
+        required=False,
+        default="-created_at",
+    )
 
 
 class DocIssueSerializer(serializers.Serializer):
