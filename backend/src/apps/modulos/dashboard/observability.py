@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, Mapping, cast
 
 from django.db.models import Count
 from django.utils import timezone
@@ -56,8 +56,9 @@ def build_dashboard_observability(*, window_hours: int = 24) -> dict[str, Any]:
 
     dash_runs = ReportRun.objects.filter(created_at__gte=since, consumer_type="DASHBOARD")
     runs_total = int(dash_runs.count())
-    top_datasets = list(
-        dash_runs.values("dataset_key").annotate(total=Count("id")).order_by("-total", "dataset_key")[:10]
+    top_datasets = cast(
+        list[Mapping[str, Any]],
+        list(dash_runs.values("dataset_key").annotate(total=Count("id")).order_by("-total", "dataset_key")[:10]),
     )
 
     return {

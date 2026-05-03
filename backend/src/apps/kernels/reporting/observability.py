@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import timedelta
-from typing import Any
+from typing import Any, Mapping, cast
 
 from django.conf import settings
 from django.db.models import Count, Q
@@ -159,32 +159,41 @@ def build_reporting_observability(*, window_hours: int = 24) -> dict[str, Any]:
         )
     dataset_slo.sort(key=lambda row: (-int(row["runs"]), str(row["dataset_key"])))
 
-    top_datasets = list(
-        runs.values("dataset_key")
-        .annotate(
-            total=Count("id"),
-            failed=Count("id", filter=Q(status=RunStatus.FAILED)),
-            quality_fail=Count("id", filter=Q(quality_status="FAIL")),
+    top_datasets = cast(
+        list[Mapping[str, Any]],
+        list(
+            runs.values("dataset_key")
+            .annotate(
+                total=Count("id"),
+                failed=Count("id", filter=Q(status=RunStatus.FAILED)),
+                quality_fail=Count("id", filter=Q(quality_status="FAIL")),
+            )
+            .order_by("-total", "dataset_key")[:10]
         )
-        .order_by("-total", "dataset_key")[:10]
     )
 
-    exports = list(
-        ReportExportLog.objects.filter(created_at__gte=since)
-        .values("format")
-        .annotate(total=Count("id"))
-        .order_by("-total", "format")
+    exports = cast(
+        list[Mapping[str, Any]],
+        list(
+            ReportExportLog.objects.filter(created_at__gte=since)
+            .values("format")
+            .annotate(total=Count("id"))
+            .order_by("-total", "format")
+        ),
     )
 
-    top_consumers = list(
-        runs.exclude(consumer_ref="").values("consumer_ref")
-        .annotate(total=Count("id"))
-        .order_by("-total", "consumer_ref")[:10]
+    top_consumers = cast(
+        list[Mapping[str, Any]],
+        list(
+            runs.exclude(consumer_ref="")
+            .values("consumer_ref")
+            .annotate(total=Count("id"))
+            .order_by("-total", "consumer_ref")[:10]
+        ),
     )
-    runs_by_consumer_type = list(
-        runs.values("consumer_type")
-        .annotate(total=Count("id"))
-        .order_by("-total", "consumer_type")
+    runs_by_consumer_type = cast(
+        list[Mapping[str, Any]],
+        list(runs.values("consumer_type").annotate(total=Count("id")).order_by("-total", "consumer_type")),
     )
 
     legacy_accounting_runs = int(runs.filter(consumer_ref__startswith="legacy:/api/accounting/reports/").count())
