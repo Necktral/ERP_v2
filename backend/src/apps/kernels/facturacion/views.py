@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
 
@@ -16,6 +18,7 @@ from .serializers import (
     DocContingencySerializer,
     DocCreateSerializer,
     DocIssueSerializer,
+    DocListQuerySerializer,
     DocPrintSerializer,
     DocVoidSerializer,
     InvoiceCreateIn,
@@ -69,8 +72,72 @@ class BranchFiscalConfigView(APIView):
         return Response(BranchFiscalConfigOut(cfg).data, status=status.HTTP_200_OK)
 
 
-class DocCreateView(APIView):
-    permission_classes = [rbac_permission("billing.doc.create")]
+class DocListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [rbac_permission("billing.doc.read")()]
+        return [rbac_permission("billing.doc.create")()]
+
+    def get(self, request):
+        if not getattr(request, "branch", None):
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        s = DocListQuerySerializer(data=request.query_params)
+        if not s.is_valid():
+            return Response(s.errors, status=status.HTTP_400_BAD_REQUEST)
+        v = s.validated_data
+
+        company: OrgUnit = request.company
+        branch: OrgUnit = request.branch
+        qs = BillingDocument.objects.filter(company=company, branch=branch)
+
+        if v.get("status"):
+            qs = qs.filter(status=v["status"])
+        if v.get("doc_type"):
+            qs = qs.filter(doc_type=v["doc_type"])
+
+        q = str(v.get("q") or "").strip()
+        if q:
+            predicate = Q(customer_name__icontains=q) | Q(customer_ref__icontains=q) | Q(series__icontains=q)
+            if q.isdigit():
+                predicate |= Q(number=int(q))
+            qs = qs.filter(predicate)
+
+        if v.get("date_from"):
+            qs = qs.filter(created_at__date__gte=v["date_from"])
+        if v.get("date_to"):
+            qs = qs.filter(created_at__date__lte=v["date_to"])
+
+        ordering = str(v.get("ordering") or "-created_at")
+        if ordering in {"id", "-id"}:
+            qs = qs.order_by(ordering)
+        else:
+            qs = qs.order_by(ordering, "-id")
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        results = [
+            {
+                "id": int(doc.id),
+                "doc_type": doc.doc_type,
+                "status": doc.status,
+                "series": doc.series,
+                "number": int(doc.number),
+                "currency": doc.currency,
+                "customer_name": doc.customer_name,
+                "customer_ref": doc.customer_ref,
+                "subtotal": str(doc.subtotal),
+                "tax_total": str(doc.tax_total),
+                "total": str(doc.total),
+                "is_fiscal": bool(doc.is_fiscal),
+                "fiscal_status": doc.fiscal_status,
+                "created_at": doc.created_at,
+                "issued_at": doc.issued_at,
+                "voided_at": doc.voided_at,
+            }
+            for doc in rows
+        ]
+        return Response({"count": total, "limit": limit, "offset": offset, "results": results}, status=status.HTTP_200_OK)
 
     def post(self, request):
         if not getattr(request, "branch", None):

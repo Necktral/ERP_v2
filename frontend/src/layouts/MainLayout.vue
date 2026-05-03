@@ -176,6 +176,13 @@
           <q-item-section>Cockpit operativo</q-item-section>
         </q-item>
 
+        <q-separator spaced v-if="canBillingAccess" />
+
+        <q-item-label header v-if="canBillingAccess">{{ labels.billing }}</q-item-label>
+        <q-item clickable :to="routes.billingDocuments" :disable="!canBillingAccess">
+          <q-item-section avatar><q-icon name="receipt" /></q-item-section>
+          <q-item-section>Documentos</q-item-section>
+        </q-item>
         <template v-if="!isMobileShell && canAnalyticsRead">
           <q-separator spaced />
 
@@ -301,6 +308,10 @@ const canFuelRead = computed(() => {
 
 const canRetailPosRead = computed(() => {
   return hasModuleEnabled('retail_pos') && hasCompanyPermission('retail.pos.ticket.read');
+});
+
+const canBillingAccess = computed(() => {
+  return hasModuleEnabled('billing') && hasCompanyPermission('billing.doc.read');
 });
 
 const canAnalyticsRead = computed(() => {

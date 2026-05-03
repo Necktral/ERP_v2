@@ -1,0 +1,355 @@
+{
+  "report_id": "billing_ui_v1_smoke_staging_20260416",
+  "generated_at": "2026-04-16T19:33:36.260760+00:00",
+  "environment": {
+    "name": "staging-local",
+    "base_url": "http://localhost:8000/api",
+    "company_id": 2,
+    "branch_id": 3,
+    "notes": "Smoke ejecutado sobre entorno operativo local Docker con dataset real de pruebas de operación."
+  },
+  "users": {
+    "billing_full": "billing_smoke_full_20260416",
+    "billing_readonly": "billing_smoke_read_20260416",
+    "billing_none": "billing_smoke_none_20260416"
+  },
+  "state_transition_trace": {
+    "created_doc_id": 11,
+    "status_after_create": "DRAFT",
+    "status_after_issue": "ISSUED",
+    "status_after_void": "VOIDED",
+    "invalid_transition_status_code": 400
+  },
+  "pagination_checks": {
+    "page1_has_result": true,
+    "page2_has_result": true,
+    "page1_id": 11,
+    "page2_id": 10,
+    "page_ids_differ": true
+  },
+  "ui_acl_static_checks": {
+    "route_billing_documents_exists": true,
+    "route_billing_requires_permission": true,
+    "route_billing_requires_module": true,
+    "menu_billing_visible_guard": true,
+    "canonical_path_declared": true
+  },
+  "cases": [
+    {
+      "case_id": "A01_list_filtros_avanzados",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/?limit=5&offset=0&status=ISSUED&doc_type=INVOICE&q=FUEL&date_from=2026-01-01&date_to=2026-12-31&ordering=-created_at",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "026c115f4b3f4ea1a35fc569868790ea",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"count\": 9, \"limit\": 5, \"offset\": 0, \"results\": [{\"id\": 10, \"doc_type\": \"INVOICE\", \"status\": \"ISSUED\", \"series\": \"FUEL\", \"number\": 10, \"currency\": \"NIO\", \"customer_name\": \"CONSUMIDOR FINAL\", \"customer_ref\": \"\", \"subtotal\": \"734.56\", \"tax_total\": \"0.00\", \"total\": \"734.56\", \"is_fiscal\": false, \"fiscal_status\": \"ISSUED\", \"created_at\": \"2026-04-12T21:53:47.587959Z\", \"issued_at\": \"2026-04-12T21:53:47.609629Z\", \"voided_at\": null}, {\"id\": 9, \"doc_type\": \"INVOICE\", \"status\": \"ISSUED\", \"series\": \"FUEL\", \"number\": 9, \"currency\": \"NIO\", \"customer_name\": \"CONSUMIDOR FINAL\", \"customer_ref\": \"\", \"subtotal\": \"583.32\", \"tax_total\": \"0.00\", \"total\": \"583.32\", \"is_fiscal\": false, \"fiscal_status\": \"ISSUED\", \"created_at\": \"2026-04-12T21:53:47.097777Z\", \"issued_at\": \"2026-04-12T21:53:47.115312Z\", \"voided_at\":",
+      "timestamp": "2026-04-16T19:33:35.141151+00:00"
+    },
+    {
+      "case_id": "A02_create_doc",
+      "actor": "billing_full",
+      "method": "POST",
+      "path": "/billing/docs/",
+      "expected_status": [
+        201
+      ],
+      "status": 201,
+      "ok": true,
+      "request_id": "48e597e7774542f9bb5ffddc5896aee6",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"id\": 11}",
+      "timestamp": "2026-04-16T19:33:35.213903+00:00"
+    },
+    {
+      "case_id": "A03_detail_draft",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/11/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "c2e629a153724ad8a2d02e6ea6b52ad9",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"DRAFT\", \"series\": \"SMK\", \"number\": 0, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"issued_at\": null, \"voided_at\": null, \"void_reason\": \"\", \"fiscal\": {\"mode\": \"NOOP\", \"status\": \"\", \"reference\": \"\", \"evidence_id\": \"\", \"printed_at\": null, \"attempts\": 0, \"last_error\": \"\", \"contingency_reason\": \"\", \"contingency_at\": null, \"metadata\": {}}, \"accounting\": {\"status\": \"\", \"error\": \"\", \"economic_event_id\": null, \"journal_draft_id\": null, \"journal_entry_id\": null}, \"lines\": [{\"id\": 11, \"description\": \"Servicio Smoke\", \"quantity\": \"1.0000\", \"unit_price\": \"12.500000\", \"tax_rate\": \"0.1500\", \"line_subtotal\": \"12.50\", \"line_tax\": \"1.",
+      "timestamp": "2026-04-16T19:33:35.257290+00:00"
+    },
+    {
+      "case_id": "A04_issue_doc",
+      "actor": "billing_full",
+      "method": "POST",
+      "path": "/billing/docs/11/issue/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "197b5089d9f248d084c4a7ff1d444c01",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"ok\": true, \"doc_id\": 11, \"number\": 1, \"fiscal_mode\": \"NOOP\", \"fiscal_status\": \"ISSUED\", \"fiscal_reference\": \"SMK-1\", \"fiscal_evidence_id\": \"fiscal:11\", \"printed_at\": \"\", \"print_attempt_count\": 0, \"contingency_reason\": \"\", \"accounting_status\": \"DRAFT_VALIDATED\", \"accounting_error\": \"\", \"journal_draft_id\": 29, \"journal_entry_id\": null}",
+      "timestamp": "2026-04-16T19:33:35.397820+00:00"
+    },
+    {
+      "case_id": "A05_detail_issued",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/11/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "dc09619a8af14dfc9515c45f555a466c",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"ISSUED\", \"series\": \"SMK\", \"number\": 1, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"issued_at\": \"2026-04-16T19:33:35.312152Z\", \"voided_at\": null, \"void_reason\": \"\", \"fiscal\": {\"mode\": \"NOOP\", \"status\": \"ISSUED\", \"reference\": \"SMK-1\", \"evidence_id\": \"fiscal:11\", \"printed_at\": null, \"attempts\": 0, \"last_error\": \"\", \"contingency_reason\": \"\", \"contingency_at\": null, \"metadata\": {\"adapter\": \"NOOP\"}}, \"accounting\": {\"status\": \"DRAFT_VALIDATED\", \"error\": \"\", \"economic_event_id\": 29, \"journal_draft_id\": 29, \"journal_entry_id\": null}, \"lines\": [{\"id\": 11, \"description\": \"Servicio Smoke\", \"quantity\": \"1.0000\", \"unit_price\": \"1",
+      "timestamp": "2026-04-16T19:33:35.443860+00:00"
+    },
+    {
+      "case_id": "A06_void_doc",
+      "actor": "billing_full",
+      "method": "POST",
+      "path": "/billing/docs/11/void/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "5824eee061004a9ca804aaed9557d13f",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"ok\": true, \"doc_id\": 11, \"fiscal_status\": \"VOIDED\", \"accounting_status\": \"DRAFT_VALIDATED\", \"accounting_error\": \"\", \"journal_draft_id\": 30, \"journal_entry_id\": null}",
+      "timestamp": "2026-04-16T19:33:35.544253+00:00"
+    },
+    {
+      "case_id": "A07_detail_voided",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/11/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "f57b12f6a6d143ac83f259192336e8de",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"VOIDED\", \"series\": \"SMK\", \"number\": 1, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"issued_at\": \"2026-04-16T19:33:35.312152Z\", \"voided_at\": \"2026-04-16T19:33:35.489539Z\", \"void_reason\": \"Smoke staging close GAP-BILLING-UI-001\", \"fiscal\": {\"mode\": \"NOOP\", \"status\": \"VOIDED\", \"reference\": \"SMK-1\", \"evidence_id\": \"fiscal:11\", \"printed_at\": null, \"attempts\": 0, \"last_error\": \"\", \"contingency_reason\": \"\", \"contingency_at\": null, \"metadata\": {\"reason\": \"Smoke staging close GAP-BILLING-UI-001\", \"adapter\": \"NOOP\"}}, \"accounting\": {\"status\": \"DRAFT_VALIDATED\", \"error\": \"\", \"economic_event_id\": 30, \"journal_draft_id\": 30, \"jou",
+      "timestamp": "2026-04-16T19:33:35.591174+00:00"
+    },
+    {
+      "case_id": "A08_invalid_transition_issue_after_void",
+      "actor": "billing_full",
+      "method": "POST",
+      "path": "/billing/docs/11/issue/",
+      "expected_status": [
+        400,
+        409
+      ],
+      "status": 400,
+      "ok": true,
+      "request_id": "ad58248805f64b8c8119c9978172747a",
+      "error_code": null,
+      "error_message": "cannot issue a voided document",
+      "note": "Backend actual responde 400 para transición inválida; UI maneja mensaje de dominio y también 409 cuando aplique.",
+      "response_excerpt": "{\"detail\": \"cannot issue a voided document\"}",
+      "timestamp": "2026-04-16T19:33:35.643972+00:00"
+    },
+    {
+      "case_id": "A09_paginacion_page1",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/?limit=1&offset=0&ordering=-id",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "6247a0335d9a4d5fad1a4061630385bb",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"count\": 11, \"limit\": 1, \"offset\": 0, \"results\": [{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"VOIDED\", \"series\": \"SMK\", \"number\": 1, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"fiscal_status\": \"VOIDED\", \"created_at\": \"2026-04-16T19:33:35.181515Z\", \"issued_at\": \"2026-04-16T19:33:35.312152Z\", \"voided_at\": \"2026-04-16T19:33:35.489539Z\"}]}",
+      "timestamp": "2026-04-16T19:33:35.714997+00:00"
+    },
+    {
+      "case_id": "A10_paginacion_page2",
+      "actor": "billing_full",
+      "method": "GET",
+      "path": "/billing/docs/?limit=1&offset=1&ordering=-id",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "25703ba140f44ca0a6559e3251e2d8e9",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"count\": 11, \"limit\": 1, \"offset\": 1, \"results\": [{\"id\": 10, \"doc_type\": \"INVOICE\", \"status\": \"ISSUED\", \"series\": \"FUEL\", \"number\": 10, \"currency\": \"NIO\", \"customer_name\": \"CONSUMIDOR FINAL\", \"customer_ref\": \"\", \"subtotal\": \"734.56\", \"tax_total\": \"0.00\", \"total\": \"734.56\", \"is_fiscal\": false, \"fiscal_status\": \"ISSUED\", \"created_at\": \"2026-04-12T21:53:47.587959Z\", \"issued_at\": \"2026-04-12T21:53:47.609629Z\", \"voided_at\": null}]}",
+      "timestamp": "2026-04-16T19:33:35.776025+00:00"
+    },
+    {
+      "case_id": "B01_readonly_list",
+      "actor": "billing_readonly",
+      "method": "GET",
+      "path": "/billing/docs/?limit=3&offset=0",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "04176ba4fd6b4ac68170ed961e1c8457",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"count\": 11, \"limit\": 3, \"offset\": 0, \"results\": [{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"VOIDED\", \"series\": \"SMK\", \"number\": 1, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"fiscal_status\": \"VOIDED\", \"created_at\": \"2026-04-16T19:33:35.181515Z\", \"issued_at\": \"2026-04-16T19:33:35.312152Z\", \"voided_at\": \"2026-04-16T19:33:35.489539Z\"}, {\"id\": 10, \"doc_type\": \"INVOICE\", \"status\": \"ISSUED\", \"series\": \"FUEL\", \"number\": 10, \"currency\": \"NIO\", \"customer_name\": \"CONSUMIDOR FINAL\", \"customer_ref\": \"\", \"subtotal\": \"734.56\", \"tax_total\": \"0.00\", \"total\": \"734.56\", \"is_fiscal\": false, \"fiscal_status\": \"ISSUED\", \"created_at\": \"2026-04-12T21:53:47.587959Z\", \"issued_at\": ",
+      "timestamp": "2026-04-16T19:33:35.831093+00:00"
+    },
+    {
+      "case_id": "B02_readonly_detail",
+      "actor": "billing_readonly",
+      "method": "GET",
+      "path": "/billing/docs/11/",
+      "expected_status": [
+        200
+      ],
+      "status": 200,
+      "ok": true,
+      "request_id": "554a1ae44407451da8e95cb0aab2fb40",
+      "error_code": null,
+      "error_message": null,
+      "note": "",
+      "response_excerpt": "{\"id\": 11, \"doc_type\": \"INVOICE\", \"status\": \"VOIDED\", \"series\": \"SMK\", \"number\": 1, \"currency\": \"NIO\", \"customer_name\": \"Smoke Billing Full\", \"customer_ref\": \"SMK-1776368015141\", \"subtotal\": \"12.50\", \"tax_total\": \"1.88\", \"total\": \"14.38\", \"is_fiscal\": false, \"issued_at\": \"2026-04-16T19:33:35.312152Z\", \"voided_at\": \"2026-04-16T19:33:35.489539Z\", \"void_reason\": \"Smoke staging close GAP-BILLING-UI-001\", \"fiscal\": {\"mode\": \"NOOP\", \"status\": \"VOIDED\", \"reference\": \"SMK-1\", \"evidence_id\": \"fiscal:11\", \"printed_at\": null, \"attempts\": 0, \"last_error\": \"\", \"contingency_reason\": \"\", \"contingency_at\": null, \"metadata\": {\"reason\": \"Smoke staging close GAP-BILLING-UI-001\", \"adapter\": \"NOOP\"}}, \"accounting\": {\"status\": \"DRAFT_VALIDATED\", \"error\": \"\", \"economic_event_id\": 30, \"journal_draft_id\": 30, \"jou",
+      "timestamp": "2026-04-16T19:33:35.877485+00:00"
+    },
+    {
+      "case_id": "B03_readonly_create_forbidden",
+      "actor": "billing_readonly",
+      "method": "POST",
+      "path": "/billing/docs/",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "b769e5a370fc4deea8472e530b7f6158",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.create\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"b769e5a370fc4deea8472e530b7f6158\", \"timestamp\": \"2026-04-16T19:33:35.926107Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:35.935687+00:00"
+    },
+    {
+      "case_id": "B04_readonly_issue_forbidden",
+      "actor": "billing_readonly",
+      "method": "POST",
+      "path": "/billing/docs/11/issue/",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "0d90ca853fb64a29bfdab2f93860a87f",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.issue\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"0d90ca853fb64a29bfdab2f93860a87f\", \"timestamp\": \"2026-04-16T19:33:36.042505Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:36.052259+00:00"
+    },
+    {
+      "case_id": "B05_readonly_void_forbidden",
+      "actor": "billing_readonly",
+      "method": "POST",
+      "path": "/billing/docs/11/void/",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "45b01c3f00a4491d88f9564561216dff",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.void\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"45b01c3f00a4491d88f9564561216dff\", \"timestamp\": \"2026-04-16T19:33:36.094868Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:36.103872+00:00"
+    },
+    {
+      "case_id": "C01_no_billing_list_forbidden",
+      "actor": "billing_none",
+      "method": "GET",
+      "path": "/billing/docs/?limit=2&offset=0",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "8c9006e3c4b14a49a195dea6c943953a",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.read\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"8c9006e3c4b14a49a195dea6c943953a\", \"timestamp\": \"2026-04-16T19:33:36.148873Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:36.155343+00:00"
+    },
+    {
+      "case_id": "C02_no_billing_detail_forbidden",
+      "actor": "billing_none",
+      "method": "GET",
+      "path": "/billing/docs/11/",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "88db320d595e44beaa30b8195e3f19d2",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.read\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"88db320d595e44beaa30b8195e3f19d2\", \"timestamp\": \"2026-04-16T19:33:36.200315Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:36.208937+00:00"
+    },
+    {
+      "case_id": "C03_no_billing_create_forbidden",
+      "actor": "billing_none",
+      "method": "POST",
+      "path": "/billing/docs/",
+      "expected_status": [
+        403
+      ],
+      "status": 403,
+      "ok": true,
+      "request_id": "26051f8c04314c519cd2fff061bb913b",
+      "error_code": "RBAC_FORBIDDEN",
+      "error_message": "No tienes permisos para realizar esta acción.",
+      "note": "",
+      "response_excerpt": "{\"error\": {\"code\": \"RBAC_FORBIDDEN\", \"http_status\": 403, \"message\": \"No tienes permisos para realizar esta acción.\", \"details\": {\"detail\": \"No tienes permisos para realizar esta acción.\", \"missing_permissions\": [\"billing.doc.create\"], \"context\": {\"company_id\": 2, \"branch_id\": 3, \"data_company_id\": 2, \"data_branch_id\": 3}}, \"request_id\": \"26051f8c04314c519cd2fff061bb913b\", \"timestamp\": \"2026-04-16T19:33:36.252588Z\", \"retryable\": false}}",
+      "timestamp": "2026-04-16T19:33:36.259749+00:00"
+    }
+  ],
+  "summary": {
+    "total_cases": 18,
+    "passed_cases": 18,
+    "failed_cases": 0,
+    "all_cases_passed": true,
+    "ui_checks_passed": true,
+    "state_transition_passed": true,
+    "overall_passed": true
+  }
+}

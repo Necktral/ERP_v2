@@ -22,7 +22,12 @@ from apps.kernels.accounting.models import (
     RevaluationRun,
 )
 from apps.kernels.accounting.phase7 import run_fx_revaluation
-from apps.kernels.accounting.services import AccountingConflictError, close_fiscal_period, post_journal_drafts
+from apps.kernels.accounting.services import (
+    AccountingConflictError,
+    close_fiscal_period,
+    post_journal_drafts,
+    reverse_journal_entry,
+)
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.services import publish_outbox_event
@@ -179,6 +184,67 @@ def test_phase7_posting_fails_when_coa_missing_account():
     assert result.failed >= 1
     assert "GL Fase7 invalid" in result.errors[0]["error"]
     assert JournalEntry.objects.filter(draft__close_run_id=str(run.run_id)).count() == 0
+
+
+@pytest.mark.django_db
+def test_phase7_reversal_creates_journal_entry_lines():
+    company, branch = _mk_org()
+    user = _mk_user("owner")
+    _seed_coa_for_billing(company=company, include_tax=True)
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user, number=21)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+
+    post_result = post_journal_drafts(company_id=company.id, run_id=str(run.run_id), require_approved=False)
+    assert post_result.posted == 1
+    original_entry = JournalEntry.objects.get(draft__close_run_id=str(run.run_id))
+    assert original_entry.lines.count() == 3
+
+    reversal = reverse_journal_entry(
+        company_id=company.id,
+        journal_entry_id=original_entry.id,
+        reason="Ajuste Phase7",
+        actor_user=user,
+    )
+
+    reversal_entry = JournalEntry.objects.get(id=reversal.reversal_entry_id)
+    assert reversal.idempotent is False
+    assert reversal_entry.reversed_entry_id == original_entry.id
+    assert reversal_entry.lines.count() == 3
+    assert str(sum(x.debit_base for x in reversal_entry.lines.all())) == str(reversal_entry.debit_total)
+    assert str(sum(x.credit_base for x in reversal_entry.lines.all())) == str(reversal_entry.credit_total)
+
+
+@pytest.mark.django_db
+def test_phase7_reversal_fails_when_coa_missing_account():
+    company, branch = _mk_org()
+    user = _mk_user("owner")
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    _mk_billing_event(company=company, branch=branch, user=user, number=22)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+
+    post_result = post_journal_drafts(company_id=company.id, run_id=str(run.run_id), require_approved=False)
+    assert post_result.posted == 1
+    original_entry = JournalEntry.objects.get(draft__close_run_id=str(run.run_id))
+    assert original_entry.lines.count() == 0
+    CompanyAccountingConfig.objects.update_or_create(
+        company=company,
+        defaults={
+            "phase7_enabled": True,
+            "functional_currency": "NIO",
+        },
+    )
+
+    with pytest.raises(AccountingConflictError, match="Cuenta 1101 no existe"):
+        reverse_journal_entry(
+            company_id=company.id,
+            journal_entry_id=original_entry.id,
+            reason="Ajuste Phase7 sin COA",
+            actor_user=user,
+        )
+    assert JournalEntry.objects.filter(reversed_entry=original_entry).count() == 0
 
 
 @pytest.mark.django_db

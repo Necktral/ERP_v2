@@ -2545,15 +2545,17 @@ def reverse_journal_entry(
         )
 
         cfg = get_or_create_accounting_config(company=original.company)
+        phase7_enabled = bool(cfg.phase7_enabled)
         functional_currency = str(cfg.functional_currency or "NIO").upper() or "NIO"
-        try:
-            ensure_journal_entry_lines(
-                entry=reversal_entry,
-                draft=reversal_draft,
-                functional_currency=functional_currency,
-            )
-        except Phase7ValidationError as exc:
-            raise AccountingConflictError(f"Reversal lines invalid: {exc}") from exc
+        if phase7_enabled:
+            try:
+                ensure_journal_entry_lines(
+                    entry=reversal_entry,
+                    draft=reversal_draft,
+                    functional_currency=functional_currency,
+                )
+            except Phase7ValidationError as exc:
+                raise AccountingConflictError(f"Reversal lines invalid: {exc}") from exc
 
         publish_outbox_event(
             source_module="ACCOUNTING",
