@@ -76,43 +76,56 @@ def test_handlers_inventory_receive_issue_adjust_transfer_and_aliases():
     wh_to = Warehouse.objects.create(company=company, branch=branch, name="WH2", code="W2")
     req = _request(company, branch)
 
-    ctx = {
-        "request": req,
-        "company_id": company.id,
-        "branch_id": branch.id,
-        "command_id": str(uuid.uuid4()),
-        "command_type": "INVENTORY_MOVEMENT_RECEIVE",
-    }
+    def _ctx(command_type: str) -> dict:
+        return {
+            "request": req,
+            "company_id": company.id,
+            "branch_id": branch.id,
+            "command_id": str(uuid.uuid4()),
+            "command_type": command_type,
+        }
 
     res = inv_handlers.handle_inventory_receive(
-        ctx,
+        _ctx("INVENTORY_MOVEMENT_RECEIVE"),
         {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "3.0000", "unit_cost": "1.000000"},
     )
     assert res["refs"]["movement_id"]
 
-    inv_handlers.handle_inventory_receive_v2(ctx, {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "1.0000", "unit_cost": "1.000000"})
+    inv_handlers.handle_inventory_receive_v2(
+        _ctx("INVENTORY.MOVEMENT.RECEIVE"),
+        {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "1.0000", "unit_cost": "1.000000"},
+    )
 
     res_issue = inv_handlers.handle_inventory_issue(
-        ctx,
+        _ctx("INVENTORY_MOVEMENT_ISSUE"),
         {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "1.0000", "allow_negative": True},
     )
     assert res_issue["refs"]["movement_id"]
 
     res_adjust = inv_handlers.handle_inventory_adjust(
-        ctx,
+        _ctx("INVENTORY_MOVEMENT_ADJUST"),
         {"warehouse_id": wh_from.id, "item_id": item.id, "new_qty_on_hand": "2.0000"},
     )
     assert res_adjust["refs"]["movement_id"]
 
     res_transfer = inv_handlers.handle_inventory_transfer(
-        ctx,
+        _ctx("INVENTORY_TRANSFER"),
         {"from_warehouse_id": wh_from.id, "to_warehouse_id": wh_to.id, "item_id": item.id, "qty": "1.0000"},
     )
     assert res_transfer["refs"]["transfer_out_movement_id"]
 
-    inv_handlers.handle_inventory_issue_v2(ctx, {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "1.0000", "allow_negative": True})
-    inv_handlers.handle_inventory_adjust_v2(ctx, {"warehouse_id": wh_from.id, "item_id": item.id, "new_qty_on_hand": "2.0000"})
-    inv_handlers.handle_inventory_transfer_v2(ctx, {"from_warehouse_id": wh_from.id, "to_warehouse_id": wh_to.id, "item_id": item.id, "qty": "1.0000"})
+    inv_handlers.handle_inventory_issue_v2(
+        _ctx("INVENTORY.MOVEMENT.ISSUE"),
+        {"warehouse_id": wh_from.id, "item_id": item.id, "qty": "1.0000", "allow_negative": True},
+    )
+    inv_handlers.handle_inventory_adjust_v2(
+        _ctx("INVENTORY.MOVEMENT.ADJUST"),
+        {"warehouse_id": wh_from.id, "item_id": item.id, "new_qty_on_hand": "2.0000"},
+    )
+    inv_handlers.handle_inventory_transfer_v2(
+        _ctx("INVENTORY.TRANSFER"),
+        {"from_warehouse_id": wh_from.id, "to_warehouse_id": wh_to.id, "item_id": item.id, "qty": "1.0000"},
+    )
 
 
 @pytest.mark.django_db

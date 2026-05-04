@@ -18,7 +18,7 @@ from .serializers import (
     TransferSerializer,
     WarehouseCreateSerializer,
 )
-from .services import create_item, post_adjust, post_issue, post_receive, post_transfer
+from .services import InventoryConflictError, create_item, post_adjust, post_issue, post_receive, post_transfer
 
 
 def _movement_post_response(result) -> dict:
@@ -109,6 +109,8 @@ class ReceiveView(APIView):
                 idempotency_key=v.get("idempotency_key", "") or "",
                 note=v.get("note", "") or "",
             )
+        except InventoryConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
@@ -135,6 +137,8 @@ class IssueView(APIView):
                 idempotency_key=v.get("idempotency_key", "") or "",
                 note=v.get("note", "") or "",
             )
+        except InventoryConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
@@ -160,6 +164,8 @@ class AdjustView(APIView):
                 idempotency_key=v.get("idempotency_key", "") or "",
                 note=v.get("note", "") or "",
             )
+        except InventoryConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(_movement_post_response(r), status=status.HTTP_201_CREATED)
@@ -186,6 +192,8 @@ class TransferView(APIView):
                 idempotency_key=v.get("idempotency_key", "") or "",
                 note=v.get("note", "") or "",
             )
+        except InventoryConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(out, status=status.HTTP_201_CREATED)
