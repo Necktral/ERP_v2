@@ -24,6 +24,7 @@
     "kernels.inventarios->modulos.common",
     "kernels.inventarios->modulos.iam",
     "kernels.inventarios->modulos.integration",
+    "kernels.payments->modulos.audit",
     "kernels.payments->modulos.common",
     "kernels.payments->modulos.iam",
     "kernels.payments->modulos.integration",

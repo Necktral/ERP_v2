@@ -28,3 +28,4 @@ class CashMovementCreateIn(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=18, decimal_places=2)
     reference = serializers.CharField(max_length=96, required=False, allow_blank=True)
     reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)

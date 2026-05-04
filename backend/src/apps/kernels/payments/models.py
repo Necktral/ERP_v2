@@ -133,6 +133,7 @@ class CashMovement(models.Model):
     amount = models.DecimalField(max_digits=18, decimal_places=2)
     reference = models.CharField(max_length=96, blank=True, default="")
     reason = models.CharField(max_length=255, blank=True, default="")
+    idempotency_key = models.CharField(max_length=96, blank=True, default="")
     metadata = models.JSONField(default=dict)
 
     created_by = models.ForeignKey(
@@ -148,7 +149,13 @@ class CashMovement(models.Model):
         app_label = "payments"
         constraints = [
             models.CheckConstraint(condition=models.Q(amount__gt=0), name="ck_cash_movement_amount_positive"),
+            models.UniqueConstraint(
+                fields=["session", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="uq_cash_movement_session_idempotency",
+            ),
         ]
         indexes = [
             models.Index(fields=["session", "created_at"]),
+            models.Index(fields=["session", "idempotency_key"], name="ix_cashmov_session_idem"),
         ]
