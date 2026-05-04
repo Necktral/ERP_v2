@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.modulos.audit.writer import write_event
 from apps.modulos.common.domain_errors import IntegrationError
 from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
 
 from .models import InventoryItem, MovementType, StockBalance, StockMovement, Warehouse
@@ -18,6 +19,10 @@ from .models import InventoryItem, MovementType, StockBalance, StockMovement, Wa
 QTY_Q = Decimal("0.0001")
 COST_Q = Decimal("0.000001")
 logger = logging.getLogger(__name__)
+
+
+class InventoryConflictError(ValueError):
+    pass
 
 
 def _q_qty(x: Decimal) -> Decimal:
@@ -105,6 +110,240 @@ def _idempotent_movement_existing(*, company: OrgUnit, idempotency_key: str) -> 
     if not idempotency_key:
         return None
     return StockMovement.objects.filter(company=company, idempotency_key=idempotency_key).first()
+
+
+def _idempotency_conflict() -> None:
+    raise InventoryConflictError("Idempotency key reutilizada con payload distinto.")
+
+
+def _event_data(event: OutboxEvent | None) -> dict:
+    payload = event.payload if event and isinstance(event.payload, dict) else {}
+    data = payload.get("data", {})
+    return data if isinstance(data, dict) else {}
+
+
+def _outbox_data_for_idempotency(*, company: OrgUnit, idempotency_key: str, event_type: str) -> dict:
+    event = (
+        OutboxEvent.objects.filter(
+            source_module="INVENTORY",
+            event_type=event_type,
+            company=company,
+            payload__data__idempotency_key=idempotency_key,
+        )
+        .order_by("-id")
+        .first()
+    )
+    data = _event_data(event)
+    if not data:
+        _idempotency_conflict()
+    return data
+
+
+def _assert_payload_values(data: dict, expected: dict[str, object]) -> None:
+    for field, expected_value in expected.items():
+        if str(data.get(field, "") if data.get(field, "") is not None else "") != str(expected_value):
+            _idempotency_conflict()
+
+
+def _assert_payload_bool(data: dict, field: str, expected: bool) -> None:
+    if bool(data.get(field, False)) is not bool(expected):
+        _idempotency_conflict()
+
+
+def _assert_existing_movement(
+    *,
+    movement: StockMovement,
+    branch: OrgUnit,
+    warehouse_id: int,
+    item_id: int,
+    movement_type: str,
+    note: str,
+    source_module: str = "",
+    source_type: str = "",
+    source_id: str = "",
+) -> None:
+    if (
+        movement.branch_id != branch.id
+        or movement.warehouse_id != int(warehouse_id)
+        or movement.item_id != int(item_id)
+        or movement.movement_type != movement_type
+        or movement.note != (note or "")
+        or movement.source_module != (source_module or "")
+        or movement.source_type != (source_type or "")
+        or movement.source_id != (source_id or "")
+    ):
+        _idempotency_conflict()
+
+
+def _assert_receive_idempotency_match(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    existing: StockMovement,
+    warehouse_id: int,
+    item_id: int,
+    qty: Decimal,
+    unit_cost: Decimal,
+    idempotency_key: str,
+    note: str,
+    source_module: str,
+    source_type: str,
+    source_id: str,
+) -> None:
+    _assert_existing_movement(
+        movement=existing,
+        branch=branch,
+        warehouse_id=warehouse_id,
+        item_id=item_id,
+        movement_type=MovementType.RECEIVE,
+        note=note,
+        source_module=source_module,
+        source_type=source_type,
+        source_id=source_id,
+    )
+    data = _outbox_data_for_idempotency(
+        company=company,
+        idempotency_key=idempotency_key,
+        event_type="InventoryMovementPosted",
+    )
+    _assert_payload_values(
+        data,
+        {
+            "movement_id": existing.id,
+            "movement_type": MovementType.RECEIVE,
+            "warehouse_id": warehouse_id,
+            "item_id": item_id,
+            "qty_delta": _q_qty(qty),
+            "unit_cost": _q_cost(unit_cost),
+            "total_cost": _q_cost(qty * unit_cost),
+            "source_module": source_module or "",
+            "source_type": source_type or "",
+            "source_id": source_id or "",
+        },
+    )
+
+
+def _assert_issue_idempotency_match(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    existing: StockMovement,
+    warehouse_id: int,
+    item_id: int,
+    qty: Decimal,
+    allow_negative: bool,
+    idempotency_key: str,
+    note: str,
+    source_module: str,
+    source_type: str,
+    source_id: str,
+) -> None:
+    _assert_existing_movement(
+        movement=existing,
+        branch=branch,
+        warehouse_id=warehouse_id,
+        item_id=item_id,
+        movement_type=MovementType.ISSUE,
+        note=note,
+        source_module=source_module,
+        source_type=source_type,
+        source_id=source_id,
+    )
+    data = _outbox_data_for_idempotency(
+        company=company,
+        idempotency_key=idempotency_key,
+        event_type="InventoryMovementPosted",
+    )
+    _assert_payload_values(
+        data,
+        {
+            "movement_id": existing.id,
+            "movement_type": MovementType.ISSUE,
+            "warehouse_id": warehouse_id,
+            "item_id": item_id,
+            "qty_delta": _q_qty(Decimal("0") - qty),
+            "source_module": source_module or "",
+            "source_type": source_type or "",
+            "source_id": source_id or "",
+        },
+    )
+    _assert_payload_bool(data, "allow_negative", allow_negative)
+
+
+def _assert_adjust_idempotency_match(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    existing: StockMovement,
+    warehouse_id: int,
+    item_id: int,
+    new_qty_on_hand: Decimal,
+    idempotency_key: str,
+    note: str,
+) -> None:
+    _assert_existing_movement(
+        movement=existing,
+        branch=branch,
+        warehouse_id=warehouse_id,
+        item_id=item_id,
+        movement_type=MovementType.ADJUST,
+        note=note,
+    )
+    data = _outbox_data_for_idempotency(
+        company=company,
+        idempotency_key=idempotency_key,
+        event_type="InventoryAdjusted",
+    )
+    _assert_payload_values(
+        data,
+        {
+            "movement_id": existing.id,
+            "movement_type": MovementType.ADJUST,
+            "warehouse_id": warehouse_id,
+            "item_id": item_id,
+            "new_qty_on_hand": _q_qty(new_qty_on_hand),
+        },
+    )
+
+
+def _assert_transfer_idempotency_match(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    existing: StockMovement,
+    from_warehouse_id: int,
+    to_warehouse_id: int,
+    item_id: int,
+    qty: Decimal,
+    idempotency_key: str,
+    note: str,
+) -> None:
+    _assert_existing_movement(
+        movement=existing,
+        branch=branch,
+        warehouse_id=from_warehouse_id,
+        item_id=item_id,
+        movement_type=MovementType.TRANSFER_OUT,
+        note=note,
+        source_module="INVENTORY",
+        source_type="TRANSFER",
+        source_id=f"{from_warehouse_id}:{to_warehouse_id}:{item_id}",
+    )
+    data = _outbox_data_for_idempotency(
+        company=company,
+        idempotency_key=idempotency_key,
+        event_type="InventoryTransferCompleted",
+    )
+    _assert_payload_values(
+        data,
+        {
+            "out_movement_id": existing.id,
+            "from_warehouse_id": from_warehouse_id,
+            "to_warehouse_id": to_warehouse_id,
+            "item_id": item_id,
+            "qty": _q_qty(qty),
+        },
+    )
 
 
 def _post_result_from_movement(*, movement: StockMovement, qty_on_hand: Decimal, avg_cost: Decimal) -> PostResult:
@@ -217,6 +456,20 @@ def post_receive(
     with transaction.atomic():
         existing = _idempotent_movement_existing(company=company, idempotency_key=idempotency_key)
         if existing:
+            _assert_receive_idempotency_match(
+                company=company,
+                branch=branch,
+                existing=existing,
+                warehouse_id=warehouse_id,
+                item_id=item_id,
+                qty=qty,
+                unit_cost=unit_cost,
+                idempotency_key=idempotency_key,
+                note=note,
+                source_module=source_module,
+                source_type=source_type,
+                source_id=source_id,
+            )
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
                 return _post_result_from_movement(
@@ -335,6 +588,20 @@ def post_issue(
     with transaction.atomic():
         existing = _idempotent_movement_existing(company=company, idempotency_key=idempotency_key)
         if existing:
+            _assert_issue_idempotency_match(
+                company=company,
+                branch=branch,
+                existing=existing,
+                warehouse_id=warehouse_id,
+                item_id=item_id,
+                qty=qty,
+                allow_negative=allow_negative,
+                idempotency_key=idempotency_key,
+                note=note,
+                source_module=source_module,
+                source_type=source_type,
+                source_id=source_id,
+            )
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
                 return _post_result_from_movement(
@@ -445,6 +712,16 @@ def post_adjust(
     with transaction.atomic():
         existing = _idempotent_movement_existing(company=company, idempotency_key=idempotency_key)
         if existing:
+            _assert_adjust_idempotency_match(
+                company=company,
+                branch=branch,
+                existing=existing,
+                warehouse_id=warehouse_id,
+                item_id=item_id,
+                new_qty_on_hand=new_qty_on_hand,
+                idempotency_key=idempotency_key,
+                note=note,
+            )
             bal = StockBalance.objects.filter(company=company, branch=branch, warehouse_id=warehouse_id, item_id=item_id).first()
             if not bal:
                 return _post_result_from_movement(
@@ -543,6 +820,17 @@ def post_transfer(
     with transaction.atomic():
         existing = _idempotent_movement_existing(company=company, idempotency_key=idempotency_key)
         if existing:
+            _assert_transfer_idempotency_match(
+                company=company,
+                branch=branch,
+                existing=existing,
+                from_warehouse_id=from_warehouse_id,
+                to_warehouse_id=to_warehouse_id,
+                item_id=item_id,
+                qty=qty,
+                idempotency_key=idempotency_key,
+                note=note,
+            )
             return {
                 "idempotent": True,
                 "movement_id": existing.id,

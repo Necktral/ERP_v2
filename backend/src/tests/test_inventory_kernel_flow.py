@@ -89,3 +89,57 @@ def test_inventory_receive_issue_audited():
 
     # Auditoría: deben existir eventos del módulo INVENTORY
     assert AuditEvent.objects.filter(module="INVENTORY", event_type="INVENTORY_MOVEMENT_POSTED").count() >= 2
+
+
+@pytest.mark.django_db
+def test_inventory_receive_idempotency_payload_mismatch_returns_conflict():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="u2", password="x")
+    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
+
+    c = _client_with_perms(
+        user,
+        company,
+        branch,
+        [
+            "inventory.warehouse.create",
+            "inventory.item.create",
+            "inventory.movement.receive",
+        ],
+    )
+
+    r = c.post("/api/inventory/warehouses/", {"name": "Main", "code": "M"}, format="json")
+    assert r.status_code == 201
+    wh_id = r.data["id"]
+
+    r = c.post("/api/inventory/items/", {"sku": "GAS", "name": "Gasolina", "uom": "LITER"}, format="json")
+    assert r.status_code == 201
+    item_id = r.data["id"]
+
+    payload = {
+        "warehouse_id": wh_id,
+        "item_id": item_id,
+        "qty": "100.0000",
+        "unit_cost": "1.250000",
+        "idempotency_key": "recv-conflict-1",
+        "note": "initial",
+    }
+    r = c.post("/api/inventory/movements/receive/", payload, format="json")
+    assert r.status_code == 201
+    first_id = r.data["movement_id"]
+
+    r = c.post("/api/inventory/movements/receive/", payload, format="json")
+    assert r.status_code == 201
+    assert r.data["movement_id"] == first_id
+
+    mismatch = dict(payload)
+    mismatch["qty"] = "101.0000"
+    r = c.post("/api/inventory/movements/receive/", mismatch, format="json")
+    assert r.status_code == 409
+
+    invalid = dict(payload)
+    invalid["idempotency_key"] = "recv-invalid-qty"
+    invalid["qty"] = "0.0000"
+    r = c.post("/api/inventory/movements/receive/", invalid, format="json")
+    assert r.status_code == 400
