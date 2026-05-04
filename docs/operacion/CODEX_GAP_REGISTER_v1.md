@@ -30,3 +30,9 @@ Estado: Registro priorizado de gaps accionables para convergencia
 - Este registro no corrige gaps automáticamente; define trabajo ejecutable por lotes de convergencia.
 - Todo cierre de gap debe actualizar su evidencia y reflejarse en la `CODEX_COMPLETION_MATRIX_v1.md`.
 - Si aparece contradicción nueva entre código y docs, se agrega como `contract_closure` antes de abrir implementación amplia.
+
+## Cierres posteriores al corte v1
+
+| gap_id | estado_gap | dominio | tipo_gap | evidencia | impacto | bloqueante | contrato_impactado | accion_cierre |
+|---|---|---|---|---|---|---|---|---|
+| `GAP-SYNC-BRANCH-SCOPE-001` | `cerrado` | Sync | `security_isolation` | PR #68; commit `8fa283c3`; merge `311cf66e`; `backend/src/apps/modulos/sync_engine/views.py`; `backend/src/tests/test_sync_device_enrollment_flow.py`; `backend/src/tests/test_sync_devices_list.py`; `docs/operacion/HANDOFF_SYNC_DEVICE_BRANCH_SCOPE_P0_20260504.md` | alto | sí | Administración de dispositivos Sync: challenge/list/revoke bajo scope branch | CERRADO 2026-05-04: enforcement por `request.branch`, tests focales y CI remoto verde. |
