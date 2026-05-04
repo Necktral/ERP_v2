@@ -130,9 +130,14 @@ class EnrollmentChallengeCreateView(APIView):
         if company_id != company.id:
             raise ParseError("company_id debe coincidir con X-Company-Id en esta fase.")
 
+        request_branch = getattr(request, "branch", None)
         branch_id = data.get("branch_id", None)
         branch = None
-        if branch_id is not None:
+        if request_branch is not None:
+            if branch_id is not None and int(branch_id) != int(request_branch.id):
+                raise PermissionDenied("Sucursal fuera del alcance efectivo.")
+            branch = request_branch
+        elif branch_id is not None:
             branch = OrgUnit.objects.filter(
                 id=int(branch_id),
                 unit_type=OrgUnit.UnitType.BRANCH,
@@ -330,7 +335,11 @@ class DeviceRevokeView(APIView):
         if company is None:
             raise ParseError("Falta contexto company (X-Company-Id).")
 
-        device = Device.objects.filter(id=device_id, company=company).first()
+        qs = Device.objects.filter(id=device_id, company=company)
+        request_branch = getattr(request, "branch", None)
+        if request_branch is not None:
+            qs = qs.filter(branch=request_branch)
+        device = qs.first()
         if not device:
             raise NotFound("Device no encontrado en esta company.")
 
@@ -366,7 +375,11 @@ class DeviceListView(APIView):
         if company is None:
             raise ParseError("Falta contexto company (X-Company-Id).")
 
-        qs = Device.objects.filter(company=company).order_by("-created_at")
+        qs = Device.objects.filter(company=company)
+        request_branch = getattr(request, "branch", None)
+        if request_branch is not None:
+            qs = qs.filter(branch=request_branch)
+        qs = qs.order_by("-created_at")
 
         status_param = (request.query_params.get("status") or "").strip()
         if status_param:

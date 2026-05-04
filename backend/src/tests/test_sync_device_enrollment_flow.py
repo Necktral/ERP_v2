@@ -47,14 +47,17 @@ def _mk_org() -> tuple[OrgUnit, OrgUnit]:
     return company, branch
 
 
-def _client_with_permission(*, company: OrgUnit, perm_code: str) -> APIClient:
+def _client_with_permission(*, company: OrgUnit, perm_code: str, branch: OrgUnit | None = None) -> APIClient:
     username = f"sync_enroll_{uuid.uuid4().hex[:10]}"
     user = User.objects.create_user(
         username=username,
         email=f"{username}@test.local",
         password="pass12345",
     )
-    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    if branch is None:
+        UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    else:
+        UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
 
     role = Role.objects.create(name=f"role_{uuid.uuid4().hex[:8]}", is_active=True)
     perm, _ = Permission.objects.get_or_create(code=perm_code, defaults={"description": perm_code, "is_active": True})
@@ -62,7 +65,7 @@ def _client_with_permission(*, company: OrgUnit, perm_code: str) -> APIClient:
         perm.is_active = True
         perm.save(update_fields=["is_active"])
     RolePermission.objects.get_or_create(role=role, permission=perm)
-    RoleAssignment.objects.create(user=user, role=role, org_unit=company, is_active=True)
+    RoleAssignment.objects.create(user=user, role=role, org_unit=branch or company, is_active=True)
 
     client = APIClient(raise_request_exception=True)
     login = client.post(
@@ -75,6 +78,8 @@ def _client_with_permission(*, company: OrgUnit, perm_code: str) -> APIClient:
     access = login.data["access"]
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
+    if branch is not None:
+        client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
 
 
@@ -134,6 +139,58 @@ def test_enrollment_challenge_create_requires_permission_and_context():
         format="json",
     )
     assert forbidden.status_code == 403
+
+
+@pytest.mark.django_db
+def test_enrollment_challenge_respects_branch_scope():
+    company, branch_a = _mk_org()
+    branch_b = OrgUnit.objects.create(
+        unit_type=OrgUnit.UnitType.BRANCH,
+        parent=company,
+        name=f"Branch B {uuid.uuid4().hex[:8]}",
+        code=f"B2-{uuid.uuid4().hex[:8]}",
+    )
+    client = _client_with_permission(company=company, branch=branch_a, perm_code="sync.device.enroll")
+
+    implicit = client.post(
+        "/api/sync/enrollment/challenges/",
+        {"company_id": company.id, "label_hint": "Branch A"},
+        format="json",
+    )
+    assert implicit.status_code == 201
+    assert implicit.data["branch_id"] == branch_a.id
+    ch = DeviceEnrollmentChallenge.objects.get(id=implicit.data["challenge_id"])
+    assert ch.branch_id == branch_a.id
+
+    cross_branch = client.post(
+        "/api/sync/enrollment/challenges/",
+        {"company_id": company.id, "branch_id": branch_b.id},
+        format="json",
+    )
+    assert cross_branch.status_code == 403
+
+
+@pytest.mark.django_db
+def test_enrollment_challenge_company_scope_can_target_company_or_branch():
+    company, branch = _mk_org()
+    client = _client_with_permission(company=company, perm_code="sync.device.enroll")
+
+    company_level = client.post(
+        "/api/sync/enrollment/challenges/",
+        {"company_id": company.id, "label_hint": "Company Device"},
+        format="json",
+    )
+    assert company_level.status_code == 201
+    assert company_level.data["branch_id"] is None
+    assert DeviceEnrollmentChallenge.objects.get(id=company_level.data["challenge_id"]).branch_id is None
+
+    branch_level = client.post(
+        "/api/sync/enrollment/challenges/",
+        {"company_id": company.id, "branch_id": branch.id},
+        format="json",
+    )
+    assert branch_level.status_code == 201
+    assert branch_level.data["branch_id"] == branch.id
 
 
 @pytest.mark.django_db
