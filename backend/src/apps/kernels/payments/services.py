@@ -5,12 +5,13 @@ from typing import Any, Protocol, cast
 from uuid import UUID
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 from django.utils import timezone
 
-from apps.modulos.integration.services import publish_outbox_event
+from apps.modulos.audit.writer import write_event
 from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.services import publish_outbox_event
 
 from .models import CashMovement, CashSession, PaymentIntent
 
@@ -270,6 +271,68 @@ def open_cash_session(
     )
 
 
+def _cash_movement_payload_matches(
+    *,
+    movement: CashMovement,
+    movement_type: str,
+    amount: Decimal,
+    reference: str,
+    reason: str,
+) -> bool:
+    return (
+        movement.movement_type == movement_type
+        and Decimal(movement.amount) == Decimal(amount)
+        and (movement.reference or "") == (reference or "")
+        and (movement.reason or "") == (reason or "")
+    )
+
+
+def _idempotent_cash_movement_or_conflict(
+    *,
+    movement: CashMovement,
+    movement_type: str,
+    amount: Decimal,
+    reference: str,
+    reason: str,
+) -> CashMovement:
+    if not _cash_movement_payload_matches(
+        movement=movement,
+        movement_type=movement_type,
+        amount=amount,
+        reference=reference,
+        reason=reason,
+    ):
+        raise PaymentsConflictError("Idempotency key reutilizada con payload distinto.")
+    return movement
+
+
+def _write_cash_movement_audit_event(
+    *,
+    request: HttpRequest | None,
+    actor: ActorPrincipal,
+    mov: CashMovement,
+    idempotency_key: str,
+) -> None:
+    write_event(
+        request=request,
+        module="PAYMENTS",
+        event_type="PAYMENTS_CASH_MOVEMENT_POSTED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="CASH_MOVEMENT",
+        subject_id=str(mov.id),
+        metadata={
+            "session_id": str(mov.session_id),
+            "movement_id": str(mov.id),
+            "movement_type": mov.movement_type,
+            "amount": str(mov.amount),
+            "reference": mov.reference,
+            "reason": mov.reason,
+            "idempotency_key": idempotency_key,
+        },
+    )
+
+
 def post_cash_movement_for_scope(
     *,
     company: OrgUnit,
@@ -281,7 +344,11 @@ def post_cash_movement_for_scope(
     request: HttpRequest | None = None,
     reference: str = "",
     reason: str = "",
-) -> CashMovement:
+    idempotency_key: str = "",
+) -> tuple[CashMovement, bool]:
+    reference = reference or ""
+    reason = reason or ""
+    idempotency_key = (idempotency_key or "").strip()
     with transaction.atomic():
         actor_fk = _coerce_actor_for_fk(actor=actor, field_name="created_by")
         session = (
@@ -294,14 +361,55 @@ def post_cash_movement_for_scope(
         if session.status not in (CashSession.Status.OPEN, CashSession.Status.COUNT_PENDING):
             raise PaymentsInvalidStateError("Cash session no permite movimientos en su estado actual.")
 
-        mov = CashMovement.objects.create(
-            session=session,
-            movement_type=movement_type,
-            amount=amount,
-            reference=reference or "",
-            reason=reason or "",
-            created_by=actor_fk,
-        )
+        if idempotency_key:
+            existing = (
+                CashMovement.objects.select_for_update()
+                .filter(session=session, idempotency_key=idempotency_key)
+                .first()
+            )
+            if existing is not None:
+                return (
+                    _idempotent_cash_movement_or_conflict(
+                        movement=existing,
+                        movement_type=movement_type,
+                        amount=amount,
+                        reference=reference,
+                        reason=reason,
+                    ),
+                    True,
+                )
+
+        try:
+            with transaction.atomic():
+                mov = CashMovement.objects.create(
+                    session=session,
+                    movement_type=movement_type,
+                    amount=amount,
+                    reference=reference,
+                    reason=reason,
+                    idempotency_key=idempotency_key,
+                    created_by=actor_fk,
+                )
+        except IntegrityError:
+            if not idempotency_key:
+                raise
+            existing = (
+                CashMovement.objects.select_for_update()
+                .filter(session=session, idempotency_key=idempotency_key)
+                .first()
+            )
+            if existing is None:
+                raise
+            return (
+                _idempotent_cash_movement_or_conflict(
+                    movement=existing,
+                    movement_type=movement_type,
+                    amount=amount,
+                    reference=reference,
+                    reason=reason,
+                ),
+                True,
+            )
 
         sign = Decimal("1")
         if movement_type in (CashMovement.MovementType.EXPENSE, CashMovement.MovementType.REFUND):
@@ -324,7 +432,13 @@ def post_cash_movement_for_scope(
             company=company,
             branch=branch,
         )
-        return mov
+        _write_cash_movement_audit_event(
+            request=request,
+            actor=actor,
+            mov=mov,
+            idempotency_key=idempotency_key,
+        )
+        return mov, False
 
 
 def post_cash_movement(
@@ -336,7 +450,35 @@ def post_cash_movement(
     amount: Decimal,
     reference: str = "",
     reason: str = "",
+    idempotency_key: str = "",
 ) -> CashMovement:
+    company, branch = _scope_from_request(request)
+    mov, _idempotent = post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session_id,
+        movement_type=movement_type,
+        amount=amount,
+        request=request,
+        reference=reference,
+        reason=reason,
+        idempotency_key=idempotency_key,
+    )
+    return mov
+
+
+def post_cash_movement_with_status(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    session_id: int,
+    movement_type: str,
+    amount: Decimal,
+    reference: str = "",
+    reason: str = "",
+    idempotency_key: str = "",
+) -> tuple[CashMovement, bool]:
     company, branch = _scope_from_request(request)
     return post_cash_movement_for_scope(
         company=company,
@@ -348,6 +490,7 @@ def post_cash_movement(
         request=request,
         reference=reference,
         reason=reason,
+        idempotency_key=idempotency_key,
     )
 
 

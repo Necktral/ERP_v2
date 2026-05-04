@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from apps.kernels.payments.models import CashSession
+from apps.kernels.payments.models import CashMovement, CashSession
 from apps.kernels.payments.services import PaymentsDomainError
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
@@ -100,6 +102,7 @@ def test_payments_intent_cash_session_and_outbox():
         format="json",
     )
     assert rmov.status_code == 201
+    assert rmov.data["idempotent"] is False
 
     rclose = client.post(
         f"/api/payments/cash-sessions/{session_id}/close/",
@@ -205,3 +208,88 @@ def test_payments_domain_error_fallback_stays_400_for_unknown_subtype(monkeypatc
         and str(getattr(record, "view_name", "")) == "CashSessionOpenView.post"
         for record in caplog.records
     )
+
+
+@pytest.mark.django_db
+def test_payments_cash_movement_api_is_idempotent_and_audited():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "payments.cash_session.open",
+            "payments.cash_movement.create",
+        ],
+    )
+
+    opened = client.post("/api/payments/cash-sessions/open/", {"opening_amount": "50.00"}, format="json")
+    assert opened.status_code == 201
+    session_id = opened.data["id"]
+    payload = {
+        "movement_type": "INCOME",
+        "amount": "25.00",
+        "reference": "ticket-1",
+        "reason": "sale",
+        "idempotency_key": "cash-api-1",
+    }
+
+    first = client.post(f"/api/payments/cash-sessions/{session_id}/movements/", payload, format="json")
+    second = client.post(f"/api/payments/cash-sessions/{session_id}/movements/", payload, format="json")
+    mismatch = client.post(
+        f"/api/payments/cash-sessions/{session_id}/movements/",
+        {**payload, "amount": "30.00"},
+        format="json",
+    )
+
+    session = CashSession.objects.get(id=session_id)
+    assert first.status_code == 201
+    assert first.data["idempotent"] is False
+    assert second.status_code == 200
+    assert second.data["idempotent"] is True
+    assert second.data["id"] == first.data["id"]
+    assert mismatch.status_code == 409
+    assert CashMovement.objects.filter(session=session, idempotency_key="cash-api-1").count() == 1
+    assert session.expected_amount == Decimal("75.00")
+    movement_outbox_events = [
+        event
+        for event in OutboxEvent.objects.filter(source_module="PAYMENTS", event_type="CashMovementPosted")
+        if event.payload.get("data", {}).get("movement_id") == first.data["id"]
+    ]
+    assert len(movement_outbox_events) == 1
+    audit_event = AuditEvent.objects.get(
+        event_type="PAYMENTS_CASH_MOVEMENT_POSTED",
+        subject_type="CASH_MOVEMENT",
+        subject_id=str(first.data["id"]),
+    )
+    assert audit_event.reason_code == "OK"
+    assert audit_event.metadata["idempotency_key"] == "cash-api-1"
+
+
+@pytest.mark.django_db
+def test_payments_cash_movement_api_without_idempotency_key_preserves_duplicate_behavior():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "payments.cash_session.open",
+            "payments.cash_movement.create",
+        ],
+    )
+
+    opened = client.post("/api/payments/cash-sessions/open/", {"opening_amount": "10.00"}, format="json")
+    assert opened.status_code == 201
+    session_id = opened.data["id"]
+    payload = {"movement_type": "INCOME", "amount": "5.00", "reference": "manual"}
+
+    first = client.post(f"/api/payments/cash-sessions/{session_id}/movements/", payload, format="json")
+    second = client.post(f"/api/payments/cash-sessions/{session_id}/movements/", payload, format="json")
+
+    session = CashSession.objects.get(id=session_id)
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.data["idempotent"] is False
+    assert second.data["idempotent"] is False
+    assert first.data["id"] != second.data["id"]
+    assert CashMovement.objects.filter(session=session, idempotency_key="").count() == 2
+    assert session.expected_amount == Decimal("20.00")

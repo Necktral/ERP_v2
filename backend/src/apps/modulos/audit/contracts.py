@@ -78,6 +78,8 @@ ALLOWED_EVENT_TYPES: set[str] = {
     "POS_SESSION_CLOSED",
     "POS_TICKET_CLOSED",
     "POS_TICKET_VOIDED",
+    # PAYMENTS
+    "PAYMENTS_CASH_MOVEMENT_POSTED",
 }
 
 # Event Types (añadir)
@@ -230,6 +232,8 @@ ALLOWED_SUBJECT_TYPES: set[str] = {
     "POS_SESSION",
     "POS_TICKET",
     "POS_PERIPHERAL",
+    # PAYMENTS
+    "CASH_MOVEMENT",
 }
 
 # Subject Types (añadir)

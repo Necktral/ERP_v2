@@ -20,7 +20,7 @@ from .services import (
     close_cash_session,
     create_payment_intent,
     open_cash_session,
-    post_cash_movement,
+    post_cash_movement_with_status,
 )
 
 
@@ -216,7 +216,7 @@ class CashMovementCreateView(APIView):
         s.is_valid(raise_exception=True)
         v = s.validated_data
         try:
-            mov = post_cash_movement(
+            mov, idempotent = post_cash_movement_with_status(
                 request=request,
                 actor=request.user,
                 session_id=session_id,
@@ -224,6 +224,7 @@ class CashMovementCreateView(APIView):
                 amount=v["amount"],
                 reference=v.get("reference", "") or "",
                 reason=v.get("reason", "") or "",
+                idempotency_key=v.get("idempotency_key", "") or "",
             )
         except PaymentsDomainError as exc:
             return Response(
@@ -237,6 +238,7 @@ class CashMovementCreateView(APIView):
                 "session_id": mov.session_id,
                 "movement_type": mov.movement_type,
                 "amount": str(mov.amount),
+                "idempotent": bool(idempotent),
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK if idempotent else status.HTTP_201_CREATED,
         )

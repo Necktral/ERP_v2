@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth import get_user_model
 
-from apps.kernels.payments.models import CashSession, PaymentIntent
+from apps.kernels.payments.models import CashMovement, CashSession, PaymentIntent
 from apps.kernels.payments.services import (
     PaymentsConflictError,
     PaymentsInvalidStateError,
@@ -15,6 +15,7 @@ from apps.kernels.payments.services import (
     capture_payment_intent_for_scope,
     create_payment_intent,
     open_cash_session_for_scope,
+    post_cash_movement_for_scope,
 )
 from apps.modulos.iam.models import OrgUnit
 
@@ -125,3 +126,96 @@ def test_open_cash_session_for_scope_requires_actor_with_non_null_id():
             actor=ActorWithNullId(),
             opening_amount=Decimal("1.00"),
         )
+
+
+@pytest.mark.django_db
+def test_post_cash_movement_for_scope_is_idempotent_and_updates_expected_amount_once():
+    company, branch = _mk_scope()
+    actor = User.objects.create_user(username="pay_actor_5", password="x")
+    session = CashSession.objects.create(
+        company=company,
+        branch=branch,
+        opened_by=actor,
+        status=CashSession.Status.OPEN,
+        opening_amount=Decimal("100.00"),
+        expected_amount=Decimal("100.00"),
+        counted_amount=Decimal("0.00"),
+        difference_amount=Decimal("0.00"),
+    )
+
+    first, first_idempotent = post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session.id,
+        movement_type=CashMovement.MovementType.INCOME,
+        amount=Decimal("25.00"),
+        reference="ticket-1",
+        reason="sale",
+        idempotency_key="cash-svc-1",
+    )
+    second, second_idempotent = post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session.id,
+        movement_type=CashMovement.MovementType.INCOME,
+        amount=Decimal("25.00"),
+        reference="ticket-1",
+        reason="sale",
+        idempotency_key="cash-svc-1",
+    )
+
+    session.refresh_from_db()
+    assert first_idempotent is False
+    assert second_idempotent is True
+    assert second.id == first.id
+    assert CashMovement.objects.filter(session=session, idempotency_key="cash-svc-1").count() == 1
+    assert session.expected_amount == Decimal("125.00")
+
+
+@pytest.mark.django_db
+def test_post_cash_movement_for_scope_rejects_idempotency_payload_mismatch():
+    company, branch = _mk_scope()
+    actor = User.objects.create_user(username="pay_actor_6", password="x")
+    session = CashSession.objects.create(
+        company=company,
+        branch=branch,
+        opened_by=actor,
+        status=CashSession.Status.OPEN,
+        opening_amount=Decimal("100.00"),
+        expected_amount=Decimal("100.00"),
+        counted_amount=Decimal("0.00"),
+        difference_amount=Decimal("0.00"),
+    )
+
+    first, first_idempotent = post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        session_id=session.id,
+        movement_type=CashMovement.MovementType.INCOME,
+        amount=Decimal("25.00"),
+        reference="ticket-1",
+        reason="sale",
+        idempotency_key="cash-svc-2",
+    )
+
+    with pytest.raises(PaymentsConflictError, match="Idempotency key reutilizada con payload distinto."):
+        post_cash_movement_for_scope(
+            company=company,
+            branch=branch,
+            actor=actor,
+            session_id=session.id,
+            movement_type=CashMovement.MovementType.INCOME,
+            amount=Decimal("30.00"),
+            reference="ticket-1",
+            reason="sale",
+            idempotency_key="cash-svc-2",
+        )
+
+    session.refresh_from_db()
+    assert first_idempotent is False
+    assert CashMovement.objects.filter(session=session).count() == 1
+    assert CashMovement.objects.get(session=session).id == first.id
+    assert session.expected_amount == Decimal("125.00")
