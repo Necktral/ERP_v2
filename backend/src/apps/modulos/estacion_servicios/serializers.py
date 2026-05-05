@@ -267,6 +267,7 @@ class SaleCreateIn(serializers.Serializer):
 
     customer_name = serializers.CharField(required=False, allow_blank=True, max_length=200)
     customer_ref = serializers.CharField(required=False, allow_blank=True, max_length=64)
+    idempotency_key = serializers.CharField(required=False, allow_blank=True, max_length=96)
 
     is_fiscal = serializers.BooleanField(required=False)
 

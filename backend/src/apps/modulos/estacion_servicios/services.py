@@ -57,6 +57,16 @@ class OpenShiftResult:
     duplicate: bool
 
 
+class FuelConflictError(ValueError):
+    """Conflicto de idempotencia en operaciones Fuel."""
+
+
+@dataclass(frozen=True)
+class FuelSaleCreateResult:
+    sale: FuelSale
+    idempotent: bool
+
+
 def _fuel_inventory_sku(product: str) -> str:
     return f"FUEL-{str(product).upper()}"
 
@@ -644,9 +654,56 @@ def record_dispense(
     )
     return d
 
+def _normalize_sale_idempotency_key(value: str | None) -> str:
+    return str(value or "").strip()
+
+
+def _idempotent_sale_existing(*, company, idempotency_key: str) -> FuelSale | None:
+    if not idempotency_key:
+        return None
+    return (
+        FuelSale.objects.select_for_update()
+        .filter(company=company, idempotency_key=idempotency_key)
+        .first()
+    )
+
+
+def _assert_sale_idempotency_payload_matches(
+    *,
+    sale: FuelSale,
+    branch,
+    shift: FuelShift,
+    dispense: FuelDispense,
+    sale_type: str,
+    payment_method: str,
+    customer_name: str,
+    customer_ref: str,
+    is_fiscal: bool,
+) -> None:
+    expected_customer_name = customer_name or ""
+    expected_customer_ref = customer_ref or ""
+    mismatches: list[str] = []
+
+    comparisons = {
+        "branch_id": (sale.branch_id, branch.id),
+        "shift_id": (sale.shift_id, shift.id),
+        "dispense_id": (sale.dispense_id, dispense.id),
+        "sale_type": (str(sale.sale_type), str(sale_type)),
+        "payment_method": (str(sale.payment_method), str(payment_method)),
+        "customer_name": (sale.customer_name or "", expected_customer_name),
+        "customer_ref": (sale.customer_ref or "", expected_customer_ref),
+        "is_fiscal": (bool(sale.is_fiscal), bool(is_fiscal)),
+    }
+    for field, (actual, expected) in comparisons.items():
+        if actual != expected:
+            mismatches.append(field)
+
+    if mismatches:
+        raise FuelConflictError("Idempotency key reutilizada con payload distinto.")
+
 
 @transaction.atomic
-def create_sale(
+def create_sale_with_status(
     *,
     request=None,
     company,
@@ -659,8 +716,25 @@ def create_sale(
     customer_name: str = "",
     customer_ref: str = "",
     is_fiscal: bool = False,
-) -> FuelSale:
+    idempotency_key: str = "",
+) -> FuelSaleCreateResult:
     branch = _require_branch(branch)
+    normalized_idempotency_key = _normalize_sale_idempotency_key(idempotency_key)
+
+    existing = _idempotent_sale_existing(company=company, idempotency_key=normalized_idempotency_key)
+    if existing is not None:
+        _assert_sale_idempotency_payload_matches(
+            sale=existing,
+            branch=branch,
+            shift=shift,
+            dispense=dispense,
+            sale_type=sale_type,
+            payment_method=payment_method,
+            customer_name=customer_name,
+            customer_ref=customer_ref,
+            is_fiscal=is_fiscal,
+        )
+        return FuelSaleCreateResult(sale=existing, idempotent=True)
 
     if shift.status != FuelShiftStatus.OPEN:
         raise ValidationError({"detail": "No se puede facturar: turno cerrado."})
@@ -671,19 +745,42 @@ def create_sale(
     if hasattr(dispense, "sale"):
         raise ValidationError({"detail": "Este despacho ya tiene venta asociada."})
 
-    sale = FuelSale.objects.create(
-        company=company,
-        branch=branch,
-        shift=shift,
-        dispense=dispense,
-        sale_type=sale_type,
-        payment_method=payment_method,
-        customer_name=customer_name or "",
-        customer_ref=customer_ref or "",
-        total_amount=dispense.amount,
-        created_by=actor_user,
-        is_fiscal=bool(is_fiscal),
-    )
+    sale_kwargs = {
+        "company": company,
+        "branch": branch,
+        "shift": shift,
+        "dispense": dispense,
+        "sale_type": sale_type,
+        "payment_method": payment_method,
+        "idempotency_key": normalized_idempotency_key,
+        "customer_name": customer_name or "",
+        "customer_ref": customer_ref or "",
+        "total_amount": dispense.amount,
+        "created_by": actor_user,
+        "is_fiscal": bool(is_fiscal),
+    }
+    try:
+        with transaction.atomic():
+            sale = FuelSale.objects.create(**sale_kwargs)
+    except IntegrityError:
+        if not normalized_idempotency_key:
+            raise
+        existing = _idempotent_sale_existing(company=company, idempotency_key=normalized_idempotency_key)
+        if existing is None:
+            raise
+        _assert_sale_idempotency_payload_matches(
+            sale=existing,
+            branch=branch,
+            shift=shift,
+            dispense=dispense,
+            sale_type=sale_type,
+            payment_method=payment_method,
+            customer_name=customer_name,
+            customer_ref=customer_ref,
+            is_fiscal=is_fiscal,
+        )
+        return FuelSaleCreateResult(sale=existing, idempotent=True)
+
     sale.flow_correlation_id = f"fuel-sale-{sale.id}-{uuid4().hex[:12]}"
     sale.save(update_fields=["flow_correlation_id"])
 
@@ -777,7 +874,38 @@ def create_sale(
         actor_user=actor_user,
         causation_id=f"{sale.flow_correlation_id}:sale-created",
     )
-    return sale
+    return FuelSaleCreateResult(sale=sale, idempotent=False)
+
+
+def create_sale(
+    *,
+    request=None,
+    company,
+    branch,
+    shift: FuelShift,
+    dispense: FuelDispense,
+    actor_user,
+    sale_type: str,
+    payment_method: str,
+    customer_name: str = "",
+    customer_ref: str = "",
+    is_fiscal: bool = False,
+    idempotency_key: str = "",
+) -> FuelSale:
+    return create_sale_with_status(
+        request=request,
+        company=company,
+        branch=branch,
+        shift=shift,
+        dispense=dispense,
+        actor_user=actor_user,
+        sale_type=sale_type,
+        payment_method=payment_method,
+        customer_name=customer_name,
+        customer_ref=customer_ref,
+        is_fiscal=is_fiscal,
+        idempotency_key=idempotency_key,
+    ).sale
 
 
 def _attempt_sale_compensation(*, request=None, sale: FuelSale, actor_user, reason: str = "") -> FuelSale:
