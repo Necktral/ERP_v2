@@ -11,6 +11,7 @@ import copy
 import logging
 import time
 from datetime import timedelta
+from typing import Any
 from urllib.parse import quote
 
 from django.conf import settings
@@ -43,6 +44,52 @@ from .signing import (
 from .services import process_batch, resolve_device
 
 trace_logger = logging.getLogger("apps.modulos.sync.trace")
+
+
+def _write_sync_auth_rejected_event(
+    *,
+    request,
+    reason_code: str,
+    wire_reason: str,
+    channel: str,
+    failure_stage: str,
+    device: Device | None = None,
+    challenge: DeviceEnrollmentChallenge | None = None,
+    presented_device_id: str = "",
+    extra_metadata: dict[str, Any] | None = None,
+):
+    metadata: dict[str, Any] = {
+        "channel": channel,
+        "failure_stage": failure_stage,
+        "wire_reason": wire_reason,
+    }
+    if device is not None:
+        metadata["device_id"] = str(device.id)
+        metadata["company_id"] = device.company_id
+        metadata["branch_id"] = device.branch_id
+        metadata["device_status"] = device.status
+    elif presented_device_id:
+        metadata["presented_device_id"] = str(presented_device_id)
+    if challenge is not None:
+        metadata["challenge_id"] = str(challenge.id)
+        metadata["company_id"] = challenge.company_id
+        metadata["branch_id"] = challenge.branch_id
+    if extra_metadata:
+        metadata.update(extra_metadata)
+
+    subject_id = str(device.id) if device is not None else ""
+    device_id = str(device.id) if device is not None else ""
+    return write_event(
+        request=request,
+        event_type="SYNC_AUTH_REJECTED",
+        reason_code=reason_code,
+        actor_user=None,
+        subject_type="DEVICE",
+        subject_id=subject_id,
+        device_id=device_id,
+        offline_mode=True,
+        metadata=metadata,
+    )
 
 
 def _sync_enrollment_links(code_plain: str) -> tuple[str, str]:
@@ -222,8 +269,27 @@ class DeviceEnrollView(APIView):
         try:
             pk_raw = public_key_from_b64(data["public_key_b64"])
         except Exception as e:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_INVALID_PUBLIC_KEY",
+                wire_reason="INVALID_PUBLIC_KEY",
+                channel="sync_enrollment",
+                failure_stage="enrollment",
+            )
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_device_enroll_rejected",
+                request=request,
+                reason="SYNC_INVALID_PUBLIC_KEY",
+                audit_event_id=str(audit_event.event_id),
+            )
             raise ParseError(str(e))
 
+        reject_reason = ""
+        reject_message = ""
+        reject_ch: DeviceEnrollmentChallenge | None = None
+        device: Device | None = None
+        ch: DeviceEnrollmentChallenge | None = None
         with transaction.atomic():
             # Lock row directly without outer-join on nullable relations (PostgreSQL restriction).
             ch = (
@@ -232,42 +298,52 @@ class DeviceEnrollView(APIView):
                 .first()
             )
             if not ch:
-                _sync_trace_log(
-                    level=logging.WARNING,
-                    message="sync_device_enroll_rejected",
-                    request=request,
-                    reason="SYNC_ENROLL_INVALID_CODE",
-                )
-                raise PermissionDenied("Código inválido.")
-            if not ch.is_valid_now():
+                reject_reason = "SYNC_ENROLL_INVALID_CODE"
+                reject_message = "Código inválido."
+            elif not ch.is_valid_now():
                 reject_reason = "SYNC_ENROLL_USED_CODE" if ch.used_at is not None else "SYNC_ENROLL_EXPIRED_CODE"
-                _sync_trace_log(
-                    level=logging.WARNING,
-                    message="sync_device_enroll_rejected",
-                    request=request,
-                    reason=reject_reason,
+                reject_message = "Código expirado o ya usado."
+                reject_ch = ch
+            else:
+                label = str(data.get("label") or ch.label_hint or "")
+                meta = data.get("meta") or {}
+
+                device = Device.objects.create(
                     company_id=ch.company_id,
                     branch_id=ch.branch_id,
-                    challenge_id=str(ch.id),
+                    label=label,
+                    status=Device.Status.ACTIVE,
+                    public_key=bytes(pk_raw),
+                    meta=meta,
+                    enrolled_by_user_id=ch.created_by_user_id,
                 )
-                raise PermissionDenied("Código expirado o ya usado.")
 
-            label = str(data.get("label") or ch.label_hint or "")
-            meta = data.get("meta") or {}
+                ch.used_at = timezone.now()
+                ch.used_by_device = device
+                ch.save(update_fields=["used_at", "used_by_device"])
 
-            device = Device.objects.create(
-                company_id=ch.company_id,
-                branch_id=ch.branch_id,
-                label=label,
-                status=Device.Status.ACTIVE,
-                public_key=bytes(pk_raw),
-                meta=meta,
-                enrolled_by_user_id=ch.created_by_user_id,
+        if reject_reason:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code=reject_reason,
+                wire_reason=reject_reason,
+                channel="sync_enrollment",
+                failure_stage="enrollment",
+                challenge=reject_ch,
             )
-
-            ch.used_at = timezone.now()
-            ch.used_by_device = device
-            ch.save(update_fields=["used_at", "used_by_device"])
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_device_enroll_rejected",
+                request=request,
+                reason=reject_reason,
+                company_id=getattr(reject_ch, "company_id", None),
+                branch_id=getattr(reject_ch, "branch_id", None),
+                challenge_id=str(reject_ch.id) if reject_ch is not None else None,
+                audit_event_id=str(audit_event.event_id),
+            )
+            raise PermissionDenied(reject_message)
+        if device is None or ch is None:
+            raise PermissionDenied("Código inválido.")
 
         audit_event = write_event(
             request=request,
@@ -475,7 +551,20 @@ class SyncBatchView(APIView):
         max_skew_seconds = int(getattr(settings, "SYNC_V2_MAX_SKEW_SECONDS", 300))
         ts = int(payload_v2["ts"])
         now = int(timezone.now().timestamp())
-        if abs(now - ts) > max_skew_seconds:
+        ts_delta_seconds = abs(now - ts)
+        if ts_delta_seconds > max_skew_seconds:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_TS_OUT_OF_WINDOW",
+                wire_reason="TS_OUT_OF_WINDOW",
+                channel="sync_v2",
+                failure_stage="request_auth",
+                device=device,
+                extra_metadata={
+                    "ts_delta_seconds": ts_delta_seconds,
+                    "max_skew_seconds": max_skew_seconds,
+                },
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_batch_auth_rejected",
@@ -485,6 +574,7 @@ class SyncBatchView(APIView):
                 branch_id=device.branch_id,
                 device_id=str(device.id),
                 channel="sync_v2",
+                audit_event_id=str(audit_event.event_id),
             )
             return self._error_response(
                 request,
@@ -505,6 +595,15 @@ class SyncBatchView(APIView):
         if scheme == "hmac":
             secret = str(getattr(device, "hmac_secret_b64", "") or "").strip()
             if not secret:
+                audit_event = _write_sync_auth_rejected_event(
+                    request=request,
+                    reason_code="SYNC_DEVICE_NO_HMAC_SECRET",
+                    wire_reason="SYNC_DEVICE_NO_HMAC_SECRET",
+                    channel="sync_v2",
+                    failure_stage="request_auth",
+                    device=device,
+                    extra_metadata={"scheme": scheme},
+                )
                 _sync_trace_log(
                     level=logging.WARNING,
                     message="sync_batch_auth_rejected",
@@ -514,6 +613,7 @@ class SyncBatchView(APIView):
                     branch_id=device.branch_id,
                     device_id=str(device.id),
                     channel="sync_v2",
+                    audit_event_id=str(audit_event.event_id),
                 )
                 return self._error_response(
                     request,
@@ -528,6 +628,15 @@ class SyncBatchView(APIView):
         else:
             pk_raw = bytes(device.public_key or b"")
             if not pk_raw:
+                audit_event = _write_sync_auth_rejected_event(
+                    request=request,
+                    reason_code="SYNC_DEVICE_NO_PUBLIC_KEY",
+                    wire_reason="SYNC_DEVICE_NO_PUBLIC_KEY",
+                    channel="sync_v2",
+                    failure_stage="request_auth",
+                    device=device,
+                    extra_metadata={"scheme": scheme},
+                )
                 _sync_trace_log(
                     level=logging.WARNING,
                     message="sync_batch_auth_rejected",
@@ -537,6 +646,7 @@ class SyncBatchView(APIView):
                     branch_id=device.branch_id,
                     device_id=str(device.id),
                     channel="sync_v2",
+                    audit_event_id=str(audit_event.event_id),
                 )
                 return self._error_response(
                     request,
@@ -550,6 +660,15 @@ class SyncBatchView(APIView):
             )
 
         if not ok:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_BAD_SIGNATURE",
+                wire_reason="BAD_SIGNATURE",
+                channel="sync_v2",
+                failure_stage="request_auth",
+                device=device,
+                extra_metadata={"scheme": scheme},
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_batch_auth_rejected",
@@ -559,6 +678,7 @@ class SyncBatchView(APIView):
                 branch_id=device.branch_id,
                 device_id=str(device.id),
                 channel="sync_v2",
+                audit_event_id=str(audit_event.event_id),
             )
             return self._error_response(
                 request,
@@ -574,6 +694,15 @@ class SyncBatchView(APIView):
                     ts=ts,
                 )
         except IntegrityError:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_REPLAY_DETECTED",
+                wire_reason="REPLAY_DETECTED",
+                channel="sync_v2",
+                failure_stage="request_auth",
+                device=device,
+                extra_metadata={"scheme": scheme},
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_batch_auth_rejected",
@@ -583,6 +712,7 @@ class SyncBatchView(APIView):
                 branch_id=device.branch_id,
                 device_id=str(device.id),
                 channel="sync_v2",
+                audit_event_id=str(audit_event.event_id),
             )
             return self._error_response(
                 request,
@@ -616,6 +746,18 @@ class SyncBatchView(APIView):
             hdr_device_id = (request.headers.get("X-Device-Id") or "").strip()
             body_device_id = str(data_v2["device_id"])
             if hdr_device_id and hdr_device_id != body_device_id:
+                audit_event = _write_sync_auth_rejected_event(
+                    request=request,
+                    reason_code="SYNC_DEVICE_ID_MISMATCH",
+                    wire_reason="DEVICE_ID_MISMATCH",
+                    channel=channel,
+                    failure_stage="request_auth",
+                    presented_device_id=hdr_device_id,
+                    extra_metadata={
+                        "header_device_id": hdr_device_id,
+                        "body_device_id": body_device_id,
+                    },
+                )
                 _sync_trace_log(
                     level=logging.WARNING,
                     message="sync_batch_auth_rejected",
@@ -623,6 +765,7 @@ class SyncBatchView(APIView):
                     reason="DEVICE_ID_MISMATCH",
                     device_id=hdr_device_id,
                     channel=channel,
+                    audit_event_id=str(audit_event.event_id),
                 )
                 self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="DEVICE_ID_MISMATCH")
                 return self._error_response(
@@ -631,7 +774,28 @@ class SyncBatchView(APIView):
                     reason="DEVICE_ID_MISMATCH",
                 )
             device_id = hdr_device_id or body_device_id
-            device = resolve_device(device_id=device_id)
+            try:
+                device = resolve_device(device_id=device_id)
+            except PermissionDenied:
+                audit_event = _write_sync_auth_rejected_event(
+                    request=request,
+                    reason_code="SYNC_UNKNOWN_DEVICE",
+                    wire_reason="SYNC_UNKNOWN_DEVICE",
+                    channel=channel,
+                    failure_stage="device_lookup",
+                    presented_device_id=device_id,
+                )
+                _sync_trace_log(
+                    level=logging.WARNING,
+                    message="sync_batch_auth_rejected",
+                    request=request,
+                    reason="SYNC_UNKNOWN_DEVICE",
+                    device_id=device_id,
+                    channel=channel,
+                    audit_event_id=str(audit_event.event_id),
+                )
+                self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="SYNC_UNKNOWN_DEVICE")
+                raise
 
             if v2_request_auth_enforced:
                 auth_error = self._validate_v2_request_auth(
@@ -672,7 +836,28 @@ class SyncBatchView(APIView):
         else:
             raise PermissionDenied("X-Device-Id requerido.")
 
-        device = resolve_device(device_id=device_id)
+        try:
+            device = resolve_device(device_id=device_id)
+        except PermissionDenied:
+            audit_event = _write_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_UNKNOWN_DEVICE",
+                wire_reason="SYNC_UNKNOWN_DEVICE",
+                channel=channel,
+                failure_stage="device_lookup",
+                presented_device_id=device_id,
+            )
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_batch_auth_rejected",
+                request=request,
+                reason="SYNC_UNKNOWN_DEVICE",
+                device_id=device_id,
+                channel=channel,
+                audit_event_id=str(audit_event.event_id),
+            )
+            self._record_batch_metric(channel=channel, started_at=started_at, ok=False, error_code="SYNC_UNKNOWN_DEVICE")
+            raise
         out = process_batch(
             request=request._request if hasattr(request, "_request") else request,
             actor_user=getattr(request, "user", None),

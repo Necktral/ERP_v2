@@ -16,6 +16,7 @@ from django.utils import timezone
 from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
 
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.sync.models import DeviceEnrollment
 from apps.modulos.sync.signing import canonical_string, hmac_signature_b64
@@ -77,6 +78,20 @@ def _sign_v2_ed25519(body: dict, private_key: Ed25519PrivateKey) -> str:
     return base64.b64encode(private_key.sign(msg)).decode("utf-8")
 
 
+def _assert_sync_auth_rejected(*, reason_code: str, wire_reason: str) -> AuditEvent:
+    ev = AuditEvent.objects.filter(event_type="SYNC_AUTH_REJECTED", reason_code=reason_code).latest(
+        "timestamp_server"
+    )
+    metadata = ev.metadata or {}
+    assert metadata["wire_reason"] == wire_reason
+    assert metadata["channel"] == "sync_v2"
+    assert "signature" not in metadata
+    assert "nonce" not in metadata
+    assert "enrollment_code" not in metadata
+    assert "public_key_b64" not in metadata
+    return ev
+
+
 @pytest.mark.django_db
 def test_sync_batch_v2_ed25519_happy_and_replay():
     client = APIClient()
@@ -118,6 +133,9 @@ def test_sync_batch_v2_ed25519_happy_and_replay():
     assert r2.status_code == 401
     payload = r2.json()
     assert payload["error"]["message"] == "REPLAY_DETECTED"
+    ev = _assert_sync_auth_rejected(reason_code="SYNC_REPLAY_DETECTED", wire_reason="REPLAY_DETECTED")
+    assert ev.subject_id == str(device.id)
+    assert ev.device_id == str(device.id)
 
 
 @pytest.mark.django_db
@@ -156,6 +174,152 @@ def test_sync_batch_v2_rejects_bad_signature(caplog):
     assert warning_logs
     assert any(getattr(r, "reason", "") == "BAD_SIGNATURE" for r in warning_logs)
     assert not any(hasattr(r, "signature") for r in warning_logs)
+    ev = _assert_sync_auth_rejected(reason_code="SYNC_BAD_SIGNATURE", wire_reason="BAD_SIGNATURE")
+    assert ev.subject_id == str(device.id)
+
+
+@pytest.mark.django_db
+@override_settings(SYNC_V2_MAX_SKEW_SECONDS=10)
+def test_sync_batch_v2_audits_timestamp_skew():
+    client = APIClient()
+    company, branch = _mk_scope()
+
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-skew",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+    )
+
+    body = _build_v2_body(
+        device_id=device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-skew",
+        ts=int(timezone.now().timestamp()) - 120,
+    )
+    body["auth"]["signature"] = _sign_v2_ed25519(body, private)
+
+    res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
+    assert res.status_code == 401
+    assert res.json()["error"]["message"] == "TS_OUT_OF_WINDOW"
+    ev = _assert_sync_auth_rejected(reason_code="SYNC_TS_OUT_OF_WINDOW", wire_reason="TS_OUT_OF_WINDOW")
+    assert ev.subject_id == str(device.id)
+    assert int(ev.metadata["ts_delta_seconds"]) >= 10
+
+
+@pytest.mark.django_db
+def test_sync_batch_v2_audits_device_id_mismatch():
+    client = APIClient()
+    company, branch = _mk_scope()
+    body_device_id = uuid.uuid4()
+    header_device_id = uuid.uuid4()
+    body = _build_v2_body(
+        device_id=body_device_id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-mismatch",
+        ts=int(timezone.now().timestamp()),
+    )
+    body["auth"]["signature"] = "placeholder"
+
+    res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(header_device_id))
+    assert res.status_code == 401
+    assert res.json()["error"]["message"] == "DEVICE_ID_MISMATCH"
+    ev = _assert_sync_auth_rejected(reason_code="SYNC_DEVICE_ID_MISMATCH", wire_reason="DEVICE_ID_MISMATCH")
+    assert ev.subject_id == ""
+    assert ev.device_id == ""
+    assert ev.metadata["header_device_id"] == str(header_device_id)
+    assert ev.metadata["body_device_id"] == str(body_device_id)
+
+
+@pytest.mark.django_db
+def test_sync_batch_v2_audits_unknown_device():
+    client = APIClient()
+    company, branch = _mk_scope()
+    unknown_device_id = uuid.uuid4()
+    body = _build_v2_body(
+        device_id=unknown_device_id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-unknown-device",
+        ts=int(timezone.now().timestamp()),
+    )
+    body["auth"]["signature"] = "placeholder"
+
+    res = client.post("/api/sync/batch/", data=body, format="json")
+    assert res.status_code == 403
+    ev = _assert_sync_auth_rejected(reason_code="SYNC_UNKNOWN_DEVICE", wire_reason="SYNC_UNKNOWN_DEVICE")
+    assert ev.subject_id == ""
+    assert ev.device_id == ""
+    assert ev.metadata["presented_device_id"] == str(unknown_device_id)
+
+
+@pytest.mark.django_db
+def test_sync_batch_v2_audits_missing_request_auth_material():
+    client = APIClient()
+    company, branch = _mk_scope()
+
+    missing_public_key_device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-no-pubkey",
+        status=Device.Status.ACTIVE,
+        public_key=b"",
+    )
+    ed_body = _build_v2_body(
+        device_id=missing_public_key_device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-no-pubkey",
+        ts=int(timezone.now().timestamp()),
+    )
+    ed_body["auth"]["signature"] = "placeholder"
+    ed_res = client.post(
+        "/api/sync/batch/",
+        data=ed_body,
+        format="json",
+        HTTP_X_DEVICE_ID=str(missing_public_key_device.id),
+    )
+    assert ed_res.status_code == 401
+    _assert_sync_auth_rejected(
+        reason_code="SYNC_DEVICE_NO_PUBLIC_KEY",
+        wire_reason="SYNC_DEVICE_NO_PUBLIC_KEY",
+    )
+
+    missing_hmac_device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-no-hmac",
+        status=Device.Status.ACTIVE,
+        public_key=b"\x01" * 32,
+    )
+    hmac_body = _build_v2_body(
+        device_id=missing_hmac_device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-no-hmac",
+        ts=int(timezone.now().timestamp()),
+    )
+    hmac_body["auth"]["scheme"] = "hmac"
+    hmac_body["auth"]["signature"] = "placeholder"
+    hmac_res = client.post(
+        "/api/sync/batch/",
+        data=hmac_body,
+        format="json",
+        HTTP_X_DEVICE_ID=str(missing_hmac_device.id),
+    )
+    assert hmac_res.status_code == 401
+    _assert_sync_auth_rejected(
+        reason_code="SYNC_DEVICE_NO_HMAC_SECRET",
+        wire_reason="SYNC_DEVICE_NO_HMAC_SECRET",
+    )
 
 
 @pytest.mark.django_db
