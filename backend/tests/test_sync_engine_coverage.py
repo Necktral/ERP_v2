@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.sync_engine.errors import SyncRejectError
 from apps.modulos.sync_engine.models import Device, DeviceEnrollmentChallenge
@@ -206,6 +207,11 @@ def test_process_command_rejections_and_duplicates():
     out2 = process_command(request=request, actor_user=None, device=device, cmd=cmd2, policy=policy)
     assert out2["status"] == "REJECTED"
     assert out2["reason"] == "SYNC_DEVICE_REVOKED"
+    assert AuditEvent.objects.filter(
+        event_type="SYNC_COMMAND_REJECTED",
+        reason_code="SYNC_DEVICE_REVOKED",
+        subject_id=str(device.id),
+    ).exists()
 
     # device quarantined
     device.status = Device.Status.QUARANTINED
@@ -220,6 +226,11 @@ def test_process_command_rejections_and_duplicates():
     out3 = process_command(request=request, actor_user=None, device=device, cmd=cmd3, policy=policy)
     assert out3["status"] == "REJECTED"
     assert out3["reason"] == "SYNC_DEVICE_QUARANTINED"
+    assert AuditEvent.objects.filter(
+        event_type="SYNC_COMMAND_REJECTED",
+        reason_code="SYNC_DEVICE_QUARANTINED",
+        subject_id=str(device.id),
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -268,6 +279,11 @@ def test_process_command_scope_hash_signature_and_mismatch():
     out_scope = process_command(request=request, actor_user=None, device=device, cmd=cmd_scope, policy=policy)
     assert out_scope["status"] == "REJECTED"
     assert out_scope["reason"] == "SYNC_FORBIDDEN_SCOPE"
+    assert AuditEvent.objects.filter(
+        event_type="SYNC_COMMAND_REJECTED",
+        reason_code="SYNC_FORBIDDEN_SCOPE",
+        subject_id=str(device.id),
+    ).exists()
 
     # payload hash mismatch
     cmd_hash = _build_cmd(

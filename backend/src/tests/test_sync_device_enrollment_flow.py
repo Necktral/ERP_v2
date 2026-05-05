@@ -18,6 +18,7 @@ from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 from apps.modulos.sync_engine.models import Device, DeviceEnrollmentChallenge
@@ -90,6 +91,20 @@ def _public_key_b64() -> str:
         format=serialization.PublicFormat.Raw,
     )
     return base64.b64encode(public).decode("utf-8")
+
+
+def _assert_enrollment_auth_rejected(*, reason_code: str) -> AuditEvent:
+    ev = AuditEvent.objects.filter(event_type="SYNC_AUTH_REJECTED", reason_code=reason_code).latest(
+        "timestamp_server"
+    )
+    metadata = ev.metadata or {}
+    assert metadata["channel"] == "sync_enrollment"
+    assert metadata["failure_stage"] == "enrollment"
+    assert "signature" not in metadata
+    assert "nonce" not in metadata
+    assert "enrollment_code" not in metadata
+    assert "public_key_b64" not in metadata
+    return ev
 
 
 @pytest.mark.django_db
@@ -229,6 +244,8 @@ def test_device_enroll_valid_invalid_expired_and_used_code(caplog):
 
     second = client.post("/api/sync/enroll/", payload, format="json")
     assert second.status_code == 403
+    used_event = _assert_enrollment_auth_rejected(reason_code="SYNC_ENROLL_USED_CODE")
+    assert used_event.metadata["challenge_id"] == str(challenge.id)
 
     caplog.set_level(logging.WARNING, logger="apps.modulos.sync.trace")
     invalid = client.post(
@@ -245,9 +262,11 @@ def test_device_enroll_valid_invalid_expired_and_used_code(caplog):
     assert any(getattr(r, "reason", "") == "SYNC_ENROLL_INVALID_CODE" for r in invalid_logs)
     assert not any(hasattr(r, "enrollment_code") for r in invalid_logs)
     assert not any(hasattr(r, "public_key_b64") for r in invalid_logs)
+    invalid_event = _assert_enrollment_auth_rejected(reason_code="SYNC_ENROLL_INVALID_CODE")
+    assert "challenge_id" not in invalid_event.metadata
 
     expired_code = "qa-enroll-expired-code"
-    DeviceEnrollmentChallenge.objects.create(
+    expired_challenge = DeviceEnrollmentChallenge.objects.create(
         company=company,
         branch=branch,
         enrollment_code_hash=DeviceEnrollmentChallenge.sha256_hex(expired_code),
@@ -263,6 +282,25 @@ def test_device_enroll_valid_invalid_expired_and_used_code(caplog):
         format="json",
     )
     assert expired.status_code == 403
+    expired_event = _assert_enrollment_auth_rejected(reason_code="SYNC_ENROLL_EXPIRED_CODE")
+    assert expired_event.metadata["challenge_id"] == str(expired_challenge.id)
+
+
+@pytest.mark.django_db
+def test_device_enroll_invalid_public_key_is_audited():
+    client = APIClient(raise_request_exception=True)
+    res = client.post(
+        "/api/sync/enroll/",
+        {
+            "enrollment_code": "qa-enroll-public-key-invalid",
+            "public_key_b64": "@@not-a-key@@",
+        },
+        format="json",
+    )
+    assert res.status_code == 400
+    ev = _assert_enrollment_auth_rejected(reason_code="SYNC_INVALID_PUBLIC_KEY")
+    assert ev.subject_id == ""
+    assert ev.device_id == ""
 
 
 @pytest.mark.django_db(transaction=True)
