@@ -394,6 +394,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "01905e4c3a4828818e252e9b1357d64db3418f0b38f473986c0fc690e2054de5"
     },
+    "backend/src/apps/modulos/estacion_servicios/migrations/0011_fuelsale_idempotency.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "expand_fuel_sale_idempotency_key_with_conditional_unique_constraint",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "FUEL-SALE-IDEMPOTENCY-P1",
+      "fingerprint": "ffb8b65a05d7f8bc71d98d9330791a5db8ae568a57fd4b99b81c759192500074"
+    },
     "backend/src/apps/modulos/hr/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",

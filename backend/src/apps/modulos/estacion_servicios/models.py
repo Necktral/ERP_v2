@@ -147,6 +147,7 @@ class FuelSale(models.Model):
 
     sale_type = models.CharField(max_length=16, choices=FuelSaleType.choices)
     payment_method = models.CharField(max_length=16, choices=FuelPaymentMethod.choices)
+    idempotency_key = models.CharField(max_length=96, blank=True, default="")
 
     # “party snapshot” mínimo (sin depender aún del módulo de clientes)
     customer_name = models.CharField(max_length=200, blank=True, default="")
@@ -200,6 +201,13 @@ class FuelSale(models.Model):
             models.Index(fields=["company", "branch", "created_at"]),
             models.Index(fields=["status", "created_at"]),
             models.Index(fields=["status", "compensation_next_retry_at", "created_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="uq_fuel_sale_company_idempotency",
+            )
         ]
 
 

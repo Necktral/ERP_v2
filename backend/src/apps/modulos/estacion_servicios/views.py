@@ -28,11 +28,12 @@ from apps.modulos.estacion_servicios.serializers import (
     ShiftOut,
 )
 from apps.modulos.estacion_servicios.services import (
+    FuelConflictError,
     build_daily_close_report,
     build_shift_close_report,
     cancel_sale,
     close_shift,
-    create_sale,
+    create_sale_with_status,
     list_dispenses,
     list_sales,
     list_shifts,
@@ -244,22 +245,27 @@ class FuelSaleCreateView(APIView):
             branch=request.branch,
         )
 
-        sale = create_sale(
-            request=request,
-            company=request.company,
-            branch=request.branch,
-            shift=shift,
-            dispense=dispense,
-            actor_user=request.user,
-            sale_type=ser.validated_data["sale_type"],
-            payment_method=ser.validated_data["payment_method"],
-            customer_name=ser.validated_data.get("customer_name", ""),
-            customer_ref=ser.validated_data.get("customer_ref", ""),
-            is_fiscal=ser.validated_data.get("is_fiscal", False),
-        )
+        try:
+            result = create_sale_with_status(
+                request=request,
+                company=request.company,
+                branch=request.branch,
+                shift=shift,
+                dispense=dispense,
+                actor_user=request.user,
+                sale_type=ser.validated_data["sale_type"],
+                payment_method=ser.validated_data["payment_method"],
+                customer_name=ser.validated_data.get("customer_name", ""),
+                customer_ref=ser.validated_data.get("customer_ref", ""),
+                is_fiscal=ser.validated_data.get("is_fiscal", False),
+                idempotency_key=ser.validated_data.get("idempotency_key", ""),
+            )
+        except FuelConflictError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
 
-        sale = FuelSale.objects.select_related("dispense").get(pk=sale.id)
-        return Response(SaleOut(sale).data, status=201)
+        sale = FuelSale.objects.select_related("dispense").get(pk=result.sale.id)
+        response_status = status.HTTP_200_OK if result.idempotent else status.HTTP_201_CREATED
+        return Response(SaleOut(sale).data, status=response_status)
 
 
 class FuelSaleDetailView(APIView):
