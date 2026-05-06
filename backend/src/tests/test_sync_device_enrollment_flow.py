@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db import close_old_connections
@@ -301,6 +302,103 @@ def test_device_enroll_invalid_public_key_is_audited():
     ev = _assert_enrollment_auth_rejected(reason_code="SYNC_INVALID_PUBLIC_KEY")
     assert ev.subject_id == ""
     assert ev.device_id == ""
+
+
+@pytest.mark.django_db
+def test_device_enroll_ignores_accidental_invalid_jwt():
+    company, branch = _mk_org()
+    creator = User.objects.create_user(username=f"creator_jwt_{uuid.uuid4().hex[:8]}", password="x")
+    enrollment_code = "qa-enroll-ignores-invalid-jwt"
+    DeviceEnrollmentChallenge.objects.create(
+        company=company,
+        branch=branch,
+        enrollment_code_hash=DeviceEnrollmentChallenge.sha256_hex(enrollment_code),
+        expires_at=timezone.now() + timedelta(minutes=10),
+        created_by_user=creator,
+        label_hint="JWT Noise",
+    )
+
+    client = APIClient(raise_request_exception=True)
+    client.credentials(HTTP_AUTHORIZATION="Bearer invalid.jwt.token")
+    res = client.post(
+        "/api/sync/enroll/",
+        {
+            "enrollment_code": enrollment_code,
+            "public_key_b64": _public_key_b64(),
+            "label": "JWT-noise-device",
+        },
+        format="json",
+    )
+
+    assert res.status_code == 201
+    assert res.data["company_id"] == company.id
+    assert res.data["branch_id"] == branch.id
+
+
+@pytest.mark.django_db
+def test_device_enroll_invalid_code_with_accidental_jwt_keeps_enrollment_audit():
+    client = APIClient(raise_request_exception=True)
+    client.credentials(HTTP_AUTHORIZATION="Bearer invalid.jwt.token")
+
+    res = client.post(
+        "/api/sync/enroll/",
+        {
+            "enrollment_code": "qa-enroll-invalid-code-with-jwt",
+            "public_key_b64": _public_key_b64(),
+        },
+        format="json",
+    )
+
+    assert res.status_code == 403
+    _assert_enrollment_auth_rejected(reason_code="SYNC_ENROLL_INVALID_CODE")
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_TOKEN_TRANSPORT="cookie")
+def test_device_enroll_ignores_cookie_csrf_noise():
+    company, branch = _mk_org()
+    creator = User.objects.create_user(username=f"creator_cookie_{uuid.uuid4().hex[:8]}", password="x")
+    enrollment_code = "qa-enroll-cookie-noise"
+    DeviceEnrollmentChallenge.objects.create(
+        company=company,
+        branch=branch,
+        enrollment_code_hash=DeviceEnrollmentChallenge.sha256_hex(enrollment_code),
+        expires_at=timezone.now() + timedelta(minutes=10),
+        created_by_user=creator,
+    )
+
+    client = APIClient(raise_request_exception=True)
+    client.cookies[settings.AUTH_COOKIE_ACCESS_NAME] = "stale-access-token"
+    res = client.post(
+        "/api/sync/enroll/",
+        {
+            "enrollment_code": enrollment_code,
+            "public_key_b64": _public_key_b64(),
+        },
+        format="json",
+    )
+
+    assert res.status_code == 201
+    assert res.data["device_status"] == Device.Status.ACTIVE
+
+
+@pytest.mark.django_db
+def test_enrollment_challenge_admin_endpoint_still_rejects_invalid_jwt():
+    company, branch = _mk_org()
+    client = APIClient(raise_request_exception=True)
+    client.credentials(HTTP_AUTHORIZATION="Bearer invalid.jwt.token")
+
+    res = client.post(
+        "/api/sync/enrollment/challenges/",
+        {
+            "company_id": company.id,
+            "branch_id": branch.id,
+            "expires_in_minutes": 10,
+        },
+        format="json",
+    )
+
+    assert res.status_code == 401
 
 
 @pytest.mark.django_db(transaction=True)
