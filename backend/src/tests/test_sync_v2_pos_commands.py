@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import json
 import uuid
 from typing import Any
 
@@ -12,6 +13,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.modulos.audit.contracts import validate_reason_code
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 from apps.modulos.estacion_servicios import services as fuel_services
@@ -91,6 +94,38 @@ def _sign_v2_ed25519(body: dict[str, Any], private_key: Ed25519PrivateKey) -> st
     return base64.b64encode(private_key.sign(msg)).decode("utf-8")
 
 
+POS_SYNC_REJECTION_CODES = (
+    "POS_INVALID_SCOPE",
+    "POS_SCHEMA_INVALID",
+    "POS_ACTOR_REQUIRED",
+    "POS_COMPENSATION_PENDING",
+)
+
+
+def _assert_pos_command_rejected_audit(*, reason_code: str, command_id: str) -> AuditEvent:
+    events = AuditEvent.objects.filter(
+        event_type="SYNC_COMMAND_REJECTED",
+        reason_code=reason_code,
+        metadata__command_id=str(command_id),
+    )
+    assert events.count() == 1
+    ev = events.get()
+    assert ev.subject_type == "DEVICE"
+
+    metadata_json = json.dumps(ev.metadata, sort_keys=True).lower()
+    assert "signature" not in metadata_json
+    assert "nonce" not in metadata_json
+    assert "public_key" not in metadata_json
+    assert "private_key" not in metadata_json
+    assert "secret" not in metadata_json
+    return ev
+
+
+def test_pos_sync_reason_codes_are_contractual() -> None:
+    for reason_code in POS_SYNC_REJECTION_CODES:
+        validate_reason_code(reason_code)
+
+
 @pytest.mark.django_db
 def test_sync_v2_pos_ticket_command_happy_path() -> None:
     company, branch = _mk_org()
@@ -129,6 +164,7 @@ def test_sync_v2_pos_ticket_command_happy_path() -> None:
         enrolled_by_user=enrolled_by,
     )
 
+    command_id = str(uuid.uuid4())
     ts = int(timezone.now().timestamp())
     body: dict[str, Any] = {
         "protocol_version": "2",
@@ -139,7 +175,7 @@ def test_sync_v2_pos_ticket_command_happy_path() -> None:
         "batch_id": str(uuid.uuid4()),
         "batch": [
             {
-                "command_id": str(uuid.uuid4()),
+                "command_id": command_id,
                 "type": "POS_TICKET",
                 "scope": {"company_id": company.id, "branch_id": branch.id},
                 "occurred_at": timezone.now().isoformat(),
@@ -181,6 +217,10 @@ def test_sync_v2_pos_ticket_command_happy_path() -> None:
     assert ticket.status == PosTicketStatus.CLOSED
     assert ticket.sale_id is not None
     assert ticket.payment_intent_id is not None
+    assert not AuditEvent.objects.filter(
+        event_type="SYNC_COMMAND_REJECTED",
+        reason_code__in=POS_SYNC_REJECTION_CODES,
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -262,6 +302,7 @@ def test_sync_v2_pos_compensation_retry_command(monkeypatch) -> None:
         enrolled_by_user=enrolled_by,
     )
 
+    command_id = str(uuid.uuid4())
     ts = int(timezone.now().timestamp())
     body: dict[str, Any] = {
         "protocol_version": "2",
@@ -272,7 +313,7 @@ def test_sync_v2_pos_compensation_retry_command(monkeypatch) -> None:
         "batch_id": str(uuid.uuid4()),
         "batch": [
             {
-                "command_id": str(uuid.uuid4()),
+                "command_id": command_id,
                 "type": "POS_COMPENSATION_RETRY",
                 "scope": {"company_id": company.id, "branch_id": branch.id},
                 "occurred_at": timezone.now().isoformat(),
@@ -327,6 +368,7 @@ def test_sync_v2_pos_compensation_retry_rejects_invalid_scope_code() -> None:
         enrolled_by_user=enrolled_by,
     )
 
+    command_id = str(uuid.uuid4())
     ts = int(timezone.now().timestamp())
     body: dict[str, Any] = {
         "protocol_version": "2",
@@ -337,7 +379,7 @@ def test_sync_v2_pos_compensation_retry_rejects_invalid_scope_code() -> None:
         "batch_id": str(uuid.uuid4()),
         "batch": [
             {
-                "command_id": str(uuid.uuid4()),
+                "command_id": command_id,
                 "type": "POS_COMPENSATION_RETRY",
                 "scope": {"company_id": company.id, "branch_id": branch.id},
                 "occurred_at": timezone.now().isoformat(),
@@ -357,6 +399,7 @@ def test_sync_v2_pos_compensation_retry_rejects_invalid_scope_code() -> None:
     assert response.status_code == 200
     assert response.data["results"][0]["status"] == "REJECTED"
     assert response.data["results"][0]["reason"] == "POS_INVALID_SCOPE"
+    _assert_pos_command_rejected_audit(reason_code="POS_INVALID_SCOPE", command_id=command_id)
 
 
 @pytest.mark.django_db
@@ -383,6 +426,7 @@ def test_sync_v2_pos_compensation_retry_rejects_schema_invalid_code() -> None:
     )
 
     ts = int(timezone.now().timestamp())
+    command_id = str(uuid.uuid4())
     body: dict[str, Any] = {
         "protocol_version": "2",
         "device_id": str(device.id),
@@ -392,7 +436,7 @@ def test_sync_v2_pos_compensation_retry_rejects_schema_invalid_code() -> None:
         "batch_id": str(uuid.uuid4()),
         "batch": [
             {
-                "command_id": str(uuid.uuid4()),
+                "command_id": command_id,
                 "type": "POS_COMPENSATION_RETRY",
                 "scope": {"company_id": company.id, "branch_id": branch.id},
                 "occurred_at": timezone.now().isoformat(),
@@ -412,3 +456,167 @@ def test_sync_v2_pos_compensation_retry_rejects_schema_invalid_code() -> None:
     assert response.status_code == 200
     assert response.data["results"][0]["status"] == "REJECTED"
     assert response.data["results"][0]["reason"] == "POS_SCHEMA_INVALID"
+    _assert_pos_command_rejected_audit(reason_code="POS_SCHEMA_INVALID", command_id=command_id)
+
+
+@pytest.mark.django_db
+def test_sync_v2_pos_cash_count_rejects_actor_required_with_audit() -> None:
+    company, branch = _mk_org()
+
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="pos-sync-actor-required",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+        enrolled_by_user=None,
+    )
+
+    command_id = str(uuid.uuid4())
+    ts = int(timezone.now().timestamp())
+    body: dict[str, Any] = {
+        "protocol_version": "2",
+        "device_id": str(device.id),
+        "ts": ts,
+        "nonce": "nonce-pos-actor-required-001",
+        "auth": {"scheme": "ed25519", "signature": ""},
+        "batch_id": str(uuid.uuid4()),
+        "batch": [
+            {
+                "command_id": command_id,
+                "type": "POS_CASH_COUNT",
+                "scope": {"company_id": company.id, "branch_id": branch.id},
+                "occurred_at": timezone.now().isoformat(),
+                "payload": {},
+            }
+        ],
+    }
+    body["auth"]["signature"] = _sign_v2_ed25519(body, private)
+
+    sync_client = APIClient(raise_request_exception=True)
+    response = sync_client.post(
+        "/api/sync/batch/",
+        data=body,
+        format="json",
+        HTTP_X_DEVICE_ID=str(device.id),
+    )
+    assert response.status_code == 200
+    assert response.data["results"][0]["status"] == "REJECTED"
+    assert response.data["results"][0]["reason"] == "POS_ACTOR_REQUIRED"
+    _assert_pos_command_rejected_audit(reason_code="POS_ACTOR_REQUIRED", command_id=command_id)
+
+
+@pytest.mark.django_db
+def test_sync_v2_pos_compensation_retry_rejects_pending_with_audit(monkeypatch) -> None:
+    company, branch = _mk_org()
+    setup_client, enrolled_by = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+        ],
+    )
+
+    r_shift = setup_client.post("/api/fuel/shifts/open/", {"note": "sync-v2-pending"}, format="json")
+    assert r_shift.status_code == 201
+    shift_id = int(r_shift.data["id"])
+
+    r_session = setup_client.post(
+        "/api/retail/pos/sessions/open/",
+        {"opening_amount": "25.00", "note": "sync-v2-pending"},
+        format="json",
+    )
+    assert r_session.status_code == 201
+
+    r_ticket = setup_client.post(
+        "/api/retail/pos/tickets/",
+        {"shift_id": shift_id, "idempotency_key": "sync-v2-pending-ticket", "payment_method": "CASH"},
+        format="json",
+    )
+    assert r_ticket.status_code == 201
+    ticket_id = int(r_ticket.data["id"])
+
+    def fail_create_sale(*args, **kwargs):
+        raise RuntimeError("forced-sync-pending-failure")
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services.create_sale", fail_create_sale)
+    r_checkout = setup_client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/checkout/",
+        {
+            "line": {
+                "product": "DIESEL",
+                "volume": "2.0000",
+                "volume_uom": "LITER",
+                "unit_price_entered": "41.0000",
+                "unit_price_uom": "PER_LITER",
+            }
+        },
+        format="json",
+    )
+    assert r_checkout.status_code == 409
+    pending_ticket = PosTicket.objects.get(id=ticket_id)
+    assert pending_ticket.status == PosTicketStatus.CHECKOUT_PENDING
+
+    def keep_pending(*args, **kwargs):
+        return PosTicket.objects.get(id=ticket_id)
+
+    monkeypatch.setattr("apps.modulos.sync_engine.handlers_pos.retry_ticket_compensation", keep_pending)
+
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="pos-sync-comp-pending-device",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+        enrolled_by_user=enrolled_by,
+    )
+
+    command_id = str(uuid.uuid4())
+    ts = int(timezone.now().timestamp())
+    body: dict[str, Any] = {
+        "protocol_version": "2",
+        "device_id": str(device.id),
+        "ts": ts,
+        "nonce": "nonce-pos-comp-pending-001",
+        "auth": {"scheme": "ed25519", "signature": ""},
+        "batch_id": str(uuid.uuid4()),
+        "batch": [
+            {
+                "command_id": command_id,
+                "type": "POS_COMPENSATION_RETRY",
+                "scope": {"company_id": company.id, "branch_id": branch.id},
+                "occurred_at": timezone.now().isoformat(),
+                "payload": {
+                    "ticket_id": ticket_id,
+                    "reason": "SYNC_RETRY",
+                },
+            }
+        ],
+    }
+    body["auth"]["signature"] = _sign_v2_ed25519(body, private)
+
+    sync_client = APIClient(raise_request_exception=True)
+    response = sync_client.post(
+        "/api/sync/batch/",
+        data=body,
+        format="json",
+        HTTP_X_DEVICE_ID=str(device.id),
+    )
+    assert response.status_code == 200
+    assert response.data["results"][0]["status"] == "REJECTED"
+    assert response.data["results"][0]["reason"] == "POS_COMPENSATION_PENDING"
+    _assert_pos_command_rejected_audit(reason_code="POS_COMPENSATION_PENDING", command_id=command_id)
