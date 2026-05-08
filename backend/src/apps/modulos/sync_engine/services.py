@@ -365,7 +365,7 @@ def process_command(
                 prev_hash=prev_hash,
             )
             if not signature or not verify_ed25519_signature(
-                public_key_raw=device.public_key,
+                public_key_raw=bytes(device.public_key),
                 signature_b64=signature,
                 message=msg,
             ):

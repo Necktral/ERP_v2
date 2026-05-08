@@ -70,12 +70,13 @@ def _client_with_permission(*, company: OrgUnit, perm_code: str, branch: OrgUnit
     RoleAssignment.objects.create(user=user, role=role, org_unit=branch or company, is_active=True)
 
     client = APIClient(raise_request_exception=True)
-    login = client.post(
-        "/api/auth/login/",
-        {"username": username, "password": "pass12345"},
-        format="json",
-        HTTP_X_AUTH_TRANSPORT="header",
-    )
+    with override_settings(AUTH_TOKEN_TRANSPORT="header", AUTH_ALLOW_TRANSPORT_OVERRIDE=True):
+        login = client.post(
+            "/api/auth/login/",
+            {"username": username, "password": "pass12345"},
+            format="json",
+            HTTP_X_AUTH_TRANSPORT="header",
+        )
     assert login.status_code == 200
     access = login.data["access"]
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
