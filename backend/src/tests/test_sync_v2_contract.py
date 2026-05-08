@@ -11,6 +11,7 @@ import uuid
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from django.conf import settings
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework.renderers import JSONRenderer
@@ -176,6 +177,112 @@ def test_sync_batch_v2_rejects_bad_signature(caplog):
     assert not any(hasattr(r, "signature") for r in warning_logs)
     ev = _assert_sync_auth_rejected(reason_code="SYNC_BAD_SIGNATURE", wire_reason="BAD_SIGNATURE")
     assert ev.subject_id == str(device.id)
+
+
+@pytest.mark.django_db
+def test_sync_batch_v2_ignores_accidental_invalid_jwt_on_valid_device_auth():
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Bearer invalid.jwt.token")
+    company, branch = _mk_scope()
+
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-jwt-noise",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+    )
+
+    body = _build_v2_body(
+        device_id=device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-jwt-noise",
+        ts=int(timezone.now().timestamp()),
+    )
+    body["auth"]["signature"] = _sign_v2_ed25519(body, private)
+
+    res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
+
+    assert res.status_code == 200
+    assert res.data["device_id"] == str(device.id)
+    assert res.data["results"][0]["status"] == "APPLIED"
+    assert not AuditEvent.objects.filter(event_type="SYNC_AUTH_REJECTED").exists()
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_TOKEN_TRANSPORT="cookie")
+def test_sync_batch_v2_ignores_cookie_csrf_noise_on_valid_device_auth():
+    client = APIClient()
+    client.cookies[settings.AUTH_COOKIE_ACCESS_NAME] = "stale-access-token"
+    company, branch = _mk_scope()
+
+    private = Ed25519PrivateKey.generate()
+    public = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-cookie-noise",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+    )
+
+    body = _build_v2_body(
+        device_id=device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-cookie-noise",
+        ts=int(timezone.now().timestamp()),
+    )
+    body["auth"]["signature"] = _sign_v2_ed25519(body, private)
+
+    res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
+
+    assert res.status_code == 200
+    assert res.data["device_id"] == str(device.id)
+    assert res.data["results"][0]["status"] == "APPLIED"
+
+
+@pytest.mark.django_db
+def test_sync_batch_v2_bad_signature_with_accidental_jwt_uses_device_auth_audit():
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Bearer invalid.jwt.token")
+    company, branch = _mk_scope()
+
+    public = Ed25519PrivateKey.generate().public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    device = Device.objects.create(
+        company=company,
+        branch=branch,
+        label="v2-bad-sig-jwt-noise",
+        status=Device.Status.ACTIVE,
+        public_key=public,
+    )
+
+    body = _build_v2_body(
+        device_id=device.id,
+        company_id=company.id,
+        branch_id=branch.id,
+        nonce="n-v2-bad-sig-jwt-noise",
+        ts=int(timezone.now().timestamp()),
+    )
+    body["auth"]["signature"] = base64.b64encode(os.urandom(64)).decode("utf-8")
+
+    res = client.post("/api/sync/batch/", data=body, format="json", HTTP_X_DEVICE_ID=str(device.id))
+
+    assert res.status_code == 401
+    assert res.json()["error"]["message"] == "BAD_SIGNATURE"
+    _assert_sync_auth_rejected(reason_code="SYNC_BAD_SIGNATURE", wire_reason="BAD_SIGNATURE")
 
 
 @pytest.mark.django_db

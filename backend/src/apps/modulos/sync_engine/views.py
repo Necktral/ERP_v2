@@ -256,6 +256,7 @@ class DeviceEnrollView(APIView):
     No requiere JWT: el secreto es el enrollment_code (one-time).
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_scope = "auth_sensitive"
 
@@ -497,6 +498,7 @@ class SyncBatchView(APIView):
     Device-auth (X-Device-Id) + firma por comando.
     """
 
+    authentication_classes = []
     permission_classes = [AllowAny]
     throttle_scope = "sync_batch"
 

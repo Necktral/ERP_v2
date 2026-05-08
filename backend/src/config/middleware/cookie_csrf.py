@@ -7,6 +7,8 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 EXEMPT_MUTATING_PATH_PREFIXES = (
     "/api/auth/login",
     "/api/auth/2fa/verify",
+    "/api/sync/enroll/",
+    "/api/sync/batch/",
 )
 
 
@@ -27,7 +29,7 @@ class CookieJwtCsrfMiddleware:
         if request.method in SAFE_METHODS:
             return self.get_response(request)
 
-        # Endpoints publicos de challenge no requieren CSRF.
+        # Endpoints publicos con secreto propio no usan CSRF de JWT cookie.
         if request.path.startswith(EXEMPT_MUTATING_PATH_PREFIXES):
             return self.get_response(request)
 
