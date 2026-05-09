@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Callable
 
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Count, Max, Min, Q
 from django.utils import timezone
 
 from apps.modulos.common.domain_errors import IntegrationError
@@ -39,6 +40,10 @@ def _normalize_operational_contract_payload(*, source_module: str, event_type: s
     for key, default_value in defaults.items():
         data.setdefault(key, default_value)
     return data
+
+
+def _is_operational_accounting_contract(event: OutboxEvent) -> bool:
+    return (str(event.source_module or ""), str(event.event_type or "")) in OPERATIONAL_ACCOUNTING_CONTRACT_EVENTS
 
 
 def publish_outbox_event(
@@ -196,35 +201,143 @@ class DispatchSummary:
     failed: int
 
 
+@dataclass(frozen=True)
+class OutboxHealthSummary:
+    pending_count: int
+    dispatchable_pending_count: int
+    retry_count: int
+    failed_count: int
+    oldest_pending_age_seconds: int
+    by_source_module_event_type: list[dict[str, Any]]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "pending_count": int(self.pending_count),
+            "dispatchable_pending_count": int(self.dispatchable_pending_count),
+            "retry_count": int(self.retry_count),
+            "failed_count": int(self.failed_count),
+            "oldest_pending_age_seconds": int(self.oldest_pending_age_seconds),
+            "by_source_module_event_type": list(self.by_source_module_event_type),
+        }
+
+
+def _noop_outbox_sender(_: OutboxEvent) -> None:
+    return None
+
+
+def _operational_accounting_contract_q() -> Q:
+    q = Q(pk__isnull=True)
+    for source_module, event_type in OPERATIONAL_ACCOUNTING_CONTRACT_EVENTS:
+        q |= Q(source_module=source_module, event_type=event_type)
+    return q
+
+
+def collect_outbox_health(
+    *,
+    now=None,
+    source_module: str = "",
+) -> OutboxHealthSummary:
+    clock = now or timezone.now()
+    source = str(source_module or "").strip()
+    base_qs = OutboxEvent.objects.all()
+    if source:
+        base_qs = base_qs.filter(source_module=source)
+
+    pending_qs = base_qs.filter(status=OutboxEvent.Status.PENDING)
+    dispatchable_qs = pending_qs.filter(Q(next_attempt_at__isnull=True) | Q(next_attempt_at__lte=clock))
+    retry_qs = pending_qs.filter(attempt_count__gt=0)
+    failed_qs = base_qs.filter(status=OutboxEvent.Status.FAILED)
+
+    oldest_pending = pending_qs.order_by("occurred_at", "id").first()
+    oldest_pending_age_seconds = 0
+    if oldest_pending and oldest_pending.occurred_at:
+        oldest_pending_age_seconds = max(0, int((clock - oldest_pending.occurred_at).total_seconds()))
+
+    grouped_rows = []
+    grouped_qs = (
+        base_qs.filter(status__in=[OutboxEvent.Status.PENDING, OutboxEvent.Status.FAILED])
+        .values("source_module", "event_type", "status")
+        .annotate(
+            count=Count("id"),
+            retry_count=Count("id", filter=Q(attempt_count__gt=0)),
+            oldest_occurred_at=Min("occurred_at"),
+            max_attempt_count=Max("attempt_count"),
+        )
+        .order_by("source_module", "event_type", "status")
+    )
+    for row in grouped_qs:
+        oldest = row.get("oldest_occurred_at")
+        grouped_rows.append(
+            {
+                "source_module": str(row.get("source_module") or ""),
+                "event_type": str(row.get("event_type") or ""),
+                "status": str(row.get("status") or ""),
+                "count": int(row.get("count") or 0),
+                "retry_count": int(row.get("retry_count") or 0),
+                "oldest_occurred_at": oldest.isoformat() if oldest else "",
+                "max_attempt_count": int(row.get("max_attempt_count") or 0),
+            }
+        )
+
+    return OutboxHealthSummary(
+        pending_count=int(pending_qs.count()),
+        dispatchable_pending_count=int(dispatchable_qs.count()),
+        retry_count=int(retry_qs.count()),
+        failed_count=int(failed_qs.count()),
+        oldest_pending_age_seconds=int(oldest_pending_age_seconds),
+        by_source_module_event_type=grouped_rows,
+    )
+
+
 def dispatch_outbox_events(
     *,
     sender: Callable[[OutboxEvent], None] | None = None,
     limit: int = 100,
     now=None,
     source_module: str = "",
+    max_attempts: int = 5,
+    allow_noop_for_operational_events: bool = False,
 ) -> DispatchSummary:
     clock = now or timezone.now()
-    publish_fn = sender or (lambda _: None)
+    publish_fn = sender or _noop_outbox_sender
 
     qs = OutboxEvent.objects.filter(status=OutboxEvent.Status.PENDING).filter(
         Q(next_attempt_at__isnull=True) | Q(next_attempt_at__lte=clock)
     )
     if source_module:
         qs = qs.filter(source_module=source_module)
-    rows = list(qs.order_by("occurred_at", "id")[: int(limit)])
+
+    if sender is None and not bool(allow_noop_for_operational_events):
+        qs = qs.exclude(_operational_accounting_contract_q())
+
+    row_ids = list(qs.order_by("occurred_at", "id").values_list("id", flat=True)[: int(limit)])
 
     attempted = sent = retried = failed = 0
-    for row in rows:
-        attempted += 1
-        try:
-            publish_fn(row)
-            mark_outbox_event_sent(event=row, published_at=clock)
-            sent += 1
-        except Exception as exc:  # noqa: BLE001
-            mark_outbox_event_retry(event=row, error=str(exc), now=clock, max_attempts=5)
-            if row.status == OutboxEvent.Status.FAILED:
-                failed += 1
-            else:
-                retried += 1
+    for row_id in row_ids:
+        with transaction.atomic():
+            row = OutboxEvent.objects.select_for_update().get(id=row_id)
+            if row.status != OutboxEvent.Status.PENDING:
+                continue
+            if row.next_attempt_at is not None and row.next_attempt_at > clock:
+                continue
+            if sender is None and not bool(allow_noop_for_operational_events) and _is_operational_accounting_contract(row):
+                continue
+
+            attempted += 1
+            try:
+                publish_fn(row)
+                mark_outbox_event_sent(event=row, published_at=clock)
+                sent += 1
+            except Exception as exc:  # noqa: BLE001
+                mark_outbox_event_retry(
+                    event=row,
+                    error=str(exc),
+                    now=clock,
+                    max_attempts=max(1, int(max_attempts)),
+                )
+                if row.status == OutboxEvent.Status.FAILED:
+                    failed += 1
+                else:
+                    retried += 1
 
     return DispatchSummary(attempted=attempted, sent=sent, retried=retried, failed=failed)

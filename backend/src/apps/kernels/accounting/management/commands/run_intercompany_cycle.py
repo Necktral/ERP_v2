@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.kernels.accounting.certification_phase7b import build_phase7b_evidence
 from apps.kernels.accounting.phase7b import Phase7BValidationError, run_intercompany_cycle
-from apps.modulos.integration.services import dispatch_outbox_events
+from apps.kernels.accounting.services import dispatch_accounting_outbox_events as dispatch_outbox_events
 
 
 class Command(BaseCommand):

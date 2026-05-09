@@ -19,7 +19,6 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.modulos.iam.models import CompanyLink, LinkGrant, OrgUnit
-from apps.modulos.integration.services import dispatch_outbox_events
 from apps.modulos.rbac.models import Permission
 
 from .certification_phase7 import collect_phase7_operational_health
@@ -27,7 +26,7 @@ from .certification_phase7b import collect_phase7b_operational_health
 from .models import CompanyAccountingConfig, FxRate, IntercompanyDisputeReason
 from .phase7 import run_fx_revaluation
 from .phase7b import Phase7BValidationError, run_consolidation, run_intercompany_cycle
-from .services import post_journal_drafts
+from .services import dispatch_accounting_outbox_events as dispatch_outbox_events, post_journal_drafts
 
 PHASE12_REQUIRED_PERMISSIONS = [
     "accounting.report.read",

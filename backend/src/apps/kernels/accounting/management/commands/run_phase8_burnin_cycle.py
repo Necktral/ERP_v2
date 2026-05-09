@@ -11,8 +11,10 @@ from django.utils import timezone
 from apps.kernels.accounting.phase7 import run_fx_revaluation
 from apps.kernels.accounting.phase7b import Phase7BValidationError, run_consolidation, run_intercompany_cycle
 from apps.kernels.accounting.phase8 import build_phase8_evidence, collect_phase8_operational_health
-from apps.kernels.accounting.services import post_journal_drafts
-from apps.modulos.integration.services import dispatch_outbox_events
+from apps.kernels.accounting.services import (
+    dispatch_accounting_outbox_events as dispatch_outbox_events,
+    post_journal_drafts,
+)
 from apps.kernels.facturacion.services import process_fiscal_print_jobs
 
 

@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.kernels.accounting.certification_phase11 import build_phase11_evidence, collect_phase11_operational_health
 from apps.kernels.accounting.phase7b import enforce_intercompany_sla, run_intercompany_cycle
-from apps.modulos.integration.services import dispatch_outbox_events
+from apps.kernels.accounting.services import dispatch_accounting_outbox_events as dispatch_outbox_events
 
 
 class Command(BaseCommand):
