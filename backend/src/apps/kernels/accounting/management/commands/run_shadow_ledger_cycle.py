@@ -11,9 +11,11 @@ from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 from apps.kernels.accounting.certification import build_phase4_evidence
-from apps.kernels.accounting.services import project_pending_shadow_ledger_triggers
+from apps.kernels.accounting.services import (
+    dispatch_accounting_outbox_events as dispatch_outbox_events,
+    project_pending_shadow_ledger_triggers,
+)
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
-from apps.modulos.integration.services import dispatch_outbox_events
 
 
 class Command(BaseCommand):
@@ -161,4 +163,3 @@ class Command(BaseCommand):
 
         if strict and not cycle_passed:
             raise CommandError("shadow ledger cycle gate failed.")
-

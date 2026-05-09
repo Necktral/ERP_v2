@@ -15,9 +15,9 @@ from apps.kernels.accounting.services import (
     AccountingConflictError,
     build_operational_monitor_snapshot,
     close_fiscal_period,
+    dispatch_accounting_outbox_events as dispatch_outbox_events,
 )
 from apps.modulos.iam.models import OrgUnit
-from apps.modulos.integration.services import dispatch_outbox_events
 
 
 @dataclass(frozen=True)

@@ -18,7 +18,12 @@ from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.cec.services import advance_close_run_state
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
-from apps.modulos.integration.services import create_or_get_inbox_event, publish_outbox_event
+from apps.modulos.integration.services import (
+    DispatchSummary,
+    create_or_get_inbox_event,
+    dispatch_outbox_events as dispatch_integration_outbox_events,
+    publish_outbox_event,
+)
 from apps.kernels.facturacion.models import BillingDocument
 
 from .models import (
@@ -660,6 +665,31 @@ def apply_accounting_link_to_outbox_event(
     payload["schema_version"] = int(payload.get("schema_version") or outbox_event.schema_version or 1)
     outbox_event.payload = payload
     outbox_event.save(update_fields=["payload"])
+
+
+def dispatch_operational_accounting_outbox_event(event: OutboxEvent) -> None:
+    if (str(event.source_module or ""), str(event.event_type or "")) not in OPERATIONAL_ACCOUNTING_EVENTS:
+        return
+
+    link = link_operational_event_to_accounting(outbox_event=event, actor_user=None)
+    apply_accounting_link_to_outbox_event(outbox_event=event, link=link)
+
+
+def dispatch_accounting_outbox_events(
+    *,
+    limit: int = 100,
+    now=None,
+    source_module: str = "",
+    max_attempts: int = 5,
+) -> DispatchSummary:
+    return dispatch_integration_outbox_events(
+        sender=dispatch_operational_accounting_outbox_event,
+        limit=int(limit),
+        now=now,
+        source_module=str(source_module or ""),
+        max_attempts=int(max_attempts),
+    )
+
 
 def _extract_when_value(*, normalized: dict[str, Any], key: str):
     if "." in key:
