@@ -15,12 +15,112 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
 
-from apps.modulos.sync.models import DeviceEnrollment, DeviceRequestNonce
+from apps.modulos.audit.models import AuditEvent
+from apps.modulos.sync.models import AppliedCommand, DeviceEnrollment, DeviceRequestNonce
 from apps.modulos.sync.signing import canonical_string, hmac_signature_b64
+
+LEGACY_HMAC_FUTURE_SUNSET = "2999-03-31T00:00:00Z"
+LEGACY_HMAC_EXPIRED_SUNSET = "2026-03-31T00:00:00Z"
+
+
+def _assert_legacy_auth_rejected(*, reason_code: str, wire_reason: str):
+    ev = AuditEvent.objects.filter(event_type="SYNC_AUTH_REJECTED", reason_code=reason_code).latest(
+        "timestamp_server"
+    )
+    metadata = ev.metadata or {}
+    assert metadata["channel"] == "sync_legacy"
+    assert metadata["wire_reason"] == wire_reason
+    assert "signature" not in metadata
+    assert "nonce" not in metadata
+    return ev
+
+
+def _signed_legacy_request(*, client: APIClient, device: DeviceEnrollment, secret: str, body: dict, nonce: str):
+    raw = JSONRenderer().render(body)
+    ts = int(timezone.now().timestamp())
+    sig = hmac_signature_b64(secret, canonical_string(ts=ts, nonce=nonce, raw_body=raw))
+    return client.post(
+        "/api/sync-hmac/batch/",
+        data=body,
+        format="json",
+        HTTP_X_DEVICE_ID=str(device.id),
+        HTTP_X_DEVICE_TS=str(ts),
+        HTTP_X_DEVICE_NONCE=nonce,
+        HTTP_X_DEVICE_SIGNATURE=sig,
+    )
 
 
 @pytest.mark.django_db
-def test_sync_batch_happy_path(settings):
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=False, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_EXPIRED_SUNSET)
+def test_sync_hmac_disabled_by_default_returns_gone_and_audit_event():
+    client = APIClient()
+
+    secret = base64.b64encode(os.urandom(32)).decode("utf-8")
+    device = DeviceEnrollment.objects.create(secret_b64=secret, device_name="disabled")
+    body = {"commands": [{"command_id": str(uuid.uuid4()), "type": "PING", "payload": {}}]}
+
+    res = _signed_legacy_request(
+        client=client,
+        device=device,
+        secret=secret,
+        body=body,
+        nonce="nonce-disabled-1",
+    )
+
+    assert res.status_code == 410
+    payload = res.json()
+    assert payload["error"]["code"] == "SYNC_LEGACY_HMAC_DISABLED"
+    assert payload["error"]["message"] == "SYNC_LEGACY_HMAC_DISABLED"
+    assert res["Deprecation"] == "true"
+    assert res["Sunset"] == LEGACY_HMAC_EXPIRED_SUNSET
+    assert "deprecation" in res["Link"]
+    assert DeviceRequestNonce.objects.filter(device=device).count() == 0
+    assert AppliedCommand.objects.filter(device=device).count() == 0
+    _assert_legacy_auth_rejected(
+        reason_code="SYNC_LEGACY_HMAC_DISABLED",
+        wire_reason="SYNC_LEGACY_HMAC_DISABLED",
+    )
+
+
+@pytest.mark.django_db
+@override_settings(
+    SYNC_LEGACY_HMAC_ENABLED=True,
+    SYNC_HMAC_WRAPPER_ENABLED=False,
+    SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_EXPIRED_SUNSET,
+)
+def test_sync_hmac_enabled_non_wrapper_after_sunset_returns_gone_and_audit_event():
+    client = APIClient()
+
+    secret = base64.b64encode(os.urandom(32)).decode("utf-8")
+    device = DeviceEnrollment.objects.create(secret_b64=secret, device_name="sunset")
+    body = {"commands": [{"command_id": str(uuid.uuid4()), "type": "PING", "payload": {}}]}
+
+    res = _signed_legacy_request(
+        client=client,
+        device=device,
+        secret=secret,
+        body=body,
+        nonce="nonce-sunset-1",
+    )
+
+    assert res.status_code == 410
+    payload = res.json()
+    assert payload["error"]["code"] == "SYNC_LEGACY_HMAC_SUNSET"
+    assert payload["error"]["message"] == "SYNC_LEGACY_HMAC_SUNSET"
+    assert res["Deprecation"] == "true"
+    assert res["Sunset"] == LEGACY_HMAC_EXPIRED_SUNSET
+    assert "deprecation" in res["Link"]
+    assert DeviceRequestNonce.objects.filter(device=device).count() == 0
+    assert AppliedCommand.objects.filter(device=device).count() == 0
+    _assert_legacy_auth_rejected(
+        reason_code="SYNC_LEGACY_HMAC_SUNSET",
+        wire_reason="SYNC_LEGACY_HMAC_SUNSET",
+    )
+
+
+@pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
+def test_sync_batch_happy_path():
     client = APIClient()
 
     secret = base64.b64encode(os.urandom(32)).decode("utf-8")
@@ -63,6 +163,7 @@ def test_sync_batch_happy_path(settings):
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
 def test_sync_batch_bad_signature_rejected():
     client = APIClient()
 
@@ -88,9 +189,11 @@ def test_sync_batch_bad_signature_rejected():
     assert payload["error"]["code"] == "AUTH_UNAUTHENTICATED"
     assert payload["error"]["message"] == "BAD_SIGNATURE"
     assert DeviceRequestNonce.objects.filter(device=device).count() == 0
+    _assert_legacy_auth_rejected(reason_code="SYNC_BAD_SIGNATURE", wire_reason="BAD_SIGNATURE")
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
 def test_sync_batch_replay_nonce_rejected(caplog):
     client = APIClient()
 
@@ -140,9 +243,11 @@ def test_sync_batch_replay_nonce_rejected(caplog):
     assert any(getattr(r, "reason", "") == "REPLAY_DETECTED" for r in warning_logs)
     assert not any(hasattr(r, "nonce") for r in warning_logs)
     assert not any(hasattr(r, "signature") for r in warning_logs)
+    _assert_legacy_auth_rejected(reason_code="SYNC_REPLAY_DETECTED", wire_reason="REPLAY_DETECTED")
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
 def test_idempotency_same_command_id_returns_cached(monkeypatch):
     client = APIClient()
 
@@ -200,6 +305,7 @@ def test_idempotency_same_command_id_returns_cached(monkeypatch):
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
 def test_sync_batch_missing_headers_envelope_and_request_id():
     client = APIClient()
 
@@ -210,9 +316,12 @@ def test_sync_batch_missing_headers_envelope_and_request_id():
     assert payload["error"]["code"] == "BAD_REQUEST"
     assert payload["error"]["message"] == "MISSING_HEADERS"
     assert res["X-Request-Id"] == payload["error"]["request_id"]
+    assert res["Deprecation"] == "true"
+    _assert_legacy_auth_rejected(reason_code="SYNC_SCHEMA_INVALID", wire_reason="MISSING_HEADERS")
 
 
 @pytest.mark.django_db
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET)
 def test_sync_batch_invalid_request_id_sanitized():
     client = APIClient()
 
@@ -244,7 +353,11 @@ def test_sync_batch_throttling_enveloped():
         },
     }
 
-    with override_settings(REST_FRAMEWORK=override):
+    with override_settings(
+        REST_FRAMEWORK=override,
+        SYNC_LEGACY_HMAC_ENABLED=True,
+        SYNC_LEGACY_HMAC_SUNSET=LEGACY_HMAC_FUTURE_SUNSET,
+    ):
         cache.clear()
         api_settings.reload()
         SimpleRateThrottle.THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
