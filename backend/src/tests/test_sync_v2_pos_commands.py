@@ -76,6 +76,10 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     if isinstance(access, str) and access:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
         client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    else:
+        csrf_cookie = client.cookies.get("nt_csrf")
+        if csrf_cookie is not None:
+            client.defaults["HTTP_X_CSRF_TOKEN"] = csrf_cookie.value
     client.defaults["HTTP_X_AUTH_TRANSPORT"] = "header"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)

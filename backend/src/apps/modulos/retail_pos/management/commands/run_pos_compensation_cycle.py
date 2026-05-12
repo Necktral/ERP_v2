@@ -51,10 +51,13 @@ class Command(BaseCommand):
             "succeeded": int(result.succeeded),
             "failed": int(result.failed),
             "still_pending": int(result.still_pending),
+            "exhausted": int(result.exhausted),
+            "stale": int(result.stale),
+            "queue_before": result.queue_before,
+            "queue_after": result.queue_after,
             "errors": result.errors,
             "limit": int(limit),
             "company_id": int(company.id) if company is not None else None,
             "branch_id": int(branch.id) if branch is not None else None,
         }
         self.stdout.write(json.dumps(payload, ensure_ascii=False))
-

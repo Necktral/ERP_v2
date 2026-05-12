@@ -14,10 +14,14 @@ from django.core.management import call_command
 from django.test import override_settings
 from rest_framework.test import APIClient
 
+from apps.kernels.payments.models import CashMovement, PaymentIntent
+from apps.modulos.audit.models import AuditEvent
+from apps.modulos.estacion_servicios.models import FuelSale
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 from apps.modulos.estacion_servicios import services as fuel_services
+from apps.modulos.retail_pos import services as pos_services
 from apps.modulos.retail_pos.models import PosSession, PosSessionStatus, PosTicket, PosTicketStatus
 
 User = get_user_model()
@@ -49,12 +53,22 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     RoleAssignment.objects.create(user=user, role=role, org_unit=branch, is_active=True)
 
     client = APIClient(raise_request_exception=True)
-    login = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
+    login = client.post(
+        "/api/auth/login/",
+        {"username": username, "password": "pass12345"},
+        format="json",
+        HTTP_X_AUTH_TRANSPORT="header",
+    )
     assert login.status_code == 200
     access = login.data.get("access") if isinstance(login.data, dict) else None
     if isinstance(access, str) and access:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
         client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    else:
+        csrf_cookie = client.cookies.get("nt_csrf")
+        if csrf_cookie is not None:
+            client.defaults["HTTP_X_CSRF_TOKEN"] = csrf_cookie.value
+    client.defaults["HTTP_X_AUTH_TRANSPORT"] = "header"
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
@@ -77,6 +91,39 @@ def _error_code(resp) -> str:
     if isinstance(data.get("detail"), str):
         return str(data["detail"])
     return ""
+
+
+def _open_cash_pos_ticket(*, client: APIClient, idempotency_key: str, shift_note: str) -> int:
+    r_shift = client.post("/api/fuel/shifts/open/", {"note": shift_note}, format="json")
+    assert r_shift.status_code == 201
+    shift_id = int(r_shift.data["id"])
+
+    r_session = client.post(
+        "/api/retail/pos/sessions/open/",
+        {"opening_amount": "20.00", "note": f"session-{shift_note}"},
+        format="json",
+    )
+    assert r_session.status_code == 201
+
+    r_ticket = client.post(
+        "/api/retail/pos/tickets/",
+        {"shift_id": shift_id, "idempotency_key": idempotency_key, "payment_method": "CASH"},
+        format="json",
+    )
+    assert r_ticket.status_code == 201
+    return int(r_ticket.data["id"])
+
+
+def _checkout_line_payload(*, volume: str = "4.0000", unit_price: str = "39.0000") -> dict[str, object]:
+    return {
+        "line": {
+            "product": "DIESEL",
+            "volume": volume,
+            "volume_uom": "LITER",
+            "unit_price_entered": unit_price,
+            "unit_price_uom": "PER_LITER",
+        }
+    }
 
 
 @pytest.mark.django_db
@@ -589,3 +636,218 @@ def test_run_pos_compensation_cycle_command_with_scope_filters(monkeypatch) -> N
     assert int(recovered.compensation_attempts) >= previous_attempts
     if recovered.status == PosTicketStatus.CLOSED:
         assert recovered.compensation_pending is False
+
+
+@pytest.mark.django_db
+@override_settings(POS_COMPENSATION_MAX_ATTEMPTS=2)
+def test_pos_compensation_exhausted_ticket_is_visible_and_manual_retry_still_closes(monkeypatch) -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+        ],
+    )
+    ticket_id = _open_cash_pos_ticket(client=client, idempotency_key="ticket-exhausted-1", shift_note="turno-exhausted")
+
+    real_create_sale = fuel_services.create_sale
+
+    def failing_create_sale(*args, **kwargs):
+        raise RuntimeError("forced-exhaustion")
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services.create_sale", failing_create_sale)
+
+    r_checkout = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/checkout/",
+        _checkout_line_payload(volume="3.0000", unit_price="40.0000"),
+        format="json",
+    )
+    assert r_checkout.status_code == 409
+    ticket = PosTicket.objects.get(id=ticket_id)
+    ticket.compensation_next_retry_at = ticket.updated_at - timedelta(minutes=5)
+    ticket.save(update_fields=["compensation_next_retry_at", "updated_at"])
+
+    stdout = io.StringIO()
+    call_command(
+        "run_pos_compensation_cycle",
+        company_id=int(company.id),
+        branch_id=int(branch.id),
+        limit=10,
+        stdout=stdout,
+    )
+    first_payload = json.loads(stdout.getvalue().strip())
+    assert int(first_payload["attempted"]) == 1
+    assert int(first_payload["failed"]) == 1
+    assert int(first_payload["queue_after"]["exhausted_count"]) == 1
+
+    exhausted = PosTicket.objects.get(id=ticket_id)
+    assert exhausted.status == PosTicketStatus.CHECKOUT_PENDING
+    assert exhausted.compensation_pending is False
+    assert int(exhausted.compensation_attempts) == 2
+    assert exhausted.compensation_next_retry_at is None
+
+    r_cockpit = client.get("/api/retail/pos/cockpit/")
+    assert r_cockpit.status_code == 200
+    queue = r_cockpit.data["compensation"]["queue"]
+    assert int(queue["exhausted_count"]) == 1
+    assert int(queue["due_count"]) == 0
+    assert queue["operator_attention_sample"][0]["ticket_id"] == ticket_id
+
+    stdout = io.StringIO()
+    call_command(
+        "run_pos_compensation_cycle",
+        company_id=int(company.id),
+        branch_id=int(branch.id),
+        limit=10,
+        stdout=stdout,
+    )
+    second_payload = json.loads(stdout.getvalue().strip())
+    assert int(second_payload["attempted"]) == 0
+    assert int(second_payload["queue_before"]["exhausted_count"]) == 1
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services.create_sale", real_create_sale)
+    r_retry = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/compensate/retry/",
+        {"reason": "operator-override"},
+        format="json",
+    )
+    assert r_retry.status_code == 200, r_retry.content.decode()
+    assert r_retry.data["status"] == "CLOSED"
+
+    recovered = PosTicket.objects.get(id=ticket_id)
+    assert recovered.status == PosTicketStatus.CLOSED
+    assert recovered.compensation_pending is False
+    assert recovered.compensation_next_retry_at is None
+
+
+@pytest.mark.django_db
+def test_pos_compensation_retry_reuses_sale_payment_and_cash_after_cash_failure(monkeypatch) -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+        ],
+    )
+    ticket_id = _open_cash_pos_ticket(client=client, idempotency_key="ticket-cash-idem-1", shift_note="turno-cash-idem")
+
+    state = {"raised": False}
+    real_post_cash_movement = pos_services.post_cash_movement
+
+    def flaky_post_cash_movement(*args, **kwargs):
+        movement = real_post_cash_movement(*args, **kwargs)
+        if not state["raised"]:
+            state["raised"] = True
+            raise RuntimeError("forced-cash-after-create")
+        return movement
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services.post_cash_movement", flaky_post_cash_movement)
+
+    r_checkout = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/checkout/",
+        _checkout_line_payload(volume="5.0000", unit_price="41.0000"),
+        format="json",
+    )
+    assert r_checkout.status_code == 409
+    assert FuelSale.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:sale").count() == 1
+    assert PaymentIntent.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:payment").count() == 1
+    assert CashMovement.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:cash-income").count() == 1
+
+    r_retry = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/compensate/retry/",
+        {"reason": "cash-idempotency"},
+        format="json",
+    )
+    assert r_retry.status_code == 200, r_retry.content.decode()
+    assert r_retry.data["status"] == "CLOSED"
+    assert FuelSale.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:sale").count() == 1
+    assert PaymentIntent.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:payment").count() == 1
+    assert CashMovement.objects.filter(idempotency_key=f"pos-ticket:{ticket_id}:cash-income").count() == 1
+
+
+@pytest.mark.django_db
+def test_pos_compensation_retry_does_not_duplicate_pos_outbox_or_audit_after_late_failure(monkeypatch) -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+        ],
+    )
+    ticket_id = _open_cash_pos_ticket(client=client, idempotency_key="ticket-late-idem-1", shift_note="turno-late-idem")
+
+    state = {"raised": False}
+    real_write_once = getattr(pos_services, "_write_pos_ticket_closed_event_once")
+
+    def flaky_write_once(*args, **kwargs):
+        real_write_once(*args, **kwargs)
+        if not state["raised"]:
+            state["raised"] = True
+            raise RuntimeError("forced-after-audit")
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services._write_pos_ticket_closed_event_once", flaky_write_once)
+
+    r_checkout = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/checkout/",
+        _checkout_line_payload(volume="6.0000", unit_price="42.0000"),
+        format="json",
+    )
+    assert r_checkout.status_code == 409
+
+    r_retry = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/compensate/retry/",
+        {"reason": "late-idempotency"},
+        format="json",
+    )
+    assert r_retry.status_code == 200, r_retry.content.decode()
+    assert r_retry.data["status"] == "CLOSED"
+
+    ticket = PosTicket.objects.get(id=ticket_id)
+    assert ticket.sale_id is not None
+    assert ticket.payment_intent_id is not None
+    assert ticket.cash_movement_id is not None
+    assert FuelSale.objects.filter(id=ticket.sale_id).count() == 1
+    assert PaymentIntent.objects.filter(id=ticket.payment_intent_id).count() == 1
+    assert CashMovement.objects.filter(id=ticket.cash_movement_id).count() == 1
+    assert (
+        OutboxEvent.objects.filter(
+            source_module="POS",
+            event_type="POSPaymentCaptured",
+            correlation_id=ticket.correlation_id,
+            causation_id=f"{ticket.correlation_id}:payment-captured",
+        ).count()
+        == 1
+    )
+    assert (
+        OutboxEvent.objects.filter(
+            source_module="POS",
+            event_type="POSTicketClosed",
+            correlation_id=ticket.correlation_id,
+            causation_id=f"{ticket.correlation_id}:ticket-closed",
+        ).count()
+        == 1
+    )
+    assert (
+        AuditEvent.objects.filter(
+            module="POS",
+            event_type="POS_TICKET_CLOSED",
+            subject_type="POS_TICKET",
+            subject_id=str(ticket.id),
+        ).count()
+        == 1
+    )
