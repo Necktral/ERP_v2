@@ -6,17 +6,19 @@ from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
 import hashlib
 import hmac
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.audit.writer import write_event
+from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
-from apps.modulos.estacion_servicios.models import FuelPaymentMethod, FuelSaleStatus, FuelShift
+from apps.modulos.estacion_servicios.models import FuelPaymentMethod, FuelSale, FuelSaleStatus, FuelShift
 from apps.modulos.estacion_servicios.services import cancel_sale, create_sale, record_dispense
 from apps.kernels.payments.models import CashMovement
 from apps.kernels.payments.services import (
@@ -76,6 +78,10 @@ class PosCompensationCycleResult:
     succeeded: int
     failed: int
     still_pending: int
+    exhausted: int
+    stale: int
+    queue_before: dict[str, Any]
+    queue_after: dict[str, Any]
     errors: list[dict[str, str]]
 
 
@@ -137,6 +143,73 @@ def _next_compensation_retry_at(*, now, attempt: int):
     cap = _compensation_backoff_cap_minutes()
     delay_minutes = min(2 ** max(1, int(attempt)), cap)
     return now + timedelta(minutes=int(delay_minutes))
+
+
+def _pos_sale_idempotency_key(ticket: PosTicket) -> str:
+    return f"pos-ticket:{ticket.id}:sale"
+
+
+def _pos_payment_idempotency_key(ticket: PosTicket) -> str:
+    return f"pos-ticket:{ticket.id}:payment"
+
+
+def _pos_cash_movement_idempotency_key(ticket: PosTicket) -> str:
+    return f"pos-ticket:{ticket.id}:cash-income"
+
+
+def _publish_pos_outbox_event_once(
+    *,
+    request,
+    event_type: str,
+    payload: dict[str, Any],
+    actor_user,
+    ticket: PosTicket,
+    causation_id: str,
+) -> None:
+    correlation_id = str(ticket.correlation_id or "")
+    cause = str(causation_id or "")
+    if correlation_id and cause:
+        exists = OutboxEvent.objects.filter(
+            source_module="POS",
+            event_type=event_type,
+            correlation_id=correlation_id,
+            causation_id=cause,
+        ).exists()
+        if exists:
+            return
+
+    publish_outbox_event(
+        request=request,
+        source_module="POS",
+        event_type=event_type,
+        payload=payload,
+        actor_user=actor_user,
+        company=ticket.company,
+        branch=ticket.branch,
+        correlation_id=correlation_id,
+        causation_id=cause,
+    )
+
+
+def _write_pos_ticket_closed_event_once(*, request, actor_user, ticket: PosTicket, metadata: dict[str, Any]) -> None:
+    exists = AuditEvent.objects.filter(
+        module="POS",
+        event_type="POS_TICKET_CLOSED",
+        subject_type="POS_TICKET",
+        subject_id=str(ticket.id),
+    ).exists()
+    if exists:
+        return
+    write_event(
+        request=request,
+        module="POS",
+        event_type="POS_TICKET_CLOSED",
+        reason_code="SYNC_OK",
+        subject_type="POS_TICKET",
+        subject_id=str(ticket.id),
+        actor_user=actor_user,
+        metadata=metadata,
+    )
 
 
 def _edge_shared_secret_b64() -> str:
@@ -468,6 +541,109 @@ def _ensure_first_line(*, ticket: PosTicket, line_payload: dict[str, Any] | None
     return create_ticket_line(ticket=ticket, line_payload=line_payload)
 
 
+def summarize_pos_compensation_queue(
+    *,
+    company=None,
+    branch=None,
+    now=None,
+    stale_after_minutes: int = 30,
+    sample_limit: int = 10,
+) -> dict[str, Any]:
+    clock = now or timezone.now()
+    max_attempts = _compensation_max_attempts()
+    stale_cutoff = clock - timedelta(minutes=max(1, int(stale_after_minutes)))
+
+    scoped_qs = PosTicket.objects.all()
+    if company is not None:
+        scoped_qs = scoped_qs.filter(company=company)
+    if branch is not None:
+        scoped_qs = scoped_qs.filter(branch=branch)
+
+    pending_qs = scoped_qs.filter(status=PosTicketStatus.CHECKOUT_PENDING)
+    retryable_qs = pending_qs.filter(compensation_pending=True)
+    due_qs = retryable_qs.filter(
+        Q(compensation_next_retry_at__isnull=True) | Q(compensation_next_retry_at__lte=clock)
+    )
+    scheduled_qs = retryable_qs.filter(compensation_next_retry_at__gt=clock)
+    exhausted_qs = pending_qs.filter(compensation_pending=False, compensation_attempts__gte=max_attempts)
+    stale_qs = pending_qs.filter(checkout_started_at__isnull=False, checkout_started_at__lte=stale_cutoff)
+    unknown_q = (
+        Q(compensation_pending=False, compensation_attempts=0)
+        | Q(compensation_pending=False, compensation_attempts__gt=0, compensation_attempts__lt=max_attempts)
+        | Q(compensation_pending=True, compensation_attempts=0)
+        | Q(compensation_pending=True, compensation_next_retry_at__isnull=True)
+    )
+    unknown_qs = pending_qs.filter(unknown_q)
+
+    oldest_started = (
+        pending_qs.exclude(checkout_started_at__isnull=True)
+        .order_by("checkout_started_at", "id")
+        .values_list("checkout_started_at", flat=True)
+        .first()
+    )
+    oldest_age_minutes = 0
+    if oldest_started is not None:
+        oldest_age_minutes = max(0, int((clock - oldest_started).total_seconds() // 60))
+
+    error_rows = cast(
+        Any,
+        pending_qs.exclude(compensation_last_error="")
+        .values("compensation_last_error")
+        .annotate(count=Count("id"))
+        .order_by("-count", "compensation_last_error")[:5],
+    )
+    failed_last_errors_top = [
+        {
+            "error": str(row["compensation_last_error"] or ""),
+            "count": int(row["count"]),
+        }
+        for row in error_rows
+    ]
+
+    attention_q = (
+        Q(compensation_pending=False, compensation_attempts__gte=max_attempts)
+        | Q(checkout_started_at__isnull=False, checkout_started_at__lte=stale_cutoff)
+        | unknown_q
+    )
+    sample_rows = pending_qs.filter(attention_q).order_by("checkout_started_at", "id")[: max(1, int(sample_limit))]
+    operator_attention_sample = []
+    for row in sample_rows:
+        category = "unknown_inconsistent"
+        if not row.compensation_pending and int(row.compensation_attempts) >= max_attempts:
+            category = "exhausted_operator_attention"
+        elif row.checkout_started_at is not None and row.checkout_started_at <= stale_cutoff:
+            category = "stale_checkout_pending"
+        operator_attention_sample.append(
+            {
+                "ticket_id": int(row.id),
+                "category": category,
+                "status": str(row.status),
+                "attempts": int(row.compensation_attempts),
+                "last_error": str(row.compensation_last_error or row.last_error or ""),
+                "next_retry_at": row.compensation_next_retry_at.isoformat() if row.compensation_next_retry_at else None,
+                "checkout_started_at": row.checkout_started_at.isoformat() if row.checkout_started_at else None,
+                "sale_id": int(row.sale_id) if row.sale_id else None,
+                "payment_intent_id": str(row.payment_intent_id) if row.payment_intent_id else None,
+                "cash_movement_id": int(row.cash_movement_id) if row.cash_movement_id else None,
+            }
+        )
+
+    return {
+        "retryable_count": int(retryable_qs.count()),
+        "due_count": int(due_qs.count()),
+        "scheduled_count": int(scheduled_qs.count()),
+        "exhausted_count": int(exhausted_qs.count()),
+        "stale_count": int(stale_qs.count()),
+        "unknown_inconsistent_count": int(unknown_qs.count()),
+        "oldest_age_minutes": int(oldest_age_minutes),
+        "failed_last_errors_top": failed_last_errors_top,
+        "operator_attention_sample": operator_attention_sample,
+        "resolved_closed_count": int(scoped_qs.filter(status=PosTicketStatus.CLOSED, compensation_pending=False).count()),
+        "voided_count": int(scoped_qs.filter(status=PosTicketStatus.VOIDED).count()),
+        "stale_after_minutes": int(max(1, int(stale_after_minutes))),
+    }
+
+
 @transaction.atomic
 def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dict[str, Any] | None = None) -> PosTicket:
     started_at = timezone.now()
@@ -486,49 +662,67 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
     ticket.last_error = ""
     ticket.save(update_fields=["status", "checkout_started_at", "last_error", "updated_at"])
 
-    sale = None
+    ticket = (
+        PosTicket.objects.select_for_update()
+        .select_related("session", "shift", "company", "branch")
+        .get(id=ticket.id)
+    )
+    sale = ticket.sale if ticket.sale_id else None
+    intent = ticket.payment_intent if ticket.payment_intent_id else None
+    cash_movement = ticket.cash_movement if ticket.cash_movement_id else None
     try:
-        line = _ensure_first_line(ticket=ticket, line_payload=line_payload)
         shift = ticket.shift
+        sale_idempotency_key = _pos_sale_idempotency_key(ticket)
+        if sale is None:
+            sale = (
+                FuelSale.objects.select_for_update()
+                .select_related("dispense")
+                .filter(company=ticket.company, idempotency_key=sale_idempotency_key)
+                .first()
+            )
 
-        dispense = record_dispense(
-            request=request,
-            company=ticket.company,
-            branch=ticket.branch,
-            shift=shift,
-            actor_user=actor,
-            product=line.product,
-            volume_entered=line.volume,
-            volume_uom=line.volume_uom,
-            unit_price_entered=line.unit_price_entered,
-            unit_price_uom=line.unit_price_uom,
-            external_ref=ticket.external_ref,
-            note=f"POS ticket {ticket.id}",
-        )
+        if sale is None:
+            line = _ensure_first_line(ticket=ticket, line_payload=line_payload)
+            dispense = record_dispense(
+                request=request,
+                company=ticket.company,
+                branch=ticket.branch,
+                shift=shift,
+                actor_user=actor,
+                product=line.product,
+                volume_entered=line.volume,
+                volume_uom=line.volume_uom,
+                unit_price_entered=line.unit_price_entered,
+                unit_price_uom=line.unit_price_uom,
+                external_ref=ticket.external_ref,
+                note=f"POS ticket {ticket.id}",
+            )
 
-        sale = create_sale(
-            request=request,
-            company=ticket.company,
-            branch=ticket.branch,
-            shift=shift,
-            dispense=dispense,
-            actor_user=actor,
-            sale_type=ticket.sale_type,
-            payment_method=ticket.payment_method,
-            customer_name=ticket.customer_name,
-            customer_ref=ticket.customer_ref,
-            is_fiscal=False,
-        )
+            sale = create_sale(
+                request=request,
+                company=ticket.company,
+                branch=ticket.branch,
+                shift=shift,
+                dispense=dispense,
+                actor_user=actor,
+                sale_type=ticket.sale_type,
+                payment_method=ticket.payment_method,
+                customer_name=ticket.customer_name,
+                customer_ref=ticket.customer_ref,
+                is_fiscal=False,
+                idempotency_key=sale_idempotency_key,
+            )
 
-        intent, _ = create_payment_intent(
-            request=request,
-            actor=actor,
-            amount=Decimal(sale.total_amount),
-            currency="NIO",
-            idempotency_key=f"pos-ticket:{ticket.id}:payment",
-            external_ref=f"pos-ticket:{ticket.id}",
-            provider="POS",
-        )
+        if intent is None:
+            intent, _ = create_payment_intent(
+                request=request,
+                actor=actor,
+                amount=Decimal(sale.total_amount),
+                currency="NIO",
+                idempotency_key=_pos_payment_idempotency_key(ticket),
+                external_ref=f"pos-ticket:{ticket.id}",
+                provider="POS",
+            )
         intent = capture_payment_intent(
             request=request,
             actor=actor,
@@ -537,17 +731,20 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
             metadata={"ticket_id": int(ticket.id), "channel": "retail_pos"},
         )
 
-        cash_movement = None
         if ticket.payment_method == FuelPaymentMethod.CASH and ticket.session.cash_session_id:
-            cash_movement = post_cash_movement(
-                request=request,
-                actor=actor,
-                session_id=int(ticket.session.cash_session_id),
-                movement_type=CashMovement.MovementType.INCOME,
-                amount=Decimal(sale.total_amount),
-                reference=f"pos-ticket:{ticket.id}",
-                reason="POS_CHECKOUT",
-            )
+            if cash_movement is None:
+                cash_movement = post_cash_movement(
+                    request=request,
+                    actor=actor,
+                    session_id=int(ticket.session.cash_session_id),
+                    movement_type=CashMovement.MovementType.INCOME,
+                    amount=Decimal(sale.total_amount),
+                    reference=f"pos-ticket:{ticket.id}",
+                    reason="POS_CHECKOUT",
+                    idempotency_key=_pos_cash_movement_idempotency_key(ticket),
+                )
+        else:
+            cash_movement = None
 
         now = timezone.now()
         ticket.sale = sale
@@ -581,9 +778,8 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
             ]
         )
 
-        publish_outbox_event(
+        _publish_pos_outbox_event_once(
             request=request,
-            source_module="POS",
             event_type="POSPaymentCaptured",
             payload={
                 "ticket_id": int(ticket.id),
@@ -592,15 +788,12 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
                 "cash_movement_id": int(cash_movement.id) if cash_movement else None,
             },
             actor_user=actor,
-            company=ticket.company,
-            branch=ticket.branch,
-            correlation_id=ticket.correlation_id,
+            ticket=ticket,
             causation_id=f"{ticket.correlation_id}:payment-captured",
         )
 
-        publish_outbox_event(
+        _publish_pos_outbox_event_once(
             request=request,
-            source_module="POS",
             event_type="POSTicketClosed",
             payload={
                 "ticket_id": int(ticket.id),
@@ -610,20 +803,14 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
                 "total_amount": str(ticket.total_amount),
             },
             actor_user=actor,
-            company=ticket.company,
-            branch=ticket.branch,
-            correlation_id=ticket.correlation_id,
+            ticket=ticket,
             causation_id=f"{ticket.correlation_id}:ticket-closed",
         )
 
-        write_event(
+        _write_pos_ticket_closed_event_once(
             request=request,
-            module="POS",
-            event_type="POS_TICKET_CLOSED",
-            reason_code="SYNC_OK",
-            subject_type="POS_TICKET",
-            subject_id=str(ticket.id),
             actor_user=actor,
+            ticket=ticket,
             metadata={
                 "sale_id": str(sale.id),
                 "payment_id": str(intent.payment_id),
@@ -644,24 +831,28 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
         ticket.compensation_last_error = ticket.last_error
         ticket.compensation_next_retry_at = _next_compensation_retry_at(now=now, attempt=attempt) if retryable else None
         ticket.last_compensation_at = now
+        update_fields = [
+            "status",
+            "last_error",
+            "compensation_pending",
+            "compensation_attempts",
+            "compensation_last_error",
+            "compensation_next_retry_at",
+            "last_compensation_at",
+            "updated_at",
+        ]
+        if sale is not None and ticket.sale_id is None:
+            ticket.sale = sale
+            update_fields.append("sale")
+        if intent is not None and ticket.payment_intent_id is None:
+            ticket.payment_intent = intent
+            update_fields.append("payment_intent")
+        if cash_movement is not None and ticket.cash_movement_id is None:
+            ticket.cash_movement = cash_movement
+            update_fields.append("cash_movement")
         ticket.save(
-            update_fields=[
-                "status",
-                "last_error",
-                "compensation_pending",
-                "compensation_attempts",
-                "compensation_last_error",
-                "compensation_next_retry_at",
-                "last_compensation_at",
-                "updated_at",
-            ]
+            update_fields=update_fields
         )
-
-        if sale is not None and sale.status == FuelSaleStatus.ACTIVE:
-            try:
-                cancel_sale(request=request, sale=sale, actor_user=actor, reason="POS_COMPENSATION_AUTO")
-            except Exception:  # noqa: BLE001
-                pass
 
         publish_outbox_event(
             request=request,
@@ -798,6 +989,7 @@ def run_pos_compensation_cycle(
 ) -> PosCompensationCycleResult:
     clock = now or timezone.now()
     limit_n = max(1, int(limit))
+    queue_before = summarize_pos_compensation_queue(company=company, branch=branch, now=clock)
 
     due_filter = Q(status=PosTicketStatus.CHECKOUT_PENDING) & Q(compensation_pending=True) & (
         Q(compensation_next_retry_at__isnull=True) | Q(compensation_next_retry_at__lte=clock)
@@ -846,11 +1038,16 @@ def run_pos_compensation_cycle(
             failed += 1
             errors.append({"ticket_id": str(ticket_id), "error": str(exc)})
 
+    queue_after = summarize_pos_compensation_queue(company=company, branch=branch, now=timezone.now())
     return PosCompensationCycleResult(
         attempted=int(attempted),
         succeeded=int(succeeded),
         failed=int(failed),
         still_pending=int(still_pending),
+        exhausted=int(queue_after.get("exhausted_count", 0)),
+        stale=int(queue_after.get("stale_count", 0)),
+        queue_before=queue_before,
+        queue_after=queue_after,
         errors=errors,
     )
 
@@ -1085,6 +1282,7 @@ def get_operational_cockpit(*, company, branch) -> dict[str, Any]:
     now = timezone.now()
     session = get_current_pos_session(company=company, branch=branch)
     tickets_qs = PosTicket.objects.filter(company=company, branch=branch)
+    compensation_queue = summarize_pos_compensation_queue(company=company, branch=branch, now=now)
 
     pending = int(tickets_qs.filter(status=PosTicketStatus.CHECKOUT_PENDING).count())
     closed = int(tickets_qs.filter(status=PosTicketStatus.CLOSED).count())
@@ -1131,6 +1329,7 @@ def get_operational_cockpit(*, company, branch) -> dict[str, Any]:
             "pending": compensation_pending,
             "overdue": compensation_overdue,
             "max_pending_age_min": int(max_pending_age_min),
+            "queue": compensation_queue,
         },
         "peripherals": {
             "total": peripherals_total,
