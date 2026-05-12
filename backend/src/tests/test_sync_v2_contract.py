@@ -469,7 +469,7 @@ def test_sync_batch_v2_hmac_happy_path():
 
 
 @pytest.mark.django_db
-@override_settings(SYNC_HMAC_WRAPPER_ENABLED=True)
+@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_HMAC_WRAPPER_ENABLED=True)
 def test_sync_hmac_wrapper_mode_executes_core_and_keeps_legacy_shape():
     client = APIClient()
     company, branch = _mk_scope()

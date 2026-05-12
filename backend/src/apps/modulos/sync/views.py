@@ -3,9 +3,12 @@ from __future__ import annotations
 import logging
 import uuid
 import time
+from datetime import datetime, timezone as datetime_timezone
+from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,6 +16,7 @@ from rest_framework.views import APIView
 
 from apps.modulos.sync_engine.models import Device as CoreSyncDevice
 from apps.modulos.sync_engine.services import process_batch as process_core_batch
+from apps.modulos.sync_engine.views import _write_sync_auth_rejected_event as write_core_sync_auth_rejected_event
 
 from config.error_envelope import build_error_envelope
 from config.metrics import record_sync_batch
@@ -68,12 +72,70 @@ def _sync_trace_log(
     trace_logger.log(level, message, extra=extra)
 
 
+def _legacy_sunset_has_passed() -> bool:
+    raw = str(getattr(settings, "SYNC_LEGACY_HMAC_SUNSET", "") or "").strip()
+    if not raw:
+        return True
+    parsed: datetime | None = parse_datetime(raw)
+    if parsed is None:
+        return True
+    if timezone.is_naive(parsed):
+        parsed = parsed.replace(tzinfo=datetime_timezone.utc)
+    return timezone.now() >= parsed
+
+
+def _write_legacy_sync_auth_rejected_event(
+    *,
+    request,
+    reason_code: str,
+    wire_reason: str,
+    failure_stage: str,
+    legacy_device: DeviceEnrollment | None = None,
+    presented_device_id: str = "",
+    legacy_wrapper: bool | None = None,
+    extra_metadata: dict[str, Any] | None = None,
+):
+    metadata: dict[str, Any] = {}
+    if legacy_wrapper is not None:
+        metadata["legacy_wrapper"] = legacy_wrapper
+    if legacy_device is not None:
+        metadata["legacy_device_active"] = bool(legacy_device.is_active)
+        presented_device_id = str(legacy_device.id)
+    if extra_metadata:
+        metadata.update(extra_metadata)
+
+    return write_core_sync_auth_rejected_event(
+        request=request,
+        reason_code=reason_code,
+        wire_reason=wire_reason,
+        channel="sync_legacy",
+        failure_stage=failure_stage,
+        presented_device_id=presented_device_id,
+        extra_metadata=metadata,
+    )
+
+
 class SyncBatchView(APIView):
     authentication_classes = []  # autenticación propia por firma
     permission_classes = []
     throttle_scope = "sync_batch"
 
-    def _error_response(self, request, *, status_code: int, reason: str, details: dict | None = None) -> Response:
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        self._apply_deprecation_headers(response)
+        return response
+
+    def _error_response(
+        self,
+        request,
+        *,
+        status_code: int,
+        reason: str,
+        details: dict | None = None,
+        error_code: str = "",
+    ) -> Response:
+        if error_code:
+            setattr(request, "error_code_override", error_code)
         payload = build_error_envelope(
             request=request,
             status_code=status_code,
@@ -103,6 +165,14 @@ class SyncBatchView(APIView):
         response["Deprecation"] = "true"
         response["Sunset"] = str(getattr(settings, "SYNC_LEGACY_HMAC_SUNSET", "2026-03-31T00:00:00Z"))
         response["Link"] = "</docs/CONTRACT_PACK_v2.0.md>; rel=\"deprecation\""
+
+    @staticmethod
+    def _legacy_policy_error() -> str:
+        if not bool(getattr(settings, "SYNC_LEGACY_HMAC_ENABLED", False)):
+            return "SYNC_LEGACY_HMAC_DISABLED"
+        if not bool(getattr(settings, "SYNC_HMAC_WRAPPER_ENABLED", False)) and _legacy_sunset_has_passed():
+            return "SYNC_LEGACY_HMAC_SUNSET"
+        return ""
 
     def _resolve_core_device(self, *, legacy_device: DeviceEnrollment) -> CoreSyncDevice | None:
         core_device = (
@@ -158,6 +228,31 @@ class SyncBatchView(APIView):
 
     def post(self, request):
         started_at = time.perf_counter()
+        legacy_wrapper = bool(getattr(settings, "SYNC_HMAC_WRAPPER_ENABLED", False))
+        policy_error = self._legacy_policy_error()
+        if policy_error:
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code=policy_error,
+                wire_reason=policy_error,
+                failure_stage="legacy_hmac_policy",
+                legacy_wrapper=legacy_wrapper,
+            )
+            _sync_trace_log(
+                level=logging.WARNING,
+                message="sync_hmac_batch_auth_rejected",
+                request=request,
+                reason=policy_error,
+                legacy_wrapper=legacy_wrapper,
+            )
+            self._record_batch_metric(started_at=started_at, ok=False, error_code=policy_error)
+            return self._error_response(
+                request,
+                status_code=status.HTTP_410_GONE,
+                reason=policy_error,
+                error_code=policy_error,
+            )
+
         # 1) Headers
         device_id = request.headers.get("X-Device-Id")
         ts_raw = request.headers.get("X-Device-Ts")
@@ -165,11 +260,19 @@ class SyncBatchView(APIView):
         sig = request.headers.get("X-Device-Signature")
 
         if not (device_id and ts_raw and nonce and sig):
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_SCHEMA_INVALID",
+                wire_reason="MISSING_HEADERS",
+                failure_stage="request_headers",
+                legacy_wrapper=legacy_wrapper,
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="MISSING_HEADERS",
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="MISSING_HEADERS")
             return self._error_response(
@@ -189,12 +292,21 @@ class SyncBatchView(APIView):
         try:
             ts = int(ts_raw)
         except ValueError:
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_SCHEMA_INVALID",
+                wire_reason="INVALID_TS",
+                failure_stage="request_headers",
+                presented_device_id=str(device_id or ""),
+                legacy_wrapper=legacy_wrapper,
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="INVALID_TS",
                 device_id=str(device_id or ""),
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="INVALID_TS")
             return self._error_response(
@@ -205,12 +317,22 @@ class SyncBatchView(APIView):
 
         now = int(timezone.now().timestamp())
         if abs(now - ts) > MAX_SKEW_SECONDS:
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_TS_OUT_OF_WINDOW",
+                wire_reason="TS_OUT_OF_WINDOW",
+                failure_stage="request_auth",
+                presented_device_id=str(device_id),
+                legacy_wrapper=legacy_wrapper,
+                extra_metadata={"max_skew_seconds": MAX_SKEW_SECONDS},
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="TS_OUT_OF_WINDOW",
                 device_id=str(device_id),
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="TS_OUT_OF_WINDOW")
             return self._error_response(
@@ -222,12 +344,21 @@ class SyncBatchView(APIView):
         # 2) Device
         device = DeviceEnrollment.objects.filter(id=device_id, is_active=True).first()
         if not device:
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_UNKNOWN_DEVICE",
+                wire_reason="UNKNOWN_OR_INACTIVE_DEVICE",
+                failure_stage="device_lookup",
+                presented_device_id=str(device_id),
+                legacy_wrapper=legacy_wrapper,
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="UNKNOWN_OR_INACTIVE_DEVICE",
                 device_id=str(device_id),
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="UNKNOWN_OR_INACTIVE_DEVICE")
             return self._error_response(
@@ -240,12 +371,21 @@ class SyncBatchView(APIView):
         raw_body = request.body or b""
         canonical = canonical_string(ts=ts, nonce=nonce, raw_body=raw_body)
         if not verify_hmac_signature(device.secret_b64, canonical, sig):
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_BAD_SIGNATURE",
+                wire_reason="BAD_SIGNATURE",
+                failure_stage="request_auth",
+                legacy_device=device,
+                legacy_wrapper=legacy_wrapper,
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="BAD_SIGNATURE",
                 device_id=str(device.id),
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="BAD_SIGNATURE")
             return self._error_response(
@@ -261,12 +401,21 @@ class SyncBatchView(APIView):
                 DeviceRequestNonce.objects.create(device=device, nonce=nonce, ts=ts)
         except IntegrityError:
             # unique constraint => replay
+            _write_legacy_sync_auth_rejected_event(
+                request=request,
+                reason_code="SYNC_REPLAY_DETECTED",
+                wire_reason="REPLAY_DETECTED",
+                failure_stage="request_auth",
+                legacy_device=device,
+                legacy_wrapper=legacy_wrapper,
+            )
             _sync_trace_log(
                 level=logging.WARNING,
                 message="sync_hmac_batch_auth_rejected",
                 request=request,
                 reason="REPLAY_DETECTED",
                 device_id=str(device.id),
+                legacy_wrapper=legacy_wrapper,
             )
             self._record_batch_metric(started_at=started_at, ok=False, error_code="REPLAY_DETECTED")
             return self._error_response(
@@ -279,9 +428,17 @@ class SyncBatchView(APIView):
         serializer = SyncBatchSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if bool(getattr(settings, "SYNC_HMAC_WRAPPER_ENABLED", False)):
+        if legacy_wrapper:
             core_device = self._resolve_core_device(legacy_device=device)
             if not core_device:
+                _write_legacy_sync_auth_rejected_event(
+                    request=request,
+                    reason_code="SYNC_UNKNOWN_DEVICE",
+                    wire_reason="UNKNOWN_OR_INACTIVE_CORE_DEVICE",
+                    failure_stage="wrapper_device_lookup",
+                    legacy_device=device,
+                    legacy_wrapper=True,
+                )
                 self._record_batch_metric(started_at=started_at, ok=False, error_code="UNKNOWN_OR_INACTIVE_DEVICE")
                 return self._error_response(
                     request,
