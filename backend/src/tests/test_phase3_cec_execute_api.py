@@ -1,21 +1,15 @@
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework.test import APIClient
 
-from apps.modulos.iam.models import OrgUnit, UserMembership
-from apps.modulos.integration.models import OutboxEvent
 from apps.kernels.payments.models import CashSession
-from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
-
-User = get_user_model()
+from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.models import OutboxEvent
+from tests.helpers.operational_auth import create_operational_api_actor as _client_with_perms
 
 
 def _mk_org():
@@ -23,33 +17,6 @@ def _mk_org():
     company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name="C", parent=holding)
     branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B", parent=company)
     return company, branch
-
-
-def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> tuple[APIClient, Any]:
-    username = f"u_{uuid.uuid4().hex[:10]}"
-    user = User.objects.create_user(username=username, email="phase3_cec@test.com", password="pass12345")
-
-    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
-    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
-
-    role = Role.objects.create(name=f"role_{uuid.uuid4().hex[:8]}", is_active=True)
-    for code in perm_codes:
-        perm, _ = Permission.objects.get_or_create(code=code, defaults={"description": code, "is_active": True})
-        RolePermission.objects.get_or_create(role=role, permission=perm)
-
-    RoleAssignment.objects.create(user=user, role=role, org_unit=company, is_active=True)
-    RoleAssignment.objects.create(user=user, role=role, org_unit=branch, is_active=True)
-
-    client = APIClient()
-    resp = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
-    assert resp.status_code == 200
-    access = resp.data.get("access") if isinstance(resp.data, dict) else None
-    if isinstance(access, str) and access:
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
-    client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
-    client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
-    return client, user
 
 
 @pytest.mark.django_db
