@@ -157,6 +157,10 @@ def _pos_cash_movement_idempotency_key(ticket: PosTicket) -> str:
     return f"pos-ticket:{ticket.id}:cash-income"
 
 
+def _pos_cash_refund_idempotency_key(ticket: PosTicket) -> str:
+    return f"pos-ticket:{ticket.id}:cash-refund"
+
+
 def _publish_pos_outbox_event_once(
     *,
     request,
@@ -204,6 +208,27 @@ def _write_pos_ticket_closed_event_once(*, request, actor_user, ticket: PosTicke
         request=request,
         module="POS",
         event_type="POS_TICKET_CLOSED",
+        reason_code="SYNC_OK",
+        subject_type="POS_TICKET",
+        subject_id=str(ticket.id),
+        actor_user=actor_user,
+        metadata=metadata,
+    )
+
+
+def _write_pos_ticket_voided_event_once(*, request, actor_user, ticket: PosTicket, metadata: dict[str, Any]) -> None:
+    exists = AuditEvent.objects.filter(
+        module="POS",
+        event_type="POS_TICKET_VOIDED",
+        subject_type="POS_TICKET",
+        subject_id=str(ticket.id),
+    ).exists()
+    if exists:
+        return
+    write_event(
+        request=request,
+        module="POS",
+        event_type="POS_TICKET_VOIDED",
         reason_code="SYNC_OK",
         subject_type="POS_TICKET",
         subject_id=str(ticket.id),
@@ -881,13 +906,21 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
 @transaction.atomic
 def void_ticket(*, request, actor_user, ticket: PosTicket, reason: str = "VOID") -> PosTicket:
     actor = _require_actor(actor_user)
+    reason = reason or "VOID"
+
+    ticket = (
+        PosTicket.objects.select_for_update(of=("self",))
+        .select_related("session", "company", "branch")
+        .get(id=ticket.id, company_id=ticket.company_id, branch_id=ticket.branch_id)
+    )
 
     if ticket.status == PosTicketStatus.VOIDED:
         return ticket
+    if ticket.status != PosTicketStatus.CLOSED:
+        raise ValueError("Ticket no anulable en su estado actual")
 
-    publish_outbox_event(
+    _publish_pos_outbox_event_once(
         request=request,
-        source_module="POS",
         event_type="POSVoidRequested",
         payload={
             "ticket_id": int(ticket.id),
@@ -895,14 +928,16 @@ def void_ticket(*, request, actor_user, ticket: PosTicket, reason: str = "VOID")
             "status": ticket.status,
         },
         actor_user=actor,
-        company=ticket.company,
-        branch=ticket.branch,
-        correlation_id=ticket.correlation_id,
+        ticket=ticket,
         causation_id=f"{ticket.correlation_id}:void-requested",
     )
 
     if ticket.sale_id and ticket.sale and ticket.sale.status != FuelSaleStatus.CANCELLED:
-        cancel_sale(request=request, sale=ticket.sale, actor_user=actor, reason=reason)
+        sale = cancel_sale(request=request, sale=ticket.sale, actor_user=actor, reason=reason)
+        sale.refresh_from_db(fields=["status"])
+        ticket.sale = sale
+        if sale.status != FuelSaleStatus.CANCELLED:
+            raise ValueError("Venta Fuel no cancelada; void POS queda pendiente")
 
     if ticket.cash_movement_id and ticket.session.cash_session_id and ticket.total_amount > 0:
         post_cash_movement(
@@ -913,6 +948,7 @@ def void_ticket(*, request, actor_user, ticket: PosTicket, reason: str = "VOID")
             amount=Decimal(ticket.total_amount),
             reference=f"pos-ticket:{ticket.id}",
             reason=f"VOID:{reason}",
+            idempotency_key=_pos_cash_refund_idempotency_key(ticket),
         )
 
     ticket.status = PosTicketStatus.VOIDED
@@ -931,14 +967,10 @@ def void_ticket(*, request, actor_user, ticket: PosTicket, reason: str = "VOID")
         ]
     )
 
-    write_event(
+    _write_pos_ticket_voided_event_once(
         request=request,
-        module="POS",
-        event_type="POS_TICKET_VOIDED",
-        reason_code="SYNC_OK",
-        subject_type="POS_TICKET",
-        subject_id=str(ticket.id),
         actor_user=actor,
+        ticket=ticket,
         metadata={"reason": ticket.void_reason},
     )
     return ticket

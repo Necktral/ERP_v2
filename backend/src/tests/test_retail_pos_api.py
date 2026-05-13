@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from datetime import timedelta
+from decimal import Decimal
 import hashlib
 import hmac
 import io
@@ -15,8 +16,9 @@ from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.kernels.payments.models import CashMovement, PaymentIntent
+from apps.kernels.payments.services import post_cash_movement_for_scope
 from apps.modulos.audit.models import AuditEvent
-from apps.modulos.estacion_servicios.models import FuelSale
+from apps.modulos.estacion_servicios.models import FuelSale, FuelSaleStatus
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
@@ -126,6 +128,18 @@ def _checkout_line_payload(*, volume: str = "4.0000", unit_price: str = "39.0000
     }
 
 
+def _checkout_cash_pos_ticket(*, client: APIClient, idempotency_key: str, shift_note: str) -> int:
+    ticket_id = _open_cash_pos_ticket(client=client, idempotency_key=idempotency_key, shift_note=shift_note)
+    r_checkout = client.post(
+        f"/api/retail/pos/tickets/{ticket_id}/checkout/",
+        _checkout_line_payload(),
+        format="json",
+    )
+    assert r_checkout.status_code == 200, r_checkout.content.decode()
+    assert r_checkout.data["status"] == "CLOSED"
+    return int(ticket_id)
+
+
 @pytest.mark.django_db
 def test_retail_pos_end_to_end_checkout_void_and_cockpit() -> None:
     company, branch = _mk_org()
@@ -232,6 +246,215 @@ def test_retail_pos_end_to_end_checkout_void_and_cockpit() -> None:
     assert "POSTicketClosed" in emitted
     assert "POSVoidRequested" in emitted
     assert "POSSessionClosed" in emitted
+
+
+@pytest.mark.django_db
+def test_retail_pos_void_refund_is_idempotent_on_retry() -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+            "retail.pos.ticket.void",
+        ],
+    )
+    ticket_id = _checkout_cash_pos_ticket(
+        client=client,
+        idempotency_key="ticket-void-idem-1",
+        shift_note="turno-void-idem",
+    )
+    ticket = PosTicket.objects.select_related("session").get(id=ticket_id)
+    cash_session = ticket.session.cash_session
+    assert cash_session is not None
+    expected_before_void = Decimal(cash_session.expected_amount)
+    total = Decimal(ticket.total_amount)
+
+    r_void = client.post(f"/api/retail/pos/voids/{ticket_id}/", {"reason": "CUSTOMER_VOID"}, format="json")
+    assert r_void.status_code == 200, r_void.content.decode()
+    assert r_void.data["status"] == "VOIDED"
+
+    r_retry = client.post(f"/api/retail/pos/voids/{ticket_id}/", {"reason": "CUSTOMER_VOID"}, format="json")
+    assert r_retry.status_code == 200, r_retry.content.decode()
+    assert r_retry.data["status"] == "VOIDED"
+
+    refund_key = f"pos-ticket:{ticket_id}:cash-refund"
+    refunds = CashMovement.objects.filter(
+        session_id=ticket.session.cash_session_id,
+        movement_type=CashMovement.MovementType.REFUND,
+        reference=f"pos-ticket:{ticket_id}",
+        idempotency_key=refund_key,
+    )
+    assert refunds.count() == 1
+    cash_session.refresh_from_db()
+    assert Decimal(cash_session.expected_amount) == expected_before_void - total
+
+    ticket.refresh_from_db()
+    assert (
+        OutboxEvent.objects.filter(
+            source_module="POS",
+            event_type="POSVoidRequested",
+            correlation_id=ticket.correlation_id,
+            causation_id=f"{ticket.correlation_id}:void-requested",
+        ).count()
+        == 1
+    )
+    assert (
+        AuditEvent.objects.filter(
+            module="POS",
+            event_type="POS_TICKET_VOIDED",
+            subject_type="POS_TICKET",
+            subject_id=str(ticket.id),
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_retail_pos_void_reuses_existing_refund_idempotency_key() -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+            "retail.pos.ticket.void",
+        ],
+    )
+    ticket_id = _checkout_cash_pos_ticket(
+        client=client,
+        idempotency_key="ticket-void-existing-refund-1",
+        shift_note="turno-void-existing-refund",
+    )
+    ticket = PosTicket.objects.select_related("session", "created_by").get(id=ticket_id)
+    assert ticket.session.cash_session_id is not None
+    refund_key = f"pos-ticket:{ticket_id}:cash-refund"
+
+    precreated, _ = post_cash_movement_for_scope(
+        company=company,
+        branch=branch,
+        actor=ticket.created_by,
+        session_id=int(ticket.session.cash_session_id),
+        movement_type=CashMovement.MovementType.REFUND,
+        amount=Decimal(ticket.total_amount),
+        request=None,
+        reference=f"pos-ticket:{ticket.id}",
+        reason="VOID:CUSTOMER_VOID",
+        idempotency_key=refund_key,
+    )
+    cash_session = ticket.session.cash_session
+    assert cash_session is not None
+    cash_session.refresh_from_db()
+    expected_after_existing_refund = Decimal(cash_session.expected_amount)
+
+    r_void = client.post(f"/api/retail/pos/voids/{ticket_id}/", {"reason": "CUSTOMER_VOID"}, format="json")
+    assert r_void.status_code == 200, r_void.content.decode()
+    assert r_void.data["status"] == "VOIDED"
+
+    assert (
+        CashMovement.objects.filter(
+            session_id=ticket.session.cash_session_id,
+            movement_type=CashMovement.MovementType.REFUND,
+            reference=f"pos-ticket:{ticket.id}",
+            idempotency_key=refund_key,
+        ).count()
+        == 1
+    )
+    cash_session.refresh_from_db()
+    assert Decimal(cash_session.expected_amount) == expected_after_existing_refund
+    assert CashMovement.objects.get(id=precreated.id).idempotency_key == refund_key
+
+
+@pytest.mark.django_db
+def test_retail_pos_void_does_not_refund_when_fuel_cancel_remains_compensating(monkeypatch) -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+            "retail.pos.ticket.void",
+        ],
+    )
+    ticket_id = _checkout_cash_pos_ticket(
+        client=client,
+        idempotency_key="ticket-void-fuel-compensating-1",
+        shift_note="turno-void-fuel-compensating",
+    )
+    ticket = PosTicket.objects.select_related("sale").get(id=ticket_id)
+    assert ticket.sale_id is not None
+
+    def leave_sale_compensating(*, request, sale, actor_user, reason=""):
+        sale.status = FuelSaleStatus.COMPENSATING
+        sale.save(update_fields=["status"])
+        return sale
+
+    monkeypatch.setattr("apps.modulos.retail_pos.services.cancel_sale", leave_sale_compensating)
+
+    r_void = client.post(f"/api/retail/pos/voids/{ticket_id}/", {"reason": "CUSTOMER_VOID"}, format="json")
+    assert r_void.status_code == 409
+
+    ticket.refresh_from_db()
+    assert ticket.status == PosTicketStatus.CLOSED
+    sale = FuelSale.objects.get(id=ticket.sale_id)
+    assert sale.status != FuelSaleStatus.CANCELLED
+    assert not CashMovement.objects.filter(
+        session_id=ticket.session.cash_session_id,
+        movement_type=CashMovement.MovementType.REFUND,
+        reference=f"pos-ticket:{ticket.id}",
+    ).exists()
+    assert not OutboxEvent.objects.filter(
+        source_module="POS",
+        event_type="POSVoidRequested",
+        correlation_id=ticket.correlation_id,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_retail_pos_void_rejects_checkout_pending_without_side_effects() -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.read",
+            "retail.pos.ticket.void",
+        ],
+    )
+    ticket_id = _open_cash_pos_ticket(
+        client=client,
+        idempotency_key="ticket-void-pending-1",
+        shift_note="turno-void-pending",
+    )
+    PosTicket.objects.filter(id=ticket_id).update(status=PosTicketStatus.CHECKOUT_PENDING)
+    ticket = PosTicket.objects.get(id=ticket_id)
+
+    r_void = client.post(f"/api/retail/pos/voids/{ticket_id}/", {"reason": "CUSTOMER_VOID"}, format="json")
+    assert r_void.status_code == 409
+
+    ticket.refresh_from_db()
+    assert ticket.status == PosTicketStatus.CHECKOUT_PENDING
+    assert not CashMovement.objects.filter(reference=f"pos-ticket:{ticket.id}").exists()
+    assert not OutboxEvent.objects.filter(
+        source_module="POS",
+        event_type="POSVoidRequested",
+        correlation_id=ticket.correlation_id,
+    ).exists()
 
 
 @pytest.mark.django_db
