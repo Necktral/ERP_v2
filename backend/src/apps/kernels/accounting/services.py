@@ -66,7 +66,11 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
 }
-PERIOD_CLOSE_FAILED_OUTBOX_MODULES = ("BILLING", "INVENTORY", "ACCOUNTING")
+ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
+    ("PAYMENTS", "CashMovementPosted"),
+    ("PAYMENTS", "CashSessionClosed"),
+}
+PERIOD_CLOSE_FAILED_OUTBOX_MODULES = ("BILLING", "INVENTORY", "PAYMENTS", "ACCOUNTING")
 PROJECTION_RULESET_CODE_PREFIX = "shadow_ledger_"
 logger = logging.getLogger(__name__)
 
@@ -2699,10 +2703,12 @@ def reconcile_operational_vs_accounting(
     date_from=None,
     date_to=None,
 ) -> dict[str, Any]:
+    readiness_modules = sorted({source_module for source_module, _event_type in ACCOUNTING_READINESS_EVENTS})
+    readiness_event_types = sorted({event_type for _source_module, event_type in ACCOUNTING_READINESS_EVENTS})
     qs = OutboxEvent.objects.filter(
         company=company,
-        source_module__in=["BILLING", "INVENTORY"],
-        event_type__in=["DocumentIssued", "DocumentVoided", "InventoryMovementPosted", "InventoryAdjusted", "InventoryTransferCompleted"],
+        source_module__in=readiness_modules,
+        event_type__in=readiness_event_types,
     )
     if branch is not None:
         qs = qs.filter(branch=branch)
@@ -2713,7 +2719,11 @@ def reconcile_operational_vs_accounting(
         dt_to = timezone.make_aware(datetime.combine(date_to, time.max), timezone.get_current_timezone())
         qs = qs.filter(occurred_at__lte=dt_to)
 
-    operational_events = list(qs.order_by("occurred_at", "id"))
+    operational_events = [
+        ev
+        for ev in qs.order_by("occurred_at", "id")
+        if (ev.source_module, ev.event_type) in ACCOUNTING_READINESS_EVENTS and _event_is_supported(ev)
+    ]
     outbox_ids = [ev.event_id for ev in operational_events]
 
     economic_by_outbox = {
@@ -2732,6 +2742,12 @@ def reconcile_operational_vs_accounting(
             data = {}
         if ev.source_module == "BILLING":
             return abs(_to_decimal(data.get("total")))
+        if ev.source_module == "PAYMENTS":
+            if ev.event_type == "CashMovementPosted":
+                return abs(_to_decimal(data.get("amount")))
+            if ev.event_type == "CashSessionClosed":
+                return abs(_to_decimal(data.get("difference_amount")))
+            return Decimal("0.00")
         if ev.event_type == "InventoryTransferCompleted":
             return abs(_to_decimal(data.get("transfer_total_cost") or (_to_decimal(data.get("qty")) * _to_decimal(data.get("unit_cost")))))
         return abs(_to_decimal(data.get("total_cost")) or _to_decimal(data.get("adjust_total_cost")))

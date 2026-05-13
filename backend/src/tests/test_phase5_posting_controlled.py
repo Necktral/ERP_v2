@@ -11,6 +11,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 
 from apps.kernels.accounting.models import FiscalPeriod, JournalDraft, JournalEntry
+from apps.kernels.accounting.services import evaluate_period_close_gates, reconcile_operational_vs_accounting
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent
@@ -69,6 +70,31 @@ def _mk_billing_event(*, company: OrgUnit, branch: OrgUnit, user, doc_id: int = 
             "total": "115.00",
             "is_fiscal": True,
             "fiscal_adapter_mode": "B",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _mk_cash_movement_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    movement_id: int = 8101,
+    movement_type: str = "INCOME",
+    amount: str = "36.75",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="CashMovementPosted",
+        payload={
+            "session_id": "phase5-cash-session",
+            "movement_id": int(movement_id),
+            "movement_type": movement_type,
+            "amount": amount,
+            "reference": "phase5-payments-readiness",
         },
         company=company,
         branch=branch,
@@ -442,6 +468,89 @@ def test_close_fiscal_period_force_blocks_when_draft_exception_exists():
     gate = (blocked.payload or {}).get("data", {}).get("gate_summary", {})
     assert int(gate.get("draft_exception_count") or 0) >= 1
     assert "DRAFT_EXCEPTION" in list(gate.get("blocking_reasons") or [])
+
+
+@pytest.mark.django_db
+def test_reconcile_operational_vs_accounting_includes_payments_cash_movement():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase5_reconcile_payments_cash", password="x")
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    cash_event = _mk_cash_movement_event(company=company, branch=branch, user=user)
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    local_dt = timezone.localtime(cash_event.occurred_at).date()
+
+    reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        branch=branch,
+        date_from=local_dt,
+        date_to=local_dt,
+    )
+    payments_rows = [
+        row
+        for row in reconciliation["by_event_type"]
+        if row["source_module"] == "PAYMENTS" and row["event_type"] == "CashMovementPosted"
+    ]
+
+    assert reconciliation["summary"]["pending_operational_events"] == 0
+    assert len(payments_rows) == 1
+    row = payments_rows[0]
+    assert row["operational_count"] == 1
+    assert row["linked_count"] == 1
+    assert row["operational_amount"] == "36.75"
+    assert row["draft_amount"] == "36.75"
+
+
+@pytest.mark.django_db
+def test_reconcile_operational_vs_accounting_excludes_payment_captured_from_opr1b_readiness():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase5_reconcile_payment_captured", password="x")
+    captured = publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptured",
+        payload={
+            "payment_intent_id": 9001,
+            "amount": "36.75",
+            "status": "CAPTURED",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+    local_dt = timezone.localtime(captured.occurred_at).date()
+
+    reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        branch=branch,
+        date_from=local_dt,
+        date_to=local_dt,
+    )
+
+    assert reconciliation["summary"]["operational_events"] == 0
+    assert reconciliation["by_event_type"] == []
+
+
+@pytest.mark.django_db
+def test_period_close_gates_include_failed_payments_outbox():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase5_close_payments_failed_outbox", password="x")
+    failed = _mk_cash_movement_event(company=company, branch=branch, user=user)
+    failed.status = OutboxEvent.Status.FAILED
+    failed.last_error = "cash dispatcher timeout"
+    failed.save(update_fields=["status", "last_error"])
+    local_dt = timezone.localtime(failed.occurred_at)
+
+    gate = evaluate_period_close_gates(
+        company=company,
+        year=local_dt.year,
+        month=local_dt.month,
+        force=True,
+    )
+
+    assert gate.failed_outbox_count == 1
+    assert "FAILED_OUTBOX" in gate.blocking_reasons
+    assert gate.failed_outbox_sample[0]["source_module"] == "PAYMENTS"
+    assert gate.failed_outbox_sample[0]["event_type"] == "CashMovementPosted"
 
 
 @pytest.mark.django_db

@@ -77,6 +77,52 @@ def _mk_billing_issued_event(*, company: OrgUnit, branch: OrgUnit, user):
     )
 
 
+def _mk_cash_movement_posted_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    movement_type: str = "INCOME",
+    amount: str = "42.50",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="CashMovementPosted",
+        payload={
+            "session_id": "cash-session-1",
+            "movement_id": 501,
+            "movement_type": movement_type,
+            "amount": amount,
+            "reference": "shadow-ledger-cash-movement",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _mk_cash_session_closed_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    difference_amount: str = "-7.25",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="CashSessionClosed",
+        payload={
+            "session_id": "cash-session-1",
+            "expected_amount": "100.00",
+            "counted_amount": str(Decimal("100.00") + Decimal(difference_amount)),
+            "difference_amount": difference_amount,
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
 @pytest.mark.django_db
 def test_seed_posting_rules_v1_is_idempotent():
     company, _ = _mk_scope()
@@ -258,6 +304,56 @@ def test_project_shadow_ledger_for_run_generates_economic_events_and_valid_draft
     assert EconomicEvent.objects.count() == ee_count
     assert JournalDraft.objects.count() == draft_count
     assert CECException.objects.filter(close_run=run, source_module="ACCOUNTING").count() == exc_count
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_generates_draft_for_cash_movement_posted():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payments_cash_movement", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    cash_event = _mk_cash_movement_posted_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=cash_event.event_id)
+    assert ee.source_module == "PAYMENTS"
+    assert ee.event_type == "CashMovementPosted"
+
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert draft.state == JournalDraft.State.VALIDATED
+    assert Decimal(draft.total_debit) == Decimal("42.50")
+    assert Decimal(draft.total_credit) == Decimal("42.50")
+    assert draft.metadata["rule_id"] == "cash_movement_income"
+    assert DraftValidationResult.objects.filter(draft=draft, passed=True, is_blocking=False).exists()
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_generates_draft_for_cash_session_closed_difference():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payments_cash_session", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    cash_event = _mk_cash_session_closed_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=cash_event.event_id)
+    assert ee.source_module == "PAYMENTS"
+    assert ee.event_type == "CashSessionClosed"
+
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert draft.state == JournalDraft.State.VALIDATED
+    assert Decimal(draft.total_debit) == Decimal("7.25")
+    assert Decimal(draft.total_credit) == Decimal("7.25")
+    assert draft.metadata["rule_id"] == "cash_session_short"
+    assert DraftValidationResult.objects.filter(draft=draft, passed=True, is_blocking=False).exists()
 
 
 @pytest.mark.django_db
