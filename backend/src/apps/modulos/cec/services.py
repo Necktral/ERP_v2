@@ -4,8 +4,9 @@ import hashlib
 import json
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
+from django.apps import apps
 from django.db import transaction
 from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce
@@ -20,6 +21,9 @@ from apps.kernels.inventarios.models import StockBalance
 from .models import CECException, CloseRun
 
 TOLERANCE = Decimal("0.01")
+FUEL_PAYMENT_METHOD_CASH = "CASH"
+FUEL_PAYMENT_METHOD_TRANSFER = "TRANSFER"
+FUEL_PAYMENT_METHOD_CREDIT = "CREDIT"
 SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
@@ -227,17 +231,67 @@ def _collect_cash_difference_issues(*, run: CloseRun, window_start, window_end) 
     return issues
 
 
-def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window_end) -> tuple[list[dict[str, Any]], dict[str, str]]:
+def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window_end) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     doc_filters = {
         **_scope_filter(company=run.company, branch=run.branch),
         "status": DocStatus.ISSUED,
         "issued_at__gte": window_start,
         "issued_at__lte": window_end,
     }
-    billing_total = (
-        BillingDocument.objects.filter(**doc_filters).aggregate(total=Coalesce(Sum("total"), Value(Decimal("0.00"))))["total"]
-        or Decimal("0.00")
-    )
+    doc_qs = BillingDocument.objects.filter(**doc_filters)
+    billing_total = doc_qs.aggregate(total=Coalesce(Sum("total"), Value(Decimal("0.00"))))["total"] or Decimal("0.00")
+
+    doc_rows = list(doc_qs.values("id", "total", "source_module", "source_type", "source_id"))
+    fuel_sale_ids: set[int] = set()
+    for row in doc_rows:
+        if row["source_module"] != "FUEL" or row["source_type"] != "SALE":
+            continue
+        try:
+            fuel_sale_ids.add(int(str(row["source_id"] or "")))
+        except ValueError:
+            continue
+
+    fuel_sale_model = cast(Any, apps.get_model("estacion_servicios", "FuelSale"))
+    fuel_sales_qs = fuel_sale_model.objects.filter(company=run.company, id__in=fuel_sale_ids)
+    if run.branch is not None:
+        fuel_sales_qs = fuel_sales_qs.filter(branch=run.branch)
+    fuel_sale_tender_by_id = {
+        int(row["id"]): str(row["payment_method"] or "")
+        for row in fuel_sales_qs.values("id", "payment_method")
+    }
+
+    cash_expected_billing_total = Decimal("0.00")
+    non_cash_billing_total = Decimal("0.00")
+    transfer_billing_total = Decimal("0.00")
+    credit_billing_total = Decimal("0.00")
+    unknown_tender_billing_total = Decimal("0.00")
+    cash_expected_billing_count = 0
+    non_cash_billing_count = 0
+    unknown_tender_billing_count = 0
+
+    for row in doc_rows:
+        amount = Decimal(row["total"] or Decimal("0.00"))
+        tender = ""
+        if row["source_module"] == "FUEL" and row["source_type"] == "SALE":
+            try:
+                tender = fuel_sale_tender_by_id.get(int(str(row["source_id"] or "")), "")
+            except ValueError:
+                tender = ""
+
+        if tender == FUEL_PAYMENT_METHOD_CASH:
+            cash_expected_billing_total += amount
+            cash_expected_billing_count += 1
+        elif tender == FUEL_PAYMENT_METHOD_TRANSFER:
+            non_cash_billing_total += amount
+            transfer_billing_total += amount
+            non_cash_billing_count += 1
+        elif tender == FUEL_PAYMENT_METHOD_CREDIT:
+            non_cash_billing_total += amount
+            credit_billing_total += amount
+            non_cash_billing_count += 1
+        else:
+            unknown_tender_billing_total += amount
+            unknown_tender_billing_count += 1
 
     cash_qs = CashMovement.objects.filter(
         session__company=run.company,
@@ -266,11 +320,27 @@ def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window
     expense = Decimal(cash_agg["expense"] or Decimal("0.00"))
     refund = Decimal(cash_agg["refund"] or Decimal("0.00"))
     cash_total = income - expense - refund
-    diff = billing_total - cash_total
+    cash_surplus_tolerated_by_unknown_tender_total = Decimal("0.00")
+    cash_reconciled_total = cash_total
+    if unknown_tender_billing_total > 0 and cash_total > cash_expected_billing_total:
+        cash_surplus = cash_total - cash_expected_billing_total
+        cash_surplus_tolerated_by_unknown_tender_total = min(cash_surplus, unknown_tender_billing_total)
+        cash_reconciled_total = cash_total - cash_surplus_tolerated_by_unknown_tender_total
+    diff = cash_expected_billing_total - cash_reconciled_total
 
     metrics = {
         "billing_total": str(billing_total),
+        "cash_expected_billing_total": str(cash_expected_billing_total),
+        "non_cash_billing_total": str(non_cash_billing_total),
+        "transfer_billing_total": str(transfer_billing_total),
+        "credit_billing_total": str(credit_billing_total),
+        "unknown_tender_billing_total": str(unknown_tender_billing_total),
+        "cash_expected_billing_count": int(cash_expected_billing_count),
+        "non_cash_billing_count": int(non_cash_billing_count),
+        "unknown_tender_billing_count": int(unknown_tender_billing_count),
         "cash_total": str(cash_total),
+        "cash_reconciled_total": str(cash_reconciled_total),
+        "cash_surplus_tolerated_by_unknown_tender_total": str(cash_surplus_tolerated_by_unknown_tender_total),
         "difference": str(diff),
     }
     if abs(diff) <= TOLERANCE:
@@ -604,7 +674,7 @@ def _build_summary(
     window_end,
     strict: bool,
     gates: list[dict[str, Any]],
-    billing_cash_metrics: dict[str, str],
+    billing_cash_metrics: dict[str, Any],
     procurement_metrics: dict[str, str],
 ) -> dict[str, Any]:
     active_exceptions: list[dict[str, Any]] = [

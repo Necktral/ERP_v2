@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-import uuid
-
 import pytest
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
-
-from apps.modulos.audit.models import AuditEvent
-from apps.modulos.iam.models import OrgUnit, UserMembership
-from apps.modulos.integration.models import OutboxEvent
-from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 from apps.kernels.facturacion.models import BillingDocument, DocStatus
 from apps.kernels.inventarios.models import InventoryItem, StockMovement, Warehouse
+from apps.modulos.audit.models import AuditEvent
 from apps.modulos.estacion_servicios.models import FuelDispense, FuelSale
-
-User = get_user_model()
+from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.models import OutboxEvent
+from tests.helpers.operational_auth import create_operational_api_actor as _client_with_perms
 
 
 def _mk_org():
@@ -25,43 +18,13 @@ def _mk_org():
     return company, branch
 
 
-def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[str]) -> APIClient:
-    username = f"u_{uuid.uuid4().hex[:10]}"
-    user = User.objects.create_user(username=username, email="it@test.com", password="pass12345")
-
-    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
-    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
-
-    role = Role.objects.create(name=f"role_{uuid.uuid4().hex[:8]}", is_active=True)
-    for code in perm_codes:
-        perm, _ = Permission.objects.get_or_create(code=code, defaults={"description": "", "is_active": True})
-        if not perm.is_active:
-            perm.is_active = True
-            perm.save(update_fields=["is_active"])
-        RolePermission.objects.get_or_create(role=role, permission=perm)
-
-    RoleAssignment.objects.create(user=user, role=role, org_unit=company, is_active=True)
-    RoleAssignment.objects.create(user=user, role=role, org_unit=branch, is_active=True)
-
-    client = APIClient()
-    resp = client.post("/api/auth/login/", {"username": username, "password": "pass12345"}, format="json")
-    assert resp.status_code == 200
-    access = resp.data.get("access") if isinstance(resp.data, dict) else None
-    if isinstance(access, str) and access:
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-        client.defaults["HTTP_AUTHORIZATION"] = f"Bearer {access}"
-
-    client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
-    client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
-    return client
-
-
 @pytest.mark.django_db
 def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     company, branch = _mk_org()
-    client = _client_with_perms(
+    client, _ = _client_with_perms(
         company=company,
         branch=branch,
+        email_prefix="fuel",
         perm_codes=[
             "fuel.shift.open",
             "fuel.dispense.create",
@@ -164,9 +127,10 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
 @pytest.mark.django_db
 def test_fuel_sale_create_is_idempotent_with_external_key_after_shift_closed():
     company, branch = _mk_org()
-    client = _client_with_perms(
+    client, _ = _client_with_perms(
         company=company,
         branch=branch,
+        email_prefix="fuel",
         perm_codes=[
             "fuel.shift.open",
             "fuel.shift.close",
@@ -242,9 +206,10 @@ def test_fuel_sale_create_is_idempotent_with_external_key_after_shift_closed():
 @pytest.mark.django_db
 def test_fuel_sale_create_rejects_idempotency_payload_mismatch():
     company, branch = _mk_org()
-    client = _client_with_perms(
+    client, _ = _client_with_perms(
         company=company,
         branch=branch,
+        email_prefix="fuel",
         perm_codes=[
             "fuel.shift.open",
             "fuel.dispense.create",
@@ -300,9 +265,10 @@ def test_fuel_sale_create_rejects_idempotency_payload_mismatch():
 @pytest.mark.django_db
 def test_fuel_sale_without_external_idempotency_preserves_duplicate_dispense_validation():
     company, branch = _mk_org()
-    client = _client_with_perms(
+    client, _ = _client_with_perms(
         company=company,
         branch=branch,
+        email_prefix="fuel",
         perm_codes=[
             "fuel.shift.open",
             "fuel.dispense.create",
