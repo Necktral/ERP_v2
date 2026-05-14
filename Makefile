@@ -3,7 +3,7 @@
 	qa-branch-hygiene qa-branch-hygiene-cleanup-plan qa-branch-hygiene-cleanup \
 	qa-operational-hygiene qa-operational-gate qa-operational-pilot-stage1 qa-operational-pilot-stage2 qa-operational-pilot-stage3 qa-operational-pilot-rollback qa-operational-all \
 	qa-operational-go-live qa-product-lifecycle-full-cycle \
-	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
+	qa-ci-up qa-ci-fresh qa-ci-ci qa-backend-wait backend-pytest qa-ci-gate1 qa-ci-gate2 qa-ci-gate3 qa-ci qa-run-profile \
 	qa-backend-bandit qa-backend-ruff qa-backend-mypy qa-verify-static-gate qa-reporting-registry-guard qa-reporting-registry-guard-host qa-reporting-contract-version-guard qa-reporting-contract-version-guard-host qa-pythonpath-bootstrap-guard qa-backend-package-check qa-architecture-dependency-guard qa-route-contract-guard qa-readme-section-guard qa-pr-blast-radius-guard qa-codex-governance-guard qa-makemigrations-check qa-migration-safety-guard qa-migration-rehearsal qa-action-pin-guard qa-github-required-checks-guard qa-runner-hygiene-guard qa-security-audits qa-validate-security-exceptions qa-security-findings-enforce qa-export-u6-release-evidence qa-github-master-ruleset-verify qa-github-master-ruleset-apply qa-backend-mypy-baseline-refresh qa-backend-tests qa-coverage-by-domain-guard qa-static-scan qa-namespace-guard qa-kernel-compat-strict qa-analytics-contract-guard qa-frontend-ci qa-audit-integrity qa-reporting-r8-gate qa-verify-reporting-r8-gate-artifact \
 		qa-sync-contract-guard qa-retail-pos-backend-contract-guard qa-retail-pos-sync-contract-guard qa-retail-pos-frontend-queue-contract-guard qa-retail-pos-edge-simulator-guard qa-retail-pos-edge-e2e-guard qa-retail-pos-pilot-smoke qa-retail-pos-pilot-rollback qa-sync-pos-validation qa-reports-dir-writable \
 		fix-workspace-perms docker-clean docker-clean-all
@@ -119,6 +119,13 @@ qa-ci-up:
 
 qa-backend-wait:
 	docker compose exec -T backend bash -lc "python /app/qa/wait_backend_ready.py"
+
+backend-pytest: qa-ci-up
+	@if [ -z "$(strip $(PYTEST_ARGS))" ]; then \
+		echo "Usage: make backend-pytest PYTEST_ARGS=\"src/tests/test_file.py -q\""; \
+		exit 2; \
+	fi
+	docker compose exec -T backend bash -lc "cd /app/backend && export DJANGO_SETTINGS_MODULE=config.settings.test PYTEST_DB_SLOT='$(QA_PYTEST_DB_SLOT)' PYTEST_DB_BASE_NAME='$(QA_PYTEST_DB_BASE_NAME)'; echo \"[qa] pytest settings=\$${DJANGO_SETTINGS_MODULE} test_db_slot=\$${PYTEST_DB_SLOT:-<auto>} test_db_base=\$${PYTEST_DB_BASE_NAME}\"; pytest $(PYTEST_ARGS)"
 
 qa-ci-fresh:
 	$(MAKE) QA_FRESH_DB=1 qa-ci
