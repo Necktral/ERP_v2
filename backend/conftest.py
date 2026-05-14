@@ -1,12 +1,34 @@
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
 from django.conf import settings
 from django.core.cache import caches
 
 collect_ignore = ["src/tests/test_auth_throttling.py"]
+
+EXPECTED_DJANGO_SETTINGS_MODULE = "config.settings.test"
+ALLOW_NON_TEST_SETTINGS_ENV = "ALLOW_NON_TEST_DJANGO_SETTINGS_FOR_PYTEST"
+
+
+def pytest_sessionstart(session):
+    current_settings = os.environ.get("DJANGO_SETTINGS_MODULE") or "<unset>"
+    if current_settings == EXPECTED_DJANGO_SETTINGS_MODULE:
+        return
+
+    message = (
+        "Backend pytest must run with DJANGO_SETTINGS_MODULE=config.settings.test. "
+        "Use: make backend-pytest PYTEST_ARGS='...'. "
+        f"Current value: {current_settings}"
+    )
+    if os.environ.get(ALLOW_NON_TEST_SETTINGS_ENV) == "1":
+        warning = f"WARNING: {message}; opt-out env {ALLOW_NON_TEST_SETTINGS_ENV}=1 is active."
+        print(warning, file=sys.stderr, flush=True)
+        return
+
+    pytest.exit(message, returncode=4)
 
 
 @pytest.fixture(scope="session", autouse=True)
