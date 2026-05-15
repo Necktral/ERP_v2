@@ -5,7 +5,7 @@ import pytest
 from apps.kernels.facturacion.models import BillingDocument, DocStatus
 from apps.kernels.inventarios.models import InventoryItem, StockMovement, Warehouse
 from apps.modulos.audit.models import AuditEvent
-from apps.modulos.estacion_servicios.models import FuelDispense, FuelSale
+from apps.modulos.estacion_servicios.models import FuelDispense, FuelPaymentMethod, FuelSale
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent
 from tests.helpers.operational_auth import create_operational_api_actor as _client_with_perms
@@ -80,6 +80,7 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     assert doc.source_module == "FUEL"
     assert doc.source_type == "SALE"
     assert doc.source_id == str(sale_id)
+    assert doc.payment_method == FuelPaymentMethod.CASH
 
     mov = StockMovement.objects.get(id=int(r.data["inventory_movement_id"]))
     assert mov.source_module == "FUEL"
@@ -122,6 +123,56 @@ def test_fuel_sale_creates_billing_and_inventory_and_reverses_on_cancel():
     r = client.get(f"/api/inventory/balances/?warehouse_id={wh.id}&item_id={item.id}")
     assert r.status_code == 200
     assert r.data["qty_on_hand"] == "0.0000"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "payment_method",
+    [FuelPaymentMethod.CASH, FuelPaymentMethod.TRANSFER, FuelPaymentMethod.CREDIT],
+)
+def test_fuel_sale_snapshots_payment_method_on_billing_document(payment_method: str) -> None:
+    company, branch = _mk_org()
+    client, _ = _client_with_perms(
+        company=company,
+        branch=branch,
+        email_prefix="fuel",
+        perm_codes=[
+            "fuel.shift.open",
+            "fuel.dispense.create",
+            "fuel.sale.create",
+        ],
+    )
+
+    shift = client.post("/api/fuel/shifts/open/", {"note": f"turno-{payment_method}"}, format="json")
+    assert shift.status_code == 201
+
+    dispense = client.post(
+        "/api/fuel/dispenses/",
+        {
+            "shift_id": shift.data["id"],
+            "product": "DIESEL",
+            "liters": "3.0000",
+            "unit_price": "41.0000",
+        },
+        format="json",
+    )
+    assert dispense.status_code == 201
+
+    sale = client.post(
+        "/api/fuel/sales/",
+        {
+            "shift_id": shift.data["id"],
+            "dispense_id": dispense.data["id"],
+            "sale_type": "PUBLIC",
+            "payment_method": payment_method,
+            "customer_name": "Cliente",
+        },
+        format="json",
+    )
+    assert sale.status_code == 201
+
+    doc = BillingDocument.objects.get(id=int(sale.data["billing_doc_id"]))
+    assert doc.payment_method == payment_method
 
 
 @pytest.mark.django_db

@@ -6,6 +6,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES
+
 
 class DocType(models.TextChoices):
     INVOICE = "INVOICE", "Invoice"
@@ -87,6 +89,7 @@ class BillingDocument(models.Model):
     fiscal_metadata_json = models.JSONField(default=dict)
 
     idempotency_key = models.CharField(max_length=96, blank=True, default="")
+    payment_method = models.CharField(max_length=16, choices=TENDER_PAYMENT_METHOD_CHOICES, blank=True, default="")
     source_module = models.CharField(max_length=32, blank=True, default="")
     source_type = models.CharField(max_length=64, blank=True, default="")
     source_id = models.CharField(max_length=64, blank=True, default="")

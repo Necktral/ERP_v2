@@ -7,7 +7,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from apps.kernels.payments.models import CashMovement, CashSession
+from apps.kernels.payments.models import CashMovement, CashSession, PaymentIntent
 from apps.kernels.payments.services import PaymentsDomainError
 from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit, UserMembership
@@ -76,21 +76,37 @@ def test_payments_intent_cash_session_and_outbox():
     idem_key = f"intent-{uuid.uuid4().hex[:8]}"
     r = client.post(
         "/api/payments/intents/",
-        {"amount": "100.00", "currency": "NIO", "idempotency_key": idem_key, "external_ref": "INV-1"},
+        {
+            "amount": "100.00",
+            "currency": "NIO",
+            "idempotency_key": idem_key,
+            "external_ref": "INV-1",
+            "payment_method": "TRANSFER",
+        },
         format="json",
     )
     assert r.status_code == 201
     assert r.data["idempotent"] is False
+    assert r.data["payment_method"] == "TRANSFER"
     payment_id = r.data["payment_id"]
+    intent = PaymentIntent.objects.get(payment_id=payment_id)
+    assert intent.payment_method == "TRANSFER"
 
     r2 = client.post(
         "/api/payments/intents/",
-        {"amount": "100.00", "currency": "NIO", "idempotency_key": idem_key, "external_ref": "INV-1"},
+        {
+            "amount": "100.00",
+            "currency": "NIO",
+            "idempotency_key": idem_key,
+            "external_ref": "INV-1",
+            "payment_method": "TRANSFER",
+        },
         format="json",
     )
     assert r2.status_code == 200
     assert r2.data["idempotent"] is True
     assert r2.data["payment_id"] == payment_id
+    assert r2.data["payment_method"] == "TRANSFER"
 
     ropen = client.post("/api/payments/cash-sessions/open/", {"opening_amount": "50.00"}, format="json")
     assert ropen.status_code == 201
@@ -119,6 +135,8 @@ def test_payments_intent_cash_session_and_outbox():
     assert "CashSessionOpened" in emitted
     assert "CashMovementPosted" in emitted
     assert "CashSessionClosed" in emitted
+    created_event = OutboxEvent.objects.get(source_module="PAYMENTS", event_type="PaymentIntentCreated")
+    assert created_event.payload["data"]["payment_method"] == "TRANSFER"
 
 
 @pytest.mark.django_db

@@ -129,6 +129,7 @@ class DocListCreateView(APIView):
                 "subtotal": str(doc.subtotal),
                 "tax_total": str(doc.tax_total),
                 "total": str(doc.total),
+                "payment_method": doc.payment_method,
                 "is_fiscal": bool(doc.is_fiscal),
                 "fiscal_status": doc.fiscal_status,
                 "created_at": doc.created_at,
@@ -158,6 +159,7 @@ class DocListCreateView(APIView):
                 is_fiscal=bool(v.get("is_fiscal", False)),
                 lines=v["lines"],
                 idempotency_key=v.get("idempotency_key") or "",
+                payment_method=v.get("payment_method") or "",
             )
         except BillingError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -200,6 +202,7 @@ class DocDetailView(APIView):
                 "subtotal": str(doc.subtotal),
                 "tax_total": str(doc.tax_total),
                 "total": str(doc.total),
+                "payment_method": doc.payment_method,
                 "is_fiscal": bool(doc.is_fiscal),
                 "issued_at": doc.issued_at,
                 "voided_at": doc.voided_at,

@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES
 from apps.modulos.iam.models import OrgUnit
 
 
@@ -37,6 +38,7 @@ class PaymentIntent(models.Model):
 
     provider = models.CharField(max_length=32, blank=True, default="")
     provider_txn_id = models.CharField(max_length=96, blank=True, default="")
+    payment_method = models.CharField(max_length=16, choices=TENDER_PAYMENT_METHOD_CHOICES, blank=True, default="")
 
     authorized_at = models.DateTimeField(null=True, blank=True)
     captured_at = models.DateTimeField(null=True, blank=True)

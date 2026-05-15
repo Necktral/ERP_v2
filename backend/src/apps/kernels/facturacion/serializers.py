@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES
+
 from .models import BillingDocument, BranchFiscalConfig, DocStatus, DocType, FiscalMode
 
 
@@ -21,6 +23,11 @@ class DocCreateSerializer(serializers.Serializer):
     customer_ref = serializers.CharField(max_length=64, required=False, allow_blank=True)
     is_fiscal = serializers.BooleanField(required=False, default=False)
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
+    payment_method = serializers.ChoiceField(
+        choices=TENDER_PAYMENT_METHOD_CHOICES,
+        required=False,
+        allow_blank=True,
+    )
     lines = LineInSerializer(many=True)
 
 

@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.kernels.facturacion.models import BillingDocument, DocStatus, DocType
 from apps.kernels.payments.models import CashMovement, CashSession, PaymentIntent
+from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.estacion_servicios.models import (
     FuelDispense,
     FuelPaymentMethod,
@@ -225,6 +226,37 @@ def test_cec_billing_cash_reconciliation_counts_only_cash_fuel_sales():
 
 
 @pytest.mark.django_db
+def test_cec_prefers_billing_payment_method_snapshot_before_source_lookup():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["cec.close_run.read", "cec.close_run.create", "cec.close_run.update"],
+    )
+    now = timezone.now()
+    _sale, doc = _create_fuel_billing_doc(
+        company=company,
+        branch=branch,
+        user=user,
+        amount=Decimal("90.00"),
+        payment_method=FuelPaymentMethod.TRANSFER,
+        issued_at=now - timedelta(minutes=20),
+    )
+    doc.payment_method = TenderPaymentMethod.CASH
+    doc.save(update_fields=["payment_method"])
+    _create_cash_income(company=company, branch=branch, user=user, amount=Decimal("90.00"), created_at=now - timedelta(minutes=10))
+
+    _, execute_resp = _execute_daily_close(client=client, now=now)
+
+    assert execute_resp.data["status"] == "PACKAGED"
+    metric = _billing_cash_metric(execute_resp)
+    assert metric["cash_expected_billing_total"] == "90.00"
+    assert metric["non_cash_billing_total"] == "0.00"
+    assert metric["difference"] == "0.00"
+    assert not CECException.objects.filter(code="BILLING_CASH_MISMATCH").exists()
+
+
+@pytest.mark.django_db
 def test_cec_transfer_and_credit_fuel_sales_do_not_create_cash_mismatch():
     company, branch = _mk_org()
     client, user = _client_with_perms(
@@ -259,9 +291,49 @@ def test_cec_transfer_and_credit_fuel_sales_do_not_create_cash_mismatch():
     assert metric["non_cash_billing_total"] == "200.00"
     assert metric["transfer_billing_total"] == "120.00"
     assert metric["credit_billing_total"] == "80.00"
+    assert metric["card_billing_total"] == "0.00"
     assert metric["cash_total"] == "0.00"
     assert metric["difference"] == "0.00"
     assert metric["non_cash_billing_count"] == 2
+    assert not CECException.objects.filter(code="BILLING_CASH_MISMATCH").exists()
+
+
+@pytest.mark.django_db
+def test_cec_card_billing_snapshot_is_non_cash_without_source_lookup():
+    company, branch = _mk_org()
+    client, user = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["cec.close_run.read", "cec.close_run.create", "cec.close_run.update"],
+    )
+    now = timezone.now()
+    BillingDocument.objects.create(
+        company=company,
+        branch=branch,
+        doc_type=DocType.INVOICE,
+        status=DocStatus.ISSUED,
+        series="CARD",
+        number=9100,
+        currency="NIO",
+        subtotal=Decimal("55.00"),
+        tax_total=Decimal("0.00"),
+        total=Decimal("55.00"),
+        payment_method=TenderPaymentMethod.CARD,
+        issued_at=now - timedelta(minutes=20),
+        created_by=user,
+        created_at=now - timedelta(minutes=20),
+    )
+
+    _, execute_resp = _execute_daily_close(client=client, now=now)
+
+    assert execute_resp.data["status"] == "PACKAGED"
+    metric = _billing_cash_metric(execute_resp)
+    assert metric["billing_total"] == "55.00"
+    assert metric["cash_expected_billing_total"] == "0.00"
+    assert metric["non_cash_billing_total"] == "55.00"
+    assert metric["card_billing_total"] == "55.00"
+    assert metric["unknown_tender_billing_total"] == "0.00"
+    assert metric["difference"] == "0.00"
     assert not CECException.objects.filter(code="BILLING_CASH_MISMATCH").exists()
 
 

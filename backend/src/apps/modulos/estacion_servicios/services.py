@@ -828,6 +828,7 @@ def create_sale_with_status(
             }
         ],
         idempotency_key=f"fuel:sale:{sale.id}",
+        payment_method=sale.payment_method,
         source_module="FUEL",
         source_type="SALE",
         source_id=str(sale.id),

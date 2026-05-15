@@ -80,6 +80,7 @@ class PaymentIntentListCreateView(APIView):
                 "external_ref": r.external_ref,
                 "provider": r.provider,
                 "provider_txn_id": r.provider_txn_id,
+                "payment_method": r.payment_method,
                 "created_at": r.created_at,
             }
             for r in rows
@@ -102,6 +103,7 @@ class PaymentIntentListCreateView(APIView):
                 idempotency_key=v.get("idempotency_key", "") or "",
                 external_ref=v.get("external_ref", "") or "",
                 provider=v.get("provider", "") or "",
+                payment_method=v.get("payment_method", "") or "",
             )
         except PaymentsDomainError as exc:
             return Response(
@@ -115,6 +117,7 @@ class PaymentIntentListCreateView(APIView):
                 "status": intent.status,
                 "amount": str(intent.amount),
                 "currency": intent.currency,
+                "payment_method": intent.payment_method,
                 "idempotent": bool(idempotent),
             },
             status=status.HTTP_200_OK if idempotent else status.HTTP_201_CREATED,

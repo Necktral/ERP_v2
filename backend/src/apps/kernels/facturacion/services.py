@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.modulos.audit.writer import write_event
 from apps.modulos.common.api_exceptions import ConflictError
 from apps.modulos.common.domain_errors import IntegrationError
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_VALUES
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.services import publish_outbox_event
 
@@ -153,10 +154,18 @@ def _fiscal_payload(*, doc: BillingDocument) -> dict:
 
 def _source_payload(*, doc: BillingDocument) -> dict:
     return {
+        "payment_method": str(doc.payment_method or ""),
         "source_module": str(doc.source_module or ""),
         "source_type": str(doc.source_type or ""),
         "source_id": str(doc.source_id or ""),
     }
+
+
+def _normalize_payment_method(payment_method: str) -> str:
+    normalized = str(payment_method or "").strip().upper()
+    if normalized and normalized not in TENDER_PAYMENT_METHOD_VALUES:
+        raise BillingError("invalid payment_method")
+    return normalized
 
 
 def _assert_fiscal_transition(*, current: str, target: str) -> None:
@@ -223,6 +232,7 @@ def create_draft(
     source_module: str = "",
     source_type: str = "",
     source_id: str = "",
+    payment_method: str = "",
     correlation_id: str = "",
     causation_id: str = "",
 ) -> CreateResult:
@@ -236,6 +246,7 @@ def create_draft(
         raise BillingError("lines required")
 
     computed, subtotal, tax_total, total = _compute_lines_and_totals(lines_in=lines)
+    normalized_payment_method = _normalize_payment_method(payment_method)
 
     with transaction.atomic():
         if idempotency_key:
@@ -258,6 +269,7 @@ def create_draft(
             total=total,
             is_fiscal=bool(is_fiscal),
             idempotency_key=idempotency_key or "",
+            payment_method=normalized_payment_method,
             source_module=source_module or "",
             source_type=source_type or "",
             source_id=source_id or "",
@@ -296,6 +308,7 @@ def create_draft(
                 "total": str(doc.total),
                 "is_fiscal": bool(doc.is_fiscal),
                 "idempotency_key": idempotency_key,
+                "payment_method": doc.payment_method,
                 "source_module": doc.source_module,
                 "source_type": doc.source_type,
                 "source_id": doc.source_id,

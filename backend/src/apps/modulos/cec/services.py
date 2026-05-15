@@ -12,6 +12,7 @@ from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
 from apps.modulos.common.api_exceptions import ConflictError
+from apps.modulos.common.tender import NON_CASH_TENDER_PAYMENT_METHODS, TenderPaymentMethod
 from apps.modulos.integration.services import publish_outbox_event
 from apps.kernels.payments.models import CashMovement, CashSession
 from apps.modulos.compras.models import PurchaseDocument, PurchaseDocStatus, PurchaseDocType
@@ -21,9 +22,6 @@ from apps.kernels.inventarios.models import StockBalance
 from .models import CECException, CloseRun
 
 TOLERANCE = Decimal("0.01")
-FUEL_PAYMENT_METHOD_CASH = "CASH"
-FUEL_PAYMENT_METHOD_TRANSFER = "TRANSFER"
-FUEL_PAYMENT_METHOD_CREDIT = "CREDIT"
 SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
@@ -241,7 +239,7 @@ def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window
     doc_qs = BillingDocument.objects.filter(**doc_filters)
     billing_total = doc_qs.aggregate(total=Coalesce(Sum("total"), Value(Decimal("0.00"))))["total"] or Decimal("0.00")
 
-    doc_rows = list(doc_qs.values("id", "total", "source_module", "source_type", "source_id"))
+    doc_rows = list(doc_qs.values("id", "total", "payment_method", "source_module", "source_type", "source_id"))
     fuel_sale_ids: set[int] = set()
     for row in doc_rows:
         if row["source_module"] != "FUEL" or row["source_type"] != "SALE":
@@ -264,6 +262,7 @@ def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window
     non_cash_billing_total = Decimal("0.00")
     transfer_billing_total = Decimal("0.00")
     credit_billing_total = Decimal("0.00")
+    card_billing_total = Decimal("0.00")
     unknown_tender_billing_total = Decimal("0.00")
     cash_expected_billing_count = 0
     non_cash_billing_count = 0
@@ -271,23 +270,24 @@ def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window
 
     for row in doc_rows:
         amount = Decimal(row["total"] or Decimal("0.00"))
-        tender = ""
-        if row["source_module"] == "FUEL" and row["source_type"] == "SALE":
+        tender = str(row["payment_method"] or "")
+        if not tender and row["source_module"] == "FUEL" and row["source_type"] == "SALE":
             try:
                 tender = fuel_sale_tender_by_id.get(int(str(row["source_id"] or "")), "")
             except ValueError:
                 tender = ""
 
-        if tender == FUEL_PAYMENT_METHOD_CASH:
+        if tender == TenderPaymentMethod.CASH:
             cash_expected_billing_total += amount
             cash_expected_billing_count += 1
-        elif tender == FUEL_PAYMENT_METHOD_TRANSFER:
+        elif tender in NON_CASH_TENDER_PAYMENT_METHODS:
+            if tender == TenderPaymentMethod.TRANSFER:
+                transfer_billing_total += amount
+            elif tender == TenderPaymentMethod.CREDIT:
+                credit_billing_total += amount
+            elif tender == TenderPaymentMethod.CARD:
+                card_billing_total += amount
             non_cash_billing_total += amount
-            transfer_billing_total += amount
-            non_cash_billing_count += 1
-        elif tender == FUEL_PAYMENT_METHOD_CREDIT:
-            non_cash_billing_total += amount
-            credit_billing_total += amount
             non_cash_billing_count += 1
         else:
             unknown_tender_billing_total += amount
@@ -334,6 +334,7 @@ def _collect_billing_cash_mismatch_issues(*, run: CloseRun, window_start, window
         "non_cash_billing_total": str(non_cash_billing_total),
         "transfer_billing_total": str(transfer_billing_total),
         "credit_billing_total": str(credit_billing_total),
+        "card_billing_total": str(card_billing_total),
         "unknown_tender_billing_total": str(unknown_tender_billing_total),
         "cash_expected_billing_count": int(cash_expected_billing_count),
         "non_cash_billing_count": int(non_cash_billing_count),
