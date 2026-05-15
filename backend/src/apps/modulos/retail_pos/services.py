@@ -747,6 +747,7 @@ def checkout_ticket(*, request, actor_user, ticket: PosTicket, line_payload: dic
                 idempotency_key=_pos_payment_idempotency_key(ticket),
                 external_ref=f"pos-ticket:{ticket.id}",
                 provider="POS",
+                payment_method=ticket.payment_method,
             )
         intent = capture_payment_intent(
             request=request,

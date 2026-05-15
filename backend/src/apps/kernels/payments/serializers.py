@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES
+
 from .models import CashMovement
 
 
@@ -11,6 +13,11 @@ class PaymentIntentCreateIn(serializers.Serializer):
     external_ref = serializers.CharField(max_length=96, required=False, allow_blank=True)
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
     provider = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    payment_method = serializers.ChoiceField(
+        choices=TENDER_PAYMENT_METHOD_CHOICES,
+        required=False,
+        allow_blank=True,
+    )
 
 
 class CashSessionOpenIn(serializers.Serializer):

@@ -10,6 +10,7 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.modulos.audit.writer import write_event
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_VALUES
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.services import publish_outbox_event
 
@@ -38,6 +39,13 @@ class PaymentsValidationError(PaymentsDomainError):
 
 class ActorPrincipal(Protocol):
     id: Any
+
+
+def _normalize_payment_method(payment_method: str) -> str:
+    normalized = str(payment_method or "").strip().upper()
+    if normalized and normalized not in TENDER_PAYMENT_METHOD_VALUES:
+        raise PaymentsValidationError("payment_method inválido.")
+    return normalized
 
 
 def _coerce_actor_for_fk(*, actor: ActorPrincipal, field_name: str) -> Any:
@@ -77,7 +85,9 @@ def create_payment_intent_for_scope(
     idempotency_key: str = "",
     external_ref: str = "",
     provider: str = "",
+    payment_method: str = "",
 ) -> tuple[PaymentIntent, bool]:
+    normalized_payment_method = _normalize_payment_method(payment_method)
     with transaction.atomic():
         if idempotency_key:
             existing = PaymentIntent.objects.filter(company=company, idempotency_key=idempotency_key).first()
@@ -92,6 +102,7 @@ def create_payment_intent_for_scope(
             idempotency_key=idempotency_key or "",
             external_ref=external_ref or "",
             provider=provider or "",
+            payment_method=normalized_payment_method,
         )
         publish_outbox_event(
             request=request,
@@ -103,6 +114,7 @@ def create_payment_intent_for_scope(
                 "currency": intent.currency,
                 "status": intent.status,
                 "idempotency_key": intent.idempotency_key,
+                "payment_method": intent.payment_method,
             },
             actor_user=actor,
             company=company,
@@ -120,6 +132,7 @@ def create_payment_intent(
     idempotency_key: str = "",
     external_ref: str = "",
     provider: str = "",
+    payment_method: str = "",
 ) -> tuple[PaymentIntent, bool]:
     company, branch = _scope_from_request(request)
     return create_payment_intent_for_scope(
@@ -132,6 +145,7 @@ def create_payment_intent(
         idempotency_key=idempotency_key,
         external_ref=external_ref,
         provider=provider,
+        payment_method=payment_method,
     )
 
 
@@ -183,6 +197,7 @@ def capture_payment_intent_for_scope(
                 "currency": intent.currency,
                 "status": intent.status,
                 "provider_txn_id": intent.provider_txn_id,
+                "payment_method": intent.payment_method,
             },
             actor_user=actor,
             company=company,

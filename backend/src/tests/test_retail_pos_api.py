@@ -215,6 +215,8 @@ def test_retail_pos_end_to_end_checkout_void_and_cockpit() -> None:
     assert r_checkout.data["status"] == "CLOSED"
     assert r_checkout.data["sale_id"] is not None
     assert r_checkout.data["payment_intent_id"] != ""
+    intent = PaymentIntent.objects.get(payment_id=r_checkout.data["payment_intent_id"])
+    assert intent.payment_method == "CASH"
 
     r_cockpit = client.get("/api/retail/pos/cockpit/")
     assert r_cockpit.status_code == 200
@@ -246,6 +248,57 @@ def test_retail_pos_end_to_end_checkout_void_and_cockpit() -> None:
     assert "POSTicketClosed" in emitted
     assert "POSVoidRequested" in emitted
     assert "POSSessionClosed" in emitted
+
+
+@pytest.mark.django_db
+def test_retail_pos_transfer_checkout_snapshots_payment_method_without_cash_movement() -> None:
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "fuel.shift.open",
+            "retail.pos.session.open",
+            "retail.pos.ticket.open",
+            "retail.pos.ticket.checkout",
+            "retail.pos.ticket.read",
+        ],
+    )
+
+    shift = client.post("/api/fuel/shifts/open/", {"note": "turno-pos-transfer"}, format="json")
+    assert shift.status_code == 201
+    session = client.post(
+        "/api/retail/pos/sessions/open/",
+        {"opening_amount": "20.00", "note": "apertura-transfer"},
+        format="json",
+    )
+    assert session.status_code == 201
+    ticket = client.post(
+        "/api/retail/pos/tickets/",
+        {
+            "shift_id": shift.data["id"],
+            "idempotency_key": "ticket-pos-transfer-001",
+            "payment_method": "TRANSFER",
+        },
+        format="json",
+    )
+    assert ticket.status_code == 201
+
+    checkout = client.post(
+        f"/api/retail/pos/tickets/{ticket.data['id']}/checkout/",
+        _checkout_line_payload(volume="4.0000", unit_price="40.0000"),
+        format="json",
+    )
+
+    assert checkout.status_code == 200, checkout.content.decode()
+    assert checkout.data["status"] == "CLOSED"
+    assert checkout.data["cash_movement_id"] is None
+    intent = PaymentIntent.objects.get(payment_id=checkout.data["payment_intent_id"])
+    assert intent.payment_method == "TRANSFER"
+    sale = FuelSale.objects.get(id=checkout.data["sale_id"])
+    assert sale.payment_method == "TRANSFER"
+    assert sale.billing_doc is not None
+    assert sale.billing_doc.payment_method == "TRANSFER"
 
 
 @pytest.mark.django_db
