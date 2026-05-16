@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.kernels.payments.models import CashMovement, CashSession, PaymentIntent
@@ -12,6 +13,7 @@ from apps.kernels.payments.services import PaymentsDomainError
 from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.integration.models import OutboxEvent
+from apps.modulos.integration.services import publish_outbox_event
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 User = get_user_model()
@@ -55,6 +57,40 @@ def _client_with_perms(*, company: OrgUnit, branch: OrgUnit, perm_codes: list[st
     client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
     client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
     return client
+
+
+def _mk_captured_intent_for_api(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    payment_method: str = "TRANSFER",
+) -> PaymentIntent:
+    intent = PaymentIntent.objects.create(
+        company=company,
+        branch=branch,
+        amount=Decimal("44.00"),
+        currency="NIO",
+        status=PaymentIntent.Status.CAPTURED,
+        payment_method=payment_method,
+        provider="TEST",
+        provider_txn_id="api-txn-001",
+        captured_at=timezone.now(),
+    )
+    publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptured",
+        payload={
+            "payment_id": str(intent.payment_id),
+            "amount": str(intent.amount),
+            "currency": intent.currency,
+            "status": intent.status,
+            "provider_txn_id": intent.provider_txn_id,
+            "payment_method": intent.payment_method,
+        },
+        company=company,
+        branch=branch,
+    )
+    return intent
 
 
 @pytest.mark.django_db
@@ -137,6 +173,84 @@ def test_payments_intent_cash_session_and_outbox():
     assert "CashSessionClosed" in emitted
     created_event = OutboxEvent.objects.get(source_module="PAYMENTS", event_type="PaymentIntentCreated")
     assert created_event.payload["data"]["payment_method"] == "TRANSFER"
+
+
+@pytest.mark.django_db
+def test_payments_reverse_capture_api_is_idempotent_for_transfer():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["payments.intent.create"],
+    )
+    intent = _mk_captured_intent_for_api(company=company, branch=branch)
+    payload = {"idempotency_key": "reverse-api-1", "reason": "CUSTOMER_VOID"}
+
+    first = client.post(f"/api/payments/intents/{intent.payment_id}/reverse-capture/", payload, format="json")
+    second = client.post(f"/api/payments/intents/{intent.payment_id}/reverse-capture/", payload, format="json")
+
+    intent.refresh_from_db()
+    assert first.status_code == 201
+    assert first.data["idempotent"] is False
+    assert first.data["status"] == PaymentIntent.Status.REFUNDED
+    assert second.status_code == 200
+    assert second.data["idempotent"] is True
+    assert second.data["payment_id"] == first.data["payment_id"]
+    assert intent.status == PaymentIntent.Status.REFUNDED
+    assert OutboxEvent.objects.filter(source_module="PAYMENTS", event_type="PaymentCaptureReversed").count() == 1
+
+
+@pytest.mark.django_db
+def test_payments_reverse_capture_api_requires_permission():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["payments.intent.read"],
+    )
+    intent = _mk_captured_intent_for_api(company=company, branch=branch)
+
+    resp = client.post(
+        f"/api/payments/intents/{intent.payment_id}/reverse-capture/",
+        {"idempotency_key": "reverse-api-denied"},
+        format="json",
+    )
+
+    assert resp.status_code == 403
+    assert OutboxEvent.objects.filter(source_module="PAYMENTS", event_type="PaymentCaptureReversed").count() == 0
+
+
+@pytest.mark.django_db
+def test_payments_reverse_capture_api_validates_and_maps_domain_errors():
+    company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=["payments.intent.create"],
+    )
+    transfer = _mk_captured_intent_for_api(company=company, branch=branch)
+    cash = _mk_captured_intent_for_api(company=company, branch=branch, payment_method="CASH")
+
+    missing_key = client.post(f"/api/payments/intents/{transfer.payment_id}/reverse-capture/", {}, format="json")
+    not_found = client.post(
+        f"/api/payments/intents/{uuid.uuid4()}/reverse-capture/",
+        {"idempotency_key": "reverse-api-not-found"},
+        format="json",
+    )
+    invalid_tender = client.post(
+        f"/api/payments/intents/{cash.payment_id}/reverse-capture/",
+        {"idempotency_key": "reverse-api-cash"},
+        format="json",
+    )
+
+    transfer.refresh_from_db()
+    cash.refresh_from_db()
+    assert missing_key.status_code == 422
+    assert not_found.status_code == 404
+    assert invalid_tender.status_code == 409
+    assert transfer.status == PaymentIntent.Status.CAPTURED
+    assert cash.status == PaymentIntent.Status.CAPTURED
+    assert OutboxEvent.objects.filter(source_module="PAYMENTS", event_type="PaymentCaptureReversed").count() == 0
 
 
 @pytest.mark.django_db

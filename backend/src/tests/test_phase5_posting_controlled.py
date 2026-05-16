@@ -531,6 +531,40 @@ def test_reconcile_operational_vs_accounting_excludes_payment_captured_from_opr1
 
 
 @pytest.mark.django_db
+def test_reconcile_operational_vs_accounting_excludes_payment_capture_reversed_from_cap05a_readiness():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase5_reconcile_payment_reversed", password="x")
+    reversed_event = publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptureReversed",
+        payload={
+            "payment_id": "00000000-0000-0000-0000-000000000001",
+            "amount": "36.75",
+            "currency": "NIO",
+            "payment_method": "TRANSFER",
+            "previous_status": "CAPTURED",
+            "status": "REFUNDED",
+            "reverses_event_type": "PaymentCaptured",
+            "reverses_outbox_event_id": "00000000-0000-0000-0000-000000000002",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+    local_dt = timezone.localtime(reversed_event.occurred_at).date()
+
+    reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        branch=branch,
+        date_from=local_dt,
+        date_to=local_dt,
+    )
+
+    assert reconciliation["summary"]["operational_events"] == 0
+    assert reconciliation["by_event_type"] == []
+
+
+@pytest.mark.django_db
 def test_period_close_gates_include_failed_payments_outbox():
     company, branch = _mk_scope()
     user = User.objects.create_user(username="phase5_close_payments_failed_outbox", password="x")

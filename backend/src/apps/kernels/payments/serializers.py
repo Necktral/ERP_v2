@@ -20,6 +20,11 @@ class PaymentIntentCreateIn(serializers.Serializer):
     )
 
 
+class PaymentIntentReverseCaptureIn(serializers.Serializer):
+    idempotency_key = serializers.CharField(max_length=96, allow_blank=False, trim_whitespace=True)
+    reason = serializers.CharField(max_length=255, required=False, allow_blank=True, trim_whitespace=True)
+
+
 class CashSessionOpenIn(serializers.Serializer):
     opening_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
     notes = serializers.CharField(required=False, allow_blank=True)

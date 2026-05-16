@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any, Protocol, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -10,8 +10,9 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.modulos.audit.writer import write_event
-from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_VALUES
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_VALUES, TenderPaymentMethod
 from apps.modulos.iam.models import OrgUnit
+from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
 
 from .models import CashMovement, CashSession, PaymentIntent
@@ -72,6 +73,30 @@ def _scope_from_request(request: HttpRequest) -> tuple[OrgUnit, OrgUnit]:
         raise PaymentsValidationError("X-Company-Id inválido")
     branch = _branch_from_request(request)
     return company, branch
+
+
+def _dt_iso(value) -> str:
+    return value.isoformat() if value else ""
+
+
+def _capture_reversal_metadata(intent: PaymentIntent) -> dict[str, Any]:
+    metadata = intent.metadata if isinstance(intent.metadata, dict) else {}
+    reversal = metadata.get("capture_reversal")
+    return reversal if isinstance(reversal, dict) else {}
+
+
+def _find_payment_captured_event(*, intent: PaymentIntent, company: OrgUnit, branch: OrgUnit) -> OutboxEvent | None:
+    return (
+        OutboxEvent.objects.filter(
+            source_module="PAYMENTS",
+            event_type="PaymentCaptured",
+            company=company,
+            branch=branch,
+            payload__data__payment_id=str(intent.payment_id),
+        )
+        .order_by("-occurred_at", "-id")
+        .first()
+    )
 
 
 def create_payment_intent_for_scope(
@@ -223,6 +248,124 @@ def capture_payment_intent(
         payment_id=payment_id,
         provider_txn_id=provider_txn_id,
         metadata=metadata,
+    )
+
+
+def reverse_captured_payment_intent_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    request: HttpRequest | None = None,
+    idempotency_key: str,
+    reason: str = "",
+) -> tuple[PaymentIntent, bool]:
+    idempotency_key = str(idempotency_key or "").strip()
+    reason = str(reason or "").strip()
+    if not idempotency_key:
+        raise PaymentsValidationError("idempotency_key requerido.")
+    if len(reason) > 255:
+        raise PaymentsValidationError("reason demasiado largo.")
+
+    with transaction.atomic():
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(
+                payment_id=payment_id,
+                company=company,
+                branch=branch,
+            )
+            .first()
+        )
+        if intent is None:
+            raise PaymentsNotFoundError("Payment intent no encontrado.")
+
+        if intent.status == PaymentIntent.Status.REFUNDED:
+            reversal = _capture_reversal_metadata(intent)
+            if str(reversal.get("idempotency_key") or "") == idempotency_key:
+                if str(reversal.get("reason") or "") != reason:
+                    raise PaymentsConflictError("Idempotency key reutilizada con payload distinto.")
+                return intent, True
+            if reversal:
+                raise PaymentsConflictError("Payment intent ya fue reversado con otra idempotency_key.")
+            raise PaymentsInvalidStateError("Payment intent no se puede reversar en su estado actual.")
+
+        if intent.status != PaymentIntent.Status.CAPTURED:
+            raise PaymentsInvalidStateError("Payment intent no se puede reversar en su estado actual.")
+
+        if intent.payment_method != TenderPaymentMethod.TRANSFER:
+            raise PaymentsInvalidStateError("Payment intent solo permite reversa CAP-05A para TRANSFER.")
+
+        captured_event = _find_payment_captured_event(intent=intent, company=company, branch=branch)
+        if captured_event is None:
+            raise PaymentsConflictError("PaymentCaptured original requerido para reversa.")
+
+        now = timezone.now()
+        previous_status = intent.status
+        reversal_id = str(uuid4())
+        metadata = dict(intent.metadata) if isinstance(intent.metadata, dict) else {}
+        metadata["capture_reversal"] = {
+            "idempotency_key": idempotency_key,
+            "reason": reason,
+            "reversal_id": reversal_id,
+            "reverses_event_type": "PaymentCaptured",
+            "reverses_outbox_event_id": str(captured_event.event_id),
+            "reversed_at": now.isoformat(),
+        }
+
+        intent.status = PaymentIntent.Status.REFUNDED
+        intent.refunded_at = now
+        intent.updated_at = now
+        intent.metadata = metadata
+        intent.save(update_fields=["status", "refunded_at", "metadata", "updated_at"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="PaymentCaptureReversed",
+            payload={
+                "payment_id": str(intent.payment_id),
+                "amount": str(intent.amount),
+                "currency": intent.currency,
+                "payment_method": intent.payment_method,
+                "provider_txn_id": intent.provider_txn_id,
+                "previous_status": previous_status,
+                "status": intent.status,
+                "captured_at": _dt_iso(intent.captured_at),
+                "refunded_at": _dt_iso(intent.refunded_at),
+                "idempotency_key": idempotency_key,
+                "reason": reason,
+                "reversal_id": reversal_id,
+                "reverses_event_type": "PaymentCaptured",
+                "reverses_outbox_event_id": str(captured_event.event_id),
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+            correlation_id=str(captured_event.correlation_id or ""),
+            causation_id=str(captured_event.event_id),
+        )
+        return intent, False
+
+
+def reverse_captured_payment_intent(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    idempotency_key: str,
+    reason: str = "",
+) -> tuple[PaymentIntent, bool]:
+    company, branch = _scope_from_request(request)
+    return reverse_captured_payment_intent_for_scope(
+        company=company,
+        branch=branch,
+        actor=actor,
+        request=request,
+        payment_id=payment_id,
+        idempotency_key=idempotency_key,
+        reason=reason,
     )
 
 
