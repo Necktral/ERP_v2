@@ -14,6 +14,7 @@ from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
 from apps.modulos.common.domain_errors import DomainError, IntegrationError
+from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.cec.services import advance_close_run_state
 from apps.modulos.iam.models import OrgUnit
@@ -53,10 +54,16 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("INVENTORY", "InventoryMovementPosted"),
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
+    ("PAYMENTS", "PaymentCaptured"),
+    ("PAYMENTS", "PaymentCaptureReversed"),
     ("PAYMENTS", "CashMovementPosted"),
     ("PAYMENTS", "CashSessionClosed"),
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
+}
+TRANSFER_PAYMENT_ACCOUNTING_EVENTS = {
+    ("PAYMENTS", "PaymentCaptured"),
+    ("PAYMENTS", "PaymentCaptureReversed"),
 }
 
 OPERATIONAL_ACCOUNTING_EVENTS = {
@@ -67,6 +74,8 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryTransferCompleted"),
 }
 ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
+    ("PAYMENTS", "PaymentCaptured"),
+    ("PAYMENTS", "PaymentCaptureReversed"),
     ("PAYMENTS", "CashMovementPosted"),
     ("PAYMENTS", "CashSessionClosed"),
 }
@@ -251,6 +260,10 @@ def _event_is_supported(event: OutboxEvent) -> bool:
     key = (event.source_module, event.event_type)
     if key not in SUPPORTED_ECONOMIC_EVENTS:
         return False
+    if key in TRANSFER_PAYMENT_ACCOUNTING_EVENTS:
+        data = _event_data(event)
+        payment_method = str(data.get("payment_method") or "").strip().upper()
+        return payment_method == TenderPaymentMethod.TRANSFER
     if key == ("PAYMENTS", "CashSessionClosed"):
         data = _event_data(event)
         return abs(_to_decimal(data.get("difference_amount"))) > Decimal("0.00")
@@ -288,6 +301,16 @@ def _enrich_event_data(event: OutboxEvent, *, base_data: dict[str, Any]) -> dict
             data["transfer_total_cost_abs"] = str(abs(transfer_total))
 
     if event.source_module == "PAYMENTS":
+        if event.event_type in ("PaymentCaptured", "PaymentCaptureReversed"):
+            payment_method = str(data.get("payment_method") or "").strip().upper()
+            data["payment_method"] = payment_method
+            data["amount_abs"] = str(abs(_to_decimal(data.get("amount"))))
+            data["is_transfer_capture"] = (
+                event.event_type == "PaymentCaptured" and payment_method == TenderPaymentMethod.TRANSFER
+            )
+            data["is_transfer_reversal"] = (
+                event.event_type == "PaymentCaptureReversed" and payment_method == TenderPaymentMethod.TRANSFER
+            )
         if event.event_type == "CashMovementPosted":
             data["amount_abs"] = str(abs(_to_decimal(data.get("amount"))))
         if event.event_type == "CashSessionClosed":
@@ -1599,6 +1622,26 @@ def build_rules_json_v1() -> dict[str, Any]:
                 ],
             },
             {
+                "id": "payment_captured_transfer",
+                "source_module": "PAYMENTS",
+                "event_type": "PaymentCaptured",
+                "when": {"payment_method": "TRANSFER"},
+                "lines": [
+                    {"account": "1103", "side": "DEBIT", "amount_from": "amount_abs", "sign": 1},
+                    {"account": "1101", "side": "CREDIT", "amount_from": "amount_abs", "sign": 1},
+                ],
+            },
+            {
+                "id": "payment_capture_reversed_transfer",
+                "source_module": "PAYMENTS",
+                "event_type": "PaymentCaptureReversed",
+                "when": {"payment_method": "TRANSFER"},
+                "lines": [
+                    {"account": "1101", "side": "DEBIT", "amount_from": "amount_abs", "sign": 1},
+                    {"account": "1103", "side": "CREDIT", "amount_from": "amount_abs", "sign": 1},
+                ],
+            },
+            {
                 "id": "cash_movement_income",
                 "source_module": "PAYMENTS",
                 "event_type": "CashMovementPosted",
@@ -2743,6 +2786,8 @@ def reconcile_operational_vs_accounting(
         if ev.source_module == "BILLING":
             return abs(_to_decimal(data.get("total")))
         if ev.source_module == "PAYMENTS":
+            if ev.event_type in ("PaymentCaptured", "PaymentCaptureReversed"):
+                return abs(_to_decimal(data.get("amount")))
             if ev.event_type == "CashMovementPosted":
                 return abs(_to_decimal(data.get("amount")))
             if ev.event_type == "CashSessionClosed":
