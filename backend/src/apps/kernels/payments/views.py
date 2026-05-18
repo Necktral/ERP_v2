@@ -10,7 +10,13 @@ from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 
 from .models import CashSession, PaymentIntent
-from .serializers import CashMovementCreateIn, CashSessionCloseIn, CashSessionOpenIn, PaymentIntentCreateIn
+from .serializers import (
+    CashMovementCreateIn,
+    CashSessionCloseIn,
+    CashSessionOpenIn,
+    PaymentIntentCreateIn,
+    PaymentIntentReverseCaptureIn,
+)
 from .services import (
     PaymentsConflictError,
     PaymentsDomainError,
@@ -21,6 +27,7 @@ from .services import (
     create_payment_intent,
     open_cash_session,
     post_cash_movement_with_status,
+    reverse_captured_payment_intent,
 )
 
 
@@ -109,6 +116,44 @@ class PaymentIntentListCreateView(APIView):
             return Response(
                 {"detail": str(exc)},
                 status=_status_for_payments_error(exc, request=request, view_name="PaymentIntentListCreateView.post"),
+            )
+
+        return Response(
+            {
+                "payment_id": str(intent.payment_id),
+                "status": intent.status,
+                "amount": str(intent.amount),
+                "currency": intent.currency,
+                "payment_method": intent.payment_method,
+                "idempotent": bool(idempotent),
+            },
+            status=status.HTTP_200_OK if idempotent else status.HTTP_201_CREATED,
+        )
+
+
+class PaymentIntentReverseCaptureView(APIView):
+    permission_classes = [rbac_permission("payments.intent.create")]
+
+    def post(self, request, payment_id):
+        s = PaymentIntentReverseCaptureIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        try:
+            intent, idempotent = reverse_captured_payment_intent(
+                request=request,
+                actor=request.user,
+                payment_id=payment_id,
+                idempotency_key=v["idempotency_key"],
+                reason=v.get("reason", "") or "",
+            )
+        except PaymentsDomainError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=_status_for_payments_error(
+                    exc,
+                    request=request,
+                    view_name="PaymentIntentReverseCaptureView.post",
+                ),
             )
 
         return Response(
