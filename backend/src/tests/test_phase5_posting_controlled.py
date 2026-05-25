@@ -10,8 +10,13 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.utils import timezone
 
-from apps.kernels.accounting.models import FiscalPeriod, JournalDraft, JournalEntry
-from apps.kernels.accounting.services import evaluate_period_close_gates, reconcile_operational_vs_accounting
+from apps.kernels.accounting.models import EconomicEvent, FiscalPeriod, JournalDraft, JournalEntry
+from apps.kernels.accounting.services import (
+    OPERATIONAL_ACCOUNTING_EVENTS,
+    dispatch_accounting_outbox_events,
+    evaluate_period_close_gates,
+    reconcile_operational_vs_accounting,
+)
 from apps.modulos.cec.models import CloseRun
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent
@@ -95,6 +100,58 @@ def _mk_cash_movement_event(
             "movement_type": movement_type,
             "amount": amount,
             "reference": "phase5-payments-readiness",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _mk_payment_captured_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    payment_method: str = "TRANSFER",
+    amount: str = "36.75",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptured",
+        payload={
+            "payment_id": f"payment-{payment_method or 'unknown'}",
+            "amount": amount,
+            "currency": "NIO",
+            "status": "CAPTURED",
+            "provider_txn_id": "txn-phase5-transfer",
+            "payment_method": payment_method,
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _mk_payment_capture_reversed_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    payment_method: str = "TRANSFER",
+    amount: str = "36.75",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptureReversed",
+        payload={
+            "payment_id": f"payment-reversed-{payment_method or 'unknown'}",
+            "amount": amount,
+            "currency": "NIO",
+            "payment_method": payment_method,
+            "previous_status": "CAPTURED",
+            "status": "REFUNDED",
+            "reverses_event_type": "PaymentCaptured",
+            "reverses_outbox_event_id": "00000000-0000-0000-0000-000000000002",
         },
         company=company,
         branch=branch,
@@ -502,7 +559,7 @@ def test_reconcile_operational_vs_accounting_includes_payments_cash_movement():
 
 
 @pytest.mark.django_db
-def test_reconcile_operational_vs_accounting_excludes_payment_captured_from_opr1b_readiness():
+def test_reconcile_operational_vs_accounting_excludes_unknown_payment_captured():
     company, branch = _mk_scope()
     user = User.objects.create_user(username="phase5_reconcile_payment_captured", password="x")
     captured = publish_outbox_event(
@@ -531,27 +588,16 @@ def test_reconcile_operational_vs_accounting_excludes_payment_captured_from_opr1
 
 
 @pytest.mark.django_db
-def test_reconcile_operational_vs_accounting_excludes_payment_capture_reversed_from_cap05a_readiness():
+def test_reconcile_operational_vs_accounting_includes_transfer_capture_and_reversal():
     company, branch = _mk_scope()
-    user = User.objects.create_user(username="phase5_reconcile_payment_reversed", password="x")
-    reversed_event = publish_outbox_event(
-        source_module="PAYMENTS",
-        event_type="PaymentCaptureReversed",
-        payload={
-            "payment_id": "00000000-0000-0000-0000-000000000001",
-            "amount": "36.75",
-            "currency": "NIO",
-            "payment_method": "TRANSFER",
-            "previous_status": "CAPTURED",
-            "status": "REFUNDED",
-            "reverses_event_type": "PaymentCaptured",
-            "reverses_outbox_event_id": "00000000-0000-0000-0000-000000000002",
-        },
-        company=company,
-        branch=branch,
-        actor_user=user,
-    )
-    local_dt = timezone.localtime(reversed_event.occurred_at).date()
+    user = User.objects.create_user(username="phase5_reconcile_transfer_payments", password="x")
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+    captured_event = _mk_payment_captured_event(company=company, branch=branch, user=user, amount="36.75")
+    _mk_payment_capture_reversed_event(company=company, branch=branch, user=user, amount="12.25")
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    local_dt = timezone.localtime(captured_event.occurred_at).date()
 
     reconciliation = reconcile_operational_vs_accounting(
         company=company,
@@ -559,9 +605,41 @@ def test_reconcile_operational_vs_accounting_excludes_payment_capture_reversed_f
         date_from=local_dt,
         date_to=local_dt,
     )
+    rows = {
+        row["event_type"]: row
+        for row in reconciliation["by_event_type"]
+        if row["source_module"] == "PAYMENTS"
+    }
 
-    assert reconciliation["summary"]["operational_events"] == 0
-    assert reconciliation["by_event_type"] == []
+    assert reconciliation["summary"]["pending_operational_events"] == 0
+    assert rows["PaymentCaptured"]["operational_count"] == 1
+    assert rows["PaymentCaptured"]["linked_count"] == 1
+    assert rows["PaymentCaptured"]["operational_amount"] == "36.75"
+    assert rows["PaymentCaptured"]["draft_amount"] == "36.75"
+    assert rows["PaymentCaptureReversed"]["operational_count"] == 1
+    assert rows["PaymentCaptureReversed"]["linked_count"] == 1
+    assert rows["PaymentCaptureReversed"]["operational_amount"] == "12.25"
+    assert rows["PaymentCaptureReversed"]["draft_amount"] == "12.25"
+
+
+@pytest.mark.django_db
+def test_payment_capture_reversed_transfer_is_not_operational_auto_posted():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase5_reversal_no_operational_post", password="x")
+    reversed_event = _mk_payment_capture_reversed_event(company=company, branch=branch, user=user)
+
+    assert ("PAYMENTS", "PaymentCaptured") not in OPERATIONAL_ACCOUNTING_EVENTS
+    assert ("PAYMENTS", "PaymentCaptureReversed") not in OPERATIONAL_ACCOUNTING_EVENTS
+
+    summary = dispatch_accounting_outbox_events(limit=10, source_module="PAYMENTS")
+    reversed_event.refresh_from_db()
+
+    assert summary.attempted == 1
+    assert summary.sent == 1
+    assert reversed_event.status == OutboxEvent.Status.SENT
+    assert EconomicEvent.objects.filter(company=company, source_outbox_event_id=reversed_event.event_id).count() == 0
+    assert JournalDraft.objects.count() == 0
+    assert JournalEntry.objects.count() == 0
 
 
 @pytest.mark.django_db

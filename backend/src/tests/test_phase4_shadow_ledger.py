@@ -123,6 +123,73 @@ def _mk_cash_session_closed_event(
     )
 
 
+def _mk_payment_captured_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    payment_method: str = "TRANSFER",
+    amount: str = "36.75",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptured",
+        payload={
+            "payment_id": f"payment-{payment_method or 'unknown'}",
+            "amount": amount,
+            "currency": "NIO",
+            "status": "CAPTURED",
+            "provider_txn_id": "txn-shadow-transfer",
+            "payment_method": payment_method,
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _mk_payment_capture_reversed_event(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    user,
+    payment_method: str = "TRANSFER",
+    amount: str = "36.75",
+):
+    return publish_outbox_event(
+        source_module="PAYMENTS",
+        event_type="PaymentCaptureReversed",
+        payload={
+            "payment_id": f"payment-reversed-{payment_method or 'unknown'}",
+            "amount": amount,
+            "currency": "NIO",
+            "payment_method": payment_method,
+            "previous_status": "CAPTURED",
+            "status": "REFUNDED",
+            "reverses_event_type": "PaymentCaptured",
+            "reverses_outbox_event_id": "00000000-0000-0000-0000-000000000002",
+        },
+        company=company,
+        branch=branch,
+        actor_user=user,
+    )
+
+
+def _assert_line(lines: list[dict], *, account: str, side: str, amount: str) -> None:
+    assert {
+        "account": account,
+        "side": side,
+        "amount": amount,
+    } in [
+        {
+            "account": str(line.get("account")),
+            "side": str(line.get("side")),
+            "amount": str(line.get("amount")),
+        }
+        for line in lines
+    ]
+
+
 @pytest.mark.django_db
 def test_seed_posting_rules_v1_is_idempotent():
     company, _ = _mk_scope()
@@ -354,6 +421,125 @@ def test_project_shadow_ledger_generates_draft_for_cash_session_closed_differenc
     assert Decimal(draft.total_credit) == Decimal("7.25")
     assert draft.metadata["rule_id"] == "cash_session_short"
     assert DraftValidationResult.objects.filter(draft=draft, passed=True, is_blocking=False).exists()
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_generates_draft_for_transfer_payment_captured():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payment_transfer_capture", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    captured_event = _mk_payment_captured_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=captured_event.event_id)
+    assert ee.source_module == "PAYMENTS"
+    assert ee.event_type == "PaymentCaptured"
+    assert ee.payload["data"]["payment_method"] == "TRANSFER"
+    assert ee.payload["data"]["amount_abs"] == "36.75"
+
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert draft.state == JournalDraft.State.VALIDATED
+    assert Decimal(draft.total_debit) == Decimal("36.75")
+    assert Decimal(draft.total_credit) == Decimal("36.75")
+    assert draft.metadata["rule_id"] == "payment_captured_transfer"
+    _assert_line(draft.lines_json, account="1103", side="DEBIT", amount="36.75")
+    _assert_line(draft.lines_json, account="1101", side="CREDIT", amount="36.75")
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_generates_draft_for_transfer_payment_capture_reversed():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payment_transfer_reversal", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    reversed_event = _mk_payment_capture_reversed_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+    assert run.status == CloseRun.Status.PACKAGED
+
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=reversed_event.event_id)
+    assert ee.source_module == "PAYMENTS"
+    assert ee.event_type == "PaymentCaptureReversed"
+    assert ee.payload["data"]["payment_method"] == "TRANSFER"
+    assert ee.payload["data"]["amount_abs"] == "36.75"
+
+    draft = JournalDraft.objects.get(economic_event=ee)
+    assert draft.state == JournalDraft.State.VALIDATED
+    assert Decimal(draft.total_debit) == Decimal("36.75")
+    assert Decimal(draft.total_credit) == Decimal("36.75")
+    assert draft.metadata["rule_id"] == "payment_capture_reversed_transfer"
+    _assert_line(draft.lines_json, account="1101", side="DEBIT", amount="36.75")
+    _assert_line(draft.lines_json, account="1103", side="CREDIT", amount="36.75")
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_reprocess_payment_captured_transfer_is_idempotent():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payment_transfer_idempotent", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    captured_event = _mk_payment_captured_event(company=company, branch=branch, user=user)
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+
+    assert EconomicEvent.objects.filter(company=company, source_outbox_event_id=captured_event.event_id).count() == 1
+    ee = EconomicEvent.objects.get(company=company, source_outbox_event_id=captured_event.event_id)
+    assert JournalDraft.objects.filter(economic_event=ee).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("payment_method", ["CASH", "CREDIT", "CARD", ""])
+def test_project_shadow_ledger_ignores_non_transfer_payment_captured(payment_method: str):
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username=f"phase4_payment_{payment_method or 'unknown'}", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    captured_event = _mk_payment_captured_event(
+        company=company,
+        branch=branch,
+        user=user,
+        payment_method=payment_method,
+    )
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    run.refresh_from_db()
+
+    assert run.status == CloseRun.Status.PACKAGED
+    assert EconomicEvent.objects.filter(company=company, source_outbox_event_id=captured_event.event_id).count() == 0
+    assert JournalDraft.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_project_shadow_ledger_cash_payment_captured_does_not_duplicate_cash_movement():
+    company, branch = _mk_scope()
+    user = User.objects.create_user(username="phase4_payment_cash_no_duplicate", password="x")
+
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run, _ = _mk_packaged_run(company=company, branch=branch, user=user)
+    cash_event = _mk_cash_movement_posted_event(company=company, branch=branch, user=user)
+    captured_event = _mk_payment_captured_event(
+        company=company,
+        branch=branch,
+        user=user,
+        payment_method="CASH",
+    )
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+
+    assert EconomicEvent.objects.filter(company=company, source_outbox_event_id=cash_event.event_id).count() == 1
+    assert EconomicEvent.objects.filter(company=company, source_outbox_event_id=captured_event.event_id).count() == 0
+    assert JournalDraft.objects.count() == 1
+    assert JournalDraft.objects.get().metadata["rule_id"] == "cash_movement_income"
 
 
 @pytest.mark.django_db
