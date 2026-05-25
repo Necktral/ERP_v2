@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.kernels.accounting.models import EconomicEvent, FiscalPeriod, JournalDraft, JournalEntry
 from apps.kernels.accounting.services import (
     OPERATIONAL_ACCOUNTING_EVENTS,
+    build_transfer_payment_settlement_snapshot,
     dispatch_accounting_outbox_events,
     evaluate_period_close_gates,
     reconcile_operational_vs_accounting,
@@ -620,6 +621,91 @@ def test_reconcile_operational_vs_accounting_includes_transfer_capture_and_rever
     assert rows["PaymentCaptureReversed"]["linked_count"] == 1
     assert rows["PaymentCaptureReversed"]["operational_amount"] == "12.25"
     assert rows["PaymentCaptureReversed"]["draft_amount"] == "12.25"
+
+
+@pytest.mark.django_db
+def test_transfer_payment_settlement_snapshot_summarizes_transfer_visibility_without_mutation():
+    company, branch = _mk_scope()
+    other_branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name="B2", parent=company)
+    user = User.objects.create_user(username="phase5_transfer_settlement", password="x")
+    call_command("seed_posting_rules_v1", company_id=company.id)
+    run = _mk_packaged_run(company=company, branch=branch, user=user)
+
+    projected_capture = _mk_payment_captured_event(company=company, branch=branch, user=user, amount="100.00")
+    projected_reversal = _mk_payment_capture_reversed_event(company=company, branch=branch, user=user, amount="25.00")
+    exception_capture = _mk_payment_captured_event(company=company, branch=branch, user=user, amount="10.00")
+    _mk_payment_captured_event(company=company, branch=other_branch, user=user, amount="500.00")
+    for payment_method in ("CASH", "CREDIT", "CARD", ""):
+        _mk_payment_captured_event(
+            company=company,
+            branch=branch,
+            user=user,
+            payment_method=payment_method,
+            amount="999.00",
+        )
+
+    call_command("project_shadow_ledger", run_id=str(run.run_id))
+    exception_eco = EconomicEvent.objects.get(company=company, source_outbox_event_id=exception_capture.event_id)
+    exception_draft = JournalDraft.objects.get(economic_event=exception_eco)
+    exception_draft.state = JournalDraft.State.EXCEPTION
+    exception_draft.save(update_fields=["state"])
+
+    unprojected_capture = _mk_payment_captured_event(company=company, branch=branch, user=user, amount="7.00")
+    failed_capture = _mk_payment_captured_event(company=company, branch=branch, user=user, amount="3.00")
+    failed_capture.status = OutboxEvent.Status.FAILED
+    failed_capture.last_error = "transfer settlement dispatcher timeout"
+    failed_capture.save(update_fields=["status", "last_error"])
+    local_dt = timezone.localtime(projected_capture.occurred_at).date()
+
+    before_outbox_status = {
+        row.event_id: row.status
+        for row in OutboxEvent.objects.filter(source_module="PAYMENTS").order_by("id")
+    }
+    before_draft_state = {row.id: row.state for row in JournalDraft.objects.order_by("id")}
+    before_counts = (EconomicEvent.objects.count(), JournalDraft.objects.count())
+
+    snapshot = build_transfer_payment_settlement_snapshot(
+        company=company,
+        branch=branch,
+        date_from=local_dt,
+        date_to=local_dt,
+    )
+
+    assert before_outbox_status == {
+        row.event_id: row.status
+        for row in OutboxEvent.objects.filter(source_module="PAYMENTS").order_by("id")
+    }
+    assert before_draft_state == {row.id: row.state for row in JournalDraft.objects.order_by("id")}
+    assert before_counts == (EconomicEvent.objects.count(), JournalDraft.objects.count())
+
+    summary = snapshot["summary"]
+    assert summary["transfer_captured_count"] == 4
+    assert summary["transfer_reversed_count"] == 1
+    assert summary["transfer_captured_amount"] == "120.00"
+    assert summary["transfer_reversed_amount"] == "25.00"
+    assert summary["transfer_net_amount"] == "95.00"
+    assert summary["transfer_projected_count"] == 3
+    assert summary["transfer_unprojected_count"] == 2
+    assert summary["transfer_draft_validated_count"] == 2
+    assert summary["transfer_draft_exception_count"] == 1
+    assert summary["transfer_failed_outbox_count"] == 1
+    assert ("PAYMENTS", "PaymentCaptured") not in OPERATIONAL_ACCOUNTING_EVENTS
+    assert ("PAYMENTS", "PaymentCaptureReversed") not in OPERATIONAL_ACCOUNTING_EVENTS
+
+    samples = snapshot["samples"]
+    unprojected_ids = {row["outbox_event_id"] for row in samples["unprojected_sample"]}
+    failed_ids = {row["outbox_event_id"] for row in samples["failed_sample"]}
+    exception_rows = {
+        row["outbox_event_id"]: row
+        for row in samples["exception_sample"]
+    }
+
+    assert str(unprojected_capture.event_id) in unprojected_ids
+    assert str(failed_capture.event_id) in unprojected_ids
+    assert failed_ids == {str(failed_capture.event_id)}
+    assert exception_rows[str(exception_capture.event_id)]["journal_draft_state"] == JournalDraft.State.EXCEPTION
+    assert exception_rows[str(exception_capture.event_id)]["payment_method"] == "TRANSFER"
+    assert str(projected_reversal.event_id) not in unprojected_ids
 
 
 @pytest.mark.django_db

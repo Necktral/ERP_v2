@@ -2864,6 +2864,128 @@ def reconcile_operational_vs_accounting(
     }
 
 
+def build_transfer_payment_settlement_snapshot(
+    *,
+    company,
+    branch=None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    max_sample: int = 20,
+) -> dict[str, Any]:
+    qs = OutboxEvent.objects.filter(
+        company=company,
+        source_module="PAYMENTS",
+        event_type__in=["PaymentCaptured", "PaymentCaptureReversed"],
+    )
+    if branch is not None:
+        qs = qs.filter(branch=branch)
+    if date_from is not None:
+        dt_from = timezone.make_aware(datetime.combine(date_from, time.min), timezone.get_current_timezone())
+        qs = qs.filter(occurred_at__gte=dt_from)
+    if date_to is not None:
+        dt_to = timezone.make_aware(datetime.combine(date_to, time.max), timezone.get_current_timezone())
+        qs = qs.filter(occurred_at__lte=dt_to)
+
+    transfer_events = [
+        ev
+        for ev in qs.order_by("occurred_at", "id")
+        if (ev.source_module, ev.event_type) in TRANSFER_PAYMENT_ACCOUNTING_EVENTS and _event_is_supported(ev)
+    ]
+    outbox_ids = [ev.event_id for ev in transfer_events]
+    economic_by_outbox = {
+        row.source_outbox_event_id: row
+        for row in EconomicEvent.objects.filter(company=company, source_outbox_event_id__in=outbox_ids)
+    }
+    drafts_by_event = {
+        row.economic_event_id: row
+        for row in JournalDraft.objects.select_related("economic_event").filter(
+            economic_event_id__in=[ev.id for ev in economic_by_outbox.values()]
+        )
+    }
+
+    captured_count = 0
+    reversed_count = 0
+    captured_amount = Decimal("0.00")
+    reversed_amount = Decimal("0.00")
+    projected_count = 0
+    unprojected_count = 0
+    draft_validated_count = 0
+    draft_exception_count = 0
+    failed_outbox_count = 0
+    unprojected_sample: list[dict[str, Any]] = []
+    failed_sample: list[dict[str, Any]] = []
+    exception_sample: list[dict[str, Any]] = []
+
+    def _sample_item(ev: OutboxEvent, *, eco: EconomicEvent | None, draft: JournalDraft | None) -> dict[str, Any]:
+        data = _event_data(ev)
+        return {
+            "outbox_event_id": str(ev.event_id),
+            "event_type": str(ev.event_type),
+            "payment_id": str(data.get("payment_id") or data.get("payment_intent_id") or ""),
+            "amount": str(_q_money(_to_decimal(data.get("amount")))),
+            "currency": str(data.get("currency") or ""),
+            "payment_method": str(data.get("payment_method") or "").strip().upper(),
+            "occurred_at": ev.occurred_at.isoformat() if ev.occurred_at else "",
+            "accounting_status": str(data.get("accounting_status") or ""),
+            "economic_event_id": str(eco.event_id) if eco is not None else None,
+            "journal_draft_id": int(draft.id) if draft is not None else None,
+            "journal_draft_state": str(draft.state) if draft is not None else "",
+        }
+
+    for ev in transfer_events:
+        data = _event_data(ev)
+        amount_abs = _q_money(abs(_to_decimal(data.get("amount"))))
+        if ev.event_type == "PaymentCaptured":
+            captured_count += 1
+            captured_amount += amount_abs
+        elif ev.event_type == "PaymentCaptureReversed":
+            reversed_count += 1
+            reversed_amount += amount_abs
+
+        eco = economic_by_outbox.get(ev.event_id)
+        draft = drafts_by_event.get(eco.id) if eco is not None else None
+        sample = _sample_item(ev, eco=eco, draft=draft)
+
+        if eco is None:
+            unprojected_count += 1
+            if len(unprojected_sample) < int(max_sample):
+                unprojected_sample.append(sample)
+        else:
+            projected_count += 1
+
+        if draft is not None and draft.state == JournalDraft.State.VALIDATED:
+            draft_validated_count += 1
+        if draft is not None and draft.state == JournalDraft.State.EXCEPTION:
+            draft_exception_count += 1
+            if len(exception_sample) < int(max_sample):
+                exception_sample.append(sample)
+
+        if ev.status == OutboxEvent.Status.FAILED:
+            failed_outbox_count += 1
+            if len(failed_sample) < int(max_sample):
+                failed_sample.append(sample)
+
+    return {
+        "summary": {
+            "transfer_captured_count": int(captured_count),
+            "transfer_reversed_count": int(reversed_count),
+            "transfer_captured_amount": str(_q_money(captured_amount)),
+            "transfer_reversed_amount": str(_q_money(reversed_amount)),
+            "transfer_net_amount": str(_q_money(captured_amount - reversed_amount)),
+            "transfer_projected_count": int(projected_count),
+            "transfer_unprojected_count": int(unprojected_count),
+            "transfer_draft_validated_count": int(draft_validated_count),
+            "transfer_draft_exception_count": int(draft_exception_count),
+            "transfer_failed_outbox_count": int(failed_outbox_count),
+        },
+        "samples": {
+            "unprojected_sample": unprojected_sample,
+            "failed_sample": failed_sample,
+            "exception_sample": exception_sample,
+        },
+    }
+
+
 def build_operational_monitor_snapshot(
     *,
     company,
@@ -2896,6 +3018,12 @@ def build_operational_monitor_snapshot(
             failed_by_module[module] = int(row.get("total") or 0)
 
     reconciliation = reconcile_operational_vs_accounting(
+        company=company,
+        branch=branch,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    transfer_settlement = build_transfer_payment_settlement_snapshot(
         company=company,
         branch=branch,
         date_from=date_from,
@@ -2956,6 +3084,7 @@ def build_operational_monitor_snapshot(
             "by_module": failed_by_module,
         },
         "reconciliation": reconciliation,
+        "transfer_settlement": transfer_settlement,
         "fuel_compensation": fuel_compensation,
         "gate_summary": gate_summary,
     }

@@ -49,6 +49,8 @@ def test_export_operational_load_snapshot_writes_expected_shape(tmp_path: Path):
     assert payload["branch_id"] == branch.id
     assert "failed_outbox" in payload
     assert "reconciliation" in payload
+    assert "transfer_settlement" in payload
+    assert "transfer_net_amount" in payload["transfer_settlement"]["summary"]
     assert "fuel_compensation" in payload
 
 
