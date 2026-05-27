@@ -7,16 +7,18 @@
 
 ## Resumen Ejecutivo
 
-| Área | Estado | Riesgo |
-|------|--------|--------|
-| Autenticación/2FA | ✅ Robusto | Bajo |
-| Sync Engine (offline) | ✅ Sólido, gaps menores | Medio |
-| Accounting Kernel | 🔶 Funcional, no blindado | Medio-Alto |
-| Billing/Inventory Kernels | 🔴 Solo scaffolding | Alto |
-| Frontend multiplataforma | 🔶 Web OK, mobile pendiente | Medio |
-| CI/CD | ✅ Maduro, gaps menores | Bajo |
-| Seguridad | 🔶 Enterprise-grade, backlog pendiente | Medio |
-| Observabilidad | 🔶 Parcial | Medio |
+| Área | Estado | Score Riesgo | Vector principal |
+|------|--------|:------------:|:-----------------|
+| Backup / Recuperación | 🔴 Inexistente | 10 | Volume sin snapshot, sin pg_dump, sin WAL archiving |
+| Concurrencia (GL/Sync) | 🔴 Sin protección | 9 | 4 endpoints críticos sin `select_for_update` |
+| Sync Engine (crypto) | 🔴 Clock skew 6h + secrets plaintext | 9 | Replay window + HMAC sin cifrar en DB |
+| Test Coverage (views) | 🔴 Excluido de CI | 8 | `views.py` en `.coveragerc` exclude → regresiones invisibles |
+| Billing/Inventory/Payments | 🔴 Solo scaffolding | 8 | Modelos sin lógica = sistema no monetizable |
+| Token/Session Security | 🟠 Parcial | 6-7 | Race en rotation + chain infinita |
+| Observabilidad | 🟠 Ciega en prod | 4-6 | Sin métricas exportables, sin alertas |
+| Frontend multiplataforma | 🟠 Solo web, sin tests | 4 | 1 test, sin PWA, sin mobile |
+| Autenticación/2FA | 🟡 Sólido | 3 | Funcional, detalles menores (CSP localhost) |
+| CI/CD | 🟡 Maduro | 2 | Funcional, gap en coverage scope |
 
 ---
 
@@ -374,84 +376,152 @@ class MetricsView(APIView):
 
 ## 6. MATRIZ DE RIESGOS CONSOLIDADA
 
-### 🔴 Prioridad P0 — Crítica (resolver inmediatamente)
+> **Metodología de scoring**: Cada riesgo se evalúa con CVSS adaptado para aplicaciones ERP. El score combina: Explotabilidad (¿qué tan fácil es que ocurra sin intervención?), Alcance (¿cuántos subsistemas se ven afectados?), Recuperabilidad (¿se puede revertir o el daño es permanente?). Escala 1-10, donde ≥8 es CRÍTICO, 5-7 SEVERO, 3-4 MODERADO.
 
-| #  | ID      | Riesgo                                            | Probabilidad | Impacto      | Esfuerzo    |
-|:--:|:-------:|:--------------------------------------------------|:------------:|:------------:|:-----------:|
-| 1  | G12     | Sin backup automatizado                           | Alta         | Catastrófico | 2 h         |
-| 2  | F01     | Race condition en cierre de período               | Media        | Alto         | 4 h         |
-| 3  | G01-G03 | Kernels sin lógica (billing/inventory/payments)   | Cierta       | Bloqueante   | 2-4 semanas |
+### 🔴 NIVEL CRÍTICO — Score ≥ 8 (pérdida de datos o compromiso del sistema)
 
-### 🟡 Prioridad P1 — Alta (resolver en Sprint 1-2)
+| #  | ID      | Riesgo | Descripción técnica del vector | Score | Explotabilidad | Alcance | Recuperabilidad |
+|:--:|:-------:|:-------|:-------------------------------|:-----:|:--------------:|:-------:|:---------------:|
+| 1  | G12 | **Sin backup automatizado** | `compose.prod.yaml` monta `pgdata` como volume sin snapshot. Un `docker volume rm` accidental, corrupción de disco o ransomware = pérdida total. No existe `pg_dump` scheduled ni WAL archiving. | **10** | Pasiva (ocurre sin atacante) | Total — todos los datos | Irrecuperable |
+| 2  | F01 | **Race condition en cierre fiscal** | `FiscalPeriodCloseView` ejecuta `period.status = 'closed'` + `save()` sin `select_for_update`. Dos requests simultáneos pueden cerrar el mismo período generando journal entries duplicados. El `UniqueConstraint` del modelo NO protege la ventana entre read y write. | **9** | Media (requiere concurrencia natural en multi-usuario) | Contabilidad completa — GL corrupto | Requiere rollback manual de entries |
+| 3  | F03 | **Sync batch sin lock en Device** | `SyncBatchView` lee `device.last_accepted_sequence`, procesa N comandos, y escribe el nuevo sequence. Sin `select_for_update` en Device, dos batches paralelos del mismo dispositivo pueden producir gaps o sobreescritura de sequence. | **9** | Alta (dispositivo con cola larga reconectándose) | Integridad de sync — comandos perdidos silenciosamente | Datos del dispositivo irreconciliables |
+| 4  | SEC-01 | **Clock skew de 6 horas en sync** | `SYNC_MAX_DEVICE_CLOCK_SKEW_SECONDS = 6*3600`. Un atacante que captura un request firmado tiene 6 horas para replay. El nonce anti-replay solo protege si el nonce original fue registrado, pero nonces sin cleanup (B03) + ventana de 6h = superficie de ataque masiva. | **9** | Alta (sniffing + replay trivial en ventana de 6h) | Autenticación de dispositivos | No hay rollback — comandos ejecutados son permanentes |
+| 5  | SEC-02 | **HMAC secrets en plaintext (sync v1)** | `DeviceEnrollment.hmac_secret` almacena el secreto en Base64 (encoding, NO cifrado). Compromiso de DB = compromiso de TODOS los dispositivos legacy. No hay KDF, no hay envelope encryption. | **8** | Requiere acceso a DB (SQLi, backup leak, insider) | Todos los dispositivos sync v1 | Requiere re-enrollment de toda la flota |
+| 6  | F02 | **Double-posting de journal draft** | `JournalDraftPostView` transiciona `draft → posted` sin lock. Posting concurrente del mismo draft genera asientos contables duplicados en el GL. No hay idempotency key en la operación. | **8** | Media (click doble en UI, retry automático) | General Ledger — balances incorrectos | Requiere reversión contable manual |
+| 7  | G01-G03 | **Kernels sin lógica de negocio** | `billing`, `inventarios`, `payments` tienen modelos pero CERO lógica (sin FSM, sin validaciones, sin workflows). El sistema acepta operaciones pero no las procesa — se acumulan como datos muertos sin efecto contable. | **8** | Cierta (es el estado actual) | Facturación + Stock + Pagos = core del ERP | No aplica — funcionalidad inexistente |
+| 8  | SEC-03 | **views.py excluido de coverage** | `.coveragerc` excluye `*/views.py`. Los endpoints son la superficie de ataque principal y NO tienen cobertura de tests verificada en CI. Cualquier regresión en auth/permissions pasa desapercibida. | **8** | Pasiva (bugs no detectados) | Seguridad de toda la API | Depende de detección manual |
 
-| #  | ID   | Riesgo                                    | Probabilidad | Impacto | Esfuerzo  |
-|:--:|:----:|:------------------------------------------|:------------:|:-------:|:---------:|
-| 4  | B03  | Nonces sin cleanup (tabla crece infinito) | Alta         | Medio   | 2 h       |
-| 5  | G11  | Sin throttle en sync batch                | Media        | Alto    | 2 h       |
-| 6  | F05  | Token rotation race en multi-tab          | Media        | Medio   | 4 h       |
-| 7  | G09  | Sin health check unificado                | Alta         | Medio   | 3 h       |
-| 8  | G16  | Frontend sin tests                        | Alta         | Alto    | 1 semana  |
-| 9  | C06  | Error envelope inconsistente              | Alta         | Medio   | 1 día     |
-| 10 | G10  | Sin métricas Prometheus                   | Media        | Medio   | 1 día     |
+### 🟠 NIVEL SEVERO — Score 5-7 (degradación de servicio o brecha de seguridad parcial)
 
-### 🟢 Prioridad P2 — Media (resolver en Sprint 3+)
+| #  | ID      | Riesgo | Descripción técnica del vector | Score | Explotabilidad | Alcance | Recuperabilidad |
+|:--:|:-------:|:-------|:-------------------------------|:-----:|:--------------:|:-------:|:---------------:|
+| 9  | SEC-04 | **Adminer expuesto sin auth** | `compose.yaml` perfil `tools` expone Adminer en `:8080` sin credenciales propias. Si se activa en prod (perfil mal configurado), la DB queda expuesta con acceso completo. | **7** | Requiere perfil tools activo | Base de datos completa | Revocar acceso — pero datos ya expuestos |
+| 10 | F05 | **Token rotation race multi-tab** | `RefreshTokenSession` rota token en cada refresh. Tab A refresca → invalida token de Tab B → Tab B intenta refrescar con token inválido → logout forzado. No hay grace period para tokens recién rotados. | **7** | Alta (cualquier usuario con >1 tab) | Sesión del usuario | Auto-recuperable con re-login |
+| 11 | B03 | **Nonces sin TTL ni cleanup** | `DeviceRequestNonce` es append-only sin índice temporal ni job de limpieza. En producción con N dispositivos sincronizando M requests/día = tabla crece indefinidamente. A 1M+ rows, las queries de anti-replay degradan la latencia del sync. | **7** | Pasiva (crece por uso normal) | Performance de sync — escala temporal | Truncar tabla + agregar TTL |
+| 12 | SEC-05 | **CSP con localhost en connect-src** | `CSP_CONNECT_SRC` incluye `http://localhost:*` — artefacto de desarrollo. Si llega a prod, permite exfiltración de datos a localhost (XSS + port scanning interno). | **6** | Requiere XSS previo | Depende del contexto del XSS | Cambio de configuración |
+| 13 | B05 | **18 middlewares en pipeline** | Cada request HTTP atraviesa 18 capas de middleware (CORS, CSP, CSRF, Auth, Org, Audit, etc.). Endpoints de alta frecuencia como sync y health no tienen bypass. P99 latency incluye overhead innecesario. | **6** | Pasiva (diseño actual) | Latencia global de la API | Refactor de middleware ordering |
+| 14 | G11 | **Sync batch sin throttle dedicado** | `SyncBatchView` no tiene throttle scope propio. Un dispositivo comprometido o con bug puede enviar batches en loop saturando workers de Gunicorn (4 fijos) y bloqueando auth para otros usuarios. | **6** | Media (dispositivo comprometido o código buggy) | Disponibilidad del backend | Kill del proceso + throttle |
+| 15 | F09 | **Stock negativo permitido** | `StockBalance` no tiene `CheckConstraint(quantity__gte=0)`. La ausencia de constraint DB permite que bugs en lógica futura generen stock negativo sin que la DB lo rechace. | **6** | Requiere bug en código futuro | Integridad de inventario | Corrección de datos + constraint |
+| 16 | SEC-06 | **Refresh token sin límite de cadena** | `ROTATE_REFRESH_TOKENS=True` pero sin `max_chain_length`. Un atacante con un refresh token puede generar cadena infinita de tokens válidos. La revocación por `replaced_by_jti` solo invalida el inmediato anterior, no toda la cadena. | **6** | Requiere token robado | Sesión del usuario comprometido | Revocar todas las sesiones del user |
+| 17 | F04 | **Intercompany confirm sin lock** | `IntercompanyTransactionConfirmView` permite que ambas partes confirmen simultáneamente sin lock pesimista. Estado final inconsistente si ambas transiciones ocurren en la misma ventana de tiempo. | **5** | Baja (requiere timing preciso entre empresas) | Transacción intercompany específica | Reconciliación manual |
+| 18 | B04 | **Trial balance sin materialización** | `JournalEntry + JournalLine` JOIN para calcular saldos en cada request. Con volumen de 10K+ asientos, el trial balance supera 2s de latencia sin índices compuestos ni vistas materializadas. | **5** | Pasiva (crece con volumen) | UX de reportes contables | Materializar saldos incrementales |
+| 19 | C06 | **Error envelope parcial** | `ApiErrorEnvelopeMiddleware` existe pero no todas las views devuelven errores a través del envelope. Algunas views lanzan DRF exceptions directamente → el frontend recibe formatos de error heterogéneos → handling de errores frágil. | **5** | Cierta (es el estado actual) | Confiabilidad del manejo de errores en FE | Auditar y unificar todas las views |
 
-| #  | ID   | Riesgo                                         | Probabilidad | Impacto       | Esfuerzo    |
-|:--:|:----:|:-----------------------------------------------|:------------:|:-------------:|:-----------:|
-| 11 | B06  | Batch limit 100 insuficiente offline largo     | Baja         | Medio         | 2 días      |
-| 12 | C11  | Sin API versioning                             | Media        | Alto (futuro) | 1 semana    |
-| 13 | G06  | Sin mobile app                                 | Alta         | Alto          | 2-4 semanas |
-| 14 | S08  | Sin PWA/service worker                         | Alta         | Medio         | 3 días      |
-| 15 | C12  | Drift de tipos FE-BE                           | Alta         | Medio         | 1 día       |
+### 🟡 NIVEL MODERADO — Score 3-4 (deuda técnica con impacto operativo)
 
----
-
-## 7. PLAN DE ACCIÓN RECOMENDADO
-
-### Fase 1: Blindaje Crítico (Semanas 1-2)
-- [ ] **S10**: Backup automatizado en compose.prod.yaml
-- [ ] **S01**: `select_for_update` en FiscalPeriodCloseView y JournalDraftPostView
-- [ ] **S03**: Management command para cleanup de nonces
-- [ ] **S04**: Throttle scope para sync_batch
-- [ ] **S05**: Health check unificado (`/api/health/`)
-- [ ] **S02**: Constraint non-negative en StockBalance
-
-### Fase 2: Consistencia y Observabilidad (Semanas 3-4)
-- [ ] **C06**: Auditar y unificar error envelope en todas las views
-- [ ] **C07**: Agregar throttle scopes faltantes
-- [ ] **S14**: Métricas Prometheus básicas
-- [ ] **S12**: Event registry cerrado con validación
-- [ ] **S13**: Permissions registry centralizado
-- [ ] **F05**: Grace period para token rotation
-
-### Fase 3: Multiplataforma (Semanas 5-8)
-- [ ] **S08**: Service worker PWA (cache offline)
-- [ ] **S09**: Axios retry interceptor
-- [ ] **S07**: Generación de tipos TypeScript desde OpenAPI
-- [ ] **S11**: Capacitor setup para mobile
-- [ ] **G16**: Suite de tests frontend (≥20 tests)
-- [ ] **G13**: Tests E2E con Playwright
-
-### Fase 4: Kernels Funcionales (Semanas 9-16)
-- [ ] **G01**: Billing kernel — FSM + tax calc + numerations
-- [ ] **G02**: Inventory kernel — movements + FIFO/avg valuation
-- [ ] **G03**: Payments kernel — transaction lifecycle
-- [ ] **G05**: Outbox pattern implementation
-- [ ] **G04**: CEC control plane formalizado
+| #  | ID      | Riesgo | Descripción técnica del vector | Score | Explotabilidad | Alcance | Recuperabilidad |
+|:--:|:-------:|:-------|:-------------------------------|:-----:|:--------------:|:-------:|:---------------:|
+| 20 | G16 | **Frontend sin test coverage** | 1 archivo de test (vitest) para toda la aplicación Quasar. Regresiones en auth flow, routing, stores, y servicios no son detectadas. El CI no puede bloquear merges con bugs de UI. | **4** | Pasiva | Calidad del frontend | Crear suite de tests |
+| 21 | C01-C04 | **Duplicación estructural** | Dual `manage.py`, módulos stub vs kernels reales, `test/` en dos ubicaciones, sync v1/v2 coexistiendo. Aumenta la carga cognitiva, genera bugs por import incorrecto, dificulta onboarding. | **4** | Pasiva | Mantenibilidad | Cleanup + docs |
+| 22 | G10 | **Sin métricas exportables** | `config.metrics.record_sync_batch` registra internamente pero sin export Prometheus/StatsD. Imposible crear dashboards, alertas, o detectar anomalías en producción. Operación ciega. | **4** | Pasiva | Observabilidad operativa | Agregar exporter |
+| 23 | C12 | **Drift de tipos FE↔BE** | `drf-spectacular` genera OpenAPI schema pero el frontend no consume tipos generados. Los DTOs en TypeScript se mantienen manualmente → desincronización silenciosa cuando el backend cambia un field. | **4** | Alta (ocurre en cada refactor) | Integridad de datos en UI | Pipeline de generación de tipos |
+| 24 | B06 | **Batch limit 100 insuficiente** | `SYNC_MAX_COMMANDS_PER_BATCH=100`. Dispositivo offline 1 semana con 50 ops/día = 350 comandos = 4 roundtrips mínimos. En conexiones inestables (campo), cada roundtrip puede fallar y reiniciar. | **4** | Baja (requiere offline prolongado) | Reconexión de dispositivos | Streaming/chunking adaptativo |
+| 25 | G06 | **Sin mobile nativo** | Frontend Quasar sin Capacitor/Cordova. No hay acceso a hardware nativo (cámara para scanner, NFC, push notifications nativas, biometric auth). Limita casos de uso en campo. | **3** | N/A (feature gap) | Experiencia móvil | Capacitor integration |
+| 26 | SEC-07 | **`granted_by` nullable en AdminGrant** | `AdminGrant.granted_by` puede ser NULL. Imposible auditar quién otorgó privilegios de admin. Rompe chain of custody para compliance. | **3** | Pasiva | Auditoría de privilegios | Hacer field non-nullable + migration |
+| 27 | C11 | **API sin versionado** | Todos los endpoints en `/api/` sin prefijo de versión. Cualquier breaking change afecta a todos los clientes simultáneamente. Imposible deprecar gracefully. | **3** | Pasiva (afecta en siguiente breaking change) | Evolución del API | Implementar `/api/v1/` |
 
 ---
 
-## 8. MÉTRICAS DE ÉXITO
+## 7. DEPENDENCIAS ENTRE RIESGOS (Grafo de Impacto)
 
-| Métrica | Actual | Objetivo Fase 1 | Objetivo Final |
-|---------|--------|-----------------|----------------|
-| Test coverage backend | 85% | 90% | 95% |
-| Test coverage frontend | ~0% | 30% | 70% |
-| P99 latency API | Desconocido | <500ms | <200ms |
-| Uptime (con backup) | Sin medición | 99.5% | 99.9% |
-| Sync batch throughput | ~30 req/min | 60 req/min | 120 req/min |
-| Security backlog items | 7 | 3 | 0 |
-| Time to recover (TTR) | Desconocido | <1h | <15min |
+```
+SEC-01 (clock skew 6h) ──→ amplifica ──→ B03 (nonces sin cleanup)
+                         └─→ habilita ──→ replay en ventana de 6h
+
+F01 (race cierre fiscal) ──→ corrompe ──→ B04 (trial balance lento con datos duplicados)
+F02 (double-posting)     ──→ corrompe ──→ B04
+
+G12 (sin backup) ──→ convierte en irrecuperable ──→ TODOS los riesgos de integridad (F01-F09)
+
+SEC-03 (views sin coverage) ──→ oculta ──→ regresiones en auth/RBAC → SEC-06 no detectado
+
+G01-G03 (kernels vacíos) ──→ bloquea ──→ monetización del sistema (billing, pagos)
+                          └─→ invalida ──→ CEC control plane (G04) — no hay datos que reconciliar
+```
+
+> **Conclusión del grafo**: G12 (backup) es el multiplicador de daño. Cualquier bug de integridad pasa de "recuperable" a "catastrófico" sin backup. SEC-01 + B03 forman un vector de ataque compuesto que debe resolverse en conjunto.
+
+---
+
+## 8. PLAN DE ACCIÓN
+
+> **Nota**: No se trabaja con estimaciones de esfuerzo. Lo que se propone, se ejecuta completo.
+
+### Bloque A — Supervivencia (ejecutar primero, sin excepción)
+
+| # | Acción | Archivo(s) afectado(s) | Validación |
+|:-:|:-------|:-----------------------|:-----------|
+| 1 | Backup automatizado: `pg_dump` + WAL archiving + retention policy | `compose.prod.yaml`, nuevo `scripts/backup.sh` | Restore exitoso en entorno limpio |
+| 2 | `select_for_update(nowait=True)` en `FiscalPeriodCloseView` | `apps/kernels/accounting/views.py` | Test concurrente con `threading` confirma que segundo request falla con 423 |
+| 3 | `select_for_update` en `SyncBatchView` sobre Device | `apps/modulos/sync_engine/views.py` | Test de batch paralelo demuestra rechazo correcto |
+| 4 | `select_for_update` en `JournalDraftPostView` | `apps/kernels/accounting/views.py` | Test double-post retorna 409 |
+| 5 | Reducir clock skew a 300s (5 min) | `config/settings/base.py` | Tests de sync con timestamp fuera de ventana fallan |
+| 6 | Cifrar HMAC secrets con Fernet (encryption at rest) o migrar flota a v2 | `apps/modulos/sync/models.py` | Secrets no legibles en raw DB dump |
+
+### Bloque B — Integridad y Seguridad
+
+| # | Acción | Archivo(s) afectado(s) | Validación |
+|:-:|:-------|:-----------------------|:-----------|
+| 7 | `CheckConstraint(condition=Q(quantity__gte=0))` en StockBalance | `apps/kernels/inventarios/models.py` | `IntegrityError` al intentar stock negativo |
+| 8 | Incluir `views.py` en coverage (eliminar exclusión) | `.coveragerc` | CI reporta coverage de endpoints |
+| 9 | Nonce cleanup: management command + `cron` en Docker (retener 48h max) | `apps/modulos/sync_engine/management/commands/` | Table size estable tras 48h de operación |
+| 10 | Grace period 30s en token rotation | `apps/modulos/accounts/views.py` | Test multi-tab no genera logout spurio |
+| 11 | Throttle scope `sync_batch: 30/min` por device | `config/settings/base.py`, `sync_engine/views.py` | Device en loop recibe 429 |
+| 12 | Eliminar `localhost` de `CSP_CONNECT_SRC` en prod | `config/settings/prod.py` | CSP header en response no contiene localhost |
+| 13 | `granted_by` non-nullable + data migration | `apps/modulos/iam/models.py` | Migration falla si hay grants sin grantor |
+| 14 | Refresh token chain limit (max 50 rotaciones) | `apps/modulos/accounts/views.py` | Token con chain_length=51 rechazado |
+
+### Bloque C — Consistencia y Observabilidad
+
+| # | Acción | Archivo(s) afectado(s) | Validación |
+|:-:|:-------|:-----------------------|:-----------|
+| 15 | Unificar error envelope en TODAS las views | `apps/modulos/common/middleware.py` + views | Ningún endpoint devuelve error fuera del envelope |
+| 16 | Event type registry cerrado con Enum | `apps/modulos/audit/registry.py` (nuevo) | `write_event` con type no registrado → `ValueError` |
+| 17 | Permissions registry centralizado | `apps/modulos/rbac/registry.py` (nuevo) | Import de permission no registrada → error en startup |
+| 18 | Prometheus exporter básico (request latency, sync throughput, error rate) | `config/metrics.py` + `/metrics` endpoint | Grafana puede scrape y mostrar dashboard |
+| 19 | Eliminar duplicaciones: manage.py único, módulos-stub eliminados, sync v1 deprecated con sunset header | Raíz del proyecto + imports | CI verde, no hay imports rotos |
+| 20 | Health check unificado (`/api/health/`) con DB + Redis + disk checks | `apps/modulos/common/views.py` (nuevo) | Kubernetes readiness probe funciona |
+
+### Bloque D — Multiplataforma y Completitud
+
+| # | Acción | Archivo(s) afectado(s) | Validación |
+|:-:|:-------|:-----------------------|:-----------|
+| 21 | Service worker PWA con cache estratégico (stale-while-revalidate) | `frontend/src-pwa/` | App funciona offline (cache hit en Network tab) |
+| 22 | Axios retry interceptor (3 reintentos, backoff exponencial) | `frontend/src/boot/axios.ts` | Request fallido se reintenta y eventualmente resuelve |
+| 23 | Generación automática de tipos TS desde OpenAPI | `frontend/scripts/generate-types.ts` (nuevo) | Types match API schema, CI falla si hay drift |
+| 24 | Lazy loading de rutas (code splitting) | `frontend/src/router/routes.ts` | Bundle analyzer muestra chunks por ruta |
+| 25 | Capacitor setup para builds nativos (Android/iOS) | `frontend/capacitor.config.ts` (nuevo) | Build APK exitoso |
+| 26 | Suite de tests frontend (mínimo: auth flow, sync, stores) | `frontend/src/**/*.spec.ts` | ≥30 tests pasando en CI |
+| 27 | Tests E2E con Playwright (flujos críticos: login→sync→posting) | `e2e/` (nuevo) | Playwright en CI valida happy path completo |
+
+### Bloque E — Kernels Funcionales
+
+| # | Acción | Archivo(s) afectado(s) | Validación |
+|:-:|:-------|:-----------------------|:-----------|
+| 28 | Billing kernel: FSM (draft→validated→posted→cancelled), tax calc, numeración fiscal | `apps/kernels/facturacion/` | Factura transiciona estados correctamente, tax calculado, número secuencial |
+| 29 | Inventory kernel: movements, FIFO/avg valuation, stock alerts | `apps/kernels/inventarios/` | Movimiento de stock actualiza balance, valuación correcta |
+| 30 | Payments kernel: transaction lifecycle, reconciliación con billing | `apps/kernels/payments/` | Pago contra factura reduce saldo pendiente |
+| 31 | Outbox pattern: tabla de eventos pendientes + worker que publica | `apps/modulos/common/outbox.py` (nuevo) | Evento emitido llega a consumidor, retry en fallo |
+| 32 | CEC control plane: reconciliación automática billing↔accounting↔payments | `apps/modulos/cec/` | Discrepancia detectada genera alerta |
+
+---
+
+## 9. MÉTRICAS DE ÉXITO
+
+| Métrica | Estado actual | Objetivo post-ejecución |
+|:--------|:-------------|:-----------------------:|
+| **Backup recovery** | No existe | Restore exitoso verificado semanalmente |
+| **Race conditions protegidas** | 0 de 4 endpoints | 4 de 4 con `select_for_update` |
+| **Test coverage backend (incl. views)** | ~85% (views excluidas) | ≥92% con views incluidas |
+| **Test coverage frontend** | ~0% (1 archivo) | ≥60% (stores + services + flows) |
+| **Sync clock skew** | 6 horas | 5 minutos |
+| **Nonce table growth** | Ilimitada | Capped a 48h de retención |
+| **P99 latency (sync batch)** | Sin medición | <400ms con throttle |
+| **Error format consistency** | Parcial (~60% envelope) | 100% envelope |
+| **Secrets en DB** | Plaintext Base64 | Cifrados con Fernet o migrados a v2 |
+| **Mobile capability** | Solo web | PWA + APK funcional |
+| **Kernel functionality** | Solo modelos | FSM + validaciones + workflows completos |
+| **E2E test coverage** | 0 flujos | ≥5 flujos críticos automatizados |
 
 ---
 
