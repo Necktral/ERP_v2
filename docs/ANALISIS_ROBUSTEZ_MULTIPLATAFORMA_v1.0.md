@@ -374,23 +374,35 @@ class MetricsView(APIView):
 
 ## 6. MATRIZ DE RIESGOS CONSOLIDADA
 
-| Prioridad | ID | Riesgo | Probabilidad | Impacto | Esfuerzo |
-|-----------|----|--------|--------------|---------|----------|
-| 🔴 P0 | G12 | Sin backup automatizado | Alta | Catastrófico | 2h |
-| 🔴 P0 | F01 | Race condition en cierre de período | Media | Alto | 4h |
-| 🔴 P0 | G01-G03 | Kernels sin lógica (billing/inventory/payments) | Certain | Bloqueante | 2-4 semanas |
-| 🟡 P1 | B03 | Nonces sin cleanup (tabla crece infinito) | Alta | Medio | 2h |
-| 🟡 P1 | G11 | Sin throttle en sync batch | Media | Alto | 2h |
-| 🟡 P1 | F05 | Token rotation race en multi-tab | Media | Medio | 4h |
-| 🟡 P1 | G09 | Sin health check unificado | Alta | Medio | 3h |
-| 🟡 P1 | G16 | Frontend sin tests | Alta | Alto | 1 semana |
-| 🟡 P1 | C06 | Error envelope inconsistente | Alta | Medio | 1 día |
-| 🟡 P1 | G10 | Sin métricas Prometheus | Media | Medio | 1 día |
-| 🟢 P2 | B06 | Batch limit 100 insuficiente offline largo | Baja | Medio | 2 días |
-| 🟢 P2 | C11 | Sin API versioning | Media | Alto (futuro) | 1 semana |
-| 🟢 P2 | G06 | Sin mobile app | Alta | Alto | 2-4 semanas |
-| 🟢 P2 | S08 | Sin PWA/service worker | Alta | Medio | 3 días |
-| 🟢 P2 | C12 | Drift de tipos FE-BE | Alta | Medio | 1 día |
+### 🔴 Prioridad P0 — Crítica (resolver inmediatamente)
+
+| #  | ID      | Riesgo                                            | Probabilidad | Impacto      | Esfuerzo    |
+|:--:|:-------:|:--------------------------------------------------|:------------:|:------------:|:-----------:|
+| 1  | G12     | Sin backup automatizado                           | Alta         | Catastrófico | 2 h         |
+| 2  | F01     | Race condition en cierre de período               | Media        | Alto         | 4 h         |
+| 3  | G01-G03 | Kernels sin lógica (billing/inventory/payments)   | Cierta       | Bloqueante   | 2-4 semanas |
+
+### 🟡 Prioridad P1 — Alta (resolver en Sprint 1-2)
+
+| #  | ID   | Riesgo                                    | Probabilidad | Impacto | Esfuerzo  |
+|:--:|:----:|:------------------------------------------|:------------:|:-------:|:---------:|
+| 4  | B03  | Nonces sin cleanup (tabla crece infinito) | Alta         | Medio   | 2 h       |
+| 5  | G11  | Sin throttle en sync batch                | Media        | Alto    | 2 h       |
+| 6  | F05  | Token rotation race en multi-tab          | Media        | Medio   | 4 h       |
+| 7  | G09  | Sin health check unificado                | Alta         | Medio   | 3 h       |
+| 8  | G16  | Frontend sin tests                        | Alta         | Alto    | 1 semana  |
+| 9  | C06  | Error envelope inconsistente              | Alta         | Medio   | 1 día     |
+| 10 | G10  | Sin métricas Prometheus                   | Media        | Medio   | 1 día     |
+
+### 🟢 Prioridad P2 — Media (resolver en Sprint 3+)
+
+| #  | ID   | Riesgo                                         | Probabilidad | Impacto       | Esfuerzo    |
+|:--:|:----:|:-----------------------------------------------|:------------:|:-------------:|:-----------:|
+| 11 | B06  | Batch limit 100 insuficiente offline largo     | Baja         | Medio         | 2 días      |
+| 12 | C11  | Sin API versioning                             | Media        | Alto (futuro) | 1 semana    |
+| 13 | G06  | Sin mobile app                                 | Alta         | Alto          | 2-4 semanas |
+| 14 | S08  | Sin PWA/service worker                         | Alta         | Medio         | 3 días      |
+| 15 | C12  | Drift de tipos FE-BE                           | Alta         | Medio         | 1 día       |
 
 ---
 
