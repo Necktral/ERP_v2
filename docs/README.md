@@ -43,6 +43,10 @@ Esta carpeta contiene la documentación funcional y técnica del proyecto.
 - [operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md](operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md) — Secuencia maestra de cierre release/seguridad/staging y preparación productiva.
 - [operacion/PR_RELEASE_F1_F12_CHECKLIST.md](operacion/PR_RELEASE_F1_F12_CHECKLIST.md) — Checklist para apertura y cierre del PR de release.
 
+## Agente de codificación
+
+- [COPILOT_CODING_AGENT.md](COPILOT_CODING_AGENT.md) — Funcionalidad, flujo y configuración del Copilot Coding Agent.
+
 ## CI / QA
 
 - CI principal (QA Gates 1–3): `.github/workflows/qa-ci.yml`
