@@ -47,6 +47,7 @@ class PurchaseDocCreateView(APIView):
                 supplier_name=v.get("supplier_name") or "",
                 supplier_ref=v.get("supplier_ref") or "",
                 external_ref=v.get("external_ref") or "",
+                supplier_party_id=v.get("supplier_party_id"),
                 subtotal=v["subtotal"],
                 tax_total=v.get("tax_total") or 0,
                 total=v["total"],
@@ -67,6 +68,7 @@ class PurchaseDocDetailView(APIView):
         company: OrgUnit = request.company
         branch: OrgUnit = request.branch
         doc = get_object_or_404(PurchaseDocument, id=doc_id, company=company, branch=branch)
+        supplier_party = doc.supplier_party
         return Response(
             {
                 "id": int(doc.id),
@@ -77,6 +79,8 @@ class PurchaseDocDetailView(APIView):
                 "currency": doc.currency,
                 "supplier_name": doc.supplier_name,
                 "supplier_ref": doc.supplier_ref,
+                "supplier_party_id": doc.supplier_party_id,
+                "supplier_party_display_name": supplier_party.display_name if supplier_party is not None else "",
                 "external_ref": doc.external_ref,
                 "subtotal": str(doc.subtotal),
                 "tax_total": str(doc.tax_total),
