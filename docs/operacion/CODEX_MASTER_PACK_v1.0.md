@@ -43,6 +43,11 @@ Regla: ante conflicto operativo en delegacion a Codex, prevalece este Master Pac
   - `Workbench` (desktop): operacion densa, tablas, multitarea y analitica.
   - `Taskflow` (movil): tareas cortas, captura, confirmacion y consulta agil.
 
+> **Nota operativa (2026-05):** El canal movil no es un mapeo 1:1 del sistema.
+> Se implementa de forma selectiva por viabilidad. Funcionalidades moviles activas:
+> facturacion, inventario, reportes, control de asistencias, bitacoras de mantenimiento.
+> Taskflow es la vision de producto; la incorporacion de nuevas funcionalidades es caso a caso.
+
 ### Hechos observados del repo
 
 - Existe flujo publico de enrolamiento de dispositivo.

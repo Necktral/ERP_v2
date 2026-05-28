@@ -4,6 +4,13 @@ Version: v1.0
 Fecha: 2026-04-14  
 Estado: Diseno empresarial aprobado para implementacion
 
+## Nota operativa de alcance movil (2026-05)
+
+> **El movil no es paridad 1:1 con desktop.** Se implementa selectivamente.
+> Funcionalidades moviles activas: facturacion, inventario, reportes, control de asistencias,
+> bitacoras de mantenimiento. Todo lo demas es vision de producto y se evalua por viabilidad
+> individual antes de entrar en desarrollo.
+
 ## Resumen
 
 Este documento define el marco integral para una aplicacion ERP/CRM web accesible por internet, con una sola logica de negocio backend y dos experiencias de uso diferenciadas:
