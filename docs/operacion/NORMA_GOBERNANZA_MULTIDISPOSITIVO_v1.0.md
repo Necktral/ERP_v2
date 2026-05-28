@@ -5,6 +5,23 @@ Fecha: 2026-04-14
 Estado: Politica operativa vinculante (vigente)  
 Propietarios: Arquitectura de Producto, Arquitectura de Software, Seguridad Aplicativa, Operaciones
 
+## Nota operativa de alcance movil (2026-05)
+
+> **El canal movil NO es un mapeo 1:1 del sistema desktop.**
+>
+> La estrategia movil es selectiva: cada funcionalidad se evalua por viabilidad individual antes de implementarse.
+>
+> Funcionalidades moviles confirmadas:
+> - Facturacion (emision rapida y consulta)
+> - Registro de inventario (recepciones/salidas simples)
+> - Reportes (consulta basica)
+> - Control de asistencias
+> - Bitacoras de mantenimiento de transporte
+>
+> Todo lo demas descrito en este documento como `Taskflow` movil es vision de producto a futuro, no compromiso de implementacion inmediata. Las nuevas funcionalidades moviles se incorporan caso a caso tras analisis de viabilidad.
+
+---
+
 ## Marco normativo
 
 ### Vocabulario obligatorio

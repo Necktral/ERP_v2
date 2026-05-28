@@ -4,6 +4,15 @@ Version: v1.0
 Fecha: 2026-04-14  
 Estado: Decision operativa para implementacion internet-first
 
+## Nota operativa de alcance movil (2026-05)
+
+> **Alcance real del canal movil:** selectivo y por viabilidad.
+> El movil NO replica el sistema desktop. Funcionalidades confirmadas: facturacion,
+> inventario, reportes, control de asistencias, bitacoras de mantenimiento de transporte.
+> Nuevas funcionalidades se incorporan tras analisis individual de viabilidad.
+> La matriz de decision de este documento aplica como referencia de priorizacion,
+> no como compromiso de implementacion simultanea.
+
 ## Resumen
 
 Estrategia base del COU:
