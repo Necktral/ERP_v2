@@ -38,23 +38,6 @@ class PeriodStatus(models.TextChoices):
     CLOSED = "CLOSED", "Cerrado"
 
 
-class SheetArea(models.TextChoices):
-    ADMINISTRACION = "ADMINISTRACION", "Administración"
-    ADMINISTRACION_COMERCIAL = "ADMINISTRACION_COMERCIAL", "Administración Comercial"
-    FINCA = "FINCA", "Finca"
-    BENEFICIO_SECO = "BENEFICIO_SECO", "Beneficio Seco"
-    BENEFICIO_HUMEDO = "BENEFICIO_HUMEDO", "Beneficio Húmedo"
-    COMISARIATO = "COMISARIATO", "Comisariato"
-    TECNICO = "TECNICO", "Técnicos"
-    FINANCIAMIENTO = "FINANCIAMIENTO", "Financiamiento"
-    ACOPIO = "ACOPIO", "Acopio"
-    EVENTUAL = "EVENTUAL", "Eventual / Temporal"
-    BODEGA = "BODEGA", "Bodega"
-    TALLER = "TALLER", "Taller"
-    GASOLINERA = "GASOLINERA", "Gasolinera"
-    TRANSPORTE = "TRANSPORTE", "Transporte"
-    OTRO = "OTRO", "Otro"
-
 
 class SheetStatus(models.TextChoices):
     DRAFT = "DRAFT", "Borrador"
@@ -172,13 +155,20 @@ class PayrollPeriod(models.Model):
 
 class PayrollSheet(models.Model):
     period = models.ForeignKey(PayrollPeriod, on_delete=models.PROTECT, related_name="sheets")
+
+    # La sucursal/empresa que genera esta sub-planilla
     branch = models.ForeignKey(
         "iam.OrgUnit", null=True, blank=True,
-        on_delete=models.PROTECT, related_name="payroll_sheets_branch"
+        on_delete=models.PROTECT, related_name="payroll_sheets_branch",
+        help_text="Empresa o sucursal que genera esta planilla"
     )
 
-    area = models.CharField(max_length=32, choices=SheetArea.choices, default=SheetArea.OTRO)
-    area_description = models.CharField(max_length=120, blank=True, default="")
+    # Nombre libre — cada empresa/área lo nombra como quiere
+    sheet_name = models.CharField(
+        max_length=160, blank=True, default="",
+        help_text="Nombre de la planilla (ej: 'Planilla Finca Abisinia', 'Comisariato Santa Isabel')"
+    )
+
     has_inss = models.BooleanField(default=True, help_text="True = planilla CON INSS")
     status = models.CharField(max_length=12, choices=SheetStatus.choices, default=SheetStatus.DRAFT, db_index=True)
 
@@ -200,13 +190,14 @@ class PayrollSheet(models.Model):
     class Meta:
         app_label = "nomina"
         indexes = [
-            models.Index(fields=["period", "area", "has_inss"], name="ix_nom_sheet_p_a"),
+            models.Index(fields=["period", "has_inss"], name="ix_nom_sheet_p_inss"),
             models.Index(fields=["period", "status"], name="ix_nom_sheet_p_st"),
+            models.Index(fields=["branch", "period"], name="ix_nom_sheet_br_p"),
         ]
 
     def __str__(self) -> str:
         inss_label = "CON INSS" if self.has_inss else "SIN INSS"
-        return f"{self.period} | {self.area} [{inss_label}]"
+        return f"{self.sheet_name} [{inss_label}]"
 
 
 # ---------------------------------------------------------------------------
