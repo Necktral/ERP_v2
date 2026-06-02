@@ -10,14 +10,21 @@ from django.utils import timezone
 
 
 # ---------------------------------------------------------------------------
-# Tasas INSS Nicaragua (configurables por período pero con defaults fijos)
+# Defaults Nicaragua — se usan cuando no hay NominaConfig activa
 # ---------------------------------------------------------------------------
 
-INSS_LABORAL_RATE = Decimal("0.07")       # 7% — descuento al trabajador
-INSS_PATRONAL_RATE = Decimal("0.225")     # 22.5% — costo empresa
-INATEC_RATE = Decimal("0.02")             # 2% — costo empresa
-VACATION_RATE = Decimal("0.083333")       # 8.33% mensual
-THIRTEENTH_MONTH_RATE = Decimal("0.083333")  # 8.33% mensual
+DEFAULT_INSS_LABORAL = Decimal("0.07")
+DEFAULT_INSS_PATRONAL_SMALL = Decimal("0.215")   # < 50 trabajadores
+DEFAULT_INSS_PATRONAL_LARGE = Decimal("0.225")   # >= 50 trabajadores
+DEFAULT_INSS_SIZE_THRESHOLD = 50
+DEFAULT_INATEC = Decimal("0.02")
+DEFAULT_VACATION_RATE = Decimal("0.083333")
+DEFAULT_THIRTEENTH_RATE = Decimal("0.083333")
+DEFAULT_OVERTIME_RATE = Decimal("2.0")            # 2x el valor hora
+DEFAULT_SUNDAY_RATE = Decimal("2.0")              # 2x el salario diario
+DEFAULT_SUBSIDY_EMPLOYER_DAYS = 3                 # días 1-3 paga empresa
+DEFAULT_SUBSIDY_INSS_RATE = Decimal("0.60")       # 60% desde día 4
+DEFAULT_MIN_WAGE_AGRO = Decimal("6188.02")        # sector agropecuario 2026
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +85,227 @@ class AbsenceReason(models.TextChoices):
     INSS_SUBSIDY = "INSS_SUBSIDY", "Subsidio INSS (enfermedad)"
     HOLIDAY = "HOLIDAY", "Feriado"
     VACATION = "VACATION", "Vacaciones"
+
+
+# ---------------------------------------------------------------------------
+# NominaConfig — Configuración de tasas por empresa y año fiscal
+# ---------------------------------------------------------------------------
+
+class NominaConfig(models.Model):
+    """
+    Configuración flexible de tasas y parámetros de nómina por empresa.
+
+    Permite actualizar las tasas INSS, IR, salario mínimo, etc. sin
+    cambiar código. Cada registro es una versión vigente a partir de
+    effective_from. El sistema usa la versión más reciente activa.
+    """
+
+    company = models.ForeignKey(
+        "iam.OrgUnit", on_delete=models.PROTECT, related_name="nomina_configs"
+    )
+    fiscal_year = models.PositiveSmallIntegerField(db_index=True, help_text="Año fiscal vigente")
+    effective_from = models.DateField(db_index=True, help_text="Fecha desde la que aplica esta configuración")
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    # --- INSS Laboral (deducción al trabajador) ---
+    inss_laboral_rate = models.DecimalField(
+        max_digits=6, decimal_places=5, default=DEFAULT_INSS_LABORAL,
+        help_text="Tasa INSS laboral (ej. 0.07000 = 7%)"
+    )
+
+    # --- INSS Patronal (costo empresa) ---
+    # Nicaragua tiene dos tasas según tamaño de empresa
+    inss_patronal_rate_small = models.DecimalField(
+        max_digits=6, decimal_places=5, default=DEFAULT_INSS_PATRONAL_SMALL,
+        help_text="INSS patronal para empresas < umbral de trabajadores (ej. 0.21500 = 21.5%)"
+    )
+    inss_patronal_rate_large = models.DecimalField(
+        max_digits=6, decimal_places=5, default=DEFAULT_INSS_PATRONAL_LARGE,
+        help_text="INSS patronal para empresas >= umbral de trabajadores (ej. 0.22500 = 22.5%)"
+    )
+    inss_size_threshold = models.PositiveSmallIntegerField(
+        default=DEFAULT_INSS_SIZE_THRESHOLD,
+        help_text="Número de trabajadores a partir del cual aplica la tasa 'large'"
+    )
+
+    # --- INATEC ---
+    inatec_rate = models.DecimalField(
+        max_digits=6, decimal_places=5, default=DEFAULT_INATEC,
+        help_text="Tasa INATEC (ej. 0.02000 = 2%)"
+    )
+
+    # --- Prestaciones ---
+    vacation_rate = models.DecimalField(
+        max_digits=8, decimal_places=6, default=DEFAULT_VACATION_RATE,
+        help_text="Tasa provisión vacaciones mensual (ej. 0.083333 = 8.33%)"
+    )
+    thirteenth_month_rate = models.DecimalField(
+        max_digits=8, decimal_places=6, default=DEFAULT_THIRTEENTH_RATE,
+        help_text="Tasa provisión 13vo mes mensual (ej. 0.083333 = 8.33%)"
+    )
+
+    # --- Horas extras y 7mo día ---
+    overtime_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=DEFAULT_OVERTIME_RATE,
+        help_text="Multiplicador horas extra sobre tarifa hora (ej. 2.00 = doble)"
+    )
+    sunday_bonus_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=DEFAULT_SUNDAY_RATE,
+        help_text="Multiplicador domingos laborados (ej. 2.00 = doble)"
+    )
+    seventh_day_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("1.00"),
+        help_text="Multiplicador 7mo día de descanso (ej. 1.00 = salario normal)"
+    )
+
+    # --- Subsidio por enfermedad ---
+    subsidy_employer_days = models.PositiveSmallIntegerField(
+        default=DEFAULT_SUBSIDY_EMPLOYER_DAYS,
+        help_text="Días de enfermedad que paga la empresa al 100% (antes de aplicar INSS)"
+    )
+    subsidy_inss_rate = models.DecimalField(
+        max_digits=5, decimal_places=4, default=DEFAULT_SUBSIDY_INSS_RATE,
+        help_text="Porcentaje que paga el INSS desde el día N+1 (ej. 0.6000 = 60%)"
+    )
+
+    # --- Salario mínimo por sector ---
+    min_wage_agro = models.DecimalField(
+        max_digits=12, decimal_places=2, default=DEFAULT_MIN_WAGE_AGRO,
+        help_text="Salario mínimo sector agropecuario (C$/mes)"
+    )
+    min_wage_general = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("7000.00"),
+        help_text="Salario mínimo sector servicios/general (C$/mes)"
+    )
+
+    # --- Pago al INSS ---
+    payment_deadline_days = models.PositiveSmallIntegerField(
+        default=10,
+        help_text="Días hábiles del mes siguiente para pagar al INSS"
+    )
+    late_payment_surcharge = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal("0.03"),
+        help_text="Recargo por mora (ej. 0.0300 = 3%)"
+    )
+
+    notes = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="nomina_configs_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "fiscal_year", "effective_from"],
+                name="uq_nomina_config_company_year_date"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "fiscal_year", "is_active"], name="ix_nomcfg_c_y_a"),
+        ]
+        ordering = ["-effective_from"]
+
+    def __str__(self) -> str:
+        return f"Config Nómina {self.company} / {self.fiscal_year} (desde {self.effective_from})"
+
+    @classmethod
+    def get_active(cls, *, company, date=None) -> "NominaConfig | None":
+        """Retorna la configuración activa más reciente para la empresa y fecha dadas."""
+        from django.utils import timezone as tz
+        ref_date = date or tz.localdate()
+        return (
+            cls.objects.filter(
+                company=company,
+                is_active=True,
+                effective_from__lte=ref_date,
+            )
+            .order_by("-effective_from")
+            .first()
+        )
+
+    def get_inss_patronal_rate(self, *, worker_count: int) -> Decimal:
+        """Retorna la tasa patronal según el número de trabajadores activos."""
+        if worker_count >= self.inss_size_threshold:
+            return self.inss_patronal_rate_large
+        return self.inss_patronal_rate_small
+
+
+# ---------------------------------------------------------------------------
+# IRBracket — Tabla progresiva del IR laboral (configurable por año)
+# ---------------------------------------------------------------------------
+
+class IRBracket(models.Model):
+    """
+    Un tramo de la tabla progresiva del IR laboral de Nicaragua.
+    Se registra una fila por cada tramo. Se configura por empresa y año.
+
+    Ejemplo Nicaragua 2026:
+      tramo 1: 0 – 100,000  →  base=0,       tasa=0%
+      tramo 2: 100,001 – 200,000 → base=0,    tasa=15%
+      tramo 3: 200,001 – 350,000 → base=15000, tasa=20%
+      tramo 4: 350,001 – 500,000 → base=45000, tasa=25%
+      tramo 5: 500,001+          → base=82500, tasa=30%
+
+    Los montos son ANUALES. El sistema calcula mensual/quincenal dividiendo.
+    """
+
+    config = models.ForeignKey(
+        NominaConfig, on_delete=models.CASCADE, related_name="ir_brackets"
+    )
+    order = models.PositiveSmallIntegerField(help_text="Orden del tramo (1, 2, 3...)")
+
+    min_income = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        help_text="Ingreso anual mínimo de este tramo (C$)"
+    )
+    max_income = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True,
+        help_text="Ingreso anual máximo (null = sin límite superior)"
+    )
+    base_tax = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal("0.00"),
+        help_text="Impuesto fijo del tramo (C$)"
+    )
+    rate = models.DecimalField(
+        max_digits=6, decimal_places=5, default=Decimal("0.00"),
+        help_text="Tasa marginal sobre el exceso (ej. 0.15000 = 15%)"
+    )
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["config", "order"], name="uq_irbracket_config_order"),
+        ]
+        ordering = ["order"]
+
+    def __str__(self) -> str:
+        max_str = f"– {self.max_income:,.0f}" if self.max_income else "+"
+        return f"IR Tramo {self.order}: {self.min_income:,.0f} {max_str} → {self.rate*100:.0f}%"
+
+    @classmethod
+    def calculate_annual_ir(cls, *, config: "NominaConfig", annual_income: Decimal) -> Decimal:
+        """Calcula el IR anual dado un ingreso anual bruto."""
+        brackets = cls.objects.filter(config=config).order_by("order")
+        ir = Decimal("0.00")
+        for bracket in brackets:
+            if annual_income <= bracket.min_income:
+                break
+            excess = annual_income - bracket.min_income
+            if bracket.max_income is not None:
+                excess = min(excess, bracket.max_income - bracket.min_income)
+            ir = bracket.base_tax + (excess * bracket.rate)
+        return ir.quantize(Decimal("0.01"))
+
+    @classmethod
+    def calculate_quincenal_ir(cls, *, config: "NominaConfig", quincenal_income: Decimal) -> Decimal:
+        """Convierte ingreso quincenal a anual, calcula IR anual y retorna la porción quincenal."""
+        annual = quincenal_income * Decimal("24")  # 24 quincenas al año
+        annual_ir = cls.calculate_annual_ir(config=config, annual_income=annual)
+        return (annual_ir / Decimal("24")).quantize(Decimal("0.01"))
 
 
 # ---------------------------------------------------------------------------
@@ -309,8 +537,15 @@ class PayrollEntry(models.Model):
             monthly = (self.base_salary_usd * self.exchange_rate).quantize(Decimal("0.01"))
         return (monthly / Decimal("30")).quantize(Decimal("0.000001"))
 
-    def compute_all(self) -> None:
-        """Recalcula todos los campos de la línea según las tasas Nicaragua."""
+    def compute_all(self, *, config: "NominaConfig | None" = None, worker_count: int = 999) -> None:
+        """
+        Recalcula todos los campos usando la NominaConfig activa.
+        Si no se pasa config, usa los defaults de Nicaragua.
+
+        Args:
+            config: NominaConfig activa para la empresa. Si None usa defaults.
+            worker_count: Número de trabajadores activos (para elegir tasa patronal).
+        """
         from decimal import ROUND_HALF_UP
 
         Q2 = Decimal("0.01")
@@ -319,6 +554,26 @@ class PayrollEntry(models.Model):
         def _r2(x): return Decimal(str(x)).quantize(Q2, rounding=ROUND_HALF_UP)
         def _r6(x): return Decimal(str(x)).quantize(Q6, rounding=ROUND_HALF_UP)
 
+        # Tasas — desde config o defaults
+        if config:
+            inss_laboral_rate = config.inss_laboral_rate
+            inss_patronal_rate = config.get_inss_patronal_rate(worker_count=worker_count)
+            inatec_rate = config.inatec_rate
+            vacation_rate = config.vacation_rate
+            thirteenth_rate = config.thirteenth_month_rate
+            overtime_rate = config.overtime_rate
+            sunday_rate = config.sunday_bonus_rate
+            subsidy_inss_rate = config.subsidy_inss_rate
+        else:
+            inss_laboral_rate = DEFAULT_INSS_LABORAL
+            inss_patronal_rate = DEFAULT_INSS_PATRONAL_LARGE
+            inatec_rate = DEFAULT_INATEC
+            vacation_rate = DEFAULT_VACATION_RATE
+            thirteenth_rate = DEFAULT_THIRTEENTH_RATE
+            overtime_rate = DEFAULT_OVERTIME_RATE
+            sunday_rate = DEFAULT_SUNDAY_RATE
+            subsidy_inss_rate = DEFAULT_SUBSIDY_INSS_RATE
+
         # 1. Salario base mensual en NIO
         if self.base_salary_usd and self.exchange_rate:
             monthly_nio = _r2(self.base_salary_usd * self.exchange_rate)
@@ -326,7 +581,7 @@ class PayrollEntry(models.Model):
         else:
             monthly_nio = self.base_salary_nio
 
-        # 2. Salario diario
+        # 2. Salario diario (base: mes de 30 días)
         self.daily_rate_nio = _r6(monthly_nio / Decimal("30"))
 
         # 3. Salario quincenal proporcional a días trabajados
@@ -334,31 +589,28 @@ class PayrollEntry(models.Model):
         worked = Decimal(str(self.days_worked))
         quincenal_base = _r2(monthly_nio / 2)
 
-        if worked < period_days:
-            self.quincenal_salary = _r2(self.daily_rate_nio * worked)
-        else:
-            self.quincenal_salary = quincenal_base
+        self.quincenal_salary = _r2(self.daily_rate_nio * worked) if worked < period_days else quincenal_base
 
-        # 4. Subsidio INSS
+        # 4. Subsidio INSS (empresa paga 100% días 1-N, INSS paga 60% desde día N+1)
         subsidy_days = Decimal(str(self.days_subsidy))
         if subsidy_days > 0:
             if not self.subsidy_daily_rate or self.subsidy_daily_rate == 0:
                 self.subsidy_daily_rate = self.daily_rate_nio
-            self.subsidy_amount = _r2(self.subsidy_daily_rate * subsidy_days)
+            self.subsidy_amount = _r2(self.subsidy_daily_rate * subsidy_days * subsidy_inss_rate)
         else:
             self.subsidy_amount = Decimal("0.00")
 
-        # 5. Horas extra (tarifa 2x del diario dividido en 8 horas)
+        # 5. Horas extra
         hourly_rate = _r6(self.daily_rate_nio / 8)
-        self.overtime_amount = _r2(hourly_rate * Decimal("2") * Decimal(str(self.overtime_hours)))
+        self.overtime_amount = _r2(hourly_rate * overtime_rate * Decimal(str(self.overtime_hours)))
 
-        # 6. Domingos laborados (tarifa doble)
-        self.sunday_bonus_amount = _r2(self.daily_rate_nio * Decimal(str(self.sunday_worked_days)))
+        # 6. Domingos laborados
+        self.sunday_bonus_amount = _r2(self.daily_rate_nio * sunday_rate * Decimal(str(self.sunday_worked_days)))
 
-        # 7. Provisiones (se calculan sobre salario mensual proporcional)
+        # 7. Provisiones (sobre salario mensual proporcional a días trabajados)
         monthly_proportional = _r2(self.daily_rate_nio * worked * 2)
-        self.vacation_provision = _r2(monthly_proportional * VACATION_RATE)
-        self.thirteenth_month_provision = _r2(monthly_proportional * THIRTEENTH_MONTH_RATE)
+        self.vacation_provision = _r2(monthly_proportional * vacation_rate)
+        self.thirteenth_month_provision = _r2(monthly_proportional * thirteenth_rate)
 
         # 8. Total ingresos
         self.total_income = _r2(
@@ -368,9 +620,15 @@ class PayrollEntry(models.Model):
             self.other_income
         )
 
-        # 9. Retenciones
+        # 9. IR — calculado si hay config con tabla IR, si no = 0
+        if config and not self.ir_amount:
+            self.ir_amount = IRBracket.calculate_quincenal_ir(
+                config=config, quincenal_income=self.quincenal_salary
+            )
+
+        # 10. Retenciones
         if self.has_inss:
-            self.inss_laboral = _r2(self.quincenal_salary * INSS_LABORAL_RATE)
+            self.inss_laboral = _r2(self.quincenal_salary * inss_laboral_rate)
         else:
             self.inss_laboral = Decimal("0.00")
 
@@ -380,15 +638,17 @@ class PayrollEntry(models.Model):
             self.store_credit_deduction + self.other_deductions
         )
 
-        # 10. Neto
-        self.total_devengado = _r2(self.quincenal_salary + self.subsidy_amount +
-                                    self.overtime_amount + self.sunday_bonus_amount)
+        # 11. Neto
+        self.total_devengado = _r2(
+            self.quincenal_salary + self.subsidy_amount +
+            self.overtime_amount + self.sunday_bonus_amount
+        )
         self.net_to_pay = _r2(self.total_devengado - self.total_deductions)
 
-        # 11. Costos patronales
+        # 12. Costos patronales
         if self.has_inss:
-            self.inss_patronal = _r2(self.quincenal_salary * INSS_PATRONAL_RATE)
-            self.inatec = _r2(self.quincenal_salary * INATEC_RATE)
+            self.inss_patronal = _r2(self.quincenal_salary * inss_patronal_rate)
+            self.inatec = _r2(self.quincenal_salary * inatec_rate)
         else:
             self.inss_patronal = Decimal("0.00")
             self.inatec = Decimal("0.00")
