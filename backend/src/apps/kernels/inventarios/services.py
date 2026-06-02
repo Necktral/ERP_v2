@@ -13,7 +13,7 @@ from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
 
-from .models import InventoryItem, MovementType, StockBalance, StockMovement, Warehouse
+from .models import InventoryItem, ItemLot, LotBalance, MovementType, StockBalance, StockMovement, Warehouse
 
 
 QTY_Q = Decimal("0.0001")
@@ -51,9 +51,105 @@ class PostResult:
     accounting_journal_entry_id: int | None = None
 
 
-def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, uom: str = "UNIT") -> InventoryItem:
+def create_warehouse(
+    *,
+    request,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor_user,
+    name: str,
+    code: str = "",
+    warehouse_type: str = "GENERAL",
+    location_description: str = "",
+    is_default: bool = False,
+) -> Warehouse:
     with transaction.atomic():
-        item = InventoryItem.objects.create(company=company, sku=sku, name=name, uom=uom)
+        wh = Warehouse.objects.create(
+            company=company,
+            branch=branch,
+            name=name,
+            code=code,
+            warehouse_type=warehouse_type,
+            location_description=location_description,
+            is_default=is_default,
+        )
+        write_event(
+            request=request,
+            module="INVENTORY",
+            event_type="INVENTORY_WAREHOUSE_CREATED",
+            reason_code="INVENTORY_OK",
+            actor_user=actor_user,
+            subject_type="WAREHOUSE",
+            subject_id=str(wh.id),
+            metadata={"name": name, "code": code, "warehouse_type": warehouse_type},
+        )
+        return wh
+
+
+def create_lot(
+    *,
+    request,
+    company: OrgUnit,
+    actor_user,
+    item_id: int,
+    lot_number: str,
+    supplier_lot_ref: str = "",
+    production_date=None,
+    expiry_date=None,
+    notes: str = "",
+) -> ItemLot:
+    item = _get_item_or_error(company=company, item_id=item_id)
+    if not item.track_lots:
+        raise ValueError("El ítem no tiene habilitado el tracking de lotes.")
+    with transaction.atomic():
+        lot = ItemLot.objects.create(
+            company=company,
+            item=item,
+            lot_number=lot_number,
+            supplier_lot_ref=supplier_lot_ref,
+            production_date=production_date,
+            expiry_date=expiry_date,
+            notes=notes,
+            created_by=actor_user,
+        )
+        write_event(
+            request=request,
+            module="INVENTORY",
+            event_type="INVENTORY_LOT_CREATED",
+            reason_code="INVENTORY_OK",
+            actor_user=actor_user,
+            subject_type="INVENTORY_LOT",
+            subject_id=str(lot.id),
+            metadata={
+                "item_id": item_id,
+                "lot_number": lot_number,
+                "expiry_date": str(expiry_date) if expiry_date else "",
+            },
+        )
+        return lot
+
+
+def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, uom: str = "UNIT", **kwargs) -> InventoryItem:
+    with transaction.atomic():
+        item = InventoryItem.objects.create(
+            company=company, sku=sku, name=name, uom=uom,
+            created_by=actor_user,
+            description=kwargs.get("description", ""),
+            category=kwargs.get("category", ""),
+            barcode=kwargs.get("barcode", ""),
+            purchase_uom=kwargs.get("purchase_uom", ""),
+            purchase_uom_factor=kwargs.get("purchase_uom_factor", "1.000000"),
+            sale_uom=kwargs.get("sale_uom", ""),
+            sale_uom_factor=kwargs.get("sale_uom_factor", "1.000000"),
+            reorder_point=kwargs.get("reorder_point", "0.0000"),
+            min_stock_qty=kwargs.get("min_stock_qty", "0.0000"),
+            max_stock_qty=kwargs.get("max_stock_qty"),
+            track_lots=bool(kwargs.get("track_lots", False)),
+            track_expiry=bool(kwargs.get("track_expiry", False)),
+            shelf_life_days=kwargs.get("shelf_life_days"),
+            storage_condition=kwargs.get("storage_condition", "AMBIENT"),
+            is_controlled=bool(kwargs.get("is_controlled", False)),
+        )
 
         write_event(
             request=request,
@@ -79,6 +175,19 @@ def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, u
             company=company,
         )
         return item
+
+
+def _get_or_create_lot_balance_locked(
+    *, company: OrgUnit, branch: OrgUnit, warehouse: Warehouse, item: InventoryItem, lot: ItemLot
+) -> LotBalance:
+    bal = (
+        LotBalance.objects.select_for_update()
+        .filter(company=company, branch=branch, warehouse=warehouse, item=item, lot=lot)
+        .first()
+    )
+    if bal:
+        return bal
+    return LotBalance.objects.create(company=company, branch=branch, warehouse=warehouse, item=item, lot=lot)
 
 
 def _get_or_create_balance_locked(*, company: OrgUnit, branch: OrgUnit, warehouse: Warehouse, item: InventoryItem) -> StockBalance:
@@ -435,6 +544,11 @@ def post_receive(
     item_id: int,
     qty: Decimal,
     unit_cost: Decimal,
+    lot_id: int | None = None,
+    lot_number: str = "",
+    expiry_date=None,
+    movement_uom: str = "",
+    movement_uom_factor: Decimal | str = Decimal("1.000000"),
     idempotency_key: str = "",
     note: str = "",
     source_module: str = "",
@@ -483,8 +597,30 @@ def post_receive(
         item = _get_item_or_error(company=company, item_id=item_id)
         bal = _get_or_create_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item)
 
-        total_cost = _q_cost(qty * unit_cost)
-        new_qty = _q_qty(bal.qty_on_hand + qty)
+        # Resolve lot
+        lot: ItemLot | None = None
+        if item.track_lots:
+            if lot_id:
+                try:
+                    lot = ItemLot.objects.get(id=lot_id, company=company, item=item)
+                except ItemLot.DoesNotExist:
+                    raise ValueError("Lote inválido para este ítem.")
+            elif lot_number:
+                lot, _ = ItemLot.objects.get_or_create(
+                    company=company, item=item, lot_number=lot_number,
+                    defaults={"expiry_date": expiry_date, "created_by": actor},
+                )
+            else:
+                raise ValueError("El ítem requiere número de lote.")
+        elif lot_id or lot_number:
+            raise ValueError("El ítem no tiene habilitado tracking de lotes.")
+
+        # Apply UoM factor (convert movement qty to base uom)
+        factor = _q_cost(Decimal(str(movement_uom_factor))) if movement_uom_factor else Decimal("1.000000")
+        qty_base = _q_qty(qty * factor) if factor != Decimal("1.000000") else qty
+
+        total_cost = _q_cost(qty_base * unit_cost)
+        new_qty = _q_qty(bal.qty_on_hand + qty_base)
         if new_qty == 0:
             new_avg = Decimal("0.000000")
         else:
@@ -496,9 +632,13 @@ def post_receive(
             warehouse=warehouse,
             item=item,
             movement_type=MovementType.RECEIVE,
-            qty_delta=qty,
+            qty_delta=qty_base,
             unit_cost=unit_cost,
             total_cost=total_cost,
+            lot=lot,
+            expiry_date=lot.expiry_date if lot else expiry_date,
+            movement_uom=movement_uom or "",
+            movement_uom_factor=factor,
             source_module=source_module or "",
             source_type=source_type or "",
             source_id=source_id or "",
@@ -509,8 +649,14 @@ def post_receive(
 
         bal.qty_on_hand = new_qty
         bal.avg_cost = new_avg
-        bal.updated_at = timezone.now()
-        bal.save(update_fields=["qty_on_hand", "avg_cost", "updated_at"])
+        bal.save(update_fields=["qty_on_hand", "avg_cost"])
+
+        # Update lot balance if tracking
+        if lot:
+            lot_bal = _get_or_create_lot_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item, lot=lot)
+            lot_bal.qty_on_hand = _q_qty(lot_bal.qty_on_hand + qty_base)
+            lot_bal.avg_cost = new_avg
+            lot_bal.save(update_fields=["qty_on_hand", "avg_cost"])
 
         write_event(
             request=request,
@@ -569,6 +715,9 @@ def post_issue(
     warehouse_id: int,
     item_id: int,
     qty: Decimal,
+    lot_id: int | None = None,
+    movement_uom: str = "",
+    movement_uom_factor: Decimal | str = Decimal("1.000000"),
     allow_negative: bool = False,
     idempotency_key: str = "",
     note: str = "",
@@ -805,6 +954,7 @@ def post_transfer(
     to_warehouse_id: int,
     item_id: int,
     qty: Decimal,
+    lot_id: int | None = None,
     idempotency_key: str = "",
     note: str = "",
 ) -> dict:
