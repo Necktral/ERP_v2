@@ -253,6 +253,7 @@ INSTALLED_APPS = [
     "apps.kernels.accounting.apps.AccountingConfig",
     "apps.kernels.payments.apps.PaymentsConfig",
     "apps.kernels.portfolio.apps.PortfolioConfig",  # Financial Portfolio Kernel
+    "apps.kernels.nomina.apps.NominaConfig",         # Nómina Kernel
     "apps.kernels.reporting.apps.ReportingConfig",
     "apps.modulos.cec.apps.CecConfig",
     "apps.modulos.integration.apps.IntegrationConfig",
