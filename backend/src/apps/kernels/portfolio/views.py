@@ -6,8 +6,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from apps.modulos.iam.context import require_company_context
-
 from .models import (
     Receivable,
     Payable,
@@ -38,9 +36,8 @@ class ReceivableViewSet(viewsets.ModelViewSet):
     ordering_fields = ["issue_date", "due_date", "outstanding_amount"]
     ordering = ["-issue_date"]
 
-    @require_company_context
-    def get_queryset(self, company=None, **ctx):
-        return Receivable.objects.filter(company=company).select_related("party", "company", "branch")
+    def get_queryset(self):
+        return Receivable.objects.filter(company=self.request.company).select_related("party", "company", "branch")
 
     @action(detail=True, methods=["post"])
     def adjust(self, request, pk=None):
@@ -94,9 +91,8 @@ class PayableViewSet(viewsets.ModelViewSet):
     ordering_fields = ["issue_date", "due_date", "outstanding_amount"]
     ordering = ["-issue_date"]
 
-    @require_company_context
-    def get_queryset(self, company=None, **ctx):
-        return Payable.objects.filter(company=company).select_related("party", "company", "branch")
+    def get_queryset(self):
+        return Payable.objects.filter(company=self.request.company).select_related("party", "company", "branch")
 
 
 class CreditViewSet(viewsets.ModelViewSet):
@@ -110,9 +106,8 @@ class CreditViewSet(viewsets.ModelViewSet):
     ordering_fields = ["approval_date", "disbursement_date", "maturity_date"]
     ordering = ["-created_at"]
 
-    @require_company_context
-    def get_queryset(self, company=None, **ctx):
-        return Credit.objects.filter(company=company).select_related(
+    def get_queryset(self):
+        return Credit.objects.filter(company=self.request.company).select_related(
             "lender_party", "borrower_party", "guarantor_party", "company", "branch"
         )
 
@@ -147,9 +142,8 @@ class PaymentAllocationViewSet(viewsets.ModelViewSet):
     filterset_fields = ["status", "payment_intent", "allocation_date"]
     ordering = ["-allocation_date", "-created_at"]
 
-    @require_company_context
-    def get_queryset(self, company=None, **ctx):
-        return PaymentAllocation.objects.filter(company=company).select_related("payment_intent", "company")
+    def get_queryset(self):
+        return PaymentAllocation.objects.filter(company=self.request.company).select_related("payment_intent", "company")
 
 
 class InterestAccrualViewSet(viewsets.ReadOnlyModelViewSet):
@@ -164,7 +158,7 @@ class InterestAccrualViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         # Filter by credit's company
         return InterestAccrual.objects.filter(
-            credit__company=self.request.user.active_company
+            credit__company=self.request.company
         ).select_related("credit")
 
 
@@ -175,6 +169,5 @@ class PortfolioSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = PortfolioSettingsSerializer
     permission_classes = [IsAuthenticated]
 
-    @require_company_context
-    def get_queryset(self, company=None, **ctx):
-        return PortfolioSettings.objects.filter(company=company)
+    def get_queryset(self):
+        return PortfolioSettings.objects.filter(company=self.request.company)
