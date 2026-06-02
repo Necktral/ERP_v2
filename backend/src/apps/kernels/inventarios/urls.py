@@ -4,10 +4,10 @@ from django.urls import path
 
 from .views import (
     AdjustView,
+    BalanceView,
     HealthView,
     IssueView,
-    ItemCreateView,
-    ItemListView,
+    ItemView,
     KardexView,
     LotCreateView,
     LotListView,
@@ -15,24 +15,22 @@ from .views import (
     ReceiveView,
     StockSummaryView,
     TransferView,
-    WarehouseCreateView,
-    WarehouseListView,
+    WarehouseView,
 )
 
 
 urlpatterns = [
     path("health/", HealthView.as_view()),
-    # Warehouses
-    path("warehouses/", WarehouseListView.as_view()),
-    path("warehouses/create/", WarehouseCreateView.as_view()),
-    # Items
-    path("items/", ItemListView.as_view()),
-    path("items/create/", ItemCreateView.as_view()),
+    # Warehouses: GET=list, POST=create (backward compat con tests y código existente)
+    path("warehouses/", WarehouseView.as_view()),
+    # Items: GET=list, POST=create (backward compat)
+    path("items/", ItemView.as_view()),
     # Lots
     path("lots/", LotListView.as_view()),
     path("lots/create/", LotCreateView.as_view()),
     # Stock
-    path("stock/", StockSummaryView.as_view()),
+    path("stock/", StockSummaryView.as_view()),        # paginado, filtros avanzados
+    path("balances/", BalanceView.as_view()),           # backward compat: ?warehouse_id=X&item_id=Y
     path("stock/lots/", LotStockView.as_view()),
     path("kardex/", KardexView.as_view()),
     # Movement commands

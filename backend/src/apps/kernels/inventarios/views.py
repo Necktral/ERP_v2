@@ -55,8 +55,13 @@ class HealthView(APIView):
 # Warehouse
 # ---------------------------------------------------------------------------
 
-class WarehouseListView(APIView):
-    permission_classes = [rbac_permission("inventory.warehouse.read")]
+class WarehouseView(APIView):
+    """GET → list paginado   POST → crear   (un solo endpoint, backward compatible)"""
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("inventory.warehouse.create")()]
+        return [rbac_permission("inventory.warehouse.read")()]
 
     def get(self, request):
         company: OrgUnit = request.company
@@ -73,10 +78,6 @@ class WarehouseListView(APIView):
         limit, offset = get_limit_offset(request)
         total, rows = _paginate(qs.order_by("name"), limit=limit, offset=offset)
         return Response({"count": total, "limit": limit, "offset": offset, "results": WarehouseOut(rows, many=True).data})
-
-
-class WarehouseCreateView(APIView):
-    permission_classes = [rbac_permission("inventory.warehouse.create")]
 
     def post(self, request):
         company: OrgUnit = request.company
@@ -102,12 +103,21 @@ class WarehouseCreateView(APIView):
         return Response(WarehouseOut(wh).data, status=status.HTTP_201_CREATED)
 
 
+WarehouseListView = WarehouseView
+WarehouseCreateView = WarehouseView
+
+
 # ---------------------------------------------------------------------------
 # InventoryItem
 # ---------------------------------------------------------------------------
 
-class ItemListView(APIView):
-    permission_classes = [rbac_permission("inventory.item.read")]
+class ItemView(APIView):
+    """GET → list paginado   POST → crear   (un solo endpoint, backward compatible)"""
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("inventory.item.create")()]
+        return [rbac_permission("inventory.item.read")()]
 
     def get(self, request):
         company: OrgUnit = request.company
@@ -143,10 +153,6 @@ class ItemListView(APIView):
         total, rows = _paginate(qs.order_by("sku"), limit=limit, offset=offset)
         return Response({"count": total, "limit": limit, "offset": offset, "results": InventoryItemOut(rows, many=True).data})
 
-
-class ItemCreateView(APIView):
-    permission_classes = [rbac_permission("inventory.item.create")]
-
     def post(self, request):
         company: OrgUnit = request.company
 
@@ -164,6 +170,10 @@ class ItemCreateView(APIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(InventoryItemOut(item).data, status=status.HTTP_201_CREATED)
+
+
+ItemListView = ItemView
+ItemCreateView = ItemView
 
 
 # ---------------------------------------------------------------------------
@@ -318,6 +328,33 @@ class KardexView(APIView):
         limit, offset = get_limit_offset(request)
         total, rows = _paginate(qs.order_by("-created_at"), limit=limit, offset=offset)
         return Response({"count": total, "limit": limit, "offset": offset, "results": StockMovementOut(rows, many=True).data})
+
+
+# ---------------------------------------------------------------------------
+# BalanceView — backward compat (respuesta flat por warehouse+item)
+# ---------------------------------------------------------------------------
+
+class BalanceView(APIView):
+    permission_classes = [rbac_permission("inventory.balance.read")]
+
+    def get(self, request):
+        company: OrgUnit = request.company
+        branch: OrgUnit | None = getattr(request, "branch", None)
+        if not branch:
+            return Response({"detail": "X-Branch-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        warehouse_id = request.query_params.get("warehouse_id")
+        item_id = request.query_params.get("item_id")
+        if not warehouse_id or not item_id:
+            return Response({"detail": "warehouse_id and item_id are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        bal = StockBalance.objects.filter(
+            company=company, branch=branch,
+            warehouse_id=int(warehouse_id), item_id=int(item_id)
+        ).first()
+        if not bal:
+            return Response({"qty_on_hand": "0.0000", "avg_cost": "0.000000"})
+        return Response({"qty_on_hand": str(bal.qty_on_hand), "avg_cost": str(bal.avg_cost)})
 
 
 # ---------------------------------------------------------------------------
