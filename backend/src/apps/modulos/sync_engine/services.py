@@ -41,6 +41,8 @@ from . import handlers_demo as _handlers_demo  # noqa: F401
 from . import handlers_inventory as _handlers_inventory  # noqa: F401
 # Import por side-effect: registra handlers POS en el registry.
 from . import handlers_pos as _handlers_pos  # noqa: F401
+# Import por side-effect: registra handlers billing offline en el registry.
+from . import handlers_billing as _handlers_billing  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,

@@ -23,13 +23,21 @@ from .fiscal_adapters import get_fiscal_adapter, resolve_fiscal_runtime_config
 from .models import (
     BillingDocument,
     BillingLine,
+    BillingPayment,
     BillingSequence,
     BranchFiscalConfig,
+    CreditApprovalRequest,
+    CreditStatus,
+    CustomerType,
     DocStatus,
     DocType,
     FiscalMode,
     FiscalPrintJob,
     FiscalStatus,
+    PaymentStatus,
+    SalesOrder,
+    SalesOrderLine,
+    SalesOrderStatus,
 )
 
 MONEY_Q = Decimal("0.01")
@@ -96,33 +104,37 @@ class PrintProcessSummary:
     contingency: int
 
 
-def _compute_lines_and_totals(*, lines_in: list[dict]) -> tuple[list[dict], Decimal, Decimal, Decimal]:
+def _compute_lines_and_totals(*, lines_in: list[dict]) -> tuple[list[dict], Decimal, Decimal, Decimal, Decimal]:
+    """Retorna (computed_lines, subtotal_bruto, discount_total, tax_total, total_neto)."""
     computed: list[dict] = []
-    subtotal = Decimal("0.00")
+    gross_total = Decimal("0.00")
+    discount_total = Decimal("0.00")
     tax_total = Decimal("0.00")
     total = Decimal("0.00")
 
     for li in lines_in:
-        qty = _q_qty(Decimal(li["quantity"]))
-        unit_price = _q_price(Decimal(li["unit_price"]))
-        tax_rate = _q_tax(Decimal(li.get("tax_rate", "0.0000")))
+        qty = _q_qty(Decimal(str(li["quantity"])))
+        unit_price = _q_price(Decimal(str(li["unit_price"])))
+        tax_rate = _q_tax(Decimal(str(li.get("tax_rate", "0.0000"))))
+        discount_pct = _q_tax(Decimal(str(li.get("discount_pct", "0.0000"))))
 
         if qty <= 0:
             raise BillingError("line.quantity must be > 0")
         if unit_price < 0:
             raise BillingError("line.unit_price must be >= 0")
-        if tax_rate < 0:
-            raise BillingError("line.tax_rate must be >= 0")
+        if tax_rate < 0 or tax_rate > Decimal("1.0000"):
+            raise BillingError("line.tax_rate must be between 0 and 1")
+        if discount_pct < 0 or discount_pct > Decimal("1.0000"):
+            raise BillingError("line.discount_pct must be between 0 and 1 (e.g. 0.1000 = 10%)")
 
-        raw_sub = qty * unit_price
-        line_sub = _q_money(raw_sub)
-
-        raw_tax = line_sub * tax_rate
-        line_tax = _q_money(raw_tax)
-
+        line_gross = _q_money(qty * unit_price)
+        line_discount = _q_money(line_gross * discount_pct)
+        line_sub = _q_money(line_gross - line_discount)
+        line_tax = _q_money(line_sub * tax_rate)
         line_total = _q_money(line_sub + line_tax)
 
-        subtotal += line_sub
+        gross_total += line_gross
+        discount_total += line_discount
         tax_total += line_tax
         total += line_total
 
@@ -132,14 +144,21 @@ def _compute_lines_and_totals(*, lines_in: list[dict]) -> tuple[list[dict], Deci
                 "quantity": qty,
                 "unit_price": unit_price,
                 "tax_rate": tax_rate,
+                "discount_pct": discount_pct,
+                "discount_amount": line_discount,
+                "line_gross": line_gross,
                 "line_subtotal": line_sub,
                 "line_tax": line_tax,
                 "line_total": line_total,
                 "inventory_item_id": li.get("inventory_item_id"),
+                "warehouse_id": li.get("warehouse_id"),
+                "lot_id": li.get("lot_id"),
+                "uom": li.get("uom", "") or "",
+                "uom_factor": Decimal(str(li.get("uom_factor", "1.000000"))),
             }
         )
 
-    return computed, _q_money(subtotal), _q_money(tax_total), _q_money(total)
+    return computed, _q_money(gross_total), _q_money(discount_total), _q_money(tax_total), _q_money(total)
 
 
 def _fiscal_payload(*, doc: BillingDocument) -> dict:
@@ -259,6 +278,7 @@ def create_draft(
     is_fiscal: bool,
     lines: list[dict],
     customer_party_id: int | None = None,
+    customer_type: str = CustomerType.EXTERNAL,
     idempotency_key: str = "",
     source_module: str = "",
     source_type: str = "",
@@ -270,13 +290,14 @@ def create_draft(
     company: OrgUnit = request.company
     branch: OrgUnit = request.branch
 
-    if doc_type not in (DocType.INVOICE, DocType.CREDIT_NOTE):
+    if doc_type not in (DocType.INVOICE, DocType.CREDIT_NOTE, DocType.QUOTE, DocType.ORDER):
         raise BillingError("invalid doc_type")
 
     if not lines:
         raise BillingError("lines required")
 
-    computed, subtotal, tax_total, total = _compute_lines_and_totals(lines_in=lines)
+    computed, gross_total, discount_total, tax_total, total = _compute_lines_and_totals(lines_in=lines)
+    subtotal = gross_total - discount_total
     normalized_payment_method = _normalize_payment_method(payment_method)
     customer_party = _load_customer_party(customer_party_id=customer_party_id, company=company)
 
@@ -297,7 +318,9 @@ def create_draft(
             customer_name=customer_name or "",
             customer_ref=customer_ref or "",
             customer_party=customer_party,
+            customer_type=customer_type or CustomerType.EXTERNAL,
             subtotal=subtotal,
+            discount_total=discount_total,
             tax_total=tax_total,
             total=total,
             is_fiscal=bool(is_fiscal),
@@ -319,10 +342,17 @@ def create_draft(
                 quantity=c["quantity"],
                 unit_price=c["unit_price"],
                 tax_rate=c["tax_rate"],
+                discount_pct=c["discount_pct"],
+                discount_amount=c["discount_amount"],
+                line_gross=c["line_gross"],
                 line_subtotal=c["line_subtotal"],
                 line_tax=c["line_tax"],
                 line_total=c["line_total"],
                 inventory_item_id=c["inventory_item_id"],
+                warehouse_id=c.get("warehouse_id"),
+                lot_id=c.get("lot_id"),
+                uom=c.get("uom", "") or "",
+                uom_factor=c.get("uom_factor", Decimal("1.000000")),
             )
 
         write_event(
@@ -535,26 +565,52 @@ def issue_doc(
 
         if apply_inventory:
             from apps.kernels.inventarios.services import post_issue  # import local para evitar ciclos
+            from apps.kernels.inventarios.models import ItemLot, LotBalance
 
-            warehouse_id = request.data.get("warehouse_id")
-            if not warehouse_id:
-                raise BillingError("apply_inventory requires warehouse_id in request body")
+            default_warehouse_id = getattr(request, "data", {}).get("warehouse_id") if hasattr(request, "data") else None
 
-            for ln in doc.lines.select_related("inventory_item").all():
-                if ln.inventory_item_id:
-                    post_issue(
-                        request=request,
-                        actor=actor,
-                        warehouse_id=int(warehouse_id),
-                        item_id=int(ln.inventory_item_id),
-                        qty=ln.quantity,
-                        allow_negative=False,
-                        idempotency_key=f"bill:{doc.id}:ln:{ln.id}",
-                        note=f"Auto-issue by billing doc {doc.id}",
-                        source_module="BILLING",
-                        source_type="DOC_ISSUE",
-                        source_id=str(doc.id),
+            for ln in doc.lines.select_related("inventory_item", "warehouse", "lot").all():
+                if not ln.inventory_item_id:
+                    continue
+
+                wh_id = ln.warehouse_id or (int(default_warehouse_id) if default_warehouse_id else None)
+                if not wh_id:
+                    raise BillingError(
+                        f"Línea '{ln.description}' no tiene bodega asignada y no se proveyó warehouse_id por defecto."
                     )
+
+                lot_id = ln.lot_id
+                # FEFO automático: si el ítem trackea lotes y no hay lote especificado,
+                # seleccionar el lote con menor expiry_date que tenga stock en esa bodega
+                if not lot_id and ln.inventory_item.track_lots:
+                    fefo_lot = (
+                        LotBalance.objects
+                        .filter(
+                            company=company, branch=branch,
+                            warehouse_id=wh_id, item_id=ln.inventory_item_id,
+                            qty_on_hand__gt=0,
+                            lot__status="ACTIVE",
+                        )
+                        .select_related("lot")
+                        .order_by("lot__expiry_date")
+                        .first()
+                    )
+                    lot_id = fefo_lot.lot_id if fefo_lot else None
+
+                post_issue(
+                    request=request,
+                    actor=actor,
+                    warehouse_id=wh_id,
+                    item_id=int(ln.inventory_item_id),
+                    qty=ln.quantity * ln.uom_factor if ln.uom_factor and ln.uom_factor != Decimal("1.000000") else ln.quantity,
+                    lot_id=lot_id,
+                    allow_negative=False,
+                    idempotency_key=f"bill:{doc.id}:ln:{ln.id}",
+                    note=f"Auto-despacho doc {doc.id}",
+                    source_module="BILLING",
+                    source_type="DOC_ISSUE",
+                    source_id=str(doc.id),
+                )
 
         after = {
             "status": doc.status,
@@ -1282,3 +1338,380 @@ def create_invoice(*, request, company, branch, actor_user, customer_name: str, 
     )
 
     return doc
+
+
+# ---------------------------------------------------------------------------
+# BillingPayment — múltiples pagos por documento
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class PaymentResult:
+    payment_id: int
+    doc_id: int
+    amount_paid: Decimal
+    payment_status: str
+
+
+def create_payment(
+    *,
+    request,
+    actor,
+    doc_id: int,
+    payment_method: str,
+    amount: Decimal,
+    currency: str = "NIO",
+    reference: str = "",
+    notes: str = "",
+    payment_date=None,
+    payroll_period_ref: str = "",
+    coffee_lot_ref: str = "",
+    payment_intent_id: int | None = None,
+    auto_confirm: bool = True,
+) -> PaymentResult:
+    company: OrgUnit = request.company
+
+    amount = _q_money(Decimal(str(amount)))
+    if amount <= 0:
+        raise BillingError("payment amount must be > 0")
+
+    normalized_method = _normalize_payment_method(payment_method)
+
+    with transaction.atomic():
+        try:
+            doc = BillingDocument.objects.select_for_update().get(id=doc_id, company=company)
+        except BillingDocument.DoesNotExist as exc:
+            raise BillingNotFoundError("documento no encontrado") from exc
+
+        if doc.status == DocStatus.VOIDED:
+            raise BillingError("no se puede pagar un documento anulado")
+
+        payment = BillingPayment.objects.create(
+            doc=doc,
+            company=company,
+            payment_method=normalized_method,
+            amount=amount,
+            currency=currency or "NIO",
+            reference=reference or "",
+            notes=notes or "",
+            payment_date=payment_date or timezone.localdate(),
+            status=BillingPayment.Status.CONFIRMED if auto_confirm else BillingPayment.Status.PENDING,
+            payroll_period_ref=payroll_period_ref or "",
+            coffee_lot_ref=coffee_lot_ref or "",
+            payment_intent_id=payment_intent_id,
+            created_by=actor,
+        )
+
+        # Recalcular amount_paid y payment_status en el documento
+        confirmed_total = (
+            BillingPayment.objects.filter(doc=doc, status=BillingPayment.Status.CONFIRMED)
+            .aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+        )
+        doc.amount_paid = _q_money(confirmed_total)
+        doc.recalculate_payment_status()
+        doc.save(update_fields=["amount_paid", "payment_status"])
+
+        write_event(
+            request=request,
+            module="BILLING",
+            event_type="BILLING_PAYMENT_ADDED",
+            reason_code="BILLING_OK",
+            actor_user=actor,
+            subject_type="BILLING_PAYMENT",
+            subject_id=str(payment.id),
+            metadata={
+                "doc_id": doc_id,
+                "payment_method": normalized_method,
+                "amount": str(amount),
+                "currency": currency,
+                "auto_confirm": auto_confirm,
+                "doc_payment_status": doc.payment_status,
+                "doc_amount_paid": str(doc.amount_paid),
+            },
+        )
+
+    return PaymentResult(
+        payment_id=payment.id,
+        doc_id=doc.id,
+        amount_paid=doc.amount_paid,
+        payment_status=doc.payment_status,
+    )
+
+
+def reverse_payment(
+    *,
+    request,
+    actor,
+    payment_id: int,
+    reason: str,
+) -> dict:
+    company: OrgUnit = request.company
+
+    with transaction.atomic():
+        try:
+            payment = BillingPayment.objects.select_for_update().get(id=payment_id, company=company)
+        except BillingPayment.DoesNotExist as exc:
+            raise BillingNotFoundError("pago no encontrado") from exc
+
+        if payment.status == BillingPayment.Status.REVERSED:
+            return {"ok": True, "already_reversed": True}
+        if payment.status == BillingPayment.Status.PENDING:
+            raise BillingError("no se puede revertir un pago pendiente de confirmación")
+
+        payment.status = BillingPayment.Status.REVERSED
+        payment.reversal_reason = (reason or "REVERSAL")[:255]
+        payment.reversed_at = timezone.now()
+        payment.reversed_by = actor
+        payment.save(update_fields=["status", "reversal_reason", "reversed_at", "reversed_by"])
+
+        doc = BillingDocument.objects.select_for_update().get(pk=payment.doc_id)
+        confirmed_total = (
+            BillingPayment.objects.filter(doc=doc, status=BillingPayment.Status.CONFIRMED)
+            .aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+        )
+        doc.amount_paid = _q_money(confirmed_total)
+        doc.recalculate_payment_status()
+        doc.save(update_fields=["amount_paid", "payment_status"])
+
+        write_event(
+            request=request,
+            module="BILLING",
+            event_type="BILLING_PAYMENT_REVERSED",
+            reason_code="BILLING_VOID",
+            actor_user=actor,
+            subject_type="BILLING_PAYMENT",
+            subject_id=str(payment_id),
+            metadata={"doc_id": doc.id, "reason": reason, "amount": str(payment.amount)},
+        )
+
+    return {"ok": True, "doc_id": doc.id, "doc_payment_status": doc.payment_status}
+
+
+# ---------------------------------------------------------------------------
+# SalesOrder — por encargo
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class OrderResult:
+    order_id: int
+    status: str
+
+
+def create_order(
+    *,
+    request,
+    actor,
+    customer_name: str,
+    customer_ref: str = "",
+    customer_type: str = "EXTERNAL",
+    customer_party_id: int | None = None,
+    currency: str = "NIO",
+    lines: list[dict],
+    expected_delivery_date=None,
+    notes: str = "",
+) -> OrderResult:
+    company: OrgUnit = request.company
+    branch: OrgUnit = request.branch
+
+    if not lines:
+        raise BillingError("lines required")
+
+    customer_party = _load_customer_party(customer_party_id=customer_party_id, company=company)
+    computed, gross_total, discount_total, tax_total, total = _compute_lines_and_totals(lines_in=lines)
+    subtotal = gross_total - discount_total
+
+    with transaction.atomic():
+        order = SalesOrder.objects.create(
+            company=company,
+            branch=branch,
+            status=SalesOrderStatus.DRAFT,
+            customer_type=customer_type or "EXTERNAL",
+            customer_party=customer_party,
+            customer_name=customer_name or "",
+            customer_ref=customer_ref or "",
+            currency=currency or "NIO",
+            subtotal=subtotal,
+            tax_total=tax_total,
+            discount_total=discount_total,
+            total=total,
+            expected_delivery_date=expected_delivery_date,
+            notes=notes or "",
+            requested_by=actor,
+        )
+        for c in computed:
+            SalesOrderLine.objects.create(
+                order=order,
+                item_id=c.get("inventory_item_id"),
+                description=c["description"],
+                quantity=c["quantity"],
+                unit_price=c["unit_price"],
+                tax_rate=c["tax_rate"],
+                discount_pct=c["discount_pct"],
+                line_subtotal=c["line_subtotal"],
+                line_tax=c["line_tax"],
+                line_total=c["line_total"],
+                preferred_warehouse_id=c.get("warehouse_id"),
+                notes=c.get("notes", "") or "",
+            )
+
+        write_event(
+            request=request,
+            module="BILLING",
+            event_type="BILLING_ORDER_CREATED",
+            reason_code="BILLING_OK",
+            actor_user=actor,
+            subject_type="SALES_ORDER",
+            subject_id=str(order.id),
+            metadata={
+                "customer_type": customer_type,
+                "customer_party_id": int(customer_party_id) if customer_party_id else None,
+                "total": str(total),
+                "lines": len(lines),
+            },
+        )
+
+    return OrderResult(order_id=order.id, status=order.status)
+
+
+def submit_order_for_credit(
+    *,
+    request,
+    actor,
+    order_id: int,
+    request_notes: str = "",
+    level: str = CreditApprovalRequest.ApprovalLevel.SALES_MANAGER,
+) -> dict:
+    company: OrgUnit = request.company
+
+    with transaction.atomic():
+        try:
+            order = SalesOrder.objects.select_for_update().get(id=order_id, company=company)
+        except SalesOrder.DoesNotExist as exc:
+            raise BillingNotFoundError("orden no encontrada") from exc
+
+        if order.status not in (SalesOrderStatus.DRAFT, SalesOrderStatus.APPROVED):
+            raise BillingError(f"No se puede enviar a crédito desde estado {order.status}")
+
+        approval = CreditApprovalRequest.objects.create(
+            company=company,
+            sales_order=order,
+            status=CreditApprovalRequest.ApprovalStatus.PENDING,
+            level=level,
+            amount_requested=order.total,
+            currency=order.currency,
+            requested_by=actor,
+            request_notes=request_notes or "",
+        )
+
+        order.status = SalesOrderStatus.PENDING_APPROVAL
+        order.credit_status = CreditStatus.PENDING_REVIEW
+        order.save(update_fields=["status", "credit_status"])
+
+        write_event(
+            request=request,
+            module="BILLING",
+            event_type="BILLING_CREDIT_REQUESTED",
+            reason_code="BILLING_OK",
+            actor_user=actor,
+            subject_type="CREDIT_APPROVAL",
+            subject_id=str(approval.id),
+            metadata={"order_id": order_id, "amount": str(order.total), "level": level},
+        )
+
+    return {"ok": True, "approval_id": approval.id, "order_id": order.id, "status": order.status}
+
+
+def resolve_credit_approval(
+    *,
+    request,
+    actor,
+    approval_id: int,
+    approved: bool,
+    resolution_notes: str = "",
+    approved_amount: Decimal | None = None,
+    approved_terms_days: int | None = None,
+    escalate: bool = False,
+    escalate_to: str | None = None,
+) -> dict:
+    company: OrgUnit = request.company
+
+    with transaction.atomic():
+        try:
+            approval = CreditApprovalRequest.objects.select_for_update().get(id=approval_id, company=company)
+        except CreditApprovalRequest.DoesNotExist as exc:
+            raise BillingNotFoundError("solicitud de crédito no encontrada") from exc
+
+        if approval.status not in (CreditApprovalRequest.ApprovalStatus.PENDING, CreditApprovalRequest.ApprovalStatus.IN_REVIEW):
+            raise BillingError(f"Solicitud ya resuelta: {approval.status}")
+
+        if escalate:
+            next_level = escalate_to or CreditApprovalRequest.ApprovalLevel.CEO
+            approval.status = CreditApprovalRequest.ApprovalStatus.ESCALATED
+            approval.level = next_level
+            approval.resolution_notes = resolution_notes or ""
+            approval.save(update_fields=["status", "level", "resolution_notes"])
+
+            if approval.sales_order_id:
+                SalesOrder.objects.filter(pk=approval.sales_order_id).update(
+                    credit_status=CreditStatus.ESCALATED
+                )
+
+            write_event(
+                request=request,
+                module="BILLING",
+                event_type="BILLING_CREDIT_ESCALATED",
+                reason_code="BILLING_OK",
+                actor_user=actor,
+                subject_type="CREDIT_APPROVAL",
+                subject_id=str(approval_id),
+                metadata={"escalated_to": next_level},
+            )
+            return {"ok": True, "approval_id": approval_id, "status": "ESCALATED"}
+
+        approval.status = CreditApprovalRequest.ApprovalStatus.APPROVED if approved else CreditApprovalRequest.ApprovalStatus.REJECTED
+        approval.resolved_by = actor
+        approval.resolved_at = timezone.now()
+        approval.resolution_notes = resolution_notes or ""
+        if approved:
+            approval.approved_amount = approved_amount or approval.amount_requested
+            approval.approved_terms_days = approved_terms_days
+        approval.save(
+            update_fields=["status", "resolved_by", "resolved_at", "resolution_notes", "approved_amount", "approved_terms_days"]
+        )
+
+        if approval.sales_order_id:
+            order = SalesOrder.objects.select_for_update().get(pk=approval.sales_order_id)
+            if approved:
+                order.status = SalesOrderStatus.APPROVED
+                order.credit_status = CreditStatus.APPROVED
+                order.credit_approved_by = actor
+                order.credit_approved_at = timezone.now()
+                order.credit_notes = resolution_notes or ""
+            else:
+                order.status = SalesOrderStatus.REJECTED
+                order.credit_status = CreditStatus.REJECTED
+                order.credit_notes = resolution_notes or ""
+            order.save(update_fields=["status", "credit_status", "credit_approved_by", "credit_approved_at", "credit_notes"])
+
+        event_type = "BILLING_CREDIT_APPROVED" if approved else "BILLING_CREDIT_REJECTED"
+        write_event(
+            request=request,
+            module="BILLING",
+            event_type=event_type,
+            reason_code="BILLING_OK",
+            actor_user=actor,
+            subject_type="CREDIT_APPROVAL",
+            subject_id=str(approval_id),
+            metadata={
+                "order_id": approval.sales_order_id,
+                "approved": approved,
+                "approved_amount": str(approval.approved_amount) if approval.approved_amount else "",
+                "approved_terms_days": approval.approved_terms_days,
+            },
+        )
+
+    return {
+        "ok": True,
+        "approval_id": approval_id,
+        "status": approval.status,
+        "order_id": approval.sales_order_id,
+    }
