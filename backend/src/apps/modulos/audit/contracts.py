@@ -329,6 +329,15 @@ ALLOWED_REASON_CODES.update(
     }
 )
 
+# RBAC admin (asignación de roles por usuario) — Fase 0 fundación
+ALLOWED_EVENT_TYPES.update(
+    {
+        "RBAC_ROLE_ASSIGNED",
+        "RBAC_ROLE_REVOKED",
+    }
+)
+ALLOWED_SUBJECT_TYPES.update({"ROLE_ASSIGNMENT"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
