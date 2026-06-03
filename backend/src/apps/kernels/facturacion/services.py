@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import logging
 from typing import Any
 
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -34,7 +34,6 @@ from .models import (
     FiscalMode,
     FiscalPrintJob,
     FiscalStatus,
-    PaymentStatus,
     SalesOrder,
     SalesOrderLine,
     SalesOrderStatus,
@@ -565,7 +564,7 @@ def issue_doc(
 
         if apply_inventory:
             from apps.kernels.inventarios.services import post_issue  # import local para evitar ciclos
-            from apps.kernels.inventarios.models import ItemLot, LotBalance
+            from apps.kernels.inventarios.models import LotBalance
 
             default_warehouse_id = getattr(request, "data", {}).get("warehouse_id") if hasattr(request, "data") else None
 
