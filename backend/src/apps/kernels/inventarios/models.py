@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import uuid
 from decimal import Decimal
+from typing import ClassVar
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -447,3 +449,138 @@ class StockMovement(models.Model):
 
     def __str__(self) -> str:
         return f"{self.movement_type} {self.item.sku} qty={self.qty_delta}"
+
+
+# ---------------------------------------------------------------------------
+# Remisiones (despacho + recepción/cotejo con evidencia)
+# ---------------------------------------------------------------------------
+
+
+class RemisionOriginType(models.TextChoices):
+    PURCHASE = "PURCHASE", "Compra a proveedor"
+    INTERNAL_TRANSFER = "INTERNAL_TRANSFER", "Traslado inter-sucursal"
+
+
+class RemisionStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Borrador"
+    DISPATCHED = "DISPATCHED", "Despachada"
+    RECEIVED = "RECEIVED", "Recibida"
+    CANCELLED = "CANCELLED", "Cancelada"
+
+
+class Remision(models.Model):
+    """Documento de remisión: el punto A despacha mercancía hacia la bodega del
+    punto B, donde el bodeguero la recibe y coteja contra el físico. Al recibir,
+    los artículos entran a inventario (post_receive). Soporta origen genérico
+    (compra a proveedor o traslado interno) y evidencia fotográfica."""
+
+    remision_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="remisiones_company")
+    branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="remisiones_branch")
+
+    origin_type = models.CharField(max_length=24, choices=RemisionOriginType.choices)
+    # Referencia genérica al documento fuente (factura de compra/venta).
+    source_module = models.CharField(max_length=32, blank=True, default="")
+    source_type = models.CharField(max_length=64, blank=True, default="")
+    source_id = models.CharField(max_length=64, blank=True, default="")
+
+    origin_warehouse = models.ForeignKey(
+        Warehouse, null=True, blank=True, on_delete=models.PROTECT, related_name="remisiones_origin"
+    )
+    dest_warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="remisiones_dest")
+
+    status = models.CharField(max_length=16, choices=RemisionStatus.choices, default=RemisionStatus.DRAFT, db_index=True)
+    has_discrepancy = models.BooleanField(default=False)
+    note = models.CharField(max_length=255, blank=True, default="")
+    idempotency_key = models.CharField(max_length=96, blank=True, default="")
+
+    dispatched_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="remisiones_dispatched"
+    )
+    dispatched_at = models.DateTimeField(null=True, blank=True)
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="remisiones_received"
+    )
+    received_at = models.DateTimeField(null=True, blank=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="remisiones_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
+        RemisionStatus.DRAFT: {RemisionStatus.DISPATCHED, RemisionStatus.CANCELLED},
+        RemisionStatus.DISPATCHED: {RemisionStatus.RECEIVED, RemisionStatus.CANCELLED},
+        RemisionStatus.RECEIVED: set(),
+        RemisionStatus.CANCELLED: set(),
+    }
+
+    class Meta:
+        app_label = "inventarios"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="uniq_remision_idem",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "status", "created_at"], name="ix_remision_scope"),
+            models.Index(fields=["company", "dest_warehouse", "status"], name="ix_remision_dest"),
+        ]
+
+    def can_transition_to(self, target_status: str) -> bool:
+        if target_status == self.status:
+            return True
+        return target_status in self._ALLOWED_TRANSITIONS.get(self.status, set())
+
+    def __str__(self) -> str:
+        return f"Remision {self.remision_id} [{self.status}]"
+
+
+class RemisionLine(models.Model):
+    remision = models.ForeignKey(Remision, on_delete=models.CASCADE, related_name="lines")
+    item = models.ForeignKey(InventoryItem, on_delete=models.PROTECT, related_name="remision_lines")
+    description = models.CharField(max_length=200, blank=True, default="")
+
+    qty_dispatched = models.DecimalField(max_digits=18, decimal_places=4)
+    qty_received = models.DecimalField(max_digits=18, decimal_places=4, default=Decimal("0.0000"))
+    unit_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0.000000"))
+
+    received_movement = models.ForeignKey(
+        StockMovement, null=True, blank=True, on_delete=models.SET_NULL, related_name="remision_lines"
+    )
+    note = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        app_label = "inventarios"
+        indexes = [models.Index(fields=["remision", "item"], name="ix_remisionline_remi_item")]
+
+    @property
+    def discrepancy(self) -> Decimal:
+        return Decimal(self.qty_received) - Decimal(self.qty_dispatched)
+
+    def __str__(self) -> str:
+        return f"{self.item.sku}: disp={self.qty_dispatched} recv={self.qty_received}"
+
+
+class RemisionPhoto(models.Model):
+    """Evidencia fotográfica adjunta por el gerente de compras (por referencia)."""
+
+    remision = models.ForeignKey(Remision, on_delete=models.CASCADE, related_name="photos")
+    storage_ref = models.CharField(max_length=255)
+    sha256 = models.CharField(max_length=64, blank=True, default="")
+    mime_type = models.CharField(max_length=64, blank=True, default="image/jpeg")
+    caption = models.CharField(max_length=255, blank=True, default="")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="remision_photos"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "inventarios"
+        indexes = [models.Index(fields=["remision", "created_at"], name="ix_remisionphoto_remi")]
+
+    def __str__(self) -> str:
+        return f"Photo {self.storage_ref} @ remision {self.remision_id}"
