@@ -12,7 +12,13 @@ from apps.kernels.inventarios.costing import (
     resolve_costing_method,
     set_cost_policy,
 )
-from apps.kernels.inventarios.models import CostingMethod, InventoryCostPolicy
+from apps.kernels.inventarios.models import (
+    CostingMethod,
+    InventoryCostPolicy,
+    InventoryItem,
+    StockMovement,
+    Warehouse,
+)
 from apps.modulos.iam.models import OrgUnit
 
 User = get_user_model()
@@ -79,3 +85,33 @@ def test_invalid_method_raises():
     company, _, user = _scope()
     with pytest.raises(ValueError):
         set_cost_policy(actor=user, company=company, method="NOT_A_METHOD")
+
+
+@pytest.mark.django_db
+def test_movement_stamps_active_cost_policy_version():
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from apps.kernels.inventarios.services import post_receive
+
+    company, branch, user = _scope()
+    wh = Warehouse.objects.create(company=company, branch=branch, name="W", code=f"W{uuid.uuid4().hex[:5]}")
+    item = InventoryItem.objects.create(company=company, sku=f"SKU-{uuid.uuid4().hex[:6]}", name="Item")
+    request = SimpleNamespace(
+        company=company, branch=branch, user=user, META={}, headers={}, path="/t/", method="POST", request_id="r1"
+    )
+
+    # Sin política => versión 0 estampada.
+    r0 = post_receive(
+        request=request, actor=user, warehouse_id=wh.id, item_id=item.id,
+        qty=Decimal("5"), unit_cost=Decimal("1"), idempotency_key=f"a-{uuid.uuid4().hex}",
+    )
+    assert StockMovement.objects.get(id=r0.movement_id).cost_policy_version == 0
+
+    # Con política activa => estampa su versión.
+    set_cost_policy(actor=user, company=company, branch=branch, method=CostingMethod.STANDARD)
+    r1 = post_receive(
+        request=request, actor=user, warehouse_id=wh.id, item_id=item.id,
+        qty=Decimal("5"), unit_cost=Decimal("1"), idempotency_key=f"b-{uuid.uuid4().hex}",
+    )
+    assert StockMovement.objects.get(id=r1.movement_id).cost_policy_version == 1

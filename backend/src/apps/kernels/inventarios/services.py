@@ -536,6 +536,13 @@ def _link_accounting_for_movement(*, movement: StockMovement, outbox_event, acto
         )
 
 
+def _cost_policy_version(company, branch) -> int:
+    """Versión de la política de costo vigente (invariante #8); 0 si no hay política."""
+    from .costing import resolve_active_cost_policy_version
+
+    return resolve_active_cost_policy_version(company=company, branch=branch)
+
+
 def post_receive(
     *,
     request,
@@ -632,6 +639,7 @@ def post_receive(
             warehouse=warehouse,
             item=item,
             movement_type=MovementType.RECEIVE,
+            cost_policy_version=_cost_policy_version(company, branch),
             qty_delta=qty_base,
             unit_cost=unit_cost,
             total_cost=total_cost,
@@ -778,6 +786,7 @@ def post_issue(
             warehouse=warehouse,
             item=item,
             movement_type=MovementType.ISSUE,
+            cost_policy_version=_cost_policy_version(company, branch),
             qty_delta=_q_qty(Decimal("0") - qty),
             unit_cost=unit_cost,
             total_cost=_q_cost(Decimal("0") - total_cost),
@@ -894,6 +903,7 @@ def post_adjust(
             warehouse=warehouse,
             item=item,
             movement_type=MovementType.ADJUST,
+            cost_policy_version=_cost_policy_version(company, branch),
             qty_delta=delta,
             unit_cost=unit_cost,
             total_cost=total_cost,
@@ -1019,6 +1029,7 @@ def post_transfer(
             warehouse=from_wh,
             item=item,
             movement_type=MovementType.TRANSFER_OUT,
+            cost_policy_version=_cost_policy_version(company, branch),
             qty_delta=_q_qty(Decimal("0") - qty),
             unit_cost=unit_cost,
             total_cost=_q_cost(Decimal("0") - total_cost),
@@ -1035,6 +1046,7 @@ def post_transfer(
             warehouse=to_wh,
             item=item,
             movement_type=MovementType.TRANSFER_IN,
+            cost_policy_version=_cost_policy_version(company, branch),
             qty_delta=qty,
             unit_cost=unit_cost,
             total_cost=total_cost,

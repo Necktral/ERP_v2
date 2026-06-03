@@ -405,6 +405,10 @@ class StockMovement(models.Model):
     )
     reversed_at = models.DateTimeField(null=True, blank=True)
 
+    # Versión de la política de costo vigente al postear (invariante #8 / anti-patrón #4):
+    # deja trazable bajo qué política se costeó el movimiento (0 = sin política => default).
+    cost_policy_version = models.PositiveIntegerField(default=0)
+
     accounting_status = models.CharField(
         max_length=24, choices=AccountingStatus.choices, blank=True, default=""
     )
