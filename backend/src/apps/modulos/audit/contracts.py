@@ -360,6 +360,9 @@ ALLOWED_SUBJECT_TYPES.update({"REMISION"})
 ALLOWED_EVENT_TYPES.update({"INVENTORY_COST_POLICY_SET"})
 ALLOWED_SUBJECT_TYPES.update({"INVENTORY_COST_POLICY"})
 
+# Inventory: clase de inventario por producto (FEFO/FIFO/AVERAGE)
+ALLOWED_EVENT_TYPES.update({"INVENTORY_ITEM_RECLASSIFIED"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:

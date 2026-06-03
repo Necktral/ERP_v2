@@ -1,73 +1,47 @@
-.DS_Store
-.thumbs.db
-node_modules
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
 
-# Quasar core related directories
-.quasar
-/dist
-/quasar.config.*.temporary.compiled*
-
-# Cordova related directories and files
-/src-cordova/node_modules
-/src-cordova/platforms
-/src-cordova/plugins
-/src-cordova/www
-
-# Capacitor related directories and files
-/src-capacitor/www
-/src-capacitor/node_modules
-
-# Log files
+# Node
+node_modules/
+dist/
+build/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Editor directories and files
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# local .env files
-.env
-backend/.env
-.env.local*
-
-# Python
-system_wis/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Test / coverage
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.Python
-.venv
-venv/
-env/
-*.sqlite3
-staticfiles/
-media/
 .coverage
 htmlcov/
+.tox/
 
-# QA runner artefacts
-qa/reports/
+# Editores / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
 
-# PM snapshot (generado localmente / artefacto de CI)
-pm_snapshot.md
+# Datos locales
+*.sqlite3
+*.db
 
-# Evidencia operativa pesada (local/CI, no GitHub)
-docs/operacion/evidencia/**
-!docs/operacion/evidencia/.gitkeep
-!docs/operacion/evidencia/etup-git-less-help.txt
-
-# No subir backups
-ERP_CRM_backup_*.tar.gz
-
-# Snapshot local de referencia (no publicar)
-docs/repo/Necktral-master.zip
-docs/repo/Necktral-master.zip:Zone.Identifier
+# Windows ADS junk (al copiar desde Windows) — NUNCA versionar
 *:Zone.Identifier
+
+# Entorno/venv local y cachés de herramientas
+system_wis/
+.mypy_cache/
+.ruff_cache/
+
+# Respaldos pesados
+*.tar.gz

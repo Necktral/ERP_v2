@@ -149,6 +149,7 @@ def create_item(*, request, company: OrgUnit, actor_user, sku: str, name: str, u
             shelf_life_days=kwargs.get("shelf_life_days"),
             storage_condition=kwargs.get("storage_condition", "AMBIENT"),
             is_controlled=bool(kwargs.get("is_controlled", False)),
+            inventory_class=kwargs.get("inventory_class", ""),
         )
 
         write_event(

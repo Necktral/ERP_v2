@@ -107,6 +107,19 @@ class Warehouse(models.Model):
 # InventoryItem
 # ---------------------------------------------------------------------------
 
+class InventoryClass(models.TextChoices):
+    """Clase de inventario por producto: define el ORDEN DE CONSUMO del stock.
+
+    Es independiente de la valuación de costo (política versionada #8). Se asigna
+    de forma manual por producto (más adelante, asistida por IA en kernels
+    posteriores). Si se deja vacía, se deriva de los flags de trazabilidad.
+    """
+
+    FEFO = "FEFO", "FEFO — primero en vencer (perecederos, agroquímicos, carnes)"
+    FIFO = "FIFO", "FIFO — primero en entrar (lote por antigüedad)"
+    AVERAGE = "AVERAGE", "Promedio — fungible a granel (sin orden de lote)"
+
+
 class InventoryItem(models.Model):
     company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inv_items_company")
     sku = models.CharField(max_length=64)
@@ -155,6 +168,12 @@ class InventoryItem(models.Model):
         default=False, help_text="Agroquímico u otro insumo que requiere registro especial"
     )
 
+    # Clase de inventario (orden de consumo). Vacío = derivar de los flags de trazabilidad.
+    inventory_class = models.CharField(
+        max_length=16, choices=InventoryClass.choices, blank=True, default="",
+        help_text="FEFO/FIFO/AVERAGE; selección manual por producto (vacío = derivado)",
+    )
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
@@ -191,6 +210,11 @@ class InventoryItem(models.Model):
             raise ValidationError({"sale_uom_factor": "Debe ser mayor a cero."})
         if self.track_expiry and not self.track_lots:
             raise ValidationError({"track_expiry": "track_expiry requiere track_lots = True."})
+        # Coherencia de la clase de inventario explícita con la trazabilidad.
+        if self.inventory_class == InventoryClass.FEFO and not (self.track_lots and self.track_expiry):
+            raise ValidationError({"inventory_class": "FEFO requiere track_lots y track_expiry."})
+        if self.inventory_class == InventoryClass.FIFO and not self.track_lots:
+            raise ValidationError({"inventory_class": "FIFO requiere track_lots."})
 
 
 # ---------------------------------------------------------------------------
