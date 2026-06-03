@@ -338,6 +338,16 @@ class BillingDocument(models.Model):
     source_type = models.CharField(max_length=64, blank=True, default="")
     source_id = models.CharField(max_length=64, blank=True, default="")
 
+    # Nota de crédito: enlace al documento original y monto ya acreditado del original.
+    related_doc = models.ForeignKey(
+        "facturacion.BillingDocument",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="credit_notes_of",
+    )
+    credited_total = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+
     issued_at = models.DateTimeField(null=True, blank=True)
     voided_at = models.DateTimeField(null=True, blank=True)
     void_reason = models.CharField(max_length=255, blank=True, default="")
