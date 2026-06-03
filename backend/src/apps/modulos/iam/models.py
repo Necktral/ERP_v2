@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import uuid
+from typing import ClassVar
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -261,3 +264,82 @@ class LinkGrant(models.Model):
 
     def __str__(self) -> str:
         return f"Grant {self.permission_id} {self.access_mode} on link {self.link_id}"
+
+
+class ApprovalRequest(models.Model):
+    """Maker-checker / Segregación de Funciones (SoD), invariante #6.
+
+    Una operación sensible se solicita (maker) y debe ser aprobada por un
+    segundo usuario distinto (checker) que posea `required_permission` en el
+    scope. El ciclo es auditable y orquesta la ejecución diferida vía `payload`.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendiente"
+        APPROVED = "APPROVED", "Aprobada"
+        REJECTED = "REJECTED", "Rechazada"
+        CANCELLED = "CANCELLED", "Cancelada"
+        EXECUTED = "EXECUTED", "Ejecutada"
+
+    request_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="approval_requests_company")
+    branch = models.ForeignKey(
+        OrgUnit, null=True, blank=True, on_delete=models.PROTECT, related_name="approval_requests_branch"
+    )
+
+    action_type = models.CharField(max_length=64)
+    subject_type = models.CharField(max_length=32, blank=True, default="")
+    subject_id = models.CharField(max_length=128, blank=True, default="")
+    required_permission = models.CharField(max_length=128)
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="approval_requests_made"
+    )
+    reason = models.TextField(blank=True, default="")
+    payload = models.JSONField(default=dict, blank=True)
+    idempotency_key = models.CharField(max_length=128, blank=True, default="")
+
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approval_requests_decided",
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decision_note = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
+        Status.PENDING: {Status.APPROVED, Status.REJECTED, Status.CANCELLED},
+        Status.APPROVED: {Status.EXECUTED},
+        Status.REJECTED: set(),
+        Status.CANCELLED: set(),
+        Status.EXECUTED: set(),
+    }
+
+    class Meta:
+        app_label = "iam"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="uq_approval_company_idemkey",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status", "created_at"]),
+            models.Index(fields=["requested_by", "status"]),
+            models.Index(fields=["action_type", "status"]),
+        ]
+
+    def can_transition_to(self, target_status: str) -> bool:
+        if target_status == self.status:
+            return True
+        return target_status in self._ALLOWED_TRANSITIONS.get(self.status, set())
+
+    def __str__(self) -> str:
+        return f"approval:{self.action_type}:{self.status}"

@@ -242,6 +242,9 @@ ALLOWED_REASON_CODES.update(
         "ACCOUNTING_INTERCOMPANY_DIFFERENCE",
         "ACCOUNTING_INTERCOMPANY_DISPUTE",
         "ACCOUNTING_CONSOLIDATION_BLOCKED",
+        "NOMINA_OK",
+        "PAYMENTS_OK",
+        "PORTFOLIO_OK",
     }
 )
 
@@ -303,6 +306,26 @@ ALLOWED_SUBJECT_TYPES.update(
         "NOMINA_CONFIG",
         "PAYROLL_PERIOD",
         "PAYROLL_SHEET",
+        "APPROVAL_REQUEST",
+    }
+)
+
+# IAM / SoD (maker-checker) — Fase 0 fundación
+ALLOWED_EVENT_TYPES.update(
+    {
+        "IAM_APPROVAL_REQUESTED",
+        "IAM_APPROVAL_APPROVED",
+        "IAM_APPROVAL_REJECTED",
+        "IAM_APPROVAL_CANCELLED",
+        "IAM_APPROVAL_EXECUTED",
+    }
+)
+ALLOWED_REASON_CODES.update(
+    {
+        "IAM_OK",
+        "SOD_SELF_APPROVAL",
+        "APPROVER_NOT_AUTHORIZED",
+        "APPROVAL_INVALID_STATE",
     }
 )
 
