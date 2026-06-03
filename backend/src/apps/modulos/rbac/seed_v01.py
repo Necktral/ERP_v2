@@ -228,6 +228,9 @@ def seed_rbac_v01() -> SeedResult:
             "procurement.doc.read": "Ver documentos de compra.",
             "procurement.doc.post": "Postear documentos de compra.",
             "procurement.doc.void": "Anular documentos de compra.",
+            # SoD (maker-checker) para anulación de documentos de facturación
+            "billing.doc.void.request": "Solicitar anulación de documento (maker).",
+            "billing.doc.void.approve": "Aprobar anulación de documento (checker, SoD).",
         }
     )
 
