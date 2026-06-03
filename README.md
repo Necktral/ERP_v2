@@ -1,6 +1,6 @@
-# CRM_v2
+# ERP_v2
 
-Segunda versión del sistema CRM/ERP. Repositorio iniciado desde cero.
+Segunda versión del sistema ERP. Repositorio iniciado desde cero.
 
 ## Estado
 
