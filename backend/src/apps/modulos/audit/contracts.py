@@ -341,6 +341,9 @@ ALLOWED_SUBJECT_TYPES.update({"ROLE_ASSIGNMENT"})
 # Billing: nota de crédito (Unidad #1)
 ALLOWED_EVENT_TYPES.update({"BILLING_CREDIT_NOTE_ISSUED"})
 
+# Inventory: reversa de movimiento de primera clase (Unidad #2)
+ALLOWED_EVENT_TYPES.update({"INVENTORY_MOVEMENT_REVERSED"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:

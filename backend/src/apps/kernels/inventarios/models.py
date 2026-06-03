@@ -397,6 +397,12 @@ class StockMovement(models.Model):
     note = models.CharField(max_length=255, blank=True, default="")
     idempotency_key = models.CharField(max_length=96, blank=True, default="")
 
+    # Reversa de primera clase (invariante #1: no borrar histórico, solo reversas).
+    reversal_of = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversals"
+    )
+    reversed_at = models.DateTimeField(null=True, blank=True)
+
     accounting_status = models.CharField(
         max_length=24, choices=AccountingStatus.choices, blank=True, default=""
     )
