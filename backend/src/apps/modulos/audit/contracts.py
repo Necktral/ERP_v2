@@ -356,6 +356,10 @@ ALLOWED_EVENT_TYPES.update(
 )
 ALLOWED_SUBJECT_TYPES.update({"REMISION"})
 
+# Inventory: política de costo versionada (invariante #8)
+ALLOWED_EVENT_TYPES.update({"INVENTORY_COST_POLICY_SET"})
+ALLOWED_SUBJECT_TYPES.update({"INVENTORY_COST_POLICY"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:

@@ -584,3 +584,60 @@ class RemisionPhoto(models.Model):
 
     def __str__(self) -> str:
         return f"Photo {self.storage_ref} @ remision {self.remision_id}"
+
+
+# ---------------------------------------------------------------------------
+# Política de costo versionada y estable por ciclo (invariante #8)
+# ---------------------------------------------------------------------------
+
+
+class CostingMethod(models.TextChoices):
+    WEIGHTED_AVERAGE = "WEIGHTED_AVERAGE", "Promedio ponderado (móvil)"
+    STANDARD = "STANDARD", "Costo estándar"
+    FIFO = "FIFO", "PEPS (primeras entradas)"
+
+
+class InventoryCostPolicy(models.Model):
+    """Política de costo **versionada** por scope (empresa o sucursal).
+
+    Invariante #8 / anti-patrón #4: el costo no se muta sin versionado. Cada
+    cambio de método cierra la versión activa (effective_to) y crea una versión
+    nueva inmutable, de modo que los movimientos ya posteados conservan el método
+    bajo el que se costearon (estabilidad por ciclo, reproducibilidad #11).
+    `branch` NULL = política a nivel empresa (fallback de las sucursales).
+    """
+
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="cost_policies_company")
+    branch = models.ForeignKey(
+        "iam.OrgUnit", null=True, blank=True, on_delete=models.PROTECT, related_name="cost_policies_branch"
+    )
+
+    method = models.CharField(max_length=24, choices=CostingMethod.choices, default=CostingMethod.WEIGHTED_AVERAGE)
+    version = models.PositiveIntegerField(default=1)
+    params = models.JSONField(default=dict, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    effective_from = models.DateTimeField(default=timezone.now)
+    effective_to = models.DateTimeField(null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True, default="")
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="cost_policies_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "inventarios"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "branch", "version"], name="uq_cost_policy_scope_version"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "is_active"], name="ix_cost_policy_active"),
+            models.Index(fields=["company", "branch", "effective_from"], name="ix_cost_policy_eff"),
+        ]
+
+    def __str__(self) -> str:
+        scope = f"company={self.company_id}" + (f" branch={self.branch_id}" if self.branch_id else "")
+        return f"CostPolicy[{scope}] v{self.version} {self.method} active={self.is_active}"
