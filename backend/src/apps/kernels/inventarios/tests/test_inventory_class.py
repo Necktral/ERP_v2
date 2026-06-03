@@ -18,6 +18,8 @@ from apps.kernels.inventarios.models import (
     InventoryClass,
     InventoryItem,
     ItemLot,
+    LotBalance,
+    Warehouse,
 )
 from apps.modulos.iam.models import OrgUnit
 
@@ -108,3 +110,31 @@ def test_average_ordering_is_empty():
     company = _company()
     item = _item(company)  # AVERAGE
     assert lot_consumption_ordering(item) == ()
+
+
+@pytest.mark.django_db
+def test_class_driven_lotbalance_selection_fefo_and_fifo():
+    """Integración: la clase dirige la selección de lote sobre LotBalance (lo que
+    usa el despacho en facturacion). FEFO=menor vencimiento; FIFO=más antiguo."""
+    company = _company()
+    branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, parent=company, name=f"B{uuid.uuid4().hex[:4]}")
+    wh = Warehouse.objects.create(company=company, branch=branch, name="W", code=f"W{uuid.uuid4().hex[:5]}")
+    today = timezone.localdate()
+
+    # FEFO: dos lotes con distinto vencimiento -> elige el de menor expiry.
+    fefo = _item(company, track_lots=True, track_expiry=True, inventory_class=InventoryClass.FEFO)
+    lot_far = ItemLot.objects.create(company=company, item=fefo, lot_number="F2", expiry_date=today + timedelta(days=30))
+    lot_soon = ItemLot.objects.create(company=company, item=fefo, lot_number="F1", expiry_date=today + timedelta(days=5))
+    for lot in (lot_far, lot_soon):
+        LotBalance.objects.create(company=company, branch=branch, warehouse=wh, item=fefo, lot=lot, qty_on_hand="10")
+    fefo_first = LotBalance.objects.filter(item=fefo).order_by(*lot_consumption_ordering(fefo, prefix="lot__")).first()
+    assert fefo_first.lot_id == lot_soon.id
+
+    # FIFO: dos lotes con distinta producción -> elige el más antiguo (primero en entrar).
+    fifo = _item(company, track_lots=True, inventory_class=InventoryClass.FIFO)
+    lot_old = ItemLot.objects.create(company=company, item=fifo, lot_number="O", production_date=today - timedelta(days=20))
+    lot_new = ItemLot.objects.create(company=company, item=fifo, lot_number="N", production_date=today - timedelta(days=2))
+    for lot in (lot_old, lot_new):
+        LotBalance.objects.create(company=company, branch=branch, warehouse=wh, item=fifo, lot=lot, qty_on_hand="10")
+    fifo_first = LotBalance.objects.filter(item=fifo).order_by(*lot_consumption_ordering(fifo, prefix="lot__")).first()
+    assert fifo_first.lot_id == lot_old.id

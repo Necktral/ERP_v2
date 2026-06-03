@@ -580,10 +580,13 @@ def issue_doc(
                     )
 
                 lot_id = ln.lot_id
-                # FEFO automático: si el ítem trackea lotes y no hay lote especificado,
-                # seleccionar el lote con menor expiry_date que tenga stock en esa bodega
+                # Selección de lote dirigida por la CLASE del producto (FEFO/FIFO/AVERAGE):
+                # si trackea lotes y no se especificó lote, elegir según el orden de consumo.
                 if not lot_id and ln.inventory_item.track_lots:
-                    fefo_lot = (
+                    from apps.kernels.inventarios.classification import lot_consumption_ordering
+
+                    ordering = lot_consumption_ordering(ln.inventory_item, prefix="lot__") or ("lot__expiry_date", "lot__id")
+                    picked = (
                         LotBalance.objects
                         .filter(
                             company=company, branch=branch,
@@ -592,10 +595,10 @@ def issue_doc(
                             lot__status="ACTIVE",
                         )
                         .select_related("lot")
-                        .order_by("lot__expiry_date")
+                        .order_by(*ordering)
                         .first()
                     )
-                    lot_id = fefo_lot.lot_id if fefo_lot else None
+                    lot_id = picked.lot_id if picked else None
 
                 post_issue(
                     request=request,

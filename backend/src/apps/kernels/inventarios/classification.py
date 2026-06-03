@@ -29,18 +29,21 @@ def resolve_inventory_class(item: InventoryItem) -> str:
     return InventoryClass.AVERAGE
 
 
-def lot_consumption_ordering(item: InventoryItem) -> tuple:
+def lot_consumption_ordering(item: InventoryItem, *, prefix: str = "") -> tuple:
     """Orden ORM para elegir lotes al despachar, según la clase efectiva.
 
     - FEFO: primero el de menor vencimiento (los sin vencimiento, al final).
-    - FIFO: primero el lote más antiguo (por creación).
+    - FIFO: primero el lote más antiguo (por fecha de producción).
     - AVERAGE: sin orden de lote (fungible).
+
+    `prefix` permite ordenar consultas relacionadas (p.ej. sobre LotBalance con
+    `prefix="lot__"`, los campos son del ItemLot relacionado).
     """
     cls = resolve_inventory_class(item)
     if cls == InventoryClass.FEFO:
-        return (models.F("expiry_date").asc(nulls_last=True), "id")
+        return (models.F(f"{prefix}expiry_date").asc(nulls_last=True), f"{prefix}id")
     if cls == InventoryClass.FIFO:
-        return ("created_at", "id")
+        return (models.F(f"{prefix}production_date").asc(nulls_last=True), f"{prefix}id")
     return ()
 
 
