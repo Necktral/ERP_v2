@@ -247,6 +247,7 @@ INSTALLED_APPS = [
     "apps.modulos.rbac",
     "apps.modulos.accounts.apps.AccountsConfig",
     "apps.modulos.iam.apps.IamConfig",
+    "apps.modulos.activity.apps.ActivityConfig",  # Fase 0: capa de actividad/tiempo
     "apps.modulos.org.apps.OrgConfig",  # <-- NUEVO
     "apps.modulos.parties.apps.PartiesConfig",
     "apps.modulos.hr.apps.HrConfig",  # <-- NUEVO
