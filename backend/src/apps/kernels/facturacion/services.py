@@ -179,6 +179,11 @@ def _source_payload(*, doc: BillingDocument) -> dict:
         "source_type": str(doc.source_type or ""),
         "source_id": str(doc.source_id or ""),
         "customer_party_id": int(doc.customer_party_id) if doc.customer_party_id else None,
+        # Snapshot textual de la contraparte (no es verdad foránea): habilita trazabilidad
+        # de cliente en CxC/accounting aunque el Party se renombre luego.
+        "customer_display_name": str(doc.customer_name or ""),
+        "customer_tax_id": str(doc.customer_ref or ""),
+        "credit_status": str(doc.credit_status or ""),
     }
 
 
@@ -487,6 +492,11 @@ def issue_doc(
             out: dict[str, Any] = {"ok": True, "already_issued": True, "doc_id": doc.id, "number": doc.number}
             out.update(_fiscal_payload(doc=doc))
             return out
+
+        # Una venta a crédito/con-saldo (genera cartera/CxC) exige contraparte fuerte (Party).
+        # Contado / consumidor-final (credit_status == NONE) puede emitirse sin party.
+        if doc.credit_status != CreditStatus.NONE and doc.customer_party_id is None:
+            raise BillingError("venta a crédito requiere customer_party")
 
         _allocate_document_number(doc=doc)
         before = {
