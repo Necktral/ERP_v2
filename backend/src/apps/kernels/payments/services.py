@@ -232,8 +232,10 @@ def capture_payment_intent_for_scope(
             raise PaymentsNotFoundError("Payment intent no encontrado.")
         if intent.status == PaymentIntent.Status.CAPTURED:
             return intent
-        if intent.status in (PaymentIntent.Status.FAILED, PaymentIntent.Status.REFUNDED):
-            raise PaymentsInvalidStateError("Payment intent no se puede capturar en su estado actual.")
+        if not intent.can_transition_to(PaymentIntent.Status.CAPTURED):
+            raise PaymentsInvalidStateError(
+                f"Payment intent no se puede capturar desde {intent.status}."
+            )
 
         previous_status = intent.status
         intent.status = PaymentIntent.Status.CAPTURED
@@ -775,12 +777,10 @@ def close_cash_session_for_scope(
             raise PaymentsNotFoundError("Cash session no encontrada.")
         if session.status == CashSession.Status.CLOSED:
             return session
-        if session.status not in (
-            CashSession.Status.OPEN,
-            CashSession.Status.COUNT_PENDING,
-            CashSession.Status.REVIEW_PENDING,
-        ):
-            raise PaymentsInvalidStateError("Estado de cash session inválido para cierre.")
+        if not session.can_transition_to(CashSession.Status.CLOSED):
+            raise PaymentsInvalidStateError(
+                f"Estado de cash session inválido para cierre: {session.status}."
+            )
 
         prev_status = session.status
         session.status = CashSession.Status.CLOSED
@@ -913,7 +913,7 @@ def authorize_payment_intent_for_scope(
             raise PaymentsNotFoundError("Payment intent no encontrado.")
         if intent.status == PaymentIntent.Status.AUTHORIZED:
             return intent
-        if intent.status != PaymentIntent.Status.INTENDED:
+        if not intent.can_transition_to(PaymentIntent.Status.AUTHORIZED):
             raise PaymentsInvalidStateError(
                 f"Solo se puede autorizar desde INTENDED. Estado actual: {intent.status}"
             )
@@ -1005,9 +1005,13 @@ def cancel_payment_intent_for_scope(
             raise PaymentsNotFoundError("Payment intent no encontrado.")
         if intent.status == PaymentIntent.Status.CANCELLED:
             return intent
-        if intent.status in (PaymentIntent.Status.CAPTURED, PaymentIntent.Status.PARTIALLY_CAPTURED):
-            raise PaymentsInvalidStateError("No se puede cancelar un pago ya capturado. Use refund.")
-        if intent.status in (PaymentIntent.Status.REFUNDED, PaymentIntent.Status.FAILED):
+        if not intent.can_transition_to(PaymentIntent.Status.CANCELLED):
+            if intent.status in (
+                PaymentIntent.Status.CAPTURED,
+                PaymentIntent.Status.PARTIALLY_CAPTURED,
+                PaymentIntent.Status.PARTIALLY_REFUNDED,
+            ):
+                raise PaymentsInvalidStateError("No se puede cancelar un pago ya capturado. Use refund.")
             raise PaymentsInvalidStateError(f"No se puede cancelar desde estado {intent.status}.")
 
         previous_status = intent.status
@@ -1271,7 +1275,7 @@ def reopen_cash_session_for_investigation(
         )
         if session is None:
             raise PaymentsNotFoundError("Cash session no encontrada.")
-        if session.status != CashSession.Status.CLOSED:
+        if not session.can_transition_to(CashSession.Status.REOPENED_FOR_INVESTIGATION):
             raise PaymentsInvalidStateError("Solo se puede reabrir una sesión CLOSED.")
 
         session.status = CashSession.Status.REOPENED_FOR_INVESTIGATION

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import ClassVar
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -91,6 +92,25 @@ class PaymentIntent(models.Model):
         """Monto capturado que puede ser reembolsado."""
         captured = self.amount_captured or Decimal("0.00")
         return captured - (self.amount_refunded or Decimal("0.00"))
+
+    # Máquina de estado explícita (§9). Patrón cec.CloseRun / iam.ApprovalRequest.
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
+        Status.INTENDED: {Status.AUTHORIZED, Status.CAPTURED, Status.CANCELLED, Status.FAILED},
+        Status.AUTHORIZED: {Status.CAPTURED, Status.PARTIALLY_CAPTURED, Status.CANCELLED, Status.FAILED},
+        Status.CAPTURED: {Status.REFUNDED, Status.PARTIALLY_REFUNDED, Status.FAILED},
+        Status.PARTIALLY_CAPTURED: {
+            Status.CAPTURED, Status.REFUNDED, Status.PARTIALLY_REFUNDED, Status.FAILED,
+        },
+        Status.PARTIALLY_REFUNDED: {Status.REFUNDED, Status.PARTIALLY_REFUNDED},
+        Status.REFUNDED: set(),
+        Status.FAILED: set(),
+        Status.CANCELLED: set(),
+    }
+
+    def can_transition_to(self, target_status: str) -> bool:
+        if target_status == self.status:
+            return True
+        return target_status in self._ALLOWED_TRANSITIONS.get(self.status, set())
 
 
 class PaymentRefund(models.Model):
@@ -205,6 +225,20 @@ class CashSession(models.Model):
                 movement_type__in=[CashMovement.MovementType.EXPENSE, CashMovement.MovementType.REFUND]
             )
         ) or Decimal("0.00")
+
+    # Máquina de estado explícita (§9). Patrón cec.CloseRun / iam.ApprovalRequest.
+    _ALLOWED_TRANSITIONS: ClassVar[dict[str, set[str]]] = {
+        Status.OPEN: {Status.COUNT_PENDING, Status.REVIEW_PENDING, Status.CLOSED},
+        Status.COUNT_PENDING: {Status.REVIEW_PENDING, Status.CLOSED, Status.OPEN},
+        Status.REVIEW_PENDING: {Status.CLOSED, Status.COUNT_PENDING},
+        Status.CLOSED: {Status.REOPENED_FOR_INVESTIGATION},
+        Status.REOPENED_FOR_INVESTIGATION: {Status.CLOSED, Status.COUNT_PENDING},
+    }
+
+    def can_transition_to(self, target_status: str) -> bool:
+        if target_status == self.status:
+            return True
+        return target_status in self._ALLOWED_TRANSITIONS.get(self.status, set())
 
 
 class CashDenomination(models.Model):
