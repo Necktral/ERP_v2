@@ -41,3 +41,24 @@ class CashMovementCreateIn(serializers.Serializer):
     reference = serializers.CharField(max_length=96, required=False, allow_blank=True)
     reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
+
+
+class PaymentIntentAuthorizeIn(serializers.Serializer):
+    amount_authorized = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, allow_null=True)
+    provider_txn_id = serializers.CharField(max_length=96, required=False, allow_blank=True)
+
+
+class PaymentIntentCaptureIn(serializers.Serializer):
+    provider_txn_id = serializers.CharField(max_length=96, required=False, allow_blank=True)
+
+
+class PaymentIntentRefundIn(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+    reason = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
+
+
+class CashSessionOpenWithRegisterIn(serializers.Serializer):
+    opening_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+    register_id = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    notes = serializers.CharField(required=False, allow_blank=True)

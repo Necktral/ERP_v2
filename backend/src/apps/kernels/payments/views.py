@@ -257,7 +257,31 @@ class CashSessionCloseView(APIView):
 
 
 class CashMovementCreateView(APIView):
-    permission_classes = [rbac_permission("payments.cash_movement.create")]
+    """GET → list   POST → create (backward compat — mismo endpoint)"""
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("payments.cash_movement.create")()]
+        return [rbac_permission("payments.cash_session.read")()]
+
+    def get(self, request, session_id: int):
+        company = request.company
+        branch = getattr(request, "branch", None)
+        session = CashSession.objects.filter(company=company, id=session_id).first()
+        if branch and session and session.branch_id and session.branch_id != branch.id:
+            session = None
+        if not session:
+            return Response({"detail": "No encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
+        qs = session.movements.order_by("-created_at")
+        if request.query_params.get("movement_type"):
+            qs = qs.filter(movement_type=request.query_params["movement_type"])
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        return Response({"count": total, "limit": limit, "offset": offset,
+                         "results": [{"id": m.id, "movement_type": m.movement_type,
+                                      "amount": str(m.amount), "reference": m.reference,
+                                      "created_at": m.created_at} for m in rows]})
 
     def post(self, request, session_id: int):
         s = CashMovementCreateIn(data=request.data)
@@ -290,3 +314,253 @@ class CashMovementCreateView(APIView):
             },
             status=status.HTTP_200_OK if idempotent else status.HTTP_201_CREATED,
         )
+
+
+class PaymentIntentDetailView(APIView):
+    permission_classes = [rbac_permission("payments.intent.read")]
+
+    def get(self, request, payment_id):
+        company = request.company
+        branch = getattr(request, "branch", None)
+        qs = PaymentIntent.objects.filter(company=company, payment_id=payment_id)
+        if branch:
+            qs = qs.filter(branch=branch)
+        intent = qs.first()
+        if not intent:
+            return Response({"detail": "No encontrado."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            "payment_id": str(intent.payment_id),
+            "status": intent.status,
+            "amount": str(intent.amount),
+            "amount_authorized": str(intent.amount_authorized) if intent.amount_authorized else None,
+            "amount_captured": str(intent.amount_captured) if intent.amount_captured else None,
+            "amount_refunded": str(intent.amount_refunded),
+            "outstanding_amount": str(intent.outstanding_amount),
+            "refundable_amount": str(intent.refundable_amount),
+            "currency": intent.currency,
+            "payment_method": intent.payment_method,
+            "external_ref": intent.external_ref,
+            "provider": intent.provider,
+            "provider_txn_id": intent.provider_txn_id,
+            "authorized_at": intent.authorized_at,
+            "captured_at": intent.captured_at,
+            "refunded_at": intent.refunded_at,
+            "failed_at": intent.failed_at,
+            "failure_reason": intent.failure_reason,
+            "cancellation_reason": intent.cancellation_reason,
+            "created_at": intent.created_at,
+        })
+
+
+class PaymentIntentAuthorizeView(APIView):
+    permission_classes = [rbac_permission("payments.intent.create")]
+
+    def post(self, request, payment_id):
+        from .services import authorize_payment_intent
+        from .serializers import PaymentIntentAuthorizeIn
+        s = PaymentIntentAuthorizeIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        try:
+            intent = authorize_payment_intent(
+                request=request, actor=request.user,
+                payment_id=payment_id,
+                amount_authorized=v.get("amount_authorized"),
+                provider_txn_id=v.get("provider_txn_id", "") or "",
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="authorize"))
+        return Response({"payment_id": str(intent.payment_id), "status": intent.status})
+
+
+class PaymentIntentCaptureView(APIView):
+    permission_classes = [rbac_permission("payments.intent.create")]
+
+    def post(self, request, payment_id):
+        from apps.kernels.payments.services import capture_payment_intent
+        from .serializers import PaymentIntentCaptureIn
+        s = PaymentIntentCaptureIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        try:
+            intent = capture_payment_intent(
+                request=request, actor=request.user,
+                payment_id=payment_id,
+                provider_txn_id=v.get("provider_txn_id", "") or "",
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="capture"))
+        return Response({"payment_id": str(intent.payment_id), "status": intent.status,
+                         "amount_captured": str(intent.amount_captured or intent.amount)})
+
+
+class PaymentIntentRefundView(APIView):
+    permission_classes = [rbac_permission("payments.intent.create")]
+
+    def post(self, request, payment_id):
+        from .services import refund_payment_intent
+        from .serializers import PaymentIntentRefundIn
+        s = PaymentIntentRefundIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        try:
+            refund = refund_payment_intent(
+                request=request, actor=request.user,
+                payment_id=payment_id,
+                amount=v["amount"],
+                idempotency_key=v.get("idempotency_key", "") or "",
+                reason=v.get("reason", "") or "",
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="refund"))
+        return Response({"refund_id": str(refund.refund_id), "amount": str(refund.amount),
+                         "intent_status": refund.intent.status}, status=status.HTTP_201_CREATED)
+
+
+class PaymentIntentCancelView(APIView):
+    permission_classes = [rbac_permission("payments.intent.create")]
+
+    def post(self, request, payment_id):
+        from .services import cancel_payment_intent
+        try:
+            intent = cancel_payment_intent(
+                request=request, actor=request.user,
+                payment_id=payment_id,
+                reason=request.data.get("reason", "") or "",
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="cancel"))
+        return Response({"payment_id": str(intent.payment_id), "status": intent.status})
+
+
+class CashSessionDetailView(APIView):
+    permission_classes = [rbac_permission("payments.cash_session.read")]
+
+    def get(self, request, session_id: int):
+        company = request.company
+        branch = getattr(request, "branch", None)
+        qs = CashSession.objects.filter(company=company, id=session_id)
+        if branch:
+            qs = qs.filter(branch=branch)
+        session = qs.first()
+        if not session:
+            return Response({"detail": "No encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+        movements_qs = session.movements.order_by("-created_at")[:50]
+        return Response({
+            "id": session.id,
+            "register_id": session.register_id,
+            "status": session.status,
+            "opening_amount": str(session.opening_amount),
+            "expected_amount": str(session.expected_amount),
+            "counted_amount": str(session.counted_amount),
+            "difference_amount": str(session.difference_amount),
+            "opened_at": session.opened_at,
+            "closed_at": session.closed_at,
+            "notes": session.notes,
+            "movements": [
+                {
+                    "id": m.id,
+                    "movement_type": m.movement_type,
+                    "amount": str(m.amount),
+                    "payment_method": m.payment_method,
+                    "reference": m.reference,
+                    "reason": m.reason,
+                    "created_at": m.created_at,
+                }
+                for m in movements_qs
+            ],
+        })
+
+
+class CashSessionMovementListView(APIView):
+    permission_classes = [rbac_permission("payments.cash_session.read")]
+
+    def get(self, request, session_id: int):
+        company = request.company
+        branch = getattr(request, "branch", None)
+        qs_s = CashSession.objects.filter(company=company, id=session_id)
+        if branch:
+            qs_s = qs_s.filter(branch=branch)
+        session = qs_s.first()
+        if not session:
+            return Response({"detail": "No encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+        from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
+        qs = session.movements.order_by("-created_at")
+        mov_type = request.query_params.get("movement_type")
+        if mov_type:
+            qs = qs.filter(movement_type=mov_type)
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        return Response({
+            "count": total, "limit": limit, "offset": offset,
+            "results": [
+                {
+                    "id": m.id,
+                    "movement_type": m.movement_type,
+                    "amount": str(m.amount),
+                    "payment_method": m.payment_method,
+                    "reference": m.reference,
+                    "reason": m.reason,
+                    "payment_intent_id": str(m.payment_intent.payment_id) if m.payment_intent_id else None,
+                    "created_at": m.created_at,
+                }
+                for m in rows
+            ],
+        })
+
+
+class CashSessionDenominationView(APIView):
+    """POST → registra arqueo de caja por denominación."""
+    permission_classes = [rbac_permission("payments.cash_session.close")]
+
+    def post(self, request, session_id: int):
+        from .services import submit_denomination_count
+        denominations = request.data.get("denominations", [])
+        if not denominations:
+            return Response({"detail": "denominations requerido."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            session, denoms, total = submit_denomination_count(
+                request=request, actor=request.user,
+                session_id=session_id, denominations=denominations,
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="denomination"))
+        return Response({
+            "session_id": session.id,
+            "total_counted": str(total),
+            "expected_amount": str(session.expected_amount),
+            "difference": str(total - session.expected_amount),
+            "denominations": [
+                {"denomination_value": str(d.denomination_value),
+                 "denomination_type": d.denomination_type,
+                 "quantity": d.quantity,
+                 "subtotal": str(d.subtotal)}
+                for d in denoms
+            ],
+        })
+
+
+class CashSessionReopenView(APIView):
+    permission_classes = [rbac_permission("payments.cash_session.close")]
+
+    def post(self, request, session_id: int):
+        from .services import reopen_cash_session_for_investigation
+        reason = request.data.get("reason", "") or ""
+        if not reason:
+            return Response({"detail": "reason requerido."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            session = reopen_cash_session_for_investigation(
+                request=request, actor=request.user,
+                session_id=session_id, reason=reason,
+            )
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="reopen"))
+        return Response({"id": session.id, "status": session.status})
