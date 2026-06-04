@@ -99,6 +99,40 @@ def _find_payment_captured_event(*, intent: PaymentIntent, company: OrgUnit, bra
     )
 
 
+def _write_intent_audit_event(
+    *,
+    request: HttpRequest | None,
+    actor: ActorPrincipal,
+    intent: PaymentIntent,
+    event_type: str,
+    company: OrgUnit,
+    branch: OrgUnit,
+    before_snapshot: dict[str, Any] | None = None,
+    after_snapshot: dict[str, Any] | None = None,
+    extra_metadata: dict[str, Any] | None = None,
+) -> None:
+    """Audita una operación de PaymentIntent (espejo de `_write_cash_movement_audit_event`).
+
+    Los event types `PAYMENTS_INTENT_*` y el subject `PAYMENT_INTENT` ya están en el catálogo
+    (`audit/contracts.py`). Se llama tras el `publish_outbox_event` de cada `*_for_scope`.
+    """
+    metadata: dict[str, Any] = {"company_id": str(company.id), "branch_id": str(branch.id)}
+    if extra_metadata:
+        metadata.update(extra_metadata)
+    write_event(
+        request=request,
+        module="PAYMENTS",
+        event_type=event_type,
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="PAYMENT_INTENT",
+        subject_id=str(intent.payment_id),
+        before_snapshot=before_snapshot,
+        after_snapshot=after_snapshot,
+        metadata=metadata,
+    )
+
+
 def create_payment_intent_for_scope(
     *,
     company: OrgUnit,
@@ -201,6 +235,7 @@ def capture_payment_intent_for_scope(
         if intent.status in (PaymentIntent.Status.FAILED, PaymentIntent.Status.REFUNDED):
             raise PaymentsInvalidStateError("Payment intent no se puede capturar en su estado actual.")
 
+        previous_status = intent.status
         intent.status = PaymentIntent.Status.CAPTURED
         intent.captured_at = timezone.now()
         intent.updated_at = timezone.now()
@@ -227,6 +262,21 @@ def capture_payment_intent_for_scope(
             actor_user=actor,
             company=company,
             branch=branch,
+        )
+        _write_intent_audit_event(
+            request=request,
+            actor=actor,
+            intent=intent,
+            event_type="PAYMENTS_INTENT_CAPTURED",
+            company=company,
+            branch=branch,
+            before_snapshot={"status": previous_status},
+            after_snapshot={
+                "status": intent.status,
+                "captured_at": _dt_iso(intent.captured_at),
+                "provider_txn_id": intent.provider_txn_id,
+                "amount": str(intent.amount),
+            },
         )
         return intent
 
@@ -354,6 +404,24 @@ def reverse_captured_payment_intent_for_scope(
             branch=branch,
             correlation_id=str(captured_event.correlation_id or ""),
             causation_id=str(captured_event.event_id),
+        )
+        _write_intent_audit_event(
+            request=request,
+            actor=actor,
+            intent=intent,
+            event_type="PAYMENTS_INTENT_REVERSED",
+            company=company,
+            branch=branch,
+            before_snapshot={"status": previous_status},
+            after_snapshot={
+                "status": intent.status,
+                "refunded_at": _dt_iso(intent.refunded_at),
+            },
+            extra_metadata={
+                "idempotency_key": idempotency_key,
+                "reason": reason,
+                "reversal_id": reversal_id,
+            },
         )
         return intent, False
 
@@ -850,6 +918,7 @@ def authorize_payment_intent_for_scope(
                 f"Solo se puede autorizar desde INTENDED. Estado actual: {intent.status}"
             )
 
+        previous_status = intent.status
         intent.status = PaymentIntent.Status.AUTHORIZED
         intent.authorized_at = timezone.now()
         intent.amount_authorized = amount_authorized or intent.amount
@@ -876,6 +945,21 @@ def authorize_payment_intent_for_scope(
             actor_user=actor,
             company=company,
             branch=branch,
+        )
+        _write_intent_audit_event(
+            request=request,
+            actor=actor,
+            intent=intent,
+            event_type="PAYMENTS_INTENT_AUTHORIZED",
+            company=company,
+            branch=branch,
+            before_snapshot={"status": previous_status},
+            after_snapshot={
+                "status": intent.status,
+                "amount_authorized": str(intent.amount_authorized),
+                "authorized_at": _dt_iso(intent.authorized_at),
+                "provider_txn_id": intent.provider_txn_id,
+            },
         )
         return intent
 
@@ -926,6 +1010,7 @@ def cancel_payment_intent_for_scope(
         if intent.status in (PaymentIntent.Status.REFUNDED, PaymentIntent.Status.FAILED):
             raise PaymentsInvalidStateError(f"No se puede cancelar desde estado {intent.status}.")
 
+        previous_status = intent.status
         intent.status = PaymentIntent.Status.CANCELLED
         intent.cancellation_reason = (reason or "")[:255]
         intent.save(update_fields=["status", "cancellation_reason", "updated_at"])
@@ -944,6 +1029,19 @@ def cancel_payment_intent_for_scope(
             actor_user=actor,
             company=company,
             branch=branch,
+        )
+        _write_intent_audit_event(
+            request=request,
+            actor=actor,
+            intent=intent,
+            event_type="PAYMENTS_INTENT_CANCELLED",
+            company=company,
+            branch=branch,
+            before_snapshot={"status": previous_status},
+            after_snapshot={
+                "status": intent.status,
+                "cancellation_reason": intent.cancellation_reason,
+            },
         )
         return intent
 
@@ -1025,6 +1123,7 @@ def refund_payment_intent_for_scope(
             created_by=actor if getattr(actor, "id", None) else None,
         )
 
+        previous_status = intent.status
         intent.amount_refunded = (intent.amount_refunded or Decimal("0.00")) + amount
         if intent.amount_refunded >= (intent.amount_captured or intent.amount):
             intent.status = PaymentIntent.Status.REFUNDED
@@ -1049,6 +1148,26 @@ def refund_payment_intent_for_scope(
             actor_user=actor,
             company=company,
             branch=branch,
+        )
+        _write_intent_audit_event(
+            request=request,
+            actor=actor,
+            intent=intent,
+            event_type="PAYMENTS_INTENT_REFUNDED",
+            company=company,
+            branch=branch,
+            before_snapshot={"status": previous_status},
+            after_snapshot={
+                "status": intent.status,
+                "amount_refunded": str(intent.amount_refunded),
+                "refunded_at": _dt_iso(intent.refunded_at),
+            },
+            extra_metadata={
+                "refund_id": str(refund.refund_id),
+                "amount": str(amount),
+                "total_refunded": str(intent.amount_refunded),
+                "reason": (reason or "")[:255],
+            },
         )
         return refund
 
