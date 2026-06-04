@@ -638,6 +638,7 @@ def link_operational_event_to_accounting(
             "schema_version": economic_event.schema_version,
             "close_run_id": "",
             "input_manifest_hash": "",
+            "generated_by": actor_user,
             "lines_json": lines_json,
             "total_debit": total_debit,
             "total_credit": total_credit,
@@ -2121,6 +2122,7 @@ def approve_journal_drafts(
     run_id: str = "",
     limit: int = 200,
     require_passed_validation: bool = True,
+    allow_same_generator: bool = False,
     actor_user=None,
 ) -> ApprovalBatchResult:
     run_id = str(run_id or "").strip()
@@ -2153,6 +2155,21 @@ def approve_journal_drafts(
                         }
                     )
                     continue
+
+            if (
+                actor_user is not None
+                and draft.generated_by_id is not None
+                and int(draft.generated_by_id) == int(actor_user.id)
+                and not bool(allow_same_generator)
+            ):
+                failed += 1
+                errors.append(
+                    {
+                        "draft_id": str(draft.id),
+                        "error": "SoD: el mismo usuario no puede generar y aprobar el mismo draft.",
+                    }
+                )
+                continue
 
             draft.state = JournalDraft.State.APPROVED_FOR_POSTING
             draft.approved_at = timezone.now()
@@ -2687,6 +2704,7 @@ def reverse_journal_entry(
             total_debit=total_debit,
             total_credit=total_credit,
             validated_at=timezone.now(),
+            generated_by=actor_user,
             approved_at=timezone.now(),
             approved_by=actor_user,
             posted_at=timezone.now(),

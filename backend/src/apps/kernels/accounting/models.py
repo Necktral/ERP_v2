@@ -157,6 +157,14 @@ class JournalDraft(models.Model):
     total_credit = models.DecimalField(max_digits=18, decimal_places=2, default=0)
 
     generated_at = models.DateTimeField(default=timezone.now, editable=False)
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="acc_journal_drafts_generated",
+        help_text="Actor humano que generó el draft (None si es proyección automática). SoD: no puede aprobarlo.",
+    )
     validated_at = models.DateTimeField(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(
