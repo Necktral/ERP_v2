@@ -10,17 +10,14 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth import get_user_model
 
 from apps.kernels.payments.models import (
     CashDenomination,
-    CashMovement,
     CashSession,
     PaymentIntent,
-    PaymentRefund,
 )
 from apps.kernels.payments.services import (
     authorize_payment_intent_for_scope,
@@ -29,7 +26,6 @@ from apps.kernels.payments.services import (
     create_payment_intent_for_scope,
     open_cash_session_for_scope,
     PaymentsInvalidStateError,
-    PaymentsNotFoundError,
     PaymentsValidationError,
     refund_payment_intent_for_scope,
     submit_denomination_count,

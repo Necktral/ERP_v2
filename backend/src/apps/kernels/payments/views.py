@@ -6,8 +6,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.modulos.common.domain_errors import DomainError
 from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
+from apps.modulos.iam.models import ApprovalRequest
 
 from .models import CashSession, PaymentIntent
 from .serializers import (
@@ -52,6 +54,20 @@ def _status_for_payments_error(exc: PaymentsDomainError, *, request, view_name: 
             "branch_id": getattr(getattr(request, "branch", None), "id", None),
         },
     )
+    return status.HTTP_400_BAD_REQUEST
+
+
+def _status_for_approval_error(exc: DomainError) -> int:
+    """Mapea errores de la primitiva SoD (iam.approvals) a HTTP."""
+    from apps.modulos.iam.approvals import (
+        ApprovalStateError,
+        ApproverNotAuthorizedError,
+        SelfApprovalError,
+    )
+    if isinstance(exc, (SelfApprovalError, ApproverNotAuthorizedError)):
+        return status.HTTP_403_FORBIDDEN
+    if isinstance(exc, ApprovalStateError):
+        return status.HTTP_409_CONFLICT
     return status.HTTP_400_BAD_REQUEST
 
 
@@ -397,27 +413,64 @@ class PaymentIntentCaptureView(APIView):
 
 
 class PaymentIntentRefundView(APIView):
-    permission_classes = [rbac_permission("payments.intent.create")]
+    """SoD (maker): POST crea una ApprovalRequest de reembolso; NO reembolsa directo.
+
+    El reembolso se ejecuta cuando un segundo usuario (checker, distinto, con
+    `payments.refund.approve`) aprueba en PaymentRefundApproveView.
+    """
+    permission_classes = [rbac_permission("payments.refund.request")]
 
     def post(self, request, payment_id):
-        from .services import refund_payment_intent
         from .serializers import PaymentIntentRefundIn
+        from .sod import request_refund
         s = PaymentIntentRefundIn(data=request.data)
         s.is_valid(raise_exception=True)
         v = s.validated_data
         try:
-            refund = refund_payment_intent(
+            approval = request_refund(
                 request=request, actor=request.user,
                 payment_id=payment_id,
                 amount=v["amount"],
-                idempotency_key=v.get("idempotency_key", "") or "",
                 reason=v.get("reason", "") or "",
+                idempotency_key=v.get("idempotency_key", "") or "",
             )
         except PaymentsDomainError as exc:
             return Response({"detail": str(exc)},
-                            status=_status_for_payments_error(exc, request=request, view_name="refund"))
-        return Response({"refund_id": str(refund.refund_id), "amount": str(refund.amount),
-                         "intent_status": refund.intent.status}, status=status.HTTP_201_CREATED)
+                            status=_status_for_payments_error(exc, request=request, view_name="refund_request"))
+        return Response(
+            {
+                "approval_request_id": str(approval.request_id),
+                "status": approval.status,
+                "action_type": approval.action_type,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class PaymentRefundApproveView(APIView):
+    """SoD (checker): aprueba y ejecuta el reembolso (usuario != maker)."""
+    permission_classes = [rbac_permission("payments.refund.approve")]
+
+    def post(self, request, request_id):
+        from .sod import approve_and_refund
+        approval = ApprovalRequest.objects.filter(
+            request_id=request_id, company=request.company, action_type="PAYMENTS_REFUND"
+        ).first()
+        if approval is None:
+            return Response({"detail": "Solicitud de aprobación no encontrada."},
+                            status=status.HTTP_404_NOT_FOUND)
+        try:
+            refund = approve_and_refund(request=request, approver=request.user, approval=approval)
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="refund_approve"))
+        except DomainError as exc:
+            return Response({"detail": str(exc)}, status=_status_for_approval_error(exc))
+        return Response(
+            {"refund_id": str(refund.refund_id), "amount": str(refund.amount),
+             "intent_status": refund.intent.status},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class PaymentIntentCancelView(APIView):
@@ -548,19 +601,51 @@ class CashSessionDenominationView(APIView):
 
 
 class CashSessionReopenView(APIView):
-    permission_classes = [rbac_permission("payments.cash_session.close")]
+    """SoD (maker): POST crea una ApprovalRequest de reapertura; NO reabre directo.
+
+    La reapertura se ejecuta cuando un segundo usuario (checker, distinto, con
+    `payments.cash.reopen.approve`) aprueba en CashReopenApproveView.
+    """
+    permission_classes = [rbac_permission("payments.cash.reopen.request")]
 
     def post(self, request, session_id: int):
-        from .services import reopen_cash_session_for_investigation
+        from .sod import request_reopen
         reason = request.data.get("reason", "") or ""
-        if not reason:
-            return Response({"detail": "reason requerido."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            session = reopen_cash_session_for_investigation(
+            approval = request_reopen(
                 request=request, actor=request.user,
                 session_id=session_id, reason=reason,
             )
         except PaymentsDomainError as exc:
             return Response({"detail": str(exc)},
-                            status=_status_for_payments_error(exc, request=request, view_name="reopen"))
+                            status=_status_for_payments_error(exc, request=request, view_name="reopen_request"))
+        return Response(
+            {
+                "approval_request_id": str(approval.request_id),
+                "status": approval.status,
+                "action_type": approval.action_type,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class CashReopenApproveView(APIView):
+    """SoD (checker): aprueba y ejecuta la reapertura (usuario != maker)."""
+    permission_classes = [rbac_permission("payments.cash.reopen.approve")]
+
+    def post(self, request, request_id):
+        from .sod import approve_and_reopen
+        approval = ApprovalRequest.objects.filter(
+            request_id=request_id, company=request.company, action_type="PAYMENTS_CASH_REOPEN"
+        ).first()
+        if approval is None:
+            return Response({"detail": "Solicitud de aprobación no encontrada."},
+                            status=status.HTTP_404_NOT_FOUND)
+        try:
+            session = approve_and_reopen(request=request, approver=request.user, approval=approval)
+        except PaymentsDomainError as exc:
+            return Response({"detail": str(exc)},
+                            status=_status_for_payments_error(exc, request=request, view_name="reopen_approve"))
+        except DomainError as exc:
+            return Response({"detail": str(exc)}, status=_status_for_approval_error(exc))
         return Response({"id": session.id, "status": session.status})

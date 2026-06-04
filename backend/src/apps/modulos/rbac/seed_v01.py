@@ -231,6 +231,11 @@ def seed_rbac_v01() -> SeedResult:
             # SoD (maker-checker) para anulación de documentos de facturación
             "billing.doc.void.request": "Solicitar anulación de documento (maker).",
             "billing.doc.void.approve": "Aprobar anulación de documento (checker, SoD).",
+            # SoD (maker-checker) en payments: reembolso de intent y reapertura de caja
+            "payments.refund.request": "Solicitar reembolso de pago (maker).",
+            "payments.refund.approve": "Aprobar reembolso de pago (checker, SoD).",
+            "payments.cash.reopen.request": "Solicitar reapertura de sesión de caja (maker).",
+            "payments.cash.reopen.approve": "Aprobar reapertura de sesión de caja (checker, SoD).",
         }
     )
 
