@@ -363,6 +363,22 @@ ALLOWED_SUBJECT_TYPES.update({"INVENTORY_COST_POLICY"})
 # Inventory: clase de inventario por producto (FEFO/FIFO/AVERAGE)
 ALLOWED_EVENT_TYPES.update({"INVENTORY_ITEM_RECLASSIFIED"})
 
+# Payments: ciclo de caja, intent y diferencias (Unidad #3)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "PAYMENTS_CASH_SESSION_OPENED",
+        "PAYMENTS_CASH_SESSION_CLOSED",
+        "PAYMENTS_CASH_SESSION_REOPENED",
+        "PAYMENTS_CASH_DIFFERENCE_DETECTED",
+        "PAYMENTS_INTENT_AUTHORIZED",
+        "PAYMENTS_INTENT_CAPTURED",
+        "PAYMENTS_INTENT_REVERSED",
+        "PAYMENTS_INTENT_CANCELLED",
+        "PAYMENTS_INTENT_REFUNDED",
+    }
+)
+ALLOWED_SUBJECT_TYPES.update({"CASH_SESSION", "PAYMENT_INTENT"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:

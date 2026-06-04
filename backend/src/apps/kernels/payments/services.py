@@ -15,7 +15,7 @@ from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
 
-from .models import CashMovement, CashSession, PaymentIntent
+from .models import CashDenomination, CashMovement, CashSession, PaymentIntent, PaymentRefund
 
 
 class PaymentsDomainError(ValueError):
@@ -294,8 +294,17 @@ def reverse_captured_payment_intent_for_scope(
         if intent.status != PaymentIntent.Status.CAPTURED:
             raise PaymentsInvalidStateError("Payment intent no se puede reversar en su estado actual.")
 
-        if intent.payment_method != TenderPaymentMethod.TRANSFER:
-            raise PaymentsInvalidStateError("Payment intent solo permite reversa CAP-05A para TRANSFER.")
+        # Métodos que permiten reversal electrónico
+        REVERSIBLE_METHODS = {
+            TenderPaymentMethod.TRANSFER,
+            TenderPaymentMethod.CARD,
+            TenderPaymentMethod.CREDIT,
+        }
+        if intent.payment_method and intent.payment_method not in REVERSIBLE_METHODS:
+            raise PaymentsInvalidStateError(
+                f"Reversal electrónico no soportado para '{intent.payment_method}'. "
+                "Use refund_payment_intent para otros métodos."
+            )
 
         captured_event = _find_payment_captured_event(intent=intent, company=company, branch=branch)
         if captured_event is None:
@@ -376,21 +385,29 @@ def open_cash_session_for_scope(
     actor: ActorPrincipal,
     request: HttpRequest | None = None,
     opening_amount: Decimal = Decimal("0.00"),
+    register_id: str = "",
     notes: str = "",
 ) -> CashSession:
     with transaction.atomic():
         actor_fk = _coerce_actor_for_fk(actor=actor, field_name="opened_by")
+        reg_id = (register_id or "").strip()
+
+        # Verificar sesión abierta para el mismo register
         existing = CashSession.objects.select_for_update().filter(
             company=company,
             branch=branch,
+            register_id=reg_id,
             status=CashSession.Status.OPEN,
         )
         if existing.exists():
-            raise PaymentsConflictError("Ya existe una cash session OPEN para esta sucursal.")
+            raise PaymentsConflictError(
+                f"Ya existe una cash session OPEN para register_id='{reg_id}' en esta sucursal."
+            )
 
         session = CashSession.objects.create(
             company=company,
             branch=branch,
+            register_id=reg_id,
             opened_by=actor_fk,
             status=CashSession.Status.OPEN,
             opening_amount=opening_amount,
@@ -408,6 +425,21 @@ def open_cash_session_for_scope(
             company=company,
             branch=branch,
         )
+        write_event(
+            request=request,
+            module="PAYMENTS",
+            event_type="PAYMENTS_CASH_SESSION_OPENED",
+            reason_code="OK",
+            actor_user=actor,
+            subject_type="CASH_SESSION",
+            subject_id=str(session.id),
+            after_snapshot={
+                "status": session.status,
+                "opening_amount": str(session.opening_amount),
+                "register_id": session.register_id,
+            },
+            metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
+        )
         return session
 
 
@@ -416,6 +448,7 @@ def open_cash_session(
     request: HttpRequest,
     actor: ActorPrincipal,
     opening_amount: Decimal = Decimal("0.00"),
+    register_id: str = "",
     notes: str = "",
 ) -> CashSession:
     company, branch = _scope_from_request(request)
@@ -425,6 +458,7 @@ def open_cash_session(
         actor=actor,
         request=request,
         opening_amount=opening_amount,
+        register_id=register_id,
         notes=notes,
     )
 
@@ -680,6 +714,7 @@ def close_cash_session_for_scope(
         ):
             raise PaymentsInvalidStateError("Estado de cash session inválido para cierre.")
 
+        prev_status = session.status
         session.status = CashSession.Status.CLOSED
         session.closed_by = actor_fk
         session.closed_at = timezone.now()
@@ -716,6 +751,52 @@ def close_cash_session_for_scope(
             company=company,
             branch=branch,
         )
+        write_event(
+            request=request,
+            module="PAYMENTS",
+            event_type="PAYMENTS_CASH_SESSION_CLOSED",
+            reason_code="OK",
+            actor_user=actor,
+            subject_type="CASH_SESSION",
+            subject_id=str(session.id),
+            before_snapshot={"status": prev_status},
+            after_snapshot={
+                "status": session.status,
+                "expected_amount": str(session.expected_amount),
+                "counted_amount": str(session.counted_amount),
+                "difference_amount": str(session.difference_amount),
+            },
+            metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
+        )
+        # Detección formal de diferencia de caja (sobrante/faltante).
+        if session.difference_amount != Decimal("0.00"):
+            kind = "OVER" if session.difference_amount > 0 else "SHORT"
+            publish_outbox_event(
+                request=request,
+                source_module="PAYMENTS",
+                event_type="CashDifferenceDetected",
+                payload={
+                    "session_id": session.id,
+                    "expected_amount": str(session.expected_amount),
+                    "counted_amount": str(session.counted_amount),
+                    "difference_amount": str(session.difference_amount),
+                    "kind": kind,
+                },
+                actor_user=actor,
+                company=company,
+                branch=branch,
+            )
+            write_event(
+                request=request,
+                module="PAYMENTS",
+                event_type="PAYMENTS_CASH_DIFFERENCE_DETECTED",
+                reason_code="OK",
+                actor_user=actor,
+                subject_type="CASH_SESSION",
+                subject_id=str(session.id),
+                after_snapshot={"difference_amount": str(session.difference_amount), "kind": kind},
+                metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
+            )
         return session
 
 
@@ -737,3 +818,370 @@ def close_cash_session(
         request=request,
         notes=notes,
     )
+
+
+# ---------------------------------------------------------------------------
+# authorize_payment_intent — INTENDED → AUTHORIZED
+# ---------------------------------------------------------------------------
+
+def authorize_payment_intent_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    request: HttpRequest | None = None,
+    amount_authorized: Decimal | None = None,
+    provider_txn_id: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> PaymentIntent:
+    with transaction.atomic():
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(payment_id=payment_id, company=company, branch=branch)
+            .first()
+        )
+        if intent is None:
+            raise PaymentsNotFoundError("Payment intent no encontrado.")
+        if intent.status == PaymentIntent.Status.AUTHORIZED:
+            return intent
+        if intent.status != PaymentIntent.Status.INTENDED:
+            raise PaymentsInvalidStateError(
+                f"Solo se puede autorizar desde INTENDED. Estado actual: {intent.status}"
+            )
+
+        intent.status = PaymentIntent.Status.AUTHORIZED
+        intent.authorized_at = timezone.now()
+        intent.amount_authorized = amount_authorized or intent.amount
+        if provider_txn_id:
+            intent.provider_txn_id = provider_txn_id
+        if metadata:
+            merged = dict(intent.metadata or {})
+            merged.update(metadata)
+            intent.metadata = merged
+        intent.save(update_fields=["status", "authorized_at", "amount_authorized", "provider_txn_id", "metadata", "updated_at"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="PaymentAuthorized",
+            payload={
+                "payment_id": str(intent.payment_id),
+                "amount": str(intent.amount),
+                "amount_authorized": str(intent.amount_authorized),
+                "currency": intent.currency,
+                "status": intent.status,
+                "payment_method": intent.payment_method,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        return intent
+
+
+def authorize_payment_intent(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    amount_authorized: Decimal | None = None,
+    provider_txn_id: str = "",
+    metadata: dict[str, Any] | None = None,
+) -> PaymentIntent:
+    company, branch = _scope_from_request(request)
+    return authorize_payment_intent_for_scope(
+        company=company, branch=branch, actor=actor,
+        request=request, payment_id=payment_id,
+        amount_authorized=amount_authorized,
+        provider_txn_id=provider_txn_id, metadata=metadata,
+    )
+
+
+# ---------------------------------------------------------------------------
+# cancel_payment_intent — INTENDED/AUTHORIZED → CANCELLED
+# ---------------------------------------------------------------------------
+
+def cancel_payment_intent_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    request: HttpRequest | None = None,
+    reason: str = "",
+) -> PaymentIntent:
+    with transaction.atomic():
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(payment_id=payment_id, company=company, branch=branch)
+            .first()
+        )
+        if intent is None:
+            raise PaymentsNotFoundError("Payment intent no encontrado.")
+        if intent.status == PaymentIntent.Status.CANCELLED:
+            return intent
+        if intent.status in (PaymentIntent.Status.CAPTURED, PaymentIntent.Status.PARTIALLY_CAPTURED):
+            raise PaymentsInvalidStateError("No se puede cancelar un pago ya capturado. Use refund.")
+        if intent.status in (PaymentIntent.Status.REFUNDED, PaymentIntent.Status.FAILED):
+            raise PaymentsInvalidStateError(f"No se puede cancelar desde estado {intent.status}.")
+
+        intent.status = PaymentIntent.Status.CANCELLED
+        intent.cancellation_reason = (reason or "")[:255]
+        intent.save(update_fields=["status", "cancellation_reason", "updated_at"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="PaymentCancelled",
+            payload={
+                "payment_id": str(intent.payment_id),
+                "amount": str(intent.amount),
+                "currency": intent.currency,
+                "status": intent.status,
+                "reason": intent.cancellation_reason,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        return intent
+
+
+def cancel_payment_intent(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    reason: str = "",
+) -> PaymentIntent:
+    company, branch = _scope_from_request(request)
+    return cancel_payment_intent_for_scope(
+        company=company, branch=branch, actor=actor,
+        request=request, payment_id=payment_id, reason=reason,
+    )
+
+
+# ---------------------------------------------------------------------------
+# refund_payment_intent — reembolso parcial o total post-capture
+# ---------------------------------------------------------------------------
+
+def refund_payment_intent_for_scope(
+    *,
+    company: OrgUnit,
+    branch: OrgUnit,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    amount: Decimal,
+    request: HttpRequest | None = None,
+    idempotency_key: str = "",
+    reason: str = "",
+    provider_refund_id: str = "",
+) -> PaymentRefund:
+    idempotency_key = (idempotency_key or "").strip()
+    if amount <= 0:
+        raise PaymentsValidationError("El monto del reembolso debe ser > 0.")
+
+    with transaction.atomic():
+        intent = (
+            PaymentIntent.objects.select_for_update()
+            .filter(payment_id=payment_id, company=company, branch=branch)
+            .first()
+        )
+        if intent is None:
+            raise PaymentsNotFoundError("Payment intent no encontrado.")
+
+        if intent.status not in (
+            PaymentIntent.Status.CAPTURED,
+            PaymentIntent.Status.PARTIALLY_CAPTURED,
+            PaymentIntent.Status.PARTIALLY_REFUNDED,
+        ):
+            raise PaymentsInvalidStateError(
+                f"Solo se puede reembolsar un pago capturado. Estado: {intent.status}"
+            )
+
+        # Idempotencia
+        if idempotency_key:
+            existing = PaymentRefund.objects.filter(
+                intent=intent, idempotency_key=idempotency_key
+            ).first()
+            if existing:
+                return existing
+
+        refundable = intent.refundable_amount
+        if amount > refundable:
+            raise PaymentsValidationError(
+                f"Monto a reembolsar ({amount}) excede el monto refundable ({refundable})."
+            )
+
+        refund = PaymentRefund.objects.create(
+            intent=intent,
+            company=company,
+            amount=amount,
+            currency=intent.currency,
+            reason=(reason or "")[:255],
+            idempotency_key=idempotency_key,
+            provider_refund_id=provider_refund_id or "",
+            created_by=actor if getattr(actor, "id", None) else None,
+        )
+
+        intent.amount_refunded = (intent.amount_refunded or Decimal("0.00")) + amount
+        if intent.amount_refunded >= (intent.amount_captured or intent.amount):
+            intent.status = PaymentIntent.Status.REFUNDED
+        else:
+            intent.status = PaymentIntent.Status.PARTIALLY_REFUNDED
+        intent.refunded_at = timezone.now()
+        intent.save(update_fields=["amount_refunded", "status", "refunded_at", "updated_at"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="PaymentRefunded",
+            payload={
+                "payment_id": str(intent.payment_id),
+                "refund_id": str(refund.refund_id),
+                "amount_refunded": str(amount),
+                "total_refunded": str(intent.amount_refunded),
+                "currency": intent.currency,
+                "status": intent.status,
+                "reason": reason,
+            },
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        return refund
+
+
+def refund_payment_intent(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    payment_id: str | UUID,
+    amount: Decimal,
+    idempotency_key: str = "",
+    reason: str = "",
+    provider_refund_id: str = "",
+) -> PaymentRefund:
+    company, branch = _scope_from_request(request)
+    return refund_payment_intent_for_scope(
+        company=company, branch=branch, actor=actor,
+        request=request, payment_id=payment_id,
+        amount=amount, idempotency_key=idempotency_key,
+        reason=reason, provider_refund_id=provider_refund_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Arqueo de caja — CashDenomination
+# ---------------------------------------------------------------------------
+
+NICARAGUA_BILLS = [Decimal("1000"), Decimal("500"), Decimal("200"), Decimal("100"),
+                   Decimal("50"), Decimal("20"), Decimal("10")]
+NICARAGUA_COINS = [Decimal("25"), Decimal("10"), Decimal("5"), Decimal("1"), Decimal("0.50")]
+
+
+def submit_denomination_count(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    session_id: int,
+    denominations: list[dict],
+) -> tuple[CashSession, list[CashDenomination], Decimal]:
+    """
+    Registra el arqueo de caja por denominación.
+    denominations: [{"denomination_value": 100.00, "quantity": 5, "denomination_type": "BILL"}, ...]
+    Retorna (session, denominations, total_counted).
+    """
+    company, branch = _scope_from_request(request)
+    with transaction.atomic():
+        session = (
+            CashSession.objects.select_for_update()
+            .filter(id=session_id, company=company, branch=branch)
+            .first()
+        )
+        if session is None:
+            raise PaymentsNotFoundError("Cash session no encontrada.")
+        if session.status not in (CashSession.Status.OPEN, CashSession.Status.COUNT_PENDING):
+            raise PaymentsInvalidStateError("Solo se puede hacer arqueo en sesión OPEN o COUNT_PENDING.")
+
+        # Eliminar denominaciones previas del arqueo
+        CashDenomination.objects.filter(session=session).delete()
+
+        created = []
+        total_counted = Decimal("0.00")
+        for d in denominations:
+            qty = int(d.get("quantity", 0))
+            if qty < 0:
+                raise PaymentsValidationError("Cantidad de denominación no puede ser negativa.")
+            denom_val = Decimal(str(d["denomination_value"]))
+            denom_type = str(d.get("denomination_type", CashDenomination.DenominationType.BILL))
+            obj = CashDenomination.objects.create(
+                session=session,
+                denomination_type=denom_type,
+                denomination_value=denom_val,
+                quantity=qty,
+            )
+            created.append(obj)
+            total_counted += obj.subtotal
+
+        session.counted_amount = total_counted
+        session.status = CashSession.Status.COUNT_PENDING
+        session.save(update_fields=["counted_amount", "status"])
+
+    return session, created, total_counted
+
+
+# ---------------------------------------------------------------------------
+# reopen_cash_session — para investigación
+# ---------------------------------------------------------------------------
+
+def reopen_cash_session_for_investigation(
+    *,
+    request: HttpRequest,
+    actor: ActorPrincipal,
+    session_id: int,
+    reason: str,
+) -> CashSession:
+    company, branch = _scope_from_request(request)
+    with transaction.atomic():
+        session = (
+            CashSession.objects.select_for_update()
+            .filter(id=session_id, company=company, branch=branch)
+            .first()
+        )
+        if session is None:
+            raise PaymentsNotFoundError("Cash session no encontrada.")
+        if session.status != CashSession.Status.CLOSED:
+            raise PaymentsInvalidStateError("Solo se puede reabrir una sesión CLOSED.")
+
+        session.status = CashSession.Status.REOPENED_FOR_INVESTIGATION
+        session.closed_at = None
+        metadata = dict(session.metadata or {})
+        metadata["reopen_reason"] = reason
+        metadata["reopened_at"] = timezone.now().isoformat()
+        session.metadata = metadata
+        session.save(update_fields=["status", "closed_at", "metadata"])
+
+        publish_outbox_event(
+            request=request,
+            source_module="PAYMENTS",
+            event_type="CashSessionReopened",
+            payload={"session_id": session.id, "reason": reason},
+            actor_user=actor,
+            company=company,
+            branch=branch,
+        )
+        write_event(
+            request=request,
+            module="PAYMENTS",
+            event_type="PAYMENTS_CASH_SESSION_REOPENED",
+            reason_code="OK",
+            actor_user=actor,
+            subject_type="CASH_SESSION",
+            subject_id=str(session.id),
+            before_snapshot={"status": CashSession.Status.CLOSED},
+            after_snapshot={"status": session.status},
+            metadata={"company_id": str(company.id), "branch_id": str(branch.id), "reason": reason},
+        )
+    return session
