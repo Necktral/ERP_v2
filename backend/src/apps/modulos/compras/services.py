@@ -67,6 +67,19 @@ def _ensure_supplier_party_role(*, party: Party, request, actor) -> None:
         assign_party_role(party=party, role=PartyRole.Role.SUPPLIER, request=request, actor=actor)
 
 
+def _supplier_payload(*, doc: PurchaseDocument) -> dict:
+    """Contraparte (proveedor) para el payload de eventos: link fuerte + snapshot textual.
+
+    El snapshot (display_name/tax_id) NO es verdad foránea; habilita trazar al proveedor en
+    CxP/accounting aguas abajo aunque el Party se renombre luego.
+    """
+    return {
+        "supplier_party_id": int(doc.supplier_party_id) if doc.supplier_party_id else None,
+        "supplier_display_name": str(doc.supplier_name or ""),
+        "supplier_tax_id": str(doc.supplier_ref or ""),
+    }
+
+
 def create_purchase_draft(
     *,
     request,
@@ -136,7 +149,7 @@ def create_purchase_draft(
                 "tax_total": str(doc.tax_total),
                 "total": str(doc.total),
                 "supplier_ref": doc.supplier_ref,
-                "supplier_party_id": int(doc.supplier_party_id) if doc.supplier_party_id else None,
+                **_supplier_payload(doc=doc),
                 "external_ref": doc.external_ref,
                 "idempotency_key": doc.idempotency_key,
             },
@@ -182,7 +195,7 @@ def post_purchase_document(*, request, actor, doc_id: int) -> dict:
                 "tax_total": str(doc.tax_total),
                 "total": str(doc.total),
                 "supplier_ref": doc.supplier_ref,
-                "supplier_party_id": int(doc.supplier_party_id) if doc.supplier_party_id else None,
+                **_supplier_payload(doc=doc),
                 "external_ref": doc.external_ref,
             },
             actor_user=actor,
@@ -234,7 +247,7 @@ def void_purchase_document(*, request, actor, doc_id: int, reason: str = "VOID")
                 "total": str(doc.total),
                 "reason": doc.void_reason,
                 "supplier_ref": doc.supplier_ref,
-                "supplier_party_id": int(doc.supplier_party_id) if doc.supplier_party_id else None,
+                **_supplier_payload(doc=doc),
                 "external_ref": doc.external_ref,
             },
             actor_user=actor,
