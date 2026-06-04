@@ -2295,6 +2295,19 @@ def post_journal_drafts(
                         "error": f"Periodo cerrado: {period.year}-{period.month:02d}.",
                     }
                 )
+                _write_accounting_audit_event(
+                    actor_user=actor_user,
+                    company=draft.economic_event.company,
+                    branch=draft.economic_event.branch,
+                    event_type="ACCOUNTING_POSTING_BLOCKED",
+                    subject_type="JOURNAL_DRAFT",
+                    subject_id=str(draft.id),
+                    metadata={
+                        "reason": "PERIOD_CLOSED",
+                        "period": f"{period.year}-{period.month:02d}",
+                        "economic_event_id": draft.economic_event_id,
+                    },
+                )
                 continue
 
             cfg = get_or_create_accounting_config(company=draft.economic_event.company)
@@ -2492,6 +2505,17 @@ def close_fiscal_period(
                         f"SoD: usuario {actor_user.id} no puede cerrar periodo {year}-{month:02d} si ejecutó revaluación FX en el mismo periodo."
                     )
 
+            # Close manifest hasheado: evidencia reproducible del cierre (#11).
+            close_manifest = {
+                "company_id": int(company.id),
+                "year": int(year),
+                "month": int(month),
+                "pending_drafts_count": int(pending_count),
+                "forced": bool(force),
+                "gate_summary": gate_summary,
+            }
+            close_manifest_hash = _json_hash(close_manifest)
+
             period.status = FiscalPeriod.Status.CLOSED
             period.closed_at = timezone.now()
             period.closed_by = actor_user
@@ -2507,6 +2531,7 @@ def close_fiscal_period(
                     "pending_drafts_count": int(pending_count),
                     "forced": bool(force),
                     "gate_summary": gate_summary,
+                    "close_manifest_hash": close_manifest_hash,
                 },
                 company=company,
                 actor_user=actor_user,
@@ -2524,6 +2549,7 @@ def close_fiscal_period(
                     "period": f"{year}-{month:02d}",
                     "pending_drafts_count": int(pending_count),
                     "forced": bool(force),
+                    "close_manifest_hash": close_manifest_hash,
                 },
             )
 

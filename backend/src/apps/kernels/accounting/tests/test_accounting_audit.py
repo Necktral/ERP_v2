@@ -122,3 +122,39 @@ def test_reverse_emits_audit():
     assert ev is not None
     assert ev.subject_type == "JOURNAL_ENTRY"
     assert ev.after_snapshot.get("original_journal_entry_id") == entry.id
+
+
+@pytest.mark.django_db
+def test_close_emits_manifest_hash():
+    company, _ = _mk_scope()
+    closer = _actor()
+    period = FiscalPeriod.objects.create(company=company, year=2026, month=2, status=FiscalPeriod.Status.OPEN)
+
+    close_fiscal_period(company_id=company.id, year=2026, month=2, actor_user=closer)
+
+    ev = _audit("ACCOUNTING_PERIOD_CLOSED", period.id).first()
+    assert ev is not None
+    manifest_hash = ev.metadata.get("close_manifest_hash")
+    assert isinstance(manifest_hash, str) and len(manifest_hash) == 64  # sha256 hex
+
+
+@pytest.mark.django_db
+def test_posting_blocked_in_closed_period_audits():
+    from django.utils import timezone as djtz
+
+    company, branch = _mk_scope()
+    poster = _actor()
+    link = _draft_for(company=company, branch=branch)
+    draft = JournalDraft.objects.get(id=link.journal_draft_id)
+
+    # Cerrar (force: hay draft pendiente) el periodo del evento.
+    local = djtz.localtime(draft.economic_event.occurred_at)
+    close_fiscal_period(company_id=company.id, year=local.year, month=local.month, force=True, actor_user=poster)
+
+    # Postear en periodo cerrado -> bloqueado (#10) + AuditEvent.
+    result = post_journal_drafts(
+        company_id=company.id, auto_approve=True, allow_same_approver=True, actor_user=poster
+    )
+    assert result.posted == 0
+    assert result.failed >= 1
+    assert _audit("ACCOUNTING_POSTING_BLOCKED", draft.id).exists()
