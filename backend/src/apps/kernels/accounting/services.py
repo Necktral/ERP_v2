@@ -13,6 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
+from apps.modulos.audit.writer import write_event
 from apps.modulos.common.domain_errors import DomainError, IntegrationError
 from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.cec.models import CECException, CloseRun
@@ -43,6 +44,54 @@ from .phase7 import Phase7ValidationError, ensure_journal_entry_lines, get_or_cr
 MONEY_Q = Decimal("0.01")
 PROJECTOR_CONSUMER = "accounting.projector"
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
+
+
+class _AccountingAuditRequest:
+    """Request sintético para encadenar auditoría por company sin HTTP.
+
+    El kernel accounting opera con `actor_user` (no recibe `request`); este shim
+    aporta el scope que `audit.writer.write_event` usa para particionar la cadena.
+    """
+
+    def __init__(self, *, company, branch=None) -> None:
+        self.company = company
+        self.branch = branch
+        self.META: dict[str, Any] = {}
+        self.path = ""
+        self.method = ""
+        self.request_id = ""
+
+
+def _write_accounting_audit_event(
+    *,
+    actor_user,
+    company,
+    branch,
+    event_type: str,
+    subject_type: str,
+    subject_id: str,
+    before_snapshot: dict[str, Any] | None = None,
+    after_snapshot: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Auditoría de servicio del kernel accounting (cierra el hueco `audit=0`, invariante #4)."""
+    meta: dict[str, Any] = {"company_id": str(getattr(company, "id", "") or "")}
+    if branch is not None:
+        meta["branch_id"] = str(getattr(branch, "id", "") or "")
+    if metadata:
+        meta.update(metadata)
+    write_event(
+        request=_AccountingAuditRequest(company=company, branch=branch),
+        module="ACCOUNTING",
+        event_type=event_type,
+        reason_code="ACCOUNTING_OK",
+        actor_user=actor_user,
+        subject_type=subject_type,
+        subject_id=str(subject_id),
+        before_snapshot=before_snapshot,
+        after_snapshot=after_snapshot,
+        metadata=meta,
+    )
 SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
@@ -2123,6 +2172,21 @@ def approve_journal_drafts(
                 branch=draft.economic_event.branch,
                 actor_user=actor_user,
             )
+            _write_accounting_audit_event(
+                actor_user=actor_user,
+                company=draft.economic_event.company,
+                branch=draft.economic_event.branch,
+                event_type="ACCOUNTING_JOURNAL_APPROVED",
+                subject_type="JOURNAL_DRAFT",
+                subject_id=str(draft.id),
+                before_snapshot={"state": JournalDraft.State.VALIDATED},
+                after_snapshot={"state": draft.state},
+                metadata={
+                    "economic_event_id": draft.economic_event_id,
+                    "run_id": draft.close_run_id,
+                    "rule_set_id": draft.rule_set_id,
+                },
+            )
 
     return ApprovalBatchResult(
         attempted=int(attempted),
@@ -2279,6 +2343,7 @@ def post_journal_drafts(
                     )
                     continue
 
+            prev_state = draft.state
             draft.state = JournalDraft.State.POSTED
             draft.posted_at = entry.posted_at
             draft.save(update_fields=["state", "posted_at"])
@@ -2301,6 +2366,24 @@ def post_journal_drafts(
                 company=draft.economic_event.company,
                 branch=draft.economic_event.branch,
                 actor_user=actor_user,
+            )
+            _write_accounting_audit_event(
+                actor_user=actor_user,
+                company=draft.economic_event.company,
+                branch=draft.economic_event.branch,
+                event_type="ACCOUNTING_JOURNAL_POSTED",
+                subject_type="JOURNAL_ENTRY",
+                subject_id=str(entry.id),
+                before_snapshot={"state": prev_state},
+                after_snapshot={"state": draft.state, "is_posted": True},
+                metadata={
+                    "journal_draft_id": draft.id,
+                    "economic_event_id": draft.economic_event_id,
+                    "run_id": draft.close_run_id,
+                    "period": f"{period.year}-{period.month:02d}",
+                    "debit_total": str(entry.debit_total),
+                    "credit_total": str(entry.credit_total),
+                },
             )
 
     return PostingBatchResult(
@@ -2410,6 +2493,21 @@ def close_fiscal_period(
                 },
                 company=company,
                 actor_user=actor_user,
+            )
+            _write_accounting_audit_event(
+                actor_user=actor_user,
+                company=company,
+                branch=None,
+                event_type="ACCOUNTING_PERIOD_CLOSED",
+                subject_type="FISCAL_PERIOD",
+                subject_id=str(period.id),
+                before_snapshot={"status": FiscalPeriod.Status.OPEN},
+                after_snapshot={"status": period.status},
+                metadata={
+                    "period": f"{year}-{month:02d}",
+                    "pending_drafts_count": int(pending_count),
+                    "forced": bool(force),
+                },
             )
 
             return PeriodCloseResult(
@@ -2648,6 +2746,23 @@ def reverse_journal_entry(
             company=original.company,
             branch=original.branch,
             actor_user=actor_user,
+        )
+        _write_accounting_audit_event(
+            actor_user=actor_user,
+            company=original.company,
+            branch=original.branch,
+            event_type="ACCOUNTING_JOURNAL_REVERSED",
+            subject_type="JOURNAL_ENTRY",
+            subject_id=str(reversal_entry.id),
+            after_snapshot={
+                "reversal_entry_id": int(reversal_entry.id),
+                "original_journal_entry_id": int(original.id),
+            },
+            metadata={
+                "reason": reason_clean,
+                "period": f"{period.year}-{period.month:02d}",
+                "reversal_date": str(reversal_local_date),
+            },
         )
 
         return JournalReversalResult(
