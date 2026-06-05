@@ -236,6 +236,21 @@ def seed_rbac_v01() -> SeedResult:
             "payments.refund.approve": "Aprobar reembolso de pago (checker, SoD).",
             "payments.cash.reopen.request": "Solicitar reapertura de sesión de caja (maker).",
             "payments.cash.reopen.approve": "Aprobar reapertura de sesión de caja (checker, SoD).",
+            # Portfolio (cartera CxC/CxP/crédito) — cierra rbac=0; ops sensibles con permiso propio
+            "portfolio.receivable.read": "Ver cuentas por cobrar (CxC).",
+            "portfolio.receivable.write": "Crear/editar cuentas por cobrar.",
+            "portfolio.receivable.adjust": "Ajustar monto de una CxC (sensible).",
+            "portfolio.receivable.writeoff": "Castigar/write-off una CxC (sensible).",
+            "portfolio.payable.read": "Ver cuentas por pagar (CxP).",
+            "portfolio.payable.write": "Crear/editar cuentas por pagar.",
+            "portfolio.credit.read": "Ver créditos.",
+            "portfolio.credit.write": "Crear/editar créditos.",
+            "portfolio.credit.disburse": "Desembolsar un crédito (sensible).",
+            "portfolio.allocation.read": "Ver aplicaciones de pago (allocations).",
+            "portfolio.allocation.write": "Crear/editar aplicaciones de pago.",
+            "portfolio.interest.read": "Ver devengo de intereses.",
+            "portfolio.settings.read": "Ver configuración de cartera.",
+            "portfolio.settings.write": "Editar configuración de cartera.",
         }
     )
 
@@ -350,6 +365,21 @@ def seed_rbac_v01() -> SeedResult:
             "report.definition.manage",
             "report.dashboard.read",
             "report.dashboard.compose",
+            # Portfolio (cartera CxC/CxP/crédito)
+            "portfolio.receivable.read",
+            "portfolio.receivable.write",
+            "portfolio.receivable.adjust",
+            "portfolio.receivable.writeoff",
+            "portfolio.payable.read",
+            "portfolio.payable.write",
+            "portfolio.credit.read",
+            "portfolio.credit.write",
+            "portfolio.credit.disburse",
+            "portfolio.allocation.read",
+            "portfolio.allocation.write",
+            "portfolio.interest.read",
+            "portfolio.settings.read",
+            "portfolio.settings.write",
             # Compat
             "inventory.read",
             "inventory.write",
