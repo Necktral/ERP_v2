@@ -1,0 +1,3 @@
+NAME             IMAGE                  COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+erpcrm_backend   erp_crm-backend        "/entrypoint.sh"         backend   About a minute ago   Up About a minute (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+erpcrm_db        postgres:16.2-alpine   "docker-entrypoint.s…"   db        3 minutes ago        Up 3 minutes (healthy)        5432/tcp

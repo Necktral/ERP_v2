@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "failure_step": null,
+  "run_started_at": "2026-03-26T01:20:28Z",
+  "run_finished_at": "2026-03-26T01:21:05Z",
+  "duration_seconds": 37,
+  "rehearsal_db_name": "migration_rehearsal_20260325_192028_16909",
+  "steps": {
+    "makemigrations_check": "passed",
+    "migrate_plan": "passed",
+    "migrate_apply": "passed",
+    "showmigrations": "passed"
+  },
+  "artifacts": {
+    "makemigrations_check": "qa/reports/migration_makemigrations_check.txt",
+    "migration_plan": "qa/reports/migration_plan.txt",
+    "migrate_apply": "qa/reports/migration_migrate_apply.txt",
+    "showmigrations": "qa/reports/migration_showmigrations.txt"
+  }
+}

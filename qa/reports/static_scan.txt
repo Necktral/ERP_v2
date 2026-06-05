@@ -1,0 +1,4 @@
+static_scan_target=/app/backend/src/apps
+static_scan_pattern=(TODO|FIXME|XXX|HACK|NotImplementedError)
+
+OK: sin hallazgos

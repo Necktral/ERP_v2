@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-05-25T23:03:03.276286+00:00",
+  "window_hours": 24,
+  "reporting": {
+    "window_hours": 24,
+    "runs_total": 0,
+    "runs_succeeded": 0,
+    "runs_failed": 0,
+    "error_rate_pct": 0.0,
+    "quality_status_counts": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0
+    },
+    "failure_classes_last_window": {
+      "none": 0,
+      "quality_breach": 0,
+      "latency_regression": 0,
+      "app_error": 0,
+      "infra_error": 0
+    },
+    "latency_ms_by_policy": {
+      "SNAPSHOT_REQUIRED": {
+        "count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      },
+      "CACHE_ALLOWED": {
+        "count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      },
+      "LIVE_ONLY": {
+        "count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      },
+      "near_realtime_cache": {
+        "count": 0,
+        "p50_ms": null,
+        "p95_ms": null,
+        "max_ms": null
+      }
+    },
+    "runs_by_consumer_type": [],
+    "top_consumers": [],
+    "dataset_slo": [],
+    "top_datasets": [],
+    "exports_by_format": [],
+    "legacy_accounting_report_runs": 0
+  },
+  "dashboard": {
+    "window_hours": 24,
+    "embed_issued": 0,
+    "embed_redeemed": 0,
+    "embed_expired": 0,
+    "embed_redeem_rate_pct": 0.0,
+    "top_workspaces": [],
+    "workspace_redeem_rate": [],
+    "dash_runs_total": 0,
+    "top_dash_datasets": []
+  }
+}

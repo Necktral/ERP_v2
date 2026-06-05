@@ -1,0 +1,16 @@
+{
+  "timestamp_utc": "2026-03-24T00:17:33.390693+00:00",
+  "status": "PASS",
+  "series": "RACE-03eb30",
+  "docs_emitted": [
+    40,
+    41
+  ],
+  "numbers": [
+    1,
+    2
+  ],
+  "duplicates_gt0": 0,
+  "create_integrity_errors": 1,
+  "exceptions": []
+}

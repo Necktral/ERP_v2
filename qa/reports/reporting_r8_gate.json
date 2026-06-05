@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-05-25T23:03:05.608750+00:00",
+  "mode": "HARD_FAIL",
+  "gate_status": "PASS",
+  "window_hours": 24,
+  "warn_until": "2026-04-07",
+  "hard_fail_from": "2026-04-08",
+  "thresholds": {
+    "snapshot_p95_max_ms": 800.0,
+    "near_realtime_p95_max_ms": 1500.0,
+    "error_rate_max_pct": 0.5
+  },
+  "metrics": {
+    "runs_total": 0,
+    "runs_failed": 0,
+    "error_rate_pct": 0.0,
+    "quality_status_counts": {
+      "PASS": 0,
+      "WARN": 0,
+      "FAIL": 0
+    },
+    "snapshot_p95_ms": null,
+    "near_realtime_cache_p95_ms": null
+  },
+  "failure_class": "none",
+  "trigger_metric": "",
+  "breaches": [],
+  "reasons": []
+}

@@ -1,0 +1,135 @@
+accounting
+ [X] 0001_initial
+ [X] 0002_shadow_ledger_phase4a
+ [X] 0003_phase5_sod_actor_trace
+ [X] 0004_phase7a_gl_core
+ [X] 0005_phase7b_intercompany_consolidation
+ [X] 0006_phase7b_performance_indexes
+ [X] 0007_phase11_intercompany_advanced
+ [X] 0008_operational_posting_config
+ [X] 0009_rename_acc_coa_comp_type_act_idx_accounting__company_41d161_idx_and_more
+accounts
+ [X] 0001_initial
+ [X] 0002_user_must_change_password
+ [X] 0003_user_is_setup_complete
+ [X] 0004_refresh_token_session
+ [X] 0005_user_totp_fields
+ [X] 0006_two_factor_challenge
+ [X] 0007_rename_accounts_re_user_id_6cc004_idx_accounts_re_user_id_7e85a1_idx_and_more
+admin
+ [X] 0001_initial
+ [X] 0002_logentry_remove_auto_add
+ [X] 0003_logentry_add_action_flag_choices
+audit
+ [X] 0001_initial
+ [X] 0002_audit_event_signature_key_id
+auth
+ [X] 0001_initial
+ [X] 0002_alter_permission_name_max_length
+ [X] 0003_alter_user_email_max_length
+ [X] 0004_alter_user_username_opts
+ [X] 0005_alter_user_last_login_null
+ [X] 0006_require_contenttypes_0002
+ [X] 0007_alter_validators_add_error_messages
+ [X] 0008_alter_user_username_max_length
+ [X] 0009_alter_user_last_name_max_length
+ [X] 0010_alter_group_name_max_length
+ [X] 0011_update_proxy_permissions
+ [X] 0012_alter_user_first_name_max_length
+axes
+ [X] 0001_initial
+ [X] 0002_auto_20151217_2044
+ [X] 0003_auto_20160322_0929
+ [X] 0004_auto_20181024_1538
+ [X] 0005_remove_accessattempt_trusted
+ [X] 0006_remove_accesslog_trusted
+ [X] 0007_alter_accessattempt_unique_together
+ [X] 0008_accessfailurelog
+ [X] 0009_add_session_hash
+ [X] 0010_accessattemptexpiration
+cec
+ [X] 0001_initial
+ [X] 0002_phase3_fields
+ [X] 0003_rename_cec_cecexc_status_826f17_idx_cec_cecexce_status_20932b_idx_and_more
+common
+ (no migrations)
+compras
+ [X] 0001_initial
+contenttypes
+ [X] 0001_initial
+ [X] 0002_remove_content_type_name
+dashboard
+ [X] 0001_initial
+estacion_servicios
+ [X] 0001_initial
+ [X] 0002_uom_and_precision
+ [X] 0003_price_uom_and_field_renames
+ [X] 0004_backfill_entered_fields_and_enforce_not_null
+ [X] 0005_amounts_dual_entered_and_canonical
+ [X] 0006_fuel_uom_preference_unified
+ [X] 0007_alter_fueluompreference_user_related_name
+ [X] 0008_fuelsale_billing_and_inventory_links
+ [X] 0009_fuelsale_compensation_state
+ [X] 0010_rename_estacion_se_company__c8e61a_idx_estacion_se_company_54b2c6_idx_and_more
+facturacion
+ [X] 0001_initial
+ [X] 0002_phase6_adapter_b
+ [X] 0003_accounting_links
+ [X] 0004_billingdocument_source_refs
+ [X] 0005_rename_facturacion_company_99f3f6_idx_facturacion_company_e59730_idx_and_more
+hr
+ [X] 0001_initial
+ [X] 0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more
+ [X] 0003_employmentassignment_employee_active_started_idx
+ [X] 0004_rename_hr_employassign_emp_active_start_idx_hr_employme_employe_4b785a_idx
+iam
+ [X] 0001_initial
+ [X] 0002_initial
+ [X] 0003_orgunit_parent_type_name_idx
+ [X] 0004_rename_iam_orgunit_parent_type_name_idx_iam_orgunit_parent__f0840d_idx
+integration
+ [X] 0001_initial
+ [X] 0002_outbox_next_attempt_at
+ [X] 0003_rename_integratio_consume_6ab9e4_idx_integration_consume_253f49_idx_and_more
+inventarios
+ [X] 0001_initial
+ [X] 0002_stockmovement_accounting_links
+ [X] 0003_remove_inventoryitem_uniq_inv_sku_per_company_and_more
+org
+ [X] 0001_initial
+ [X] 0002_alter_branchprofile_id_alter_companyprofile_id
+ [X] 0003_branchprofile_fuel_uom_defaults
+ [X] 0004_user_fuel_uom_preference
+ [X] 0005_rename_idx_userfueluompref_user_branch_org_userfue_user_id_f9159c_idx_and_more
+payments
+ [X] 0001_initial
+ [X] 0002_rename_payments_ca_session_80ee8d_idx_payments_ca_session_c5f759_idx_and_more
+rbac
+ [X] 0001_initial
+ [X] 0002_roleassignment_origin
+ [X] 0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx
+ [X] 0004_role_permission_active_indexes
+ [X] 0005_rename_rbac_perm_active_code_idx_rbac_permis_is_acti_42ab9f_idx_and_more
+reporting
+ [X] 0001_initial
+ [X] 0002_reportrun_result_payload_json_reportexportlog_and_more
+ [X] 0003_dataset_quality_fields
+sessions
+ [X] 0001_initial
+sync
+ [X] 0001_initial
+sync_engine
+ [X] 0001_initial
+token_blacklist
+ [X] 0001_initial
+ [X] 0002_outstandingtoken_jti_hex
+ [X] 0003_auto_20171017_2007
+ [X] 0004_auto_20171017_2013
+ [X] 0005_remove_outstandingtoken_jti
+ [X] 0006_auto_20171017_2113
+ [X] 0007_auto_20171017_2214
+ [X] 0008_migrate_to_bigautofield
+ [X] 0010_fix_migrate_to_bigautofield
+ [X] 0011_linearizes_history
+ [X] 0012_alter_outstandingtoken_user
+ [X] 0013_alter_blacklistedtoken_options_and_more

@@ -1,0 +1,34 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-27T20:09:33.668817+00:00",
+  "readme": "/home/necktral/ERP_CRM/README.md",
+  "rule_families": {
+    "fuel": {
+      "prefixes": [
+        "/api/fuel/",
+        "/api/backend/fuel/",
+        "/api/backend/estacion-servicios/"
+      ],
+      "heading_keywords": [
+        "fuel",
+        "estacion de servicios",
+        "estación de servicios"
+      ]
+    },
+    "reporting": {
+      "prefixes": [
+        "/api/reporting/",
+        "/api/backend/dashboard/",
+        "/api/accounting/reports/",
+        "/api/metrics/",
+        "/api/billing/",
+        "/api/legacy/billing/"
+      ],
+      "heading_keywords": [
+        "reporting",
+        "analytics"
+      ]
+    }
+  },
+  "issues": []
+}

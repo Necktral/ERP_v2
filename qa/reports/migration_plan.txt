@@ -1,0 +1,590 @@
+Planned operations:
+contenttypes.0001_initial
+    Create model ContentType
+    Alter unique_together for contenttype (1 constraint(s))
+contenttypes.0002_remove_content_type_name
+    Change Meta options on contenttype
+    Alter field name on contenttype
+    Raw Python operation
+    Remove field name from contenttype
+auth.0001_initial
+    Create model Permission
+    Create model Group
+    Create model User
+auth.0002_alter_permission_name_max_length
+    Alter field name on permission
+auth.0003_alter_user_email_max_length
+    Alter field email on user
+auth.0004_alter_user_username_opts
+    Alter field username on user
+auth.0005_alter_user_last_login_null
+    Alter field last_login on user
+auth.0006_require_contenttypes_0002
+auth.0007_alter_validators_add_error_messages
+    Alter field username on user
+auth.0008_alter_user_username_max_length
+    Alter field username on user
+auth.0009_alter_user_last_name_max_length
+    Alter field last_name on user
+auth.0010_alter_group_name_max_length
+    Alter field name on group
+auth.0011_update_proxy_permissions
+    Raw Python operation ->     Update the content_type of prox…
+auth.0012_alter_user_first_name_max_length
+    Alter field first_name on user
+accounts.0001_initial
+    Create model User
+iam.0001_initial
+    Create model CompanyLink
+    Create model OrgClosure
+    Create model OrgUnit
+    Create model UserMembership
+    Create model AdminGrant
+    Create model LinkGrant
+rbac.0001_initial
+    Create model Permission
+    Create model Role
+    Create model RoleAssignment
+    Create model RolePermission
+    Create model UserRole
+iam.0002_initial
+    Add field permission to linkgrant
+    Add field parent to orgunit
+    Add field ancestor to orgclosure
+    Add field descendant to orgclosure
+    Add field scope_org_unit to linkgrant
+    Add field from_company to companylink
+    Add field to_company to companylink
+    Add field org_unit to admingrant
+    Add field org_unit to usermembership
+    Add field user to usermembership
+    Create index iam_orgunit_unit_ty_53ff9d_idx on field(s) unit_type, is_active of model orgunit
+    Create index iam_orgunit_parent__4604b8_idx on field(s) parent, unit_type of model orgunit
+    Create index iam_orgclos_ancesto_7009a8_idx on field(s) ancestor, depth of model orgclosure
+    Create index iam_orgclos_descend_5542b3_idx on field(s) descendant, depth of model orgclosure
+    Create constraint uq_orgclosure_ancestor_descendant on model orgclosure
+    Create index iam_linkgra_is_acti_2fdc2e_idx on field(s) is_active, access_mode of model linkgrant
+    Create index iam_linkgra_permiss_b9b2f3_idx on field(s) permission, access_mode of model linkgrant
+    Create index iam_linkgra_scope_o_16091d_idx on field(s) scope_org_unit of model linkgrant
+    Create constraint uq_linkgrant_link_perm_mode_scope on model linkgrant
+    Create index iam_company_from_co_aff22f_idx on field(s) from_company, status, is_active of model companylink
+    Create index iam_company_to_comp_037c57_idx on field(s) to_company, status, is_active of model companylink
+    Create constraint uq_companylink_from_to on model companylink
+    Create index iam_admingr_user_id_be0fb7_idx on field(s) user, is_active of model admingrant
+    Create index iam_admingr_org_uni_ad05be_idx on field(s) org_unit, capability of model admingrant
+    Create constraint uq_admingrant_user_org_cap on model admingrant
+    Create index iam_usermem_user_id_db3e1e_idx on field(s) user, is_active of model usermembership
+    Create index iam_usermem_org_uni_a32c3e_idx on field(s) org_unit, is_active of model usermembership
+    Create constraint uq_membership_user_orgunit on model usermembership
+iam.0003_orgunit_parent_type_name_idx
+    Create index iam_orgunit_parent_type_name_idx on field(s) parent, unit_type, name of model orgunit
+cec.0001_initial
+    Create model CloseRun
+    Create model CECException
+    Create model EvidenceArtifact
+    Create index cec_closeru_company_d4469f_idx on field(s) company, branch, run_type, status, started_at of model closerun
+    Create index cec_cecexc_status_826f17_idx on field(s) status, severity, opened_at of model cecexception
+    Create index cec_cecexc_company_e8f12c_idx on field(s) company, branch, status of model cecexception
+    Create index cec_evidenc_close_r_b93cf2_idx on field(s) close_run, created_at of model evidenceartifact
+cec.0002_phase3_fields
+    Add field fingerprint to cecexception
+    Add field is_blocking to cecexception
+    Add field blocking_exceptions_count to closerun
+    Add field consistency_score to closerun
+    Add field window_end to closerun
+    Add field window_start to closerun
+    Create index cec_closeru_company_2a5de2_idx on field(s) company, branch, window_start, window_end of model closerun
+accounting.0001_initial
+    Create model EconomicEvent
+    Create model FiscalPeriod
+    Create model PostingRuleSet
+    Create model JournalDraft
+    Create model JournalEntry
+    Create constraint uq_acc_period_company_year_month on model fiscalperiod
+    Create constraint ck_acc_period_month_range on model fiscalperiod
+    Create constraint uq_acc_posting_rule_code_version on model postingruleset
+    Create constraint ck_acc_jdraft_debit_non_negative on model journaldraft
+    Create constraint ck_acc_jdraft_credit_non_negative on model journaldraft
+    Create constraint ck_acc_jentry_debit_non_negative on model journalentry
+    Create constraint ck_acc_jentry_credit_non_negative on model journalentry
+    Create constraint ck_acc_jentry_balanced on model journalentry
+    Create index accounting_e_company_f49629_idx on field(s) company, branch, occurred_at of model economicevent
+    Create index accounting_e_source__6b8e4b_idx on field(s) source_module, event_type, occurred_at of model economicevent
+    Create index accounting_f_company_82731e_idx on field(s) company, year, month of model fiscalperiod
+    Create index accounting_f_company_6b9dd0_idx on field(s) company, status of model fiscalperiod
+    Create index accounting_p_status_39f893_idx on field(s) status, fiscal_mode of model postingruleset
+    Create index accounting_p_scope_c2849c_idx on field(s) scope_company, status of model postingruleset
+    Create index accounting_j_state_7f2d87_idx on field(s) state, generated_at of model journaldraft
+    Create index accounting_j_economi_0f6dfe_idx on field(s) economic_event, state of model journaldraft
+    Create index accounting_j_company_0ce87b_idx on field(s) company, period, entry_date of model journalentry
+    Create index accounting_j_period_b6a017_idx on field(s) period, is_posted of model journalentry
+accounting.0002_shadow_ledger_phase4a
+    Add field close_run_id to economicevent
+    Add field source_outbox_event_id to economicevent
+    Create constraint uq_acc_event_company_source_outbox on model economicevent
+    Create index acc_ev_company_run_occ_idx on field(s) company, close_run_id, occurred_at of model economicevent
+    Create constraint uq_acc_jdraft_event_rule_set on model journaldraft
+    Create model DraftValidationResult
+    Create model ExceptionLink
+accounting.0003_phase5_sod_actor_trace
+    Add field approved_at to journaldraft
+    Add field approved_by to journaldraft
+    Add field posted_by to journalentry
+accounting.0004_phase7a_gl_core
+    Create model ChartOfAccount
+    Create model FxRate
+    Create model RevaluationRun
+    Create model CompanyAccountingConfig
+    Create model JournalEntryLine
+    Create model RevaluationEntryLink
+accounting.0005_phase7b_intercompany_consolidation
+    Create model ConsolidationRun
+    Create model IntercompanyTransaction
+    Create model IntercompanyReconciliation
+    Create model ConsolidationEliminationLink
+accounting.0006_phase7b_performance_indexes
+    Create index acc_ic_src_status_created_idx on field(s) source_company, status, created_at of model intercompanytransaction
+    Create index acc_ic_tgt_status_created_idx on field(s) target_company, status, created_at of model intercompanytransaction
+accounting.0007_phase11_intercompany_advanced
+    Create model IntercompanyDisputeReason
+    Create model IntercompanyDisputeCase
+    Create model IntercompanyDisputeEvidence
+    Create constraint uq_acc_ic_dispute_case_active_per_tx on model intercompanydisputecase
+    Create constraint uq_acc_ic_dispute_evidence_case_hash on model intercompanydisputeevidence
+    Create constraint uq_acc_ic_dispute_reason_company_code_version on model intercompanydisputereason
+accounting.0008_operational_posting_config
+    Create model OperationalPostingConfig
+    Create constraint uq_acc_operational_posting_scope on model operationalpostingconfig
+accounting.0009_rename_acc_coa_comp_type_act_idx_accounting__company_41d161_idx_and_more
+    Rename index acc_coa_comp_type_act_idx on chartofaccount to accounting__company_41d161_idx
+    Rename index acc_coa_comp_post_act_idx on chartofaccount to accounting__company_2abd9c_idx
+    Rename index acc_cfg_phase7_idx on companyaccountingconfig to accounting__phase7__df9629_idx
+    Rename index acc_cons_elim_run_idx on consolidationeliminationlink to accounting__consoli_f4bbf9_idx
+    Rename index acc_cons_elim_tx_idx on consolidationeliminationlink to accounting__interco_9e1a62_idx
+    Rename index acc_cons_comp_ym_stat_idx on consolidationrun to accounting__parent__a33f8c_idx
+    Rename index acc_cons_stat_start_idx on consolidationrun to accounting__status_b3b607_idx
+    Rename index acc_dval_pass_block_val_idx on draftvalidationresult to accounting__passed_5354c0_idx
+    Rename index accounting_e_company_f49629_idx on economicevent to accounting__company_3c7c64_idx
+    Rename index accounting_e_source__6b8e4b_idx on economicevent to accounting__source__d47d12_idx
+    Rename index acc_ev_company_run_occ_idx on economicevent to accounting__company_08a9a6_idx
+    Rename index acc_exlink_exc_created_idx on exceptionlink to accounting__excepti_0e387e_idx
+    Rename index accounting_f_company_82731e_idx on fiscalperiod to accounting__company_591a68_idx
+    Rename index accounting_f_company_6b9dd0_idx on fiscalperiod to accounting__company_ffe203_idx
+    Rename index acc_fx_comp_type_date_idx on fxrate to accounting__company_0d140a_idx
+    Rename index acc_fx_comp_pair_date_idx on fxrate to accounting__company_05f155_idx
+    Rename index accounting_i_transac_952957_idx on intercompanydisputecase to accounting__transac_52d6d2_idx
+    Rename index accounting_i_status_4cf38d_idx on intercompanydisputecase to accounting__status_567850_idx
+    Rename index accounting_i_reason__a2ded0_idx on intercompanydisputecase to accounting__reason__60b3b1_idx
+    Rename index accounting_i_dispute_3b72d5_idx on intercompanydisputeevidence to accounting__dispute_3e6aa2_idx
+    Rename index accounting_i_evidenc_6f533e_idx on intercompanydisputeevidence to accounting__evidenc_c42319_idx
+    Rename index accounting_i_company_2e3dca_idx on intercompanydisputereason to accounting__company_bd28ff_idx
+    Rename index accounting_i_company_3cf75c_idx on intercompanydisputereason to accounting__company_58b01e_idx
+    Rename index acc_ic_rec_tx_stat_idx on intercompanyreconciliation to accounting__transac_415d95_idx
+    Rename index acc_ic_rec_stat_idx on intercompanyreconciliation to accounting__status_b11d45_idx
+    Rename index acc_ic_tx_scope_stat_idx on intercompanytransaction to accounting__source__d86318_idx
+    Rename index acc_ic_src_status_created_idx on intercompanytransaction to accounting__source__e69e2e_idx
+    Rename index acc_ic_tgt_status_created_idx on intercompanytransaction to accounting__target__18b41f_idx
+    Rename index acc_ic_tx_stat_created_idx on intercompanytransaction to accounting__status_9e28ab_idx
+    Rename index acc_ic_tx_ref_idx on intercompanytransaction to accounting__referen_0e224e_idx
+    Rename index accounting_j_state_7f2d87_idx on journaldraft to accounting__state_cd5e41_idx
+    Rename index accounting_j_economi_0f6dfe_idx on journaldraft to accounting__economi_9fccc6_idx
+    Rename index accounting_j_company_0ce87b_idx on journalentry to accounting__company_5fdf97_idx
+    Rename index accounting_j_period_b6a017_idx on journalentry to accounting__period__ac1a3c_idx
+    Rename index acc_jline_entry_line_idx on journalentryline to accounting__journal_d81501_idx
+    Rename index acc_jline_account_created_idx on journalentryline to accounting__account_fdb19b_idx
+    Rename index acc_jline_currency_created_idx on journalentryline to accounting__currenc_a9c6b1_idx
+    Rename index accounting_o_company_a7bb16_idx on operationalpostingconfig to accounting__company_887643_idx
+    Rename index accounting_o_company_b290dc_idx on operationalpostingconfig to accounting__company_5b0eee_idx
+    Rename index accounting_p_status_39f893_idx on postingruleset to accounting__status_bc9d58_idx
+    Rename index accounting_p_scope_c2849c_idx on postingruleset to accounting__scope_c_235e67_idx
+    Rename index acc_reval_link_entry_created_idx on revaluationentrylink to accounting__journal_51bd0b_idx
+    Rename index acc_reval_comp_ym_stat_idx on revaluationrun to accounting__company_4aa8e6_idx
+    Rename index acc_reval_comp_stat_exec_idx on revaluationrun to accounting__company_2cec15_idx
+accounts.0002_user_must_change_password
+    Add field must_change_password to user
+accounts.0003_user_is_setup_complete
+    Custom state/database change combination
+accounts.0004_refresh_token_session
+    Create model RefreshTokenSession
+accounts.0005_user_totp_fields
+    Add field totp_secret to user
+    Add field totp_enabled to user
+    Add field totp_confirmed_at to user
+accounts.0006_two_factor_challenge
+    Create model TwoFactorChallenge
+accounts.0007_rename_accounts_re_user_id_6cc004_idx_accounts_re_user_id_7e85a1_idx_and_more
+    Rename index accounts_re_user_id_6cc004_idx on refreshtokensession to accounts_re_user_id_7e85a1_idx
+    Rename index accounts_re_expires_83b3b2_idx on refreshtokensession to accounts_re_expires_ad9c6a_idx
+    Rename index accounts_two_user_expires_idx on twofactorchallenge to accounts_tw_user_id_134482_idx
+    Rename index accounts_two_used_idx on twofactorchallenge to accounts_tw_used_at_096844_idx
+admin.0001_initial
+    Create model LogEntry
+admin.0002_logentry_remove_auto_add
+    Alter field action_time on logentry
+admin.0003_logentry_add_action_flag_choices
+    Alter field action_flag on logentry
+audit.0001_initial
+    Create model AuditChainHead
+    Create model AuditChainHeadV2
+    Create model AuditEvent
+audit.0002_audit_event_signature_key_id
+    Add field signature_key_id to auditevent
+axes.0001_initial
+    Create model AccessAttempt
+    Create model AccessLog
+axes.0002_auto_20151217_2044
+    Alter field ip_address on accessattempt
+    Alter field trusted on accessattempt
+    Alter field user_agent on accessattempt
+    Alter field username on accessattempt
+    Alter field ip_address on accesslog
+    Alter field trusted on accesslog
+    Alter field user_agent on accesslog
+    Alter field username on accesslog
+axes.0003_auto_20160322_0929
+    Alter field failures_since_start on accessattempt
+    Alter field get_data on accessattempt
+    Alter field http_accept on accessattempt
+    Alter field ip_address on accessattempt
+    Alter field path_info on accessattempt
+    Alter field post_data on accessattempt
+    Alter field http_accept on accesslog
+    Alter field ip_address on accesslog
+    Alter field path_info on accesslog
+axes.0004_auto_20181024_1538
+    Change Meta options on accessattempt
+    Change Meta options on accesslog
+    Alter field attempt_time on accessattempt
+    Alter field user_agent on accessattempt
+    Alter field username on accessattempt
+    Alter field attempt_time on accesslog
+    Alter field logout_time on accesslog
+    Alter field user_agent on accesslog
+    Alter field username on accesslog
+axes.0005_remove_accessattempt_trusted
+    Remove field trusted from accessattempt
+axes.0006_remove_accesslog_trusted
+    Remove field trusted from accesslog
+axes.0007_alter_accessattempt_unique_together
+    Raw Python operation
+    Alter unique_together for accessattempt (1 constraint(s))
+axes.0008_accessfailurelog
+    Create model AccessFailureLog
+axes.0009_add_session_hash
+    Add field session_hash to accesslog
+axes.0010_accessattemptexpiration
+    Create model AccessAttemptExpiration
+cec.0003_rename_cec_cecexc_status_826f17_idx_cec_cecexce_status_20932b_idx_and_more
+    Rename index cec_cecexc_status_826f17_idx on cecexception to cec_cecexce_status_20932b_idx
+    Rename index cec_cecexc_company_e8f12c_idx on cecexception to cec_cecexce_company_7760bc_idx
+    Rename index cec_closeru_company_d4469f_idx on closerun to cec_closeru_company_9cfa68_idx
+    Rename index cec_closeru_company_2a5de2_idx on closerun to cec_closeru_company_d1259b_idx
+    Rename index cec_evidenc_close_r_b93cf2_idx on evidenceartifact to cec_evidenc_close_r_918d6b_idx
+compras.0001_initial
+    Create model PurchaseDocument
+    Create model PurchaseSequence
+    Create constraint uniq_proc_idem_per_company on model purchasedocument
+    Create constraint uniq_proc_number on model purchasedocument
+    Create constraint uniq_proc_seq on model purchasesequence
+dashboard.0001_initial
+    Create model DashboardEmbedGrant
+    Create index ix_dash_grant_status_exp on field(s) status, expires_at of model dashboardembedgrant
+    Create index ix_dash_grant_scope on field(s) company, branch, created_at of model dashboardembedgrant
+    Create index ix_dash_grant_workspace on field(s) workspace_key, created_at of model dashboardembedgrant
+inventarios.0001_initial
+    Create model Warehouse
+    Create model InventoryItem
+    Create model StockBalance
+    Create model StockMovement
+    Create constraint uniq_inv_wh_code_per_branch on model warehouse
+    Create constraint uniq_inv_sku_per_company on model inventoryitem
+    Create constraint uniq_inv_balance_per_scope on model stockbalance
+    Create constraint uniq_inv_idempotency_per_company on model stockmovement
+    Create index inventarios_company_branch_is_active_name_idx on field(s) company, branch, is_active, name of model warehouse
+    Create index inventarios_company_is_active_sku_idx on field(s) company, is_active, sku of model inventoryitem
+facturacion.0001_initial
+    Create model BillingSequence
+    Create model BillingDocument
+    Create model BillingLine
+    Create constraint uniq_bill_seq on model billingsequence
+    Create constraint uniq_bill_idempotency_per_company on model billingdocument
+    Create constraint uniq_bill_number on model billingdocument
+org.0001_initial
+    Create model CompanyProfile
+    Create model BranchProfile
+org.0002_alter_branchprofile_id_alter_companyprofile_id
+    Alter field id on branchprofile
+    Alter field id on companyprofile
+org.0003_branchprofile_fuel_uom_defaults
+    Add field fuel_default_volume_uom_gasoline to branchprofile
+    Add field fuel_default_volume_uom_diesel to branchprofile
+org.0004_user_fuel_uom_preference
+    Create model UserFuelUoMPreference
+    Create constraint uq_user_fuel_uom_pref_user_branch on model userfueluompreference
+    Create index idx_userfueluompref_user_branch on field(s) user, branch of model userfueluompreference
+    Create index idx_userfueluompref_branch on field(s) branch of model userfueluompreference
+estacion_servicios.0001_initial
+    Create model FuelShift
+    Create model FuelDispense
+    Create model FuelSale
+    Create constraint uniq_open_shift_per_branch on model fuelshift
+estacion_servicios.0002_uom_and_precision
+    Alter field liters on fueldispense
+    Alter field meter_reading on fueldispense
+    Add field volume_entered to fueldispense
+    Add field uom_entered to fueldispense
+    Raw Python operation
+estacion_servicios.0003_price_uom_and_field_renames
+    Rename field uom_entered on fueldispense to volume_uom
+    Alter field volume_entered on fueldispense
+    Alter field volume_uom on fueldispense
+    Add field unit_price_entered to fueldispense
+    Add field unit_price_uom to fueldispense
+    Raw Python operation
+estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null
+    Raw Python operation
+    Alter field volume_entered on fueldispense
+    Alter field unit_price_entered on fueldispense
+estacion_servicios.0005_amounts_dual_entered_and_canonical
+    Add field amount_canonical to fueldispense
+    Add field amount_delta to fueldispense
+    Raw Python operation
+estacion_servicios.0006_fuel_uom_preference_unified
+    Create model FuelUoMPreference
+    Create index idx_fuel_uom_pref_scope on field(s) company, branch, user, product of model fueluompreference
+    Create index idx_fuel_uom_pref_branch_prod on field(s) company, branch, product of model fueluompreference
+    Create constraint uq_fuel_uom_pref_branch_product on model fueluompreference
+    Create constraint uq_fuel_uom_pref_user_branch_product on model fueluompreference
+    Raw Python operation
+estacion_servicios.0007_alter_fueluompreference_user_related_name
+    Alter field user on fueluompreference
+estacion_servicios.0008_fuelsale_billing_and_inventory_links
+    Add field billing_doc to fuelsale
+    Add field inventory_movement to fuelsale
+    Add field inventory_reversal_movement to fuelsale
+estacion_servicios.0009_fuelsale_compensation_state
+    Alter field status on fuelsale
+    Add field compensation_attempts to fuelsale
+    Add field compensation_last_error to fuelsale
+    Add field compensation_next_retry_at to fuelsale
+    Add field flow_correlation_id to fuelsale
+    Add field last_compensation_at to fuelsale
+    Create index fuel_sale_comp_retry_idx on field(s) status, compensation_next_retry_at, created_at of model fuelsale
+estacion_servicios.0010_rename_estacion_se_company__c8e61a_idx_estacion_se_company_54b2c6_idx_and_more
+    Rename index estacion_se_company__c8e61a_idx on fueldispense to estacion_se_company_54b2c6_idx
+    Rename index estacion_se_shift_i_2b6c2f_idx on fueldispense to estacion_se_shift_i_ded7f6_idx
+    Rename index estacion_se_product_4fd987_idx on fueldispense to estacion_se_product_dd2d13_idx
+    Rename index estacion_se_company__8d6f1d_idx on fuelsale to estacion_se_company_833b49_idx
+    Rename index estacion_se_status__aeb1f0_idx on fuelsale to estacion_se_status_8ab933_idx
+    Rename index fuel_sale_comp_retry_idx on fuelsale to estacion_se_status_e5b15d_idx
+    Rename index estacion_se_company__7aa2c2_idx on fuelshift to estacion_se_company_5af039_idx
+    Rename index idx_fuel_uom_pref_scope on fueluompreference to estacion_se_company_36c47d_idx
+    Rename index idx_fuel_uom_pref_branch_prod on fueluompreference to estacion_se_company_dd3b94_idx
+inventarios.0002_stockmovement_accounting_links
+    Add field accounting_economic_event to stockmovement
+    Add field accounting_error to stockmovement
+    Add field accounting_journal_draft to stockmovement
+    Add field accounting_journal_entry to stockmovement
+    Add field accounting_status to stockmovement
+    Create index ix_invmov_acc_st on field(s) company, branch, accounting_status, created_at of model stockmovement
+iam.0004_rename_iam_orgunit_parent_type_name_idx_iam_orgunit_parent__f0840d_idx
+    Rename index iam_orgunit_parent_type_name_idx on orgunit to iam_orgunit_parent__f0840d_idx
+facturacion.0002_phase6_adapter_b
+    Add field contingency_at to billingdocument
+    Add field contingency_reason to billingdocument
+    Add field fiscal_evidence_id to billingdocument
+    Add field fiscal_metadata_json to billingdocument
+    Add field fiscal_mode_resolved to billingdocument
+    Add field fiscal_reference to billingdocument
+    Add field fiscal_status to billingdocument
+    Add field last_print_error to billingdocument
+    Add field print_attempt_count to billingdocument
+    Add field printed_at to billingdocument
+    Create model BranchFiscalConfig
+    Create model FiscalPrintJob
+    Create constraint uniq_bill_fiscal_cfg_company_branch on model branchfiscalconfig
+    Create constraint uniq_bill_print_job_doc_idempotency on model fiscalprintjob
+    Create index facturacion_company_ba6c83_idx on field(s) company, branch, is_active of model branchfiscalconfig
+    Create index facturacion_company_99f3f6_idx on field(s) company, branch, fiscal_mode_resolved, fiscal_status of model billingdocument
+    Create index facturacion_status_55e93e_idx on field(s) status, next_attempt_at, created_at of model fiscalprintjob
+    Create index facturacion_company_e8dd3b_idx on field(s) company, branch, status, created_at of model fiscalprintjob
+facturacion.0003_accounting_links
+    Add field accounting_economic_event to billingdocument
+    Add field accounting_error to billingdocument
+    Add field accounting_journal_draft to billingdocument
+    Add field accounting_journal_entry to billingdocument
+    Add field accounting_status to billingdocument
+    Create index modulos_fac_company_2f0a22_idx on field(s) company, branch, accounting_status, created_at of model billingdocument
+facturacion.0004_billingdocument_source_refs
+    Add field source_id to billingdocument
+    Add field source_module to billingdocument
+    Add field source_type to billingdocument
+facturacion.0005_rename_facturacion_company_99f3f6_idx_facturacion_company_e59730_idx_and_more
+    Rename index facturacion_company_99f3f6_idx on billingdocument to facturacion_company_e59730_idx
+    Rename index modulos_fac_company_2f0a22_idx on billingdocument to facturacion_company_86fb84_idx
+    Rename index facturacion_company_ba6c83_idx on branchfiscalconfig to facturacion_company_81ec01_idx
+    Rename index facturacion_status_55e93e_idx on fiscalprintjob to facturacion_status_9eacdb_idx
+    Rename index facturacion_company_e8dd3b_idx on fiscalprintjob to facturacion_company_3f8672_idx
+    Concurrently create index facturacion_company_25ee6a_idx on field(s) company, branch, created_at of model billingdocument
+    Concurrently create index facturacion_company_3a19e3_idx on field(s) company, branch, doc_type, status, created_at of model billingdocument
+    Concurrently create index facturacion_company_d0dea3_idx on field(s) company, idempotency_key of model billingdocument
+    Concurrently create index facturacion_doc_id_8aa04b_idx on field(s) doc of model billingline
+rbac.0002_roleassignment_origin
+    Add field origin to roleassignment
+    Add field origin_ref to roleassignment
+    Remove constraint uq_roleassignment_user_role_orgunit from model roleassignment
+    Create constraint uq_roleassignment_user_role_orgunit_origin on model roleassignment
+    Create index rbac_roleas_origin_isactive_idx on field(s) origin, is_active of model roleassignment
+hr.0001_initial
+    Create model JobPosition
+    Create model PositionRoleMap
+    Create model Employee
+    Create model EmploymentAssignment
+    Create constraint uq_position_company_name on model jobposition
+    Create constraint uq_position_role_scope on model positionrolemap
+    Create index hr_jobposition_company_isactive_idx on field(s) company, is_active of model jobposition
+    Create index hr_employee_company_isactive_idx on field(s) company, is_active of model employee
+    Create index hr_employee_linked_user_idx on field(s) linked_user of model employee
+    Create index hr_positionrolemap_position_isactive_idx on field(s) position, is_active of model positionrolemap
+    Create index hr_employmentassignment_employee_isactive_idx on field(s) employee, is_active of model employmentassignment
+    Create index hr_employmentassignment_position_isactive_idx on field(s) position, is_active of model employmentassignment
+    Create index hr_employmentassignment_branch_isactive_idx on field(s) branch, is_active of model employmentassignment
+hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more
+    Remove index hr_positionrolemap_position_isactive_idx from positionrolemap
+    Rename index hr_employee_company_isactive_idx on employee to hr_employee_company_77ce24_idx
+    Rename index hr_employee_linked_user_idx on employee to hr_employee_linked__09e1af_idx
+    Rename index hr_employmentassignment_employee_isactive_idx on employmentassignment to hr_employme_employe_9af615_idx
+    Rename index hr_employmentassignment_position_isactive_idx on employmentassignment to hr_employme_positio_69a5fc_idx
+    Rename index hr_employmentassignment_branch_isactive_idx on employmentassignment to hr_employme_branch__0e1c22_idx
+    Rename index hr_jobposition_company_isactive_idx on jobposition to hr_jobposit_company_36cec3_idx
+    Alter field id on employee
+    Alter field id on employmentassignment
+    Alter field id on jobposition
+    Alter field id on positionrolemap
+    Alter field scope_mode on positionrolemap
+hr.0003_employmentassignment_employee_active_started_idx
+    Create index hr_employassign_emp_active_start_idx on field(s) employee, is_active, started_at of model employmentassignment
+hr.0004_rename_hr_employassign_emp_active_start_idx_hr_employme_employe_4b785a_idx
+    Rename index hr_employassign_emp_active_start_idx on employmentassignment to hr_employme_employe_4b785a_idx
+integration.0001_initial
+    Create model OutboxEvent
+    Create model InboxEvent
+    Create constraint uq_inbox_event_consumer on model inboxevent
+    Create index integratio_status_43d458_idx on field(s) status, occurred_at of model outboxevent
+    Create index integratio_source__7f8f5f_idx on field(s) source_module, event_type, occurred_at of model outboxevent
+    Create index integratio_consume_6ab9e4_idx on field(s) consumer, status, received_at of model inboxevent
+integration.0002_outbox_next_attempt_at
+    Add field next_attempt_at to outboxevent
+    Create index integratio_status_3ec52d_idx on field(s) status, next_attempt_at of model outboxevent
+integration.0003_rename_integratio_consume_6ab9e4_idx_integration_consume_253f49_idx_and_more
+    Rename index integratio_consume_6ab9e4_idx on inboxevent to integration_consume_253f49_idx
+    Rename index integratio_status_43d458_idx on outboxevent to integration_status_ecb22f_idx
+    Rename index integratio_status_3ec52d_idx on outboxevent to integration_status_585d30_idx
+    Rename index integratio_source__7f8f5f_idx on outboxevent to integration_source__51f6df_idx
+inventarios.0003_remove_inventoryitem_uniq_inv_sku_per_company_and_more
+    Remove constraint uniq_inv_sku_per_company from model inventoryitem
+    Remove constraint uniq_inv_balance_per_scope from model stockbalance
+    Remove constraint uniq_inv_idempotency_per_company from model stockmovement
+    Remove constraint uniq_inv_wh_code_per_branch from model warehouse
+    Rename index inventarios_company_is_active_sku_idx on inventoryitem to ix_invitm_c_as
+    Rename index inventarios_company_branch_is_active_name_idx on warehouse to ix_invwh_c_b_an
+    Concurrently create index ix_invitm_c_an on field(s) company, is_active, name of model inventoryitem
+    Concurrently create index ix_invbal_scope on field(s) company, branch, warehouse, item of model stockbalance
+    Concurrently create index ix_invmov_c_b_ca on field(s) company, branch, created_at of model stockmovement
+    Concurrently create index ix_invmov_item_ca on field(s) company, branch, item, created_at of model stockmovement
+    Concurrently create index ix_invmov_wh_ca on field(s) company, branch, warehouse, created_at of model stockmovement
+    Concurrently create index ix_invmov_idem on field(s) company, idempotency_key of model stockmovement
+    Concurrently create index ix_invwh_c_b_code on field(s) company, branch, code of model warehouse
+    Create constraint uniq_inv_sku_pc on model inventoryitem
+    Create constraint uniq_inv_bal_scope on model stockbalance
+    Create constraint uniq_invmov_idem on model stockmovement
+    Create constraint uniq_inv_wh_code_pb on model warehouse
+org.0005_rename_idx_userfueluompref_user_branch_org_userfue_user_id_f9159c_idx_and_more
+    Rename index idx_userfueluompref_user_branch on userfueluompreference to org_userfue_user_id_f9159c_idx
+    Rename index idx_userfueluompref_branch on userfueluompreference to org_userfue_branch__298934_idx
+payments.0001_initial
+    Create model CashSession
+    Create model PaymentIntent
+    Create model CashMovement
+    Create constraint ck_pay_intent_amount_positive on model paymentintent
+    Create constraint uq_pay_intent_company_idempotency on model paymentintent
+    Create constraint ck_cash_movement_amount_positive on model cashmovement
+    Create index payments_ca_company_5f25f0_idx on field(s) company, branch, status, opened_at of model cashsession
+    Create index payments_pa_company_745d5f_idx on field(s) company, branch, status, created_at of model paymentintent
+    Create index payments_pa_provider_83867f_idx on field(s) provider, provider_txn_id of model paymentintent
+    Create index payments_ca_session_80ee8d_idx on field(s) session, created_at of model cashmovement
+payments.0002_rename_payments_ca_session_80ee8d_idx_payments_ca_session_c5f759_idx_and_more
+    Rename index payments_ca_session_80ee8d_idx on cashmovement to payments_ca_session_c5f759_idx
+    Rename index payments_ca_company_5f25f0_idx on cashsession to payments_ca_company_6cd6df_idx
+    Rename index payments_pa_company_745d5f_idx on paymentintent to payments_pa_company_500e91_idx
+    Rename index payments_pa_provider_83867f_idx on paymentintent to payments_pa_provide_9e84a3_idx
+rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx
+    Rename index rbac_roleas_origin_isactive_idx on roleassignment to rbac_roleas_origin_7700cc_idx
+rbac.0004_role_permission_active_indexes
+    Create index rbac_role_active_name_idx on field(s) is_active, name of model role
+    Create index rbac_perm_active_code_idx on field(s) is_active, code of model permission
+rbac.0005_rename_rbac_perm_active_code_idx_rbac_permis_is_acti_42ab9f_idx_and_more
+    Rename index rbac_perm_active_code_idx on permission to rbac_permis_is_acti_42ab9f_idx
+    Rename index rbac_role_active_name_idx on role to rbac_role_is_acti_d9ae7f_idx
+reporting.0001_initial
+    Create model ReportDatasetDefinition
+    Create model ReportRun
+reporting.0002_reportrun_result_payload_json_reportexportlog_and_more
+    Add field result_payload_json to reportrun
+    Create model ReportExportLog
+    Create model ReportSnapshot
+    Create model SavedReportView
+reporting.0003_dataset_quality_fields
+    Add field quality_policy_json to reportdatasetdefinition
+    Add field quality_checks_json to reportrun
+    Add field quality_status to reportrun
+sessions.0001_initial
+    Create model Session
+sync.0001_initial
+    Create model DeviceEnrollment
+    Create model AppliedCommand
+    Create model DeviceRequestNonce
+sync_engine.0001_initial
+    Create model Device
+    Create model AppliedCommand
+    Create model DeviceEnrollmentChallenge
+    Create model SyncReceipt
+    Create index sync_engine_company_402270_idx on field(s) company, status of model device
+    Create index sync_engine_branch__748124_idx on field(s) branch, status of model device
+    Create index sync_engine_status_cf5f57_idx on field(s) status, last_seen_at of model device
+    Create index sync_engine_device__baf559_idx on field(s) device, received_at of model appliedcommand
+    Create index sync_engine_company_a23787_idx on field(s) company, received_at of model appliedcommand
+    Create index sync_engine_result__fda575_idx on field(s) result_status, received_at of model appliedcommand
+    Create index sync_engine_command_9cdeb7_idx on field(s) command_type of model appliedcommand
+    Create index sync_engine_company_d85c95_idx on field(s) company, expires_at of model deviceenrollmentchallenge
+    Create index sync_engine_used_at_550e7a_idx on field(s) used_at of model deviceenrollmentchallenge
+    Create index sync_engine_device__a92bab_idx on field(s) device, server_time of model syncreceipt
+token_blacklist.0001_initial
+    Create model BlacklistedToken
+    Create model OutstandingToken
+    Add field token to blacklistedtoken
+token_blacklist.0002_outstandingtoken_jti_hex
+    Add field jti_hex to outstandingtoken
+token_blacklist.0003_auto_20171017_2007
+    Raw Python operation
+token_blacklist.0004_auto_20171017_2013
+    Alter field jti_hex on outstandingtoken
+token_blacklist.0005_remove_outstandingtoken_jti
+    Remove field jti from outstandingtoken
+token_blacklist.0006_auto_20171017_2113
+    Rename field jti_hex on outstandingtoken to jti
+token_blacklist.0007_auto_20171017_2214
+    Alter field created_at on outstandingtoken
+    Alter field user on outstandingtoken
+token_blacklist.0008_migrate_to_bigautofield
+    Alter field id on blacklistedtoken
+    Alter field id on outstandingtoken
+token_blacklist.0010_fix_migrate_to_bigautofield
+    Alter field id on blacklistedtoken
+    Alter field id on outstandingtoken
+token_blacklist.0011_linearizes_history
+token_blacklist.0012_alter_outstandingtoken_user
+    Alter field user on outstandingtoken
+token_blacklist.0013_alter_blacklistedtoken_options_and_more
+    Change Meta options on blacklistedtoken
+    Change Meta options on outstandingtoken

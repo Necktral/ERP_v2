@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "profile": "minimal",
+      "status": "passed",
+      "devices_count": 2,
+      "errors": []
+    },
+    {
+      "profile": "fuel",
+      "status": "passed",
+      "devices_count": 4,
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-27T20:09:34.181482+00:00",
+  "contract_file": "qa/contracts/codex_governance_contract.json",
+  "base_commit": "5b11181abe498c8f12e8262ab65fc097434ccb62",
+  "change_type": "migrations_or_close_cycle",
+  "domains_touched": [
+    "modulos.audit",
+    "modulos.hr"
+  ],
+  "changed_files_count": 13,
+  "changed_files": [
+    "backend/src/apps/modulos/audit/contracts.py",
+    "backend/src/apps/modulos/hr/migrations/0005_employee_party.py",
+    "backend/src/apps/modulos/hr/models.py",
+    "backend/src/apps/modulos/hr/serializers.py",
+    "backend/src/apps/modulos/hr/services.py",
+    "backend/src/apps/modulos/hr/views.py",
+    "backend/src/tests/test_hr_party_link.py",
+    "docs/design/HR_PARTY_LINK_INTEGRATION_PR93_20260527.md",
+    "docs/operacion/HANDOFF_PR93_20260527.md",
+    "qa/contracts/architecture_dependency_baseline.json",
+    "qa/contracts/migration_safety_baseline.json",
+    "qa_npm_audit.json",
+    "qa_pip_audit.json"
+  ],
+  "critical_paths_touched": [
+    "backend/src/apps/modulos/hr/migrations/0005_employee_party.py"
+  ],
+  "evidence_files_touched": [
+    "docs/operacion/HANDOFF_PR93_20260527.md"
+  ],
+  "required_sections": [
+    "diagnostico",
+    "alcance",
+    "contratos_impactados",
+    "pruebas_validacion",
+    "riesgos_remanentes",
+    "rollback_plan",
+    "gates_estado"
+  ],
+  "handoff_sections": {
+    "diagnostico": true,
+    "alcance": true,
+    "contratos_impactados": true,
+    "pruebas_validacion": true,
+    "riesgos_remanentes": true,
+    "rollback_plan": true,
+    "gates_estado": true
+  },
+  "missing_sections": [],
+  "required_gates": [
+    "qa-architecture-dependency-guard",
+    "qa-makemigrations-check",
+    "qa-migration-safety-guard"
+  ],
+  "missing_gates": [],
+  "failing_gates": [],
+  "gate_checks": {
+    "qa-architecture-dependency-guard": [
+      {
+        "path": "qa/reports/architecture_dependency_guard.json",
+        "result": "ok",
+        "status": "passed"
+      }
+    ],
+    "qa-makemigrations-check": [
+      {
+        "path": "qa/reports/makemigrations_check.txt",
+        "result": "present"
+      }
+    ],
+    "qa-migration-safety-guard": [
+      {
+        "path": "qa/reports/migration_safety_guard.json",
+        "result": "ok",
+        "status": "passed"
+      }
+    ]
+  },
+  "declared_modes": [
+    "auto_edit"
+  ],
+  "forbidden_modes_for_type": [
+    "full_auto"
+  ],
+  "forbidden_mode_violation": false,
+  "findings": []
+}

@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-03-22T00:50:14.801851Z",
+  "overall_status": "PASS",
+  "context": {
+    "company_id": 2,
+    "branch_id": 3,
+    "api_base_url": "http://localhost:8000/api/backend"
+  },
+  "checks": [
+    {
+      "name": "login",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "f36cdf0221104bc2957620664fbe574b",
+      "reason": ""
+    },
+    {
+      "name": "challenge_without_csrf",
+      "ok": true,
+      "http_status": 403,
+      "request_id": "991c790dde36411abfd52fd3a7a751d6",
+      "reason": "AUTH_CSRF_FAILED"
+    },
+    {
+      "name": "challenge_with_csrf",
+      "ok": true,
+      "http_status": 201,
+      "request_id": "7781f90368b241a1acf138f563c7b5eb",
+      "reason": ""
+    },
+    {
+      "name": "enroll",
+      "ok": true,
+      "http_status": 201,
+      "request_id": "85d554df295d4801b10bf58b1be67c95",
+      "reason": ""
+    },
+    {
+      "name": "batch_signed_demo_ping",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "d6b39157d0354a3ab1d03a9259653ef8",
+      "reason": "applied=1"
+    },
+    {
+      "name": "revoke",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "3765bd1ac0a84a09829f19541615bf24",
+      "reason": "REVOKED"
+    },
+    {
+      "name": "jwt_insecure_warning_absent",
+      "ok": true,
+      "http_status": 0,
+      "request_id": "",
+      "reason": "warning_count=0"
+    }
+  ],
+  "evidence": {
+    "login": {
+      "ok": true
+    },
+    "challenge_without_csrf": {
+      "error": {
+        "code": "AUTH_CSRF_FAILED",
+        "http_status": 403,
+        "message": "CSRF token missing or invalid.",
+        "details": {
+          "detail": "CSRF token missing or invalid.",
+          "required_header": "X-CSRF-Token",
+          "csrf_cookie_name": "nt_csrf"
+        },
+        "request_id": "991c790dde36411abfd52fd3a7a751d6",
+        "timestamp": "2026-03-22T00:50:13.456168Z",
+        "retryable": false
+      }
+    },
+    "challenge_with_csrf": {
+      "challenge_id": "85502ba0-f963-4094-82be-b190ab782d8e",
+      "enrollment_code": "mELheg1Qyobj7XlA8K0sbM8vMB8",
+      "expires_at": "2026-03-22T01:05:13.524703+00:00",
+      "company_id": 2,
+      "branch_id": 3
+    },
+    "enroll": {
+      "device_id": "53b00580-3d9e-4db5-81c3-0456a069c662",
+      "device_status": "ACTIVE",
+      "company_id": 2,
+      "branch_id": 3,
+      "server_time": "2026-03-22T00:50:14.086771+00:00",
+      "policy": {
+        "max_commands_per_batch": 100,
+        "max_payload_bytes": 64000,
+        "max_device_clock_skew_seconds": 21600,
+        "seq_tolerant": true
+      }
+    },
+    "batch": {
+      "server_time": "2026-03-22T00:50:14.536851+00:00",
+      "batch_id": "3fcd405a-ba16-4629-8b2d-616ce370bd6f",
+      "device_id": "53b00580-3d9e-4db5-81c3-0456a069c662",
+      "device_status": "ACTIVE",
+      "results": [
+        {
+          "command_id": "b84d2af3-9ebd-4c8c-9301-154277a9dee5",
+          "status": "APPLIED",
+          "refs": {
+            "pong": true,
+            "echo": "qa-auth-sync-smoke"
+          }
+        }
+      ],
+      "summary": {
+        "received": 1,
+        "applied": 1,
+        "rejected": 0,
+        "duplicate": 0
+      }
+    },
+    "revoke": {
+      "device_id": "53b00580-3d9e-4db5-81c3-0456a069c662",
+      "status": "REVOKED"
+    }
+  }
+}

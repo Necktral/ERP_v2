@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-27T20:09:30.099175+00:00",
+  "enforcement_level": "ratchet",
+  "retirement_deadline": "2026-06-22",
+  "allowed_whitelist": [
+    "backend/src/apps/modulos/accounting/__init__.py",
+    "backend/src/apps/modulos/facturacion/__init__.py",
+    "backend/src/apps/modulos/inventarios/__init__.py",
+    "backend/src/apps/modulos/payments/__init__.py",
+    "backend/src/tests/test_kernel_namespace_compat.py"
+  ],
+  "legacy_compat_apps": [
+    "accounting",
+    "facturacion",
+    "inventarios",
+    "payments"
+  ],
+  "compat_usage": [
+    {
+      "file": "backend/src/tests/test_kernel_namespace_compat.py",
+      "line": 18,
+      "app": "accounting",
+      "usage_type": "dotted_path",
+      "status": "allowed"
+    },
+    {
+      "file": "backend/src/tests/test_kernel_namespace_compat.py",
+      "line": 19,
+      "app": "facturacion",
+      "usage_type": "dotted_path",
+      "status": "allowed"
+    },
+    {
+      "file": "backend/src/tests/test_kernel_namespace_compat.py",
+      "line": 20,
+      "app": "inventarios",
+      "usage_type": "dotted_path",
+      "status": "allowed"
+    },
+    {
+      "file": "backend/src/tests/test_kernel_namespace_compat.py",
+      "line": 21,
+      "app": "payments",
+      "usage_type": "dotted_path",
+      "status": "allowed"
+    }
+  ],
+  "allowed_usage_count": 4,
+  "prohibited_usage_count": 0,
+  "violations": []
+}

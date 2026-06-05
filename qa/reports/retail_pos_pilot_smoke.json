@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "failure_stage": null,
+  "timestamp": "2026-03-26T23:29:54Z",
+  "checks": [
+    {
+      "name": "login",
+      "status": "passed",
+      "http_status": 200,
+      "detail": "JWT issued"
+    },
+    {
+      "name": "open_shift",
+      "status": "passed",
+      "http_status": 201,
+      "detail": "Shift opened"
+    },
+    {
+      "name": "open_session",
+      "status": "passed",
+      "http_status": 201,
+      "detail": "POS session opened"
+    },
+    {
+      "name": "open_ticket",
+      "status": "passed",
+      "http_status": 201,
+      "detail": "Ticket opened"
+    },
+    {
+      "name": "checkout_ticket",
+      "status": "passed",
+      "http_status": 200,
+      "detail": "Ticket closed"
+    },
+    {
+      "name": "cockpit_read",
+      "status": "passed",
+      "http_status": 200,
+      "detail": "Cockpit reachable"
+    },
+    {
+      "name": "close_session",
+      "status": "passed",
+      "http_status": 200,
+      "detail": "POS session closed"
+    }
+  ]
+}

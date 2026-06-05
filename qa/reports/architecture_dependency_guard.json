@@ -1,0 +1,1212 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-28T18:43:43.139489+00:00",
+  "baseline_file": "qa/contracts/architecture_dependency_baseline.json",
+  "cross_dependency_edges_total": 106,
+  "hard_violations": [],
+  "new_edges": [],
+  "removed_edges": [],
+  "issues": [],
+  "sample_cross_references": [
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/certification.py",
+      "line": 19,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/certification_phase11.py",
+      "line": 16,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/certification_phase11.py",
+      "line": 19,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/certification_phase11.py",
+      "line": 20,
+      "import": "apps.modulos.iam.selectors"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/certification_phase11.py",
+      "line": 21,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.rbac",
+      "file": "backend/src/apps/kernels/accounting/certification_phase11.py",
+      "line": 22,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/certification_phase12.py",
+      "line": 21,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.rbac",
+      "file": "backend/src/apps/kernels/accounting/certification_phase12.py",
+      "line": 22,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7.py",
+      "line": 22,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7.py",
+      "line": 23,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.rbac",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7.py",
+      "line": 24,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7b.py",
+      "line": 11,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7b.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/certification_phase7b.py",
+      "line": 13,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/explain_financial_queries.py",
+      "line": 19,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/export_gl_report.py",
+      "line": 19,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/export_operational_load_snapshot.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/manage_operational_posting_pilot.py",
+      "line": 20,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.estacion_servicios",
+      "file": "backend/src/apps/kernels/accounting/management/commands/manage_operational_posting_pilot.py",
+      "line": 183,
+      "import": "apps.modulos.estacion_servicios.services"
+    },
+    {
+      "edge": "kernels.accounting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/accounting/management/commands/run_phase8_burnin_cycle.py",
+      "line": 18,
+      "import": "apps.kernels.facturacion.services"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/management/commands/run_shadow_ledger_cycle.py",
+      "line": 18,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/seed_posting_rules_v1.py",
+      "line": 6,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/management/commands/verify_phase4_go_live.py",
+      "line": 13,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/management/commands/verify_phase4_go_live.py",
+      "line": 14,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/models.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/phase7.py",
+      "line": 16,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/phase7.py",
+      "line": 17,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/phase7.py",
+      "line": 18,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/phase7b.py",
+      "line": 16,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/phase7b.py",
+      "line": 17,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/phase7b.py",
+      "line": 18,
+      "import": "apps.modulos.iam.selectors"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/phase7b.py",
+      "line": 19,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.accounting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/accounting/phase8.py",
+      "line": 13,
+      "import": "apps.kernels.facturacion.certification"
+    },
+    {
+      "edge": "kernels.accounting->modulos.common",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 16,
+      "import": "apps.modulos.common.domain_errors"
+    },
+    {
+      "edge": "kernels.accounting->modulos.common",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 17,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 18,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.cec",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 19,
+      "import": "apps.modulos.cec.services"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 20,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 21,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 22,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.accounting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 28,
+      "import": "apps.kernels.facturacion.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.estacion_servicios",
+      "file": "backend/src/apps/kernels/accounting/services.py",
+      "line": 3038,
+      "import": "apps.modulos.estacion_servicios.models"
+    },
+    {
+      "edge": "kernels.accounting->modulos.iam",
+      "file": "backend/src/apps/kernels/accounting/staging_ops.py",
+      "line": 13,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.accounting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/accounting/staging_ops.py",
+      "line": 14,
+      "import": "apps.kernels.facturacion.certification"
+    },
+    {
+      "edge": "kernels.accounting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/accounting/staging_ops.py",
+      "line": 15,
+      "import": "apps.kernels.facturacion.models"
+    },
+    {
+      "edge": "kernels.accounting->kernels.reporting",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 11,
+      "import": "apps.kernels.reporting.exceptions"
+    },
+    {
+      "edge": "kernels.accounting->kernels.reporting",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 17,
+      "import": "apps.kernels.reporting.services"
+    },
+    {
+      "edge": "kernels.accounting->modulos.common",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 18,
+      "import": "apps.modulos.common.api_exceptions"
+    },
+    {
+      "edge": "kernels.accounting->modulos.common",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 19,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "kernels.accounting->modulos.common",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 20,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "kernels.accounting->modulos.integration",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 21,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.accounting->modulos.rbac",
+      "file": "backend/src/apps/kernels/accounting/views.py",
+      "line": 22,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.cec",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 24,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.cec",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 25,
+      "import": "apps.modulos.cec.services"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 26,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.integration",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 27,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.facturacion->kernels.payments",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 28,
+      "import": "apps.kernels.payments.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.rbac",
+      "file": "backend/src/apps/kernels/facturacion/certification.py",
+      "line": 29,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/certification_phase9.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.integration",
+      "file": "backend/src/apps/kernels/facturacion/management/commands/run_adapter_b_cycle.py",
+      "line": 11,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.integration",
+      "file": "backend/src/apps/kernels/facturacion/management/commands/run_adapter_b_provider_cycle.py",
+      "line": 11,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/management/commands/set_branch_fiscal_mode.py",
+      "line": 5,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/management/commands/test_adapter_b_provider.py",
+      "line": 5,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/models.py",
+      "line": 10,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/serializers.py",
+      "line": 5,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.audit",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 13,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 14,
+      "import": "apps.modulos.common.api_exceptions"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 15,
+      "import": "apps.modulos.common.domain_errors"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 16,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 17,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.integration",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 18,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.parties",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 19,
+      "import": "apps.modulos.parties.models"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.parties",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 20,
+      "import": "apps.modulos.parties.services"
+    },
+    {
+      "edge": "kernels.facturacion->kernels.inventarios",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 537,
+      "import": "apps.kernels.inventarios.services"
+    },
+    {
+      "edge": "kernels.facturacion->kernels.accounting",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 617,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "kernels.facturacion->kernels.accounting",
+      "file": "backend/src/apps/kernels/facturacion/services.py",
+      "line": 1123,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/views.py",
+      "line": 11,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.common",
+      "file": "backend/src/apps/kernels/facturacion/views.py",
+      "line": 12,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "kernels.facturacion->modulos.iam",
+      "file": "backend/src/apps/kernels/facturacion/views.py",
+      "line": 13,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.audit",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 10,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.common",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 11,
+      "import": "apps.modulos.common.domain_errors"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.iam",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.integration",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 13,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.integration",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 14,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.inventarios->kernels.accounting",
+      "file": "backend/src/apps/kernels/inventarios/services.py",
+      "line": 388,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.common",
+      "file": "backend/src/apps/kernels/inventarios/views.py",
+      "line": 8,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "kernels.inventarios->modulos.iam",
+      "file": "backend/src/apps/kernels/inventarios/views.py",
+      "line": 9,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.payments->modulos.common",
+      "file": "backend/src/apps/kernels/payments/models.py",
+      "line": 10,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.payments->modulos.iam",
+      "file": "backend/src/apps/kernels/payments/models.py",
+      "line": 11,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.payments->modulos.common",
+      "file": "backend/src/apps/kernels/payments/serializers.py",
+      "line": 5,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.payments->modulos.audit",
+      "file": "backend/src/apps/kernels/payments/services.py",
+      "line": 12,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "kernels.payments->modulos.common",
+      "file": "backend/src/apps/kernels/payments/services.py",
+      "line": 13,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "kernels.payments->modulos.iam",
+      "file": "backend/src/apps/kernels/payments/services.py",
+      "line": 14,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.payments->modulos.integration",
+      "file": "backend/src/apps/kernels/payments/services.py",
+      "line": 15,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "kernels.payments->modulos.integration",
+      "file": "backend/src/apps/kernels/payments/services.py",
+      "line": 16,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "kernels.payments->modulos.common",
+      "file": "backend/src/apps/kernels/payments/views.py",
+      "line": 9,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "kernels.payments->modulos.common",
+      "file": "backend/src/apps/kernels/payments/views.py",
+      "line": 10,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "kernels.reporting->modulos.common",
+      "file": "backend/src/apps/kernels/reporting/api/views.py",
+      "line": 7,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "kernels.reporting->modulos.common",
+      "file": "backend/src/apps/kernels/reporting/api/views.py",
+      "line": 8,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "kernels.reporting->modulos.iam",
+      "file": "backend/src/apps/kernels/reporting/api/views.py",
+      "line": 9,
+      "import": "apps.modulos.iam.authentication"
+    },
+    {
+      "edge": "kernels.reporting->modulos.iam",
+      "file": "backend/src/apps/kernels/reporting/authentication.py",
+      "line": 13,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "kernels.reporting->kernels.accounting",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/accounting.py",
+      "line": 7,
+      "import": "apps.kernels.accounting.phase7"
+    },
+    {
+      "edge": "kernels.reporting->kernels.accounting",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/accounting.py",
+      "line": 14,
+      "import": "apps.kernels.accounting.serializers"
+    },
+    {
+      "edge": "kernels.reporting->kernels.accounting",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/accounting.py",
+      "line": 15,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "kernels.reporting->kernels.facturacion",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/billing.py",
+      "line": 9,
+      "import": "apps.kernels.facturacion.models"
+    },
+    {
+      "edge": "kernels.reporting->modulos.estacion_servicios",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/fuel.py",
+      "line": 11,
+      "import": "apps.modulos.estacion_servicios.models"
+    },
+    {
+      "edge": "kernels.reporting->modulos.hr",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/hr.py",
+      "line": 10,
+      "import": "apps.modulos.hr.models"
+    },
+    {
+      "edge": "kernels.reporting->kernels.inventarios",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/inventory.py",
+      "line": 6,
+      "import": "apps.kernels.inventarios.models"
+    },
+    {
+      "edge": "kernels.reporting->kernels.payments",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/payments.py",
+      "line": 9,
+      "import": "apps.kernels.payments.models"
+    },
+    {
+      "edge": "kernels.reporting->modulos.compras",
+      "file": "backend/src/apps/kernels/reporting/domain_adapters/procurement.py",
+      "line": 9,
+      "import": "apps.modulos.compras.models"
+    },
+    {
+      "edge": "kernels.reporting->modulos.dashboard",
+      "file": "backend/src/apps/kernels/reporting/management/commands/export_reporting_observability_snapshot.py",
+      "line": 11,
+      "import": "apps.modulos.dashboard.observability"
+    },
+    {
+      "edge": "kernels.reporting->modulos.rbac",
+      "file": "backend/src/apps/kernels/reporting/permissions.py",
+      "line": 7,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "modulos.accounts->modulos.rbac",
+      "file": "backend/src/apps/modulos/accounts/serializers.py",
+      "line": 6,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.accounts->modulos.rbac",
+      "file": "backend/src/apps/modulos/accounts/serializers.py",
+      "line": 7,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "modulos.accounts->modulos.iam",
+      "file": "backend/src/apps/modulos/accounts/serializers.py",
+      "line": 8,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.accounts->modulos.audit",
+      "file": "backend/src/apps/modulos/accounts/signals.py",
+      "line": 6,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "modulos.accounts->modulos.audit",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 23,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "modulos.accounts->modulos.iam",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 26,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.accounts->modulos.iam",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 27,
+      "import": "apps.modulos.iam.selectors"
+    },
+    {
+      "edge": "modulos.accounts->modulos.org",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 28,
+      "import": "apps.modulos.org.models"
+    },
+    {
+      "edge": "modulos.accounts->modulos.rbac",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 29,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.accounts->modulos.rbac",
+      "file": "backend/src/apps/modulos/accounts/views.py",
+      "line": 30,
+      "import": "apps.modulos.rbac.seed_v01"
+    },
+    {
+      "edge": "modulos.audit->modulos.iam",
+      "file": "backend/src/apps/modulos/audit/services.py",
+      "line": 15,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.audit->modulos.common",
+      "file": "backend/src/apps/modulos/audit/views.py",
+      "line": 9,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.cec->modulos.iam",
+      "file": "backend/src/apps/modulos/cec/models.py",
+      "line": 10,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.cec->modulos.common",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 14,
+      "import": "apps.modulos.common.api_exceptions"
+    },
+    {
+      "edge": "modulos.cec->modulos.common",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 15,
+      "import": "apps.modulos.common.tender"
+    },
+    {
+      "edge": "modulos.cec->modulos.integration",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 16,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.cec->kernels.payments",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 17,
+      "import": "apps.kernels.payments.models"
+    },
+    {
+      "edge": "modulos.cec->modulos.compras",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 18,
+      "import": "apps.modulos.compras.models"
+    },
+    {
+      "edge": "modulos.cec->kernels.facturacion",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 19,
+      "import": "apps.kernels.facturacion.models"
+    },
+    {
+      "edge": "modulos.cec->kernels.inventarios",
+      "file": "backend/src/apps/modulos/cec/services.py",
+      "line": 20,
+      "import": "apps.kernels.inventarios.models"
+    },
+    {
+      "edge": "modulos.cec->modulos.common",
+      "file": "backend/src/apps/modulos/cec/views.py",
+      "line": 9,
+      "import": "apps.modulos.common.api_exceptions"
+    },
+    {
+      "edge": "modulos.cec->modulos.common",
+      "file": "backend/src/apps/modulos/cec/views.py",
+      "line": 10,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "modulos.cec->modulos.common",
+      "file": "backend/src/apps/modulos/cec/views.py",
+      "line": 11,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.cec->modulos.iam",
+      "file": "backend/src/apps/modulos/cec/views.py",
+      "line": 12,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.cec->modulos.integration",
+      "file": "backend/src/apps/modulos/cec/views.py",
+      "line": 13,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.common->modulos.rbac",
+      "file": "backend/src/apps/modulos/common/permissions.py",
+      "line": 15,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "modulos.common->modulos.iam",
+      "file": "backend/src/apps/modulos/common/permissions.py",
+      "line": 97,
+      "import": "apps.modulos.iam.selectors"
+    },
+    {
+      "edge": "modulos.common->kernels.reporting",
+      "file": "backend/src/apps/modulos/common/views.py",
+      "line": 5,
+      "import": "apps.kernels.reporting.observability"
+    },
+    {
+      "edge": "modulos.common->modulos.dashboard",
+      "file": "backend/src/apps/modulos/common/views.py",
+      "line": 6,
+      "import": "apps.modulos.dashboard.observability"
+    },
+    {
+      "edge": "modulos.compras->kernels.accounting",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 18,
+      "import": "apps.kernels.accounting.models"
+    },
+    {
+      "edge": "modulos.compras->kernels.accounting",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 19,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.cec",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 24,
+      "import": "apps.modulos.cec.models"
+    },
+    {
+      "edge": "modulos.compras->modulos.iam",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 25,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.compras->modulos.integration",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 26,
+      "import": "apps.modulos.integration.models"
+    },
+    {
+      "edge": "modulos.compras->modulos.integration",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 27,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.rbac",
+      "file": "backend/src/apps/modulos/compras/certification_phase10.py",
+      "line": 28,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.compras->kernels.accounting",
+      "file": "backend/src/apps/modulos/compras/management/commands/run_phase10_procurement_cycle.py",
+      "line": 11,
+      "import": "apps.kernels.accounting.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.integration",
+      "file": "backend/src/apps/modulos/compras/management/commands/run_phase10_procurement_cycle.py",
+      "line": 12,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.iam",
+      "file": "backend/src/apps/modulos/compras/services.py",
+      "line": 9,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.compras->modulos.integration",
+      "file": "backend/src/apps/modulos/compras/services.py",
+      "line": 10,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.parties",
+      "file": "backend/src/apps/modulos/compras/services.py",
+      "line": 11,
+      "import": "apps.modulos.parties.models"
+    },
+    {
+      "edge": "modulos.compras->modulos.parties",
+      "file": "backend/src/apps/modulos/compras/services.py",
+      "line": 12,
+      "import": "apps.modulos.parties.services"
+    },
+    {
+      "edge": "modulos.compras->modulos.common",
+      "file": "backend/src/apps/modulos/compras/views.py",
+      "line": 8,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.compras->modulos.iam",
+      "file": "backend/src/apps/modulos/compras/views.py",
+      "line": 9,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.dashboard->kernels.reporting",
+      "file": "backend/src/apps/modulos/dashboard/observability.py",
+      "line": 9,
+      "import": "apps.kernels.reporting.models"
+    },
+    {
+      "edge": "modulos.dashboard->modulos.iam",
+      "file": "backend/src/apps/modulos/dashboard/services.py",
+      "line": 13,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.dashboard->modulos.rbac",
+      "file": "backend/src/apps/modulos/dashboard/services.py",
+      "line": 14,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "modulos.dashboard->modulos.common",
+      "file": "backend/src/apps/modulos/dashboard/views.py",
+      "line": 7,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.iam",
+      "file": "backend/src/apps/modulos/estacion_servicios/management/commands/run_fuel_compensation_cycle.py",
+      "line": 7,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.org",
+      "file": "backend/src/apps/modulos/estacion_servicios/serializers.py",
+      "line": 28,
+      "import": "apps.modulos.org.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.audit",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 24,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.integration",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 25,
+      "import": "apps.modulos.integration.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.parties",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 26,
+      "import": "apps.modulos.parties.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 80,
+      "import": "apps.kernels.inventarios.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 96,
+      "import": "apps.kernels.inventarios.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 97,
+      "import": "apps.kernels.inventarios.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 815,
+      "import": "apps.kernels.inventarios.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.facturacion",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 816,
+      "import": "apps.kernels.facturacion.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.facturacion",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 817,
+      "import": "apps.kernels.facturacion.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.facturacion",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 965,
+      "import": "apps.kernels.facturacion.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 980,
+      "import": "apps.kernels.inventarios.models"
+    },
+    {
+      "edge": "modulos.estacion_servicios->kernels.inventarios",
+      "file": "backend/src/apps/modulos/estacion_servicios/services.py",
+      "line": 981,
+      "import": "apps.kernels.inventarios.services"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.common",
+      "file": "backend/src/apps/modulos/estacion_servicios/views.py",
+      "line": 11,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.estacion_servicios->modulos.org",
+      "file": "backend/src/apps/modulos/estacion_servicios/views.py",
+      "line": 13,
+      "import": "apps.modulos.org.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.iam",
+      "file": "backend/src/apps/modulos/hr/models.py",
+      "line": 8,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.rbac",
+      "file": "backend/src/apps/modulos/hr/models.py",
+      "line": 9,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.audit",
+      "file": "backend/src/apps/modulos/hr/services.py",
+      "line": 19,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "modulos.hr->modulos.iam",
+      "file": "backend/src/apps/modulos/hr/services.py",
+      "line": 20,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.parties",
+      "file": "backend/src/apps/modulos/hr/services.py",
+      "line": 21,
+      "import": "apps.modulos.parties.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.parties",
+      "file": "backend/src/apps/modulos/hr/services.py",
+      "line": 22,
+      "import": "apps.modulos.parties.services"
+    },
+    {
+      "edge": "modulos.hr->modulos.rbac",
+      "file": "backend/src/apps/modulos/hr/services.py",
+      "line": 23,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.audit",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 13,
+      "import": "apps.modulos.audit.writer"
+    },
+    {
+      "edge": "modulos.hr->modulos.common",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 14,
+      "import": "apps.modulos.common.api_exceptions"
+    },
+    {
+      "edge": "modulos.hr->modulos.common",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 15,
+      "import": "apps.modulos.common.pagination"
+    },
+    {
+      "edge": "modulos.hr->modulos.common",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 16,
+      "import": "apps.modulos.common.permissions"
+    },
+    {
+      "edge": "modulos.hr->modulos.common",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 17,
+      "import": "apps.modulos.common.throttling"
+    },
+    {
+      "edge": "modulos.hr->modulos.iam",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 18,
+      "import": "apps.modulos.iam.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.parties",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 19,
+      "import": "apps.modulos.parties.models"
+    },
+    {
+      "edge": "modulos.hr->modulos.rbac",
+      "file": "backend/src/apps/modulos/hr/views.py",
+      "line": 20,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.org",
+      "file": "backend/src/apps/modulos/iam/bootstrap.py",
+      "line": 6,
+      "import": "apps.modulos.org.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.accounts",
+      "file": "backend/src/apps/modulos/iam/bootstrap.py",
+      "line": 7,
+      "import": "apps.modulos.accounts.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.rbac",
+      "file": "backend/src/apps/modulos/iam/bootstrap.py",
+      "line": 9,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.rbac",
+      "file": "backend/src/apps/modulos/iam/bootstrap.py",
+      "line": 10,
+      "import": "apps.modulos.rbac.seed_v01"
+    },
+    {
+      "edge": "modulos.iam->modulos.org",
+      "file": "backend/src/apps/modulos/iam/management/commands/bootstrap_company.py",
+      "line": 7,
+      "import": "apps.modulos.org.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.rbac",
+      "file": "backend/src/apps/modulos/iam/management/commands/bootstrap_company.py",
+      "line": 8,
+      "import": "apps.modulos.rbac.models"
+    },
+    {
+      "edge": "modulos.iam->modulos.rbac",
+      "file": "backend/src/apps/modulos/iam/management/commands/bootstrap_company.py",
+      "line": 9,
+      "import": "apps.modulos.rbac.seed_v01"
+    },
+    {
+      "edge": "modulos.iam->modulos.rbac",
+      "file": "backend/src/apps/modulos/iam/selectors.py",
+      "line": 11,
+      "import": "apps.modulos.rbac.selectors"
+    },
+    {
+      "edge": "modulos.integration->modulos.iam",
+      "file": "backend/src/apps/modulos/integration/models.py",
+      "line": 9,
+      "import": "apps.modulos.iam.models"
+    }
+  ]
+}

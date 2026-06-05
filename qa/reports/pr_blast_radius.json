@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-28T18:43:42.171705+00:00",
+  "base_commit": "d9ab14da76f3be389874e545b5516cda178ebb89",
+  "changed_files_count": 9,
+  "changed_files": [
+    "backend/src/apps/modulos/estacion_servicios/migrations/0012_fuelsale_customer_party.py",
+    "backend/src/apps/modulos/estacion_servicios/models.py",
+    "backend/src/apps/modulos/estacion_servicios/serializers.py",
+    "backend/src/apps/modulos/estacion_servicios/services.py",
+    "backend/src/apps/modulos/estacion_servicios/views.py",
+    "backend/src/tests/test_fuel_customer_party.py",
+    "docs/design/COMMERCIAL_FUEL_CUSTOMER_PARTY_20260528.md",
+    "qa/contracts/architecture_dependency_baseline.json",
+    "qa/contracts/migration_safety_baseline.json"
+  ],
+  "layers": {
+    "docs": 1,
+    "qa": 2,
+    "runtime_backend": 6
+  },
+  "domains_touched": [
+    "modulos.estacion_servicios"
+  ],
+  "domains_count": 1,
+  "mixed_flags": {
+    "runtime_migration_mix": true,
+    "api_infra_mix": false,
+    "kernel_dashboard_infra_mix": false
+  },
+  "blast_radius_level": "high",
+  "policy": {
+    "requires_design_note": true,
+    "design_note_present": true,
+    "requires_additional_reviewer": true,
+    "required_label": "risk:high"
+  },
+  "issues": []
+}

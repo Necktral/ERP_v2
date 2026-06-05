@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-03-24T04:37:46.715Z",
+  "status": "passed",
+  "budgets": {
+    "route_budget_bytes": 716800,
+    "analytics_budget_bytes": 512000
+  },
+  "route_chunk": {
+    "name": "dashboard-v3-route-fx5lTbeF.js",
+    "size_bytes": 293070,
+    "budget_bytes": 716800,
+    "status": "PASS"
+  },
+  "analytics_chunks": [
+    {
+      "name": "analytics-echarts-VaZwsVNn.js",
+      "size_bytes": 478920,
+      "budget_bytes": 512000,
+      "status": "PASS"
+    },
+    {
+      "name": "analytics-aggrid-BPd5_CO5.js",
+      "size_bytes": 652,
+      "budget_bytes": 512000,
+      "status": "PASS"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,45 @@
+
+> necktral-frontend@0.0.1 postinstall
+> quasar prepare
+
+
+ .d88888b.
+d88P" "Y88b
+888     888
+888     888 888  888  8888b.  .d8888b   8888b.  888d888
+888     888 888  888     "88b 88K          "88b 888P"
+888 Y8b 888 888  888 .d888888 "Y8888b. .d888888 888
+Y88b.Y8b88P Y88b 888 888  888      X88 888  888 888
+ "Y888888"   "Y88888 "Y888888  88888P' "Y888888 888
+       Y8b
+
+ App • Using quasar.config.ts in "ts" format
+ App • Using .env files: .env
+ App • Generated tsconfig.json and types files in .quasar directory
+ App • The app is now prepared for linting, type-checking, IDE integration, etc.
+
+added 647 packages, and audited 648 packages in 28s
+
+168 packages are looking for funding
+  run `npm fund` for details
+
+3 moderate severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+> necktral-frontend@0.0.1 test
+> vitest run src/services/__tests__/retail-pos-offline-queue.spec.ts
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/app/frontend[39m
+
+ [32m✓[39m src/services/__tests__/retail-pos-offline-queue.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 23:02:38
+[2m   Duration [22m 1.40s[2m (transform 108ms, setup 52ms, import 78ms, tests 17ms, environment 990ms)[22m
+
