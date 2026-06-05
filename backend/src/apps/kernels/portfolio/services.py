@@ -6,15 +6,15 @@ Diseñado con lógica híbrida: auto/manual según configuración.
 """
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 
+from apps.modulos.audit.writer import write_event
 from apps.modulos.integration.services import publish_outbox_event
-from apps.kernels.accounting.models import EconomicEvent
+from apps.modulos.parties.models import Party
 
 from .models import (
     Obligation,
@@ -38,6 +38,48 @@ class PortfolioDomainError(Exception):
         self.message = message
         self.details = details or {}
         super().__init__(f"[{code}] {message}")
+
+
+class _PortfolioAuditRequest:
+    """Request sintético para encadenar auditoría por company sin HTTP (kernel sin request)."""
+
+    def __init__(self, *, company, branch=None) -> None:
+        self.company = company
+        self.branch = branch
+        self.META: Dict[str, Any] = {}
+        self.path = ""
+        self.method = ""
+        self.request_id = ""
+
+
+def _write_portfolio_audit_event(
+    *,
+    actor_user,
+    company,
+    branch,
+    event_type: str,
+    subject_type: str,
+    subject_id: str,
+    after_snapshot: Optional[Dict] = None,
+    metadata: Optional[Dict] = None,
+) -> None:
+    """Auditoría de servicio del kernel portfolio (cierra el hueco `audit=0`, invariante #4)."""
+    meta: Dict[str, Any] = {"company_id": str(getattr(company, "id", "") or "")}
+    if branch is not None:
+        meta["branch_id"] = str(getattr(branch, "id", "") or "")
+    if metadata:
+        meta.update(metadata)
+    write_event(
+        request=_PortfolioAuditRequest(company=company, branch=branch),
+        module="PORTFOLIO",
+        event_type=event_type,
+        reason_code="PORTFOLIO_OK",
+        actor_user=actor_user,
+        subject_type=subject_type,
+        subject_id=str(subject_id),
+        after_snapshot=after_snapshot,
+        metadata=meta,
+    )
 
 
 # ============================================================================
@@ -97,6 +139,26 @@ def create_receivable(
     # Publicar evento para Shadow Ledger
     _publish_receivable_created_event(receivable)
 
+    _write_portfolio_audit_event(
+        actor_user=created_by,
+        company=receivable.company,
+        branch=receivable.branch,
+        event_type="PORTFOLIO_RECEIVABLE_CREATED",
+        subject_type="RECEIVABLE",
+        subject_id=str(receivable.obligation_id),
+        after_snapshot={
+            "status": receivable.status,
+            "principal_amount": str(receivable.principal_amount),
+            "currency": receivable.currency,
+            "due_date": receivable.due_date.isoformat(),
+        },
+        metadata={
+            "party_id": receivable.party_id,
+            "reference_type": receivable.reference_type,
+            "reference_id": receivable.reference_id,
+        },
+    )
+
     return receivable
 
 
@@ -119,6 +181,68 @@ def _publish_receivable_created_event(receivable: Receivable):
             "invoice_number": receivable.invoice_number,
         }
     )
+
+
+def link_billing_document_to_receivable(*, outbox_event, actor_user=None) -> Dict[str, Any]:
+    """Crea una CxC desde un evento BILLING.DocumentIssued de venta a crédito.
+
+    - No-op para contado / consumidor final (``credit_status`` NONE/vacío).
+    - Idempotente por (reference_type="BILLING_DOC", reference_id=doc_id): si ya existe la
+      CxC del documento, la retorna sin duplicar.
+    - Reusa ``create_receivable`` (que audita PORTFOLIO_RECEIVABLE_CREATED + publica
+      ReceivableCreated). Respeta ownership: Billing emite, portfolio posee el saldo.
+    """
+    payload = outbox_event.payload if isinstance(outbox_event.payload, dict) else {}
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+
+    credit_status = str(data.get("credit_status") or "").strip().upper()
+    if not credit_status or credit_status == "NONE":
+        return {"status": "SKIPPED_NOT_CREDIT"}
+
+    doc_id = data.get("doc_id")
+    if doc_id is None:
+        return {"status": "SKIPPED_NO_DOC"}
+    doc_id = int(doc_id)
+    company = outbox_event.company
+
+    with transaction.atomic():
+        existing = Receivable.objects.filter(
+            company=company, reference_type="BILLING_DOC", reference_id=doc_id
+        ).first()
+        if existing is not None:
+            return {"status": "EXISTS", "receivable_id": str(existing.obligation_id)}
+
+        party_id = data.get("customer_party_id")
+        if not party_id:
+            return {"status": "SKIPPED_NO_PARTY"}
+        party = Party.objects.filter(id=int(party_id), company=company).first()
+        if party is None:
+            return {"status": "SKIPPED_PARTY_NOT_FOUND"}
+
+        principal = Decimal(str(data.get("total") or "0"))
+        if principal <= 0:
+            return {"status": "SKIPPED_NON_POSITIVE_AMOUNT"}
+
+        issue_date = timezone.localtime(outbox_event.occurred_at).date()
+        receivable = create_receivable(
+            company=company,
+            branch=outbox_event.branch,
+            party=party,
+            reference_type="BILLING_DOC",
+            reference_id=doc_id,
+            principal_amount=principal,
+            currency=str(data.get("currency") or "NIO"),
+            issue_date=issue_date,
+            due_date=issue_date,
+            invoice_number=str(data.get("number") or ""),
+            created_by=actor_user,
+            metadata={
+                "source_module": "BILLING",
+                "source_event_id": str(getattr(outbox_event, "event_id", "")),
+                "customer_display_name": str(data.get("customer_display_name") or ""),
+            },
+        )
+    return {"status": "CREATED", "receivable_id": str(receivable.obligation_id)}
 
 
 def adjust_receivable(
@@ -433,7 +557,7 @@ def disburse_credit(
 
     Registra el desembolso y actualiza estado.
     """
-    if credit.credit_status not in (CreditStatus.APPROVED, CreditStatus.DISBURSED):
+    if credit.credit_status not in (CreditStatus.APPROVED, CreditStatus.DISBURSED, CreditStatus.ACTIVE):
         raise PortfolioDomainError(
             "INVALID_STATUS",
             f"Cannot disburse credit in status {credit.credit_status}"

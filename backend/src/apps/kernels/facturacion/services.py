@@ -722,6 +722,25 @@ def issue_doc(
                 status=BillingDocument.AccountingStatus.DRAFT_EXCEPTION,
                 error=f"{wrapped.code}:{exc}",
             )
+
+        # CxC (portfolio): una venta a crédito genera una cuenta por cobrar. Best-effort:
+        # el cobro/cartera no debe romper la emisión del documento (ownership: portfolio posee el saldo).
+        try:
+            from apps.kernels.portfolio.services import link_billing_document_to_receivable
+
+            link_billing_document_to_receivable(outbox_event=issued_outbox, actor_user=actor)
+        except Exception as exc:  # noqa: BLE001 - aislar el efecto de cartera de la emisión
+            logger.exception(
+                "billing_receivable_link_issue_failed",
+                extra={
+                    "company_id": company.id,
+                    "branch_id": branch.id,
+                    "doc_id": int(doc.id),
+                    "event_id": str(getattr(issued_outbox, "event_id", "")),
+                    "error": str(exc),
+                },
+            )
+
         publish_outbox_event(
             request=request,
             source_module="BILLING",
