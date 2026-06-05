@@ -11,6 +11,7 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
+from apps.modulos.audit.writer import write_event
 from apps.modulos.common.api_exceptions import ConflictError
 from apps.modulos.common.tender import NON_CASH_TENDER_PAYMENT_METHODS, TenderPaymentMethod
 from apps.modulos.integration.services import publish_outbox_event
@@ -39,6 +40,50 @@ class ExecuteCloseRunResult:
     exceptions_opened_count: int
     gates: list[dict[str, Any]]
     output_manifest_hash: str
+
+
+class _CECAuditRequest:
+    """Request sintético para encadenar auditoría por company sin HTTP."""
+
+    def __init__(self, *, company, branch=None) -> None:
+        self.company = company
+        self.branch = branch
+        self.META: dict[str, Any] = {}
+        self.path = ""
+        self.method = ""
+        self.request_id = ""
+
+
+def _write_cec_audit_event(
+    *,
+    run: CloseRun,
+    event_type: str,
+    subject_type: str,
+    subject_id: str,
+    actor_user=None,
+    before_snapshot: dict[str, Any] | None = None,
+    after_snapshot: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Auditoría de servicio del módulo CEC (cierra el hueco `audit=0`, invariante #4)."""
+    meta: dict[str, Any] = {
+        "company_id": str(getattr(run.company, "id", "") or ""),
+        "close_run_id": str(run.run_id),
+    }
+    if metadata:
+        meta.update(metadata)
+    write_event(
+        request=_CECAuditRequest(company=run.company, branch=run.branch),
+        module="CEC",
+        event_type=event_type,
+        reason_code="OK",
+        actor_user=actor_user,
+        subject_type=subject_type,
+        subject_id=str(subject_id),
+        before_snapshot=before_snapshot,
+        after_snapshot=after_snapshot,
+        metadata=meta,
+    )
 
 
 def _json_hash(payload: dict[str, Any]) -> str:
@@ -122,6 +167,22 @@ def _register_exception(
         fingerprint=fp,
         is_blocking=is_blocking,
         close_run=run,
+    )
+    _write_cec_audit_event(
+        run=run,
+        event_type="CEC_EXCEPTION_RAISED",
+        subject_type="CEC_EXCEPTION",
+        subject_id=str(created.exception_id),
+        after_snapshot={
+            "status": created.status,
+            "severity": created.severity,
+            "is_blocking": created.is_blocking,
+        },
+        metadata={
+            "code": code,
+            "related_object_type": related_object_type,
+            "related_object_id": str(related_object_id),
+        },
     )
     return created, True
 
@@ -723,6 +784,7 @@ def advance_close_run_state(
             code="CONFLICT",
         )
 
+    previous_status = run.status
     run.status = target_status
     update_fields = ["status", "updated_at"]
     if output_manifest_hash is not None:
@@ -737,6 +799,15 @@ def advance_close_run_state(
         run.completed_at = timezone.now()
         update_fields.append("completed_at")
     run.save(update_fields=update_fields)
+    _write_cec_audit_event(
+        run=run,
+        event_type="CEC_CLOSE_RUN_ADVANCED",
+        subject_type="CLOSE_RUN",
+        subject_id=str(run.run_id),
+        before_snapshot={"status": previous_status},
+        after_snapshot={"status": run.status},
+        metadata={"target_status": str(target_status)},
+    )
     return run
 
 
