@@ -18,13 +18,13 @@ from apps.modulos.rbac.selectors import get_effective_permissions_for_scope
 def _set_on_request_and_raw(request, key: str, value):
     try:
         setattr(request, key, value)
-    except Exception:
+    except (AttributeError, TypeError):
         pass
     try:
         raw = getattr(request, "_request", None)
         if raw is not None:
             setattr(raw, key, value)
-    except Exception:
+    except (AttributeError, TypeError):
         pass
 
 

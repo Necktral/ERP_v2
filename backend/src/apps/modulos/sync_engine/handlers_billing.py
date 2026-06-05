@@ -11,7 +11,7 @@ Comandos soportados:
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from apps.modulos.iam.models import OrgUnit
@@ -73,7 +73,7 @@ def _opt_int(payload: dict, key: str) -> int | None:
         return None
     try:
         return int(v)
-    except Exception:
+    except (ValueError, TypeError):
         raise SyncRejectError("BILLING_SCHEMA_INVALID", {key: "invalid int"})
 
 
@@ -199,7 +199,7 @@ def handle_billing_payment_add(ctx: dict[str, Any], payload: dict[str, Any]) -> 
         raise SyncRejectError("BILLING_SCHEMA_INVALID", {"amount": "required"})
     try:
         amount = Decimal(str(amount_raw))
-    except Exception:
+    except (InvalidOperation, ValueError, TypeError):
         raise SyncRejectError("BILLING_SCHEMA_INVALID", {"amount": "invalid"})
 
     try:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -27,7 +28,7 @@ class CompanyProfile(models.Model):
 
     def clean(self):
         if self.company.unit_type != OrgUnit.UnitType.COMPANY:
-            raise ValueError("CompanyProfile.company debe ser OrgUnit de tipo COMPANY.")
+            raise ValidationError("CompanyProfile.company debe ser OrgUnit de tipo COMPANY.")
 
 
 class BranchProfile(models.Model):
@@ -68,7 +69,7 @@ class BranchProfile(models.Model):
 
     def clean(self):
         if self.branch.unit_type != OrgUnit.UnitType.BRANCH:
-            raise ValueError("BranchProfile.branch debe ser OrgUnit de tipo BRANCH.")
+            raise ValidationError("BranchProfile.branch debe ser OrgUnit de tipo BRANCH.")
 
 
 class UserFuelUoMPreference(models.Model):
@@ -103,4 +104,4 @@ class UserFuelUoMPreference(models.Model):
 
     def clean(self):
         if self.branch.unit_type != OrgUnit.UnitType.BRANCH:
-            raise ValueError("UserFuelUoMPreference.branch debe ser OrgUnit de tipo BRANCH.")
+            raise ValidationError("UserFuelUoMPreference.branch debe ser OrgUnit de tipo BRANCH.")

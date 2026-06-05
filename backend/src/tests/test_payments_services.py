@@ -180,10 +180,12 @@ def test_reverse_captured_payment_intent_for_scope_rejects_different_replay_key(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("payment_method", ["CASH", "CARD", "CREDIT", ""])
-def test_reverse_captured_payment_intent_for_scope_blocks_non_transfer_tenders(payment_method: str):
+@pytest.mark.parametrize("payment_method", ["CASH"])
+@pytest.mark.django_db
+def test_reverse_captured_payment_intent_for_scope_blocks_cash_tender(payment_method: str):
+    """CASH no permite reversal electrónico — debe usar refund_payment_intent."""
     company, branch = _mk_scope()
-    actor = User.objects.create_user(username=f"pay_reverse_tender_{payment_method or 'unknown'}", password="x")
+    actor = User.objects.create_user(username=f"pay_reverse_cash_{payment_method}", password="x")
     intent = _mk_captured_payment_intent(
         company=company,
         branch=branch,
@@ -197,12 +199,30 @@ def test_reverse_captured_payment_intent_for_scope_blocks_non_transfer_tenders(p
             branch=branch,
             actor=actor,
             payment_id=intent.payment_id,
-            idempotency_key=f"reverse-{payment_method or 'unknown'}",
+            idempotency_key=f"reverse-{payment_method}",
         )
 
     intent.refresh_from_db()
     assert intent.status == PaymentIntent.Status.CAPTURED
     assert OutboxEvent.objects.filter(source_module="PAYMENTS", event_type="PaymentCaptureReversed").count() == 0
+
+
+@pytest.mark.parametrize("payment_method", ["CARD", "CREDIT", "TRANSFER"])
+@pytest.mark.django_db
+def test_reverse_captured_payment_intent_allowed_for_electronic_methods(payment_method: str):
+    """CARD, CREDIT y TRANSFER permiten reversal electrónico."""
+    company, branch = _mk_scope()
+    actor = User.objects.create_user(username=f"pay_rev_elec_{payment_method}", password="x")
+    intent = _mk_captured_payment_intent(
+        company=company, branch=branch, actor=actor, payment_method=payment_method,
+    )
+    reversed_intent, idempotent = reverse_captured_payment_intent_for_scope(
+        company=company, branch=branch, actor=actor,
+        payment_id=intent.payment_id,
+        idempotency_key=f"rev-elec-{payment_method}",
+    )
+    assert reversed_intent.status == PaymentIntent.Status.REFUNDED
+    assert not idempotent
 
 
 @pytest.mark.django_db
