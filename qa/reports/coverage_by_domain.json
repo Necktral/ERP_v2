@@ -1,18 +1,20 @@
 {
   "status": "passed",
-  "generated_at": "2026-05-25T23:02:55.957284+00:00",
+  "generated_at": "2026-06-05T23:57:57.427602+00:00",
   "coverage_report": "qa/reports/coverage.txt",
   "baseline_file": "/app/qa/contracts/coverage_by_domain_baseline.json",
   "changed_files_floor_pct": 50.0,
   "domains": {
     "apps.modulos.sync_engine": {
       "path_prefix": "backend/src/apps/modulos/sync_engine/",
-      "covered_lines": 746,
-      "total_lines": 819,
-      "coverage_pct": 91.09,
+      "covered_lines": 891,
+      "total_lines": 938,
+      "coverage_pct": 94.99,
       "files_measured": [
+        "backend/src/apps/modulos/sync_engine/__init__.py",
         "backend/src/apps/modulos/sync_engine/apps.py",
         "backend/src/apps/modulos/sync_engine/errors.py",
+        "backend/src/apps/modulos/sync_engine/handlers_billing.py",
         "backend/src/apps/modulos/sync_engine/handlers_demo.py",
         "backend/src/apps/modulos/sync_engine/handlers_inventory.py",
         "backend/src/apps/modulos/sync_engine/handlers_pos.py",
@@ -25,9 +27,9 @@
     },
     "apps.kernels.reporting": {
       "path_prefix": "backend/src/apps/kernels/reporting/",
-      "covered_lines": 1676,
-      "total_lines": 1941,
-      "coverage_pct": 86.35,
+      "covered_lines": 1769,
+      "total_lines": 1943,
+      "coverage_pct": 91.04,
       "files_measured": [
         "backend/src/apps/kernels/reporting/__init__.py",
         "backend/src/apps/kernels/reporting/api/__init__.py",
@@ -71,9 +73,9 @@
     },
     "apps.kernels.accounting": {
       "path_prefix": "backend/src/apps/kernels/accounting/",
-      "covered_lines": 5911,
-      "total_lines": 6930,
-      "coverage_pct": 85.3,
+      "covered_lines": 6017,
+      "total_lines": 6959,
+      "coverage_pct": 86.46,
       "files_measured": [
         "backend/src/apps/kernels/accounting/__init__.py",
         "backend/src/apps/kernels/accounting/apps.py",
@@ -147,9 +149,9 @@
     },
     "apps.modulos.accounts": {
       "path_prefix": "backend/src/apps/modulos/accounts/",
-      "covered_lines": 156,
+      "covered_lines": 243,
       "total_lines": 261,
-      "coverage_pct": 59.77,
+      "coverage_pct": 93.1,
       "files_measured": [
         "backend/src/apps/modulos/accounts/__init__.py",
         "backend/src/apps/modulos/accounts/apps.py",
@@ -160,15 +162,14 @@
         "backend/src/apps/modulos/accounts/models.py",
         "backend/src/apps/modulos/accounts/password_validators.py",
         "backend/src/apps/modulos/accounts/serializers.py",
-        "backend/src/apps/modulos/accounts/signals.py",
-        "backend/src/apps/modulos/accounts/tests.py"
+        "backend/src/apps/modulos/accounts/signals.py"
       ]
     },
     "apps.modulos.dashboard": {
       "path_prefix": "backend/src/apps/modulos/dashboard/",
-      "covered_lines": 101,
+      "covered_lines": 195,
       "total_lines": 224,
-      "coverage_pct": 45.09,
+      "coverage_pct": 87.05,
       "files_measured": [
         "backend/src/apps/modulos/dashboard/__init__.py",
         "backend/src/apps/modulos/dashboard/apps.py",
@@ -180,9 +181,9 @@
     },
     "apps.modulos.integration": {
       "path_prefix": "backend/src/apps/modulos/integration/",
-      "covered_lines": 234,
+      "covered_lines": 235,
       "total_lines": 241,
-      "coverage_pct": 97.1,
+      "coverage_pct": 97.51,
       "files_measured": [
         "backend/src/apps/modulos/integration/__init__.py",
         "backend/src/apps/modulos/integration/apps.py",
@@ -196,9 +197,9 @@
     },
     "apps.modulos.estacion_servicios": {
       "path_prefix": "backend/src/apps/modulos/estacion_servicios/",
-      "covered_lines": 658,
-      "total_lines": 754,
-      "coverage_pct": 87.27,
+      "covered_lines": 701,
+      "total_lines": 787,
+      "coverage_pct": 89.07,
       "files_measured": [
         "backend/src/apps/modulos/estacion_servicios/__init__.py",
         "backend/src/apps/modulos/estacion_servicios/apps.py",
@@ -208,6 +209,55 @@
         "backend/src/apps/modulos/estacion_servicios/models.py",
         "backend/src/apps/modulos/estacion_servicios/serializers.py",
         "backend/src/apps/modulos/estacion_servicios/services.py"
+      ]
+    },
+    "apps.kernels.nomina": {
+      "path_prefix": "backend/src/apps/kernels/nomina/",
+      "covered_lines": 518,
+      "total_lines": 564,
+      "coverage_pct": 91.84,
+      "files_measured": [
+        "backend/src/apps/kernels/nomina/__init__.py",
+        "backend/src/apps/kernels/nomina/apps.py",
+        "backend/src/apps/kernels/nomina/models.py",
+        "backend/src/apps/kernels/nomina/serializers.py",
+        "backend/src/apps/kernels/nomina/services.py"
+      ]
+    },
+    "apps.modulos.retail_pos": {
+      "path_prefix": "backend/src/apps/modulos/retail_pos/",
+      "covered_lines": 789,
+      "total_lines": 842,
+      "coverage_pct": 93.71,
+      "files_measured": [
+        "backend/src/apps/modulos/retail_pos/__init__.py",
+        "backend/src/apps/modulos/retail_pos/apps.py",
+        "backend/src/apps/modulos/retail_pos/management/__init__.py",
+        "backend/src/apps/modulos/retail_pos/management/commands/__init__.py",
+        "backend/src/apps/modulos/retail_pos/management/commands/run_pos_compensation_cycle.py",
+        "backend/src/apps/modulos/retail_pos/models.py",
+        "backend/src/apps/modulos/retail_pos/serializers.py",
+        "backend/src/apps/modulos/retail_pos/services.py"
+      ]
+    },
+    "apps.modulos.compras": {
+      "path_prefix": "backend/src/apps/modulos/compras/",
+      "covered_lines": 514,
+      "total_lines": 571,
+      "coverage_pct": 90.02,
+      "files_measured": [
+        "backend/src/apps/modulos/compras/__init__.py",
+        "backend/src/apps/modulos/compras/apps.py",
+        "backend/src/apps/modulos/compras/certification_phase10.py",
+        "backend/src/apps/modulos/compras/management/__init__.py",
+        "backend/src/apps/modulos/compras/management/commands/__init__.py",
+        "backend/src/apps/modulos/compras/management/commands/certify_phase10_procurement_run.py",
+        "backend/src/apps/modulos/compras/management/commands/export_phase10_env_manifest.py",
+        "backend/src/apps/modulos/compras/management/commands/run_phase10_procurement_cycle.py",
+        "backend/src/apps/modulos/compras/management/commands/verify_phase10_go_live.py",
+        "backend/src/apps/modulos/compras/models.py",
+        "backend/src/apps/modulos/compras/serializers.py",
+        "backend/src/apps/modulos/compras/services.py"
       ]
     }
   },

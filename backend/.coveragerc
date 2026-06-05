@@ -7,6 +7,9 @@ source =
     src/apps/modulos/dashboard
     src/apps/modulos/integration
     src/apps/modulos/estacion_servicios
+    src/apps/kernels/nomina
+    src/apps/modulos/retail_pos
+    src/apps/modulos/compras
 omit =
     */migrations/*
     */tests/*

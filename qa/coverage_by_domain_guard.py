@@ -24,6 +24,9 @@ CRITICAL_DOMAIN_SCOPES: tuple[DomainScope, ...] = (
     DomainScope("apps.modulos.dashboard", "backend/src/apps/modulos/dashboard/"),
     DomainScope("apps.modulos.integration", "backend/src/apps/modulos/integration/"),
     DomainScope("apps.modulos.estacion_servicios", "backend/src/apps/modulos/estacion_servicios/"),
+    DomainScope("apps.kernels.nomina", "backend/src/apps/kernels/nomina/"),
+    DomainScope("apps.modulos.retail_pos", "backend/src/apps/modulos/retail_pos/"),
+    DomainScope("apps.modulos.compras", "backend/src/apps/modulos/compras/"),
 )
 
 
@@ -75,8 +78,6 @@ def _run_git(args: list[str], *, root: Path) -> str:
 
 
 def _resolve_base_ref(root: Path) -> str:
-    base_ref = ""
-
     candidate = ""
     try:
         import os

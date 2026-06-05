@@ -1,34 +1,46 @@
 {
   "version": 1,
-  "generated_at": "2026-03-25T00:00:00Z",
+  "generated_at": "2026-06-05T23:57:06.311433+00:00",
   "changed_files_floor_pct": 50.0,
   "domains": {
     "apps.kernels.accounting": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 86.46,
+      "floor_pct": 1.0
+    },
+    "apps.kernels.nomina": {
+      "baseline_pct": 91.84,
       "floor_pct": 1.0
     },
     "apps.kernels.reporting": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 91.04,
       "floor_pct": 1.0
     },
     "apps.modulos.accounts": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 93.1,
+      "floor_pct": 1.0
+    },
+    "apps.modulos.compras": {
+      "baseline_pct": 90.02,
       "floor_pct": 1.0
     },
     "apps.modulos.dashboard": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 87.05,
       "floor_pct": 1.0
     },
     "apps.modulos.estacion_servicios": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 89.07,
       "floor_pct": 1.0
     },
     "apps.modulos.integration": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 97.51,
+      "floor_pct": 1.0
+    },
+    "apps.modulos.retail_pos": {
+      "baseline_pct": 93.71,
       "floor_pct": 1.0
     },
     "apps.modulos.sync_engine": {
-      "baseline_pct": 0.0,
+      "baseline_pct": 94.99,
       "floor_pct": 1.0
     }
   }
