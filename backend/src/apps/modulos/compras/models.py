@@ -88,6 +88,7 @@ class PurchaseDocument(models.Model):
             ),
             models.UniqueConstraint(
                 fields=["company", "branch", "doc_type", "series", "number"],
+                condition=models.Q(number__gt=0),
                 name="uniq_proc_number",
             ),
         ]
