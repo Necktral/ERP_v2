@@ -823,6 +823,27 @@ def allocate_payment_to_obligation(
         }
     )
 
+    _write_portfolio_audit_event(
+        actor_user=created_by,
+        company=payment_intent.company,
+        branch=payment_intent.branch,
+        event_type="PORTFOLIO_PAYMENT_ALLOCATED",
+        subject_type="PAYMENT_ALLOCATION",
+        subject_id=str(allocation.allocation_id),
+        after_snapshot={
+            "status": allocation.status,
+            "allocated_amount": str(allocated_amount),
+            "currency": allocation.currency,
+            "obligation_status": obligation.status,
+        },
+        metadata={
+            "payment_id": str(payment_intent.payment_id),
+            "obligation_id": str(obligation.obligation_id),
+            "obligation_type": obligation.obligation_type,
+            "party_id": obligation.party_id,
+        },
+    )
+
     return allocation
 
 
