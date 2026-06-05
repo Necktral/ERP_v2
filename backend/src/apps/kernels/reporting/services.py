@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from apps.modulos.audit.writer import write_event
+
 from .execution import execute_dataset, normalize_filters_for_dataset, serialize_filters_for_storage
 from .exports import create_export_from_run, export_to_dict
 from .exceptions import DatasetScopeError, ReportingValidationError
@@ -88,6 +90,25 @@ def run_dataset_from_request(
     envelope = dict(envelope)
     envelope.setdefault("quality_status", str(run.quality_status or ""))
     envelope.setdefault("quality_checks", list(run.quality_checks_json or []))
+
+    # Auditoría de ejecución (cierra audit=0 en reporting): quién ejecutó qué dataset, cuándo.
+    write_event(
+        request=request,
+        module="REPORTING",
+        event_type="REPORTING_DATASET_EXECUTED",
+        reason_code="OK",
+        actor_user=getattr(request, "user", None),
+        subject_type="REPORT_RUN",
+        subject_id=str(run.run_id),
+        metadata={
+            "dataset_key": str(dataset_key),
+            "consumer_type": str(getattr(request, "reporting_consumer_type", "API") or "API"),
+            "consumer_ref": effective_consumer_ref,
+            "quality_status": str(run.quality_status or ""),
+            "force_refresh": bool(force_refresh),
+            "filter_keys": sorted(cleaned_filters.keys()),
+        },
+    )
     return envelope, str(run.run_id)
 
 

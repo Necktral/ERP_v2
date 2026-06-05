@@ -300,6 +300,32 @@ def test_reporting_catalog_and_run_flow_with_accounting_adapter():
 
 
 @pytest.mark.django_db
+def test_reporting_run_emits_audit_event():
+    # PR-7: cierra audit=0 en reporting — ejecutar un dataset emite REPORTING_DATASET_EXECUTED.
+    from apps.modulos.audit.models import AuditEvent
+
+    company, branch = _mk_org()
+    _seed_accounting_posted_entries(company=company, branch=branch)
+    call_command("seed_reporting_catalog")
+
+    client = _client_with_perms(
+        company=company, branch=branch,
+        perm_codes=["report.dataset.read", "report.run.read", "accounting.report.read"],
+    )
+    run = client.post(
+        "/api/reporting/datasets/accounting.trial_balance.period/run/",
+        {"filters": {"year": 2026, "month": 3}}, format="json",
+    )
+    assert run.status_code == 200, run.data
+    run_id = run.data["run_id"]
+
+    ev = AuditEvent.objects.filter(event_type="REPORTING_DATASET_EXECUTED", subject_id=str(run_id)).first()
+    assert ev is not None
+    assert ev.subject_type == "REPORT_RUN"
+    assert ev.metadata.get("dataset_key") == "accounting.trial_balance.period"
+
+
+@pytest.mark.django_db
 def test_reporting_run_requires_domain_permission():
     company, branch = _mk_org()
     _seed_accounting_posted_entries(company=company, branch=branch)
