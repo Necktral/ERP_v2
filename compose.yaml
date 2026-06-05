@@ -120,11 +120,17 @@ services:
     image: node:22-bullseye-slim
     container_name: erpcrm_frontend
     restart: unless-stopped
-    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    # Arranca como root SOLO para corregir el ownership del volumen node_modules
+    # (los volúmenes nuevos nacen root y rompen npm con EACCES); el command baja a
+    # HOST_UID/HOST_GID con setpriv antes de ejecutar npm/Vite.
     working_dir: /app/frontend
     environment:
       # API por defecto same-origin vía proxy devServer (/api). Override opcional por .env.
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+      # HOME/caché npm escribibles: tras bajar de root con setpriv, el env conserva
+      # HOME=/root (no escribible por uid 1000) y npm falla con EACCES. Mismo patrón /tmp que frontend_ci.
+      HOME: /tmp/erpcrm_frontend_home
+      NPM_CONFIG_CACHE: /tmp/erpcrm_frontend_home/.npm
     depends_on:
       backend:
         condition: service_healthy
@@ -137,8 +143,8 @@ services:
       - /app/frontend/node_modules
     command: >
       bash -lc "
-        npm install &&
-        npm run dev -- --host 0.0.0.0 --port 3000
+        chown -R ${HOST_UID:-1000}:${HOST_GID:-1000} /app/frontend/node_modules &&
+        exec setpriv --reuid=${HOST_UID:-1000} --regid=${HOST_GID:-1000} --clear-groups bash -c 'mkdir -p /tmp/erpcrm_frontend_home/.npm && npm install && npm run dev -- --host 0.0.0.0 --port 3000'
       "
 
   # Runner CI para frontend (lint + typecheck). No expone puertos.

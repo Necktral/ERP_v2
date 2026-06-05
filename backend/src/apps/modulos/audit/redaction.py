@@ -60,7 +60,7 @@ def _redact(obj: Any, *, depth: int = 0) -> Any:
 def _truncate_if_needed(obj: Any) -> Any:
     try:
         s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-    except Exception:
+    except (TypeError, ValueError):
         s = json.dumps(str(obj), ensure_ascii=False)
 
     b = s.encode("utf-8", errors="replace")

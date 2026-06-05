@@ -26,7 +26,9 @@ def _decode_payload_unverified(raw_token: str) -> dict[str, Any]:
         payload = json.loads(decoded.decode("utf-8"))
         if isinstance(payload, dict):
             return payload
-    except Exception:
+    except ValueError:
+        # binascii.Error, JSONDecodeError y UnicodeDecodeError son subclases de ValueError.
+        # Peek best-effort sin verificar; la verificación real ocurre con AccessToken/TokenError.
         return {}
     return {}
 
