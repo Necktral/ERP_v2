@@ -1,0 +1,142 @@
+{
+  "burn_in_passed": true,
+  "checks": [
+    {
+      "detail": {
+        "days": 14,
+        "min_required": 14
+      },
+      "name": "minimum_days_covered",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_days": [],
+        "max_allowed": 0
+      },
+      "name": "failed_days_within_threshold",
+      "passed": true
+    }
+  ],
+  "days": [
+    "2026-03-09",
+    "2026-03-10",
+    "2026-03-11",
+    "2026-03-12",
+    "2026-03-13",
+    "2026-03-14",
+    "2026-03-15",
+    "2026-03-16",
+    "2026-03-17",
+    "2026-03-18",
+    "2026-03-19",
+    "2026-03-20",
+    "2026-03-21",
+    "2026-03-22"
+  ],
+  "failed_days": [],
+  "generated_at": "2026-04-12T04:37:51.213954+00:00",
+  "passed_days": [
+    "2026-03-09",
+    "2026-03-10",
+    "2026-03-11",
+    "2026-03-12",
+    "2026-03-13",
+    "2026-03-14",
+    "2026-03-15",
+    "2026-03-16",
+    "2026-03-17",
+    "2026-03-18",
+    "2026-03-19",
+    "2026-03-20",
+    "2026-03-21",
+    "2026-03-22"
+  ],
+  "rows": [
+    {
+      "cycle_passed": true,
+      "date": "2026-03-09",
+      "evidence_hash": "871584ee5f053fbfa04690d4c263a3880dd14615fd00e330d2310330170d70ed",
+      "file": "phase8_burn_20260309.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-10",
+      "evidence_hash": "c0b6d3be587e97b7138595eb4c4eed10e043439211b6707c4995c946fa913502",
+      "file": "phase8_burn_20260310.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-11",
+      "evidence_hash": "d64033d74c4ab425b287acc39d1c88a8f7b9584bf3fb600062e13f2f8c88ab7f",
+      "file": "phase8_burn_20260311.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-12",
+      "evidence_hash": "db16d9bab6e6f14e822c010a93a040e645ec72045bf5e7b40b0d7f12def4e6b1",
+      "file": "phase8_burn_20260312.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-13",
+      "evidence_hash": "581a962559b358da41d1f68048a9c084074a828728a4672d04a6edd2dc62e75c",
+      "file": "phase8_burn_20260313.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-14",
+      "evidence_hash": "6febd0f47ece66ffa5b9c68c1dbdeb29fc555e4cae848ec557997930b383e4c8",
+      "file": "phase8_burn_20260314.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-15",
+      "evidence_hash": "56177d8db0265aab1536b39c19f020dce3dd50db7823d5b0144b1f34ddf06419",
+      "file": "phase8_burn_20260315.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-16",
+      "evidence_hash": "a25a5fce7e316a41d375e7e9279a98ad4d4fb6de68e2b6cdb4ea058fc2c7b5ad",
+      "file": "phase8_burn_20260316.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-17",
+      "evidence_hash": "286de36b60558578edffb9f6c0db86f7db6d0bad3be9e94b38e225ba7bf08486",
+      "file": "phase8_burn_20260317.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-18",
+      "evidence_hash": "3588a8238d75a27e8b184cd62d4592b60af3f44c6ef2d8539980e35b02d3a59d",
+      "file": "phase8_burn_20260318.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-19",
+      "evidence_hash": "6d5d7a31ed8c6305368e75146fbf9a8a5c87743eeff3acdab6c6d1e806bb5d7a",
+      "file": "phase8_burn_20260319.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-20",
+      "evidence_hash": "6567cf502ee44f6df20bc45905e8a72313b302775a35d0c2a92eb4dec1c08718",
+      "file": "phase8_burn_20260320.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-21",
+      "evidence_hash": "88ca037509514918b70e12059058c00f0639f828c4ebcadb2ed4f1896c5487e1",
+      "file": "phase8_burn_20260321.json"
+    },
+    {
+      "cycle_passed": true,
+      "date": "2026-03-22",
+      "evidence_hash": "2e7eda25679868b4194129975acaad7da44f760ce9772d6b12610fc4f24b9af7",
+      "file": "phase8_burn_20260322.json"
+    }
+  ],
+  "schema_version": 1
+}

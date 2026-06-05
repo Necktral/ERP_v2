@@ -1,0 +1,80 @@
+{
+  "certification_ref": {
+    "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+    "run_id": "b1758911-8beb-4526-9d50-9b9d14535e3e"
+  },
+  "checks": [
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "certification_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "blocked_consolidation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_consolidation_exception_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "evidence_hash": "89f917fdecd1e705f78d8e483627f59ec4fd837b7fa6ec526a117ec36bcf55be",
+  "generated_at": "2026-03-09T05:50:17.173823+00:00",
+  "go_live_passed": true,
+  "health": {
+    "blocked_consolidation_count": 0,
+    "disputed_intercompany_count": 0,
+    "inbox_failed_count": 0,
+    "open_consolidation_exception_count": 0,
+    "open_intercompany_count": 0,
+    "outbox_failed_count": 0
+  },
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "89f917fdecd1e705f78d8e483627f59ec4fd837b7fa6ec526a117ec36bcf55be",
+  "signature_type": "sha256"
+}

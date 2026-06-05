@@ -1,0 +1,56 @@
+{
+  "f8_precondition": {
+    "details": {
+      "accountant_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/65_phase8_accountant_verify.json",
+      "branch_id": 6,
+      "burn_in_days": [
+        "2026-03-09",
+        "2026-03-10",
+        "2026-03-11",
+        "2026-03-12",
+        "2026-03-13",
+        "2026-03-14",
+        "2026-03-15",
+        "2026-03-16",
+        "2026-03-17",
+        "2026-03-18",
+        "2026-03-19",
+        "2026-03-20",
+        "2026-03-21",
+        "2026-03-22"
+      ],
+      "burn_in_failed_days": [],
+      "burn_in_passed": true,
+      "company_id": 5,
+      "final_approved_present": true,
+      "phase8_status": "READY_TO_CLOSE_F8",
+      "rollback_required": false,
+      "signoff_passed": true,
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/33_phase8_master_summary.json",
+      "verify_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/17_phase8_burnin_verify.json"
+    },
+    "errors": [],
+    "f8_closed": true
+  },
+  "generated_at": "2026-03-10T22:15:19.505950+00:00",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "series": "B"
+  },
+  "precheck_passed": true,
+  "provider_check": {
+    "log_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_recheck_20260310_161518/01_phase9_provider_check.txt",
+    "ok": true,
+    "output": "[INFO] 2026-03-10 16:15:18,917 axes.apps: AXES: BEGIN version 8.1.0, blocking by ip_address or combination of username and user_agent (request_id=)\nadapter_b provider ok: mode=B adapter_code=EMULATED_B series=B\n",
+    "return_code": 0
+  },
+  "provider_runtime_override": {
+    "FISCAL_ADAPTER_B_HTTP_API_KEY_configured": false,
+    "FISCAL_ADAPTER_B_HTTP_BASE_URL_configured": false,
+    "FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS": "",
+    "FISCAL_ADAPTER_B_HTTP_VERIFY_TLS": "",
+    "FISCAL_ADAPTER_B_PROVIDER": ""
+  },
+  "schema_version": 1
+}

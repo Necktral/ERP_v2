@@ -1,0 +1,125 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "happy_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_confirmed_unclosed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_blocking_exceptions_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "blocked_consolidation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_tx_id": "79856a01-5960-43e8-a376-14da0b040b3f",
+    "happy_tx_id": "d0a88dfe-a65b-4e74-b83f-a60f90d97f39"
+  },
+  "evidence_hash": "d057b0aa4f07666d78d56e7540fe1993cdc260a2bd59fbabf8dbd5cf0cd24a6f",
+  "generated_at": "2026-03-10T03:01:49.994624+00:00",
+  "go_live_passed": true,
+  "health": {
+    "blocked_consolidation_count": 0,
+    "disputed_intercompany_count": 0,
+    "disputed_outside_sla_count": 0,
+    "inbox_failed_count": 0,
+    "open_consolidation_exception_count": 0,
+    "open_dispute_case_count": 0,
+    "open_intercompany_blocking_exception_count": 0,
+    "open_intercompany_count": 0,
+    "open_outside_sla_count": 0,
+    "outbox_failed_count": 0,
+    "stale_confirmed_unclosed_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "d057b0aa4f07666d78d56e7540fe1993cdc260a2bd59fbabf8dbd5cf0cd24a6f",
+  "signature_type": "sha256"
+}

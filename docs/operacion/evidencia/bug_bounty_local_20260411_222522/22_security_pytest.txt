@@ -1,0 +1,2 @@
+[bug-bounty] pytest test_db_slot=<auto> test_db_base=test_erp_db
+..........                                                               [100%]

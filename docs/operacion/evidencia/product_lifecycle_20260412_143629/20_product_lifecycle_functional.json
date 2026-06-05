@@ -1,0 +1,498 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-12T20:37:24.696563+00:00",
+  "started_at": "2026-04-12T20:37:18.785742+00:00",
+  "timezone": "America/Managua",
+  "seed": 20260412,
+  "base_url": "http://localhost:8000/api",
+  "status": "FAIL",
+  "pass": false,
+  "global_error": "Paso HTTP falló: retail_fuel/fuel.shift_open status=403 allowed=[201] detail=",
+  "required_modules": [
+    "iam",
+    "organization",
+    "hr",
+    "retail_fuel",
+    "sync",
+    "accounting"
+  ],
+  "module_results": {
+    "iam": {
+      "steps": 15,
+      "passed": 15,
+      "failed": 0,
+      "pass": true
+    },
+    "organization": {
+      "steps": 3,
+      "passed": 3,
+      "failed": 0,
+      "pass": true
+    },
+    "hr": {
+      "steps": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass": true
+    },
+    "retail_fuel": {
+      "steps": 1,
+      "passed": 0,
+      "failed": 1,
+      "pass": false
+    }
+  },
+  "http_contract": {
+    "default_allowed_statuses": [
+      200,
+      201
+    ],
+    "status_overrides": {
+      "iam.bootstrap_status": [
+        200
+      ],
+      "iam.bootstrap_init": [
+        201
+      ],
+      "iam.login_plain": [
+        200
+      ],
+      "iam.bootstrap_org": [
+        200
+      ],
+      "iam.2fa_enable": [
+        200
+      ],
+      "iam.2fa_confirm": [
+        200
+      ],
+      "iam.login_2fa_challenge": [
+        202
+      ],
+      "iam.login_2fa_challenge_retry": [
+        202
+      ],
+      "iam.2fa_verify": [
+        200
+      ],
+      "iam.2fa_verify_denied": [
+        400
+      ],
+      "iam.refresh": [
+        200
+      ],
+      "iam.logout": [
+        204
+      ],
+      "org.create_company": [
+        201
+      ],
+      "org.create_branch": [
+        201
+      ],
+      "hr.create_position": [
+        201
+      ],
+      "hr.create_employee": [
+        201
+      ],
+      "hr.create_assignment": [
+        201
+      ],
+      "hr.provision_user": [
+        201
+      ],
+      "hr.reset_temp_password": [
+        200
+      ],
+      "hr.revoke_access": [
+        200
+      ],
+      "fuel.shift_open": [
+        201
+      ],
+      "fuel.shift_close": [
+        200
+      ],
+      "fuel.shift_report": [
+        200
+      ],
+      "fuel.daily_report": [
+        200
+      ],
+      "retail.pos_session_open": [
+        201
+      ],
+      "retail.pos_session_close": [
+        200
+      ],
+      "retail.ticket_open": [
+        201
+      ],
+      "retail.ticket_checkout": [
+        200
+      ],
+      "retail.ticket_void": [
+        200
+      ],
+      "retail.ticket_comp_retry": [
+        200
+      ],
+      "sync.edge_challenge": [
+        201
+      ],
+      "sync.edge_handshake": [
+        201
+      ],
+      "sync.edge_capabilities": [
+        200
+      ],
+      "sync.edge_bad_signature": [
+        401
+      ],
+      "accounting.coa_upsert": [
+        200
+      ],
+      "accounting.fx_rate_upsert": [
+        200,
+        201
+      ],
+      "accounting.intercompany_create": [
+        201
+      ],
+      "accounting.intercompany_confirm": [
+        200
+      ],
+      "accounting.intercompany_reconcile": [
+        200
+      ],
+      "accounting.intercompany_close": [
+        200
+      ],
+      "accounting.consolidation_run": [
+        200,
+        201
+      ],
+      "accounting.consolidation_tb": [
+        200
+      ],
+      "accounting.consolidation_pnl": [
+        200
+      ],
+      "accounting.report_tb": [
+        200
+      ],
+      "accounting.report_pnl": [
+        200
+      ],
+      "accounting.journal_entry_reverse": [
+        200,
+        201
+      ]
+    },
+    "violations_count": 1
+  },
+  "orphan_checks": {},
+  "intercompany_consistency": {},
+  "context": {
+    "admin_username": "root_lifecycle",
+    "admin_user_id": 1,
+    "company_a_id": 2,
+    "company_b_id": 4,
+    "branch_a1_id": 3,
+    "branch_a2_id": 5,
+    "branch_b1_id": 6
+  },
+  "steps": [
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_status",
+      "action": "Bootstrap status",
+      "expected": "sistema fresh=true [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_fresh_assert",
+      "action": "Validar estado fresh",
+      "expected": "is_fresh=true",
+      "actual": "is_fresh=True",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_init",
+      "action": "Bootstrap init admin",
+      "expected": "admin creado [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_plain",
+      "action": "Login inicial",
+      "expected": "token header emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_org",
+      "action": "Bootstrap organización base",
+      "expected": "holding/company/branch creados [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_enable",
+      "action": "Habilitar setup 2FA",
+      "expected": "secret TOTP emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_confirm",
+      "action": "Confirmar 2FA",
+      "expected": "2FA activo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge",
+      "action": "Login con challenge 2FA",
+      "expected": "challenge one-time [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify_denied",
+      "action": "Verificar denegación sin segundo factor válido",
+      "expected": "acceso denegado [[400]]",
+      "actual": "HTTP 400",
+      "passed": true,
+      "http_status": 400,
+      "detail": "Código inválido."
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge_retry",
+      "action": "Login 2FA (retry tras denegación)",
+      "expected": "challenge one-time [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify",
+      "action": "Verificar challenge 2FA",
+      "expected": "tokens emitidos [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.refresh",
+      "action": "Refresh token",
+      "expected": "rotación de tokens [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.logout",
+      "action": "Logout",
+      "expected": "sesión invalidada [[204]]",
+      "actual": "HTTP 204",
+      "passed": true,
+      "http_status": 204,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge",
+      "action": "Re-login operativo",
+      "expected": "challenge 2FA [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify",
+      "action": "Verify 2FA operativo",
+      "expected": "tokens activos para ciclo completo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_company",
+      "action": "Crear segunda compañía",
+      "expected": "company para intercompany [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_branch",
+      "action": "Crear sucursal #2 en compañía principal",
+      "expected": "branch adicional [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_branch",
+      "action": "Crear sucursal en compañía auxiliar",
+      "expected": "branch operativa intercompany [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_position",
+      "action": "Crear puesto Cajero POS",
+      "expected": "position creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_position",
+      "action": "Crear puesto Contador",
+      "expected": "position creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_employee",
+      "action": "Crear empleado Cajero",
+      "expected": "employee creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_assignment",
+      "action": "Asignar cajero a sucursal",
+      "expected": "assignment activa [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.provision_user",
+      "action": "Provisionar usuario de cajero",
+      "expected": "credenciales iniciales emitidas [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.reset_temp_password",
+      "action": "Reset temporal cajero",
+      "expected": "password temporal rotado [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_employee",
+      "action": "Crear empleado Contador",
+      "expected": "employee creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_assignment",
+      "action": "Asignar contador",
+      "expected": "assignment activa [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.provision_user",
+      "action": "Provisionar usuario contador",
+      "expected": "credenciales iniciales emitidas [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.revoke_access",
+      "action": "Revoke controlado contador",
+      "expected": "acceso revocado de forma auditable [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.shift_open",
+      "action": "Abrir turno fuel",
+      "expected": "turno OPEN [[201]]",
+      "actual": "HTTP 403",
+      "passed": false,
+      "http_status": 403,
+      "detail": ""
+    }
+  ]
+}

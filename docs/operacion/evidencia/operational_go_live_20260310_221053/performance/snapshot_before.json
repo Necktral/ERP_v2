@@ -1,0 +1,775 @@
+{
+  "branch_id": 6,
+  "company_id": 5,
+  "failed_outbox": {
+    "by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "total": 0
+  },
+  "fuel_compensation": {
+    "failed_count": 0,
+    "pending_count": 0
+  },
+  "gate_summary": {
+    "blocked": true,
+    "blocking_reasons": [
+      "RECONCILIATION_MISMATCH",
+      "PENDING_OPERATIONAL_EVENTS"
+    ],
+    "draft_exception_count": 0,
+    "failed_outbox_count": 0,
+    "failed_outbox_sample": [],
+    "force_applied": false,
+    "pending_drafts_count": 0,
+    "pending_operational_events_count": 115,
+    "period_end": "2026-03-31",
+    "period_start": "2026-03-01",
+    "reconciliation_mismatch_count": 3
+  },
+  "generated_at": "2026-03-11T04:10:57.976650+00:00",
+  "period": {
+    "date_from": "2026-03-01",
+    "date_to": "2026-03-31"
+  },
+  "reconciliation": {
+    "by_event_type": [
+      {
+        "draft_amount": "14904.00",
+        "draft_exception_count": 0,
+        "event_type": "DocumentIssued",
+        "linked_count": 118,
+        "operational_amount": "18883.00",
+        "operational_count": 141,
+        "posted_amount": "14904.00",
+        "posted_count": 111,
+        "source_module": "BILLING"
+      },
+      {
+        "draft_amount": "13064.00",
+        "draft_exception_count": 0,
+        "event_type": "DocumentVoided",
+        "linked_count": 95,
+        "operational_amount": "0.00",
+        "operational_count": 118,
+        "posted_amount": "13064.00",
+        "posted_count": 95,
+        "source_module": "BILLING"
+      },
+      {
+        "draft_amount": "33237.50",
+        "draft_exception_count": 0,
+        "event_type": "InventoryMovementPosted",
+        "linked_count": 376,
+        "operational_amount": "38832.50",
+        "operational_count": 445,
+        "posted_amount": "33237.50",
+        "posted_count": 376,
+        "source_module": "INVENTORY"
+      }
+    ],
+    "pending_operational_events": [
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:14.355671+00:00",
+        "outbox_event_id": "f75bc90f-e532-4a12-a706-223c2367d8ae",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:14.636081+00:00",
+        "outbox_event_id": "e432b3b5-5337-45ab-b83c-31f0068e0b9a",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:14.714535+00:00",
+        "outbox_event_id": "cec2f2f0-7b43-40ab-963b-e0ce61c74400",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:14.758784+00:00",
+        "outbox_event_id": "ee44fa8d-a021-4884-92ba-d79946f78725",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:14.887086+00:00",
+        "outbox_event_id": "91f81474-7682-4190-b99b-65044e243839",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:14.998312+00:00",
+        "outbox_event_id": "bcf35ebb-4040-4608-8fe1-c2edb1e1ef67",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.109835+00:00",
+        "outbox_event_id": "f75486f6-faed-4a70-bae9-3f508b0f25e3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:15.264023+00:00",
+        "outbox_event_id": "3be0e305-75b7-473e-947c-4ec88eb02f72",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.350669+00:00",
+        "outbox_event_id": "c207a807-840a-42e7-8ff9-1602dd38cd9d",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:15.448240+00:00",
+        "outbox_event_id": "bcb1f074-223c-43f4-b2fb-f0970db8620a",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.475374+00:00",
+        "outbox_event_id": "f64ec15f-b66a-4915-ae67-22cec7761af0",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.679549+00:00",
+        "outbox_event_id": "d3a1411c-8c72-477d-ab9d-bd6a835e5e14",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:15.746523+00:00",
+        "outbox_event_id": "a04ae250-2c66-4fc9-8b2d-a321562ed823",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.792076+00:00",
+        "outbox_event_id": "d47d522d-c2b4-42c4-96bf-fb9000c04669",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:15.898150+00:00",
+        "outbox_event_id": "5d4d4bf2-55e3-4001-ae7a-594148552ace",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:15.973863+00:00",
+        "outbox_event_id": "0af4cb9f-e725-45ec-8f00-851121d29ff3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.075486+00:00",
+        "outbox_event_id": "1f40f672-ddc3-4029-a587-b2788f5c3a0a",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:16.188554+00:00",
+        "outbox_event_id": "f8fb40af-0ff8-4b0a-9cf3-3cb3f2ca1d43",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.238042+00:00",
+        "outbox_event_id": "48dac75f-9418-4b1f-b5e6-5c3ae4619b66",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.315842+00:00",
+        "outbox_event_id": "98a0ec4a-0efc-4a16-ae2e-7da942482281",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:16.333368+00:00",
+        "outbox_event_id": "5c310b49-8e3c-4144-bddd-3273c4be1e8f",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.494824+00:00",
+        "outbox_event_id": "42a3bed7-6c7d-4ee1-9782-6f94c0439870",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.660328+00:00",
+        "outbox_event_id": "ca8edb38-cf7a-44e0-ace4-b8cfafb32be8",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:16.715917+00:00",
+        "outbox_event_id": "8b4d25c5-db59-4f39-920b-cfacf8289770",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:16.851084+00:00",
+        "outbox_event_id": "1cf879a2-8883-4f4b-a1cf-ec4bbb4b1192",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.881933+00:00",
+        "outbox_event_id": "2ec73afe-02d6-450f-a796-8cf8447fd006",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:16.990426+00:00",
+        "outbox_event_id": "91ae75a8-6cf6-40bb-a19b-447f6551a7dd",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:17.152376+00:00",
+        "outbox_event_id": "71a706de-ce65-44fc-a7aa-a10b8f2881ef",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.192133+00:00",
+        "outbox_event_id": "95fbf52e-d9c2-41d4-b47f-976c194a3421",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.278107+00:00",
+        "outbox_event_id": "b6dd112b-be36-4205-b2de-515ea5614039",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:17.310743+00:00",
+        "outbox_event_id": "10dc26a4-2486-491b-8a4e-0530fb49e035",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.455841+00:00",
+        "outbox_event_id": "4c1908c4-a805-4c74-8f0d-74775a2093d9",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.551528+00:00",
+        "outbox_event_id": "058e64aa-669e-49a7-b147-5e4a73af7be3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:17.587788+00:00",
+        "outbox_event_id": "7d8f86f3-1034-473e-9c66-a2c3046567c4",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:17.710813+00:00",
+        "outbox_event_id": "27021685-a63d-46cd-b9c1-0bcf76f08c45",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.734684+00:00",
+        "outbox_event_id": "716ab95a-c80e-4319-8947-847064540d42",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:17.817771+00:00",
+        "outbox_event_id": "4c42a7ee-6d73-495f-92a9-b07eab3cceb2",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:18.014886+00:00",
+        "outbox_event_id": "dae739eb-6d4b-4f83-b4fc-d629e144edbd",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.048836+00:00",
+        "outbox_event_id": "0301853b-b800-41e1-ade7-8b7ee5f11815",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.116333+00:00",
+        "outbox_event_id": "aff98e24-41d5-4ab5-a22a-a8f4b448cd10",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:18.154814+00:00",
+        "outbox_event_id": "7d16bd48-0bc4-4072-8c38-c1a536ee744d",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.292915+00:00",
+        "outbox_event_id": "8adff068-1e93-49c5-899a-a78048888dda",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.367528+00:00",
+        "outbox_event_id": "0f8453be-e487-437b-976b-eb5ebc067e71",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:18.387740+00:00",
+        "outbox_event_id": "c97c1729-84ea-4b74-907e-cecb8a2425e1",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:18.498096+00:00",
+        "outbox_event_id": "38cadc62-21b3-4666-831c-fe5ca35f57c7",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.523090+00:00",
+        "outbox_event_id": "9cbb7ee1-fc79-423c-8f18-5c13125928d8",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.574336+00:00",
+        "outbox_event_id": "c3239e4f-9eda-444d-b766-a8454c6674d2",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.767155+00:00",
+        "outbox_event_id": "1acc0b07-2af6-4420-ba03-0b39a5249062",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:18.795323+00:00",
+        "outbox_event_id": "c3b1d10d-a057-4bec-ae50-659aa8425477",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:18.832662+00:00",
+        "outbox_event_id": "87a0025a-7611-4a4c-af00-bc085e300de0",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:18.893011+00:00",
+        "outbox_event_id": "15654904-817b-484e-89e2-e3ae7afd5797",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.053354+00:00",
+        "outbox_event_id": "ca070226-109c-4b17-ac7c-53cfdfcff0d2",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.200038+00:00",
+        "outbox_event_id": "256f81a2-a642-4166-8810-0eb2acec16d3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:19.253713+00:00",
+        "outbox_event_id": "66d0d6c8-34f9-4f53-875f-2d0e712ee2db",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:19.395921+00:00",
+        "outbox_event_id": "d95c921f-140a-431f-acd6-79ffe5ee0edf",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.418410+00:00",
+        "outbox_event_id": "fe20a0a2-b108-4b77-bd4e-5e5cdb85e0d8",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.483279+00:00",
+        "outbox_event_id": "1478c0bb-59c2-4dbf-8e84-fbbc7d826da2",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.711662+00:00",
+        "outbox_event_id": "a2c6c3cc-8d2d-48b9-98df-5dfcc42ab1d8",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:19.744696+00:00",
+        "outbox_event_id": "6a0db1aa-9e8f-4365-b4d9-b85c4f19a2e8",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.797441+00:00",
+        "outbox_event_id": "43ce86cf-25a1-4722-9467-7d240b84d918",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:19.866197+00:00",
+        "outbox_event_id": "f57fea66-352f-4ed7-9d91-b04ecab8c881",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:19.970120+00:00",
+        "outbox_event_id": "a499f9a5-38ed-45af-9a3e-77b0f72fdfc3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.063052+00:00",
+        "outbox_event_id": "5ea9a852-f9eb-4065-9ef0-740ac52ba1de",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:20.142141+00:00",
+        "outbox_event_id": "a2c6c24e-db41-4fc7-a60b-81d126c7e21f",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.248190+00:00",
+        "outbox_event_id": "fcbd7b78-93a9-43b1-aa19-dbdce819638e",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:20.272495+00:00",
+        "outbox_event_id": "ab155ec0-41d6-42cb-8b32-3f1a0b47b19f",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.307369+00:00",
+        "outbox_event_id": "bb66ff81-dfd6-402a-86bb-c16e57ae1c83",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.518594+00:00",
+        "outbox_event_id": "7e534325-8012-4aa3-bf2b-90a2b6b82fba",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:20.585890+00:00",
+        "outbox_event_id": "7e220531-fdbf-4594-a3b4-a3a49241f2fc",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.610390+00:00",
+        "outbox_event_id": "0906a235-859b-4b48-a660-812e45464558",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:20.694167+00:00",
+        "outbox_event_id": "14644e38-5e9d-4d65-88ae-c214f9770990",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.798860+00:00",
+        "outbox_event_id": "15c6d154-52e6-417b-883f-b37e1130e1be",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:20.886617+00:00",
+        "outbox_event_id": "a069960c-1e7d-4420-bf79-856b83a24502",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:20.930104+00:00",
+        "outbox_event_id": "a79ed964-78d3-46db-9ff0-e9c41c182ced",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:21.058135+00:00",
+        "outbox_event_id": "55d09a95-dd58-403a-bdf5-0e6751f59c20",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.094487+00:00",
+        "outbox_event_id": "140d10b8-2e23-4506-b32e-deb6fe1209cd",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.174331+00:00",
+        "outbox_event_id": "4ff06ba0-0719-4391-b677-be2b27116e05",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:21.294955+00:00",
+        "outbox_event_id": "36640d7a-762f-40e5-bb48-dac87f119b44",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.356654+00:00",
+        "outbox_event_id": "f2a55cb1-90ce-41e8-a673-24081e7b8ce6",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:21.452273+00:00",
+        "outbox_event_id": "5948a88d-e148-4862-90f6-82d1dd2d352b",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.468200+00:00",
+        "outbox_event_id": "8142864d-717a-4894-a682-5218e9e3ae7f",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.673302+00:00",
+        "outbox_event_id": "1441eb92-653a-4355-8508-bd69e1831b64",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:21.776681+00:00",
+        "outbox_event_id": "b67a0aa0-4a27-4913-b37e-51b940bd1f2c",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.822286+00:00",
+        "outbox_event_id": "b01ef7e6-65e5-4b3b-bad0-dc8d2f566f80",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:21.891661+00:00",
+        "outbox_event_id": "4fb32acf-65ff-408c-ad9a-c6c51c229800",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:21.991428+00:00",
+        "outbox_event_id": "bad7735f-aee6-40fa-800d-99fd20c62911",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.099663+00:00",
+        "outbox_event_id": "cc4e404d-8070-4fde-857f-747e6dacbca1",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:22.150623+00:00",
+        "outbox_event_id": "288cdd8b-1bed-47c5-a2cf-764d0880ec84",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.322626+00:00",
+        "outbox_event_id": "ebd773f2-6a8b-4671-a64b-cf99db72ce94",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:22.360450+00:00",
+        "outbox_event_id": "35620971-b867-4a5f-9fe7-5ef823f39a6b",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.406559+00:00",
+        "outbox_event_id": "34583f0b-c076-4a21-b557-57f085fb874d",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.574538+00:00",
+        "outbox_event_id": "620a6961-a724-4c2b-b5e5-71ed05eb9ad0",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:22.628930+00:00",
+        "outbox_event_id": "81e5af26-719a-4d90-91b1-e10d1f7fe819",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.684785+00:00",
+        "outbox_event_id": "2b408dce-b3a4-4553-a036-267d64bf1e76",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:22.736623+00:00",
+        "outbox_event_id": "a1e6163b-6655-4b86-ab1d-871db85c3264",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:22.853992+00:00",
+        "outbox_event_id": "10947275-e129-4f02-a31e-1acdda81aae8",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.062384+00:00",
+        "outbox_event_id": "4b09ff8e-10f2-452f-8a5c-3114f0edfbf6",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:23.101529+00:00",
+        "outbox_event_id": "b0f4644e-b192-4bde-a211-ddb08fd9107f",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:23.220314+00:00",
+        "outbox_event_id": "e5bd857d-fda9-4e7b-aff5-3a1651a3dac3",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.244272+00:00",
+        "outbox_event_id": "6e2918ed-a113-490d-bf41-2bd3edffabc0",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.344287+00:00",
+        "outbox_event_id": "baac4524-2141-45b1-9e4a-9e854e053af7",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:23.445993+00:00",
+        "outbox_event_id": "5bd71b2f-31af-44f4-8975-3070e96947be",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.508434+00:00",
+        "outbox_event_id": "b9717972-359e-4e40-8924-56ab7dd4de1b",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:23.611436+00:00",
+        "outbox_event_id": "cb7abf27-e4db-4630-84ed-ab51f1bdc5cf",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.636424+00:00",
+        "outbox_event_id": "23bfa20f-7b8c-47c6-b213-dc925b188707",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.800365+00:00",
+        "outbox_event_id": "6da6941a-ec15-4086-9834-f2802fd6b3a3",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:23.874045+00:00",
+        "outbox_event_id": "b60ad268-d563-47e8-9a60-a1c2f21d75ce",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:23.911737+00:00",
+        "outbox_event_id": "6da8dfa8-b4e8-4685-8f73-a41be783c5d6",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:23.993577+00:00",
+        "outbox_event_id": "b3852ed3-3afb-4db2-b429-49ce00ddaa78",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:24.084446+00:00",
+        "outbox_event_id": "b647f42d-c40e-4c1e-850a-220838c6cfc4",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:24.198606+00:00",
+        "outbox_event_id": "7606d90a-c90e-472d-aac0-9c05b80e4fda",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentIssued",
+        "occurred_at": "2026-03-11T04:10:24.338130+00:00",
+        "outbox_event_id": "af589f50-fa7b-42fc-b94e-b8758ae13346",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:24.387978+00:00",
+        "outbox_event_id": "4a58fea7-a328-4b83-acf7-1867048c5c53",
+        "source_module": "INVENTORY"
+      },
+      {
+        "event_type": "DocumentVoided",
+        "occurred_at": "2026-03-11T04:10:24.469556+00:00",
+        "outbox_event_id": "598b1f52-5122-4f53-bd75-cac010d63fa0",
+        "source_module": "BILLING"
+      },
+      {
+        "event_type": "InventoryMovementPosted",
+        "occurred_at": "2026-03-11T04:10:24.486772+00:00",
+        "outbox_event_id": "149f8e84-891e-47af-8eae-bfc8e36295d2",
+        "source_module": "INVENTORY"
+      }
+    ],
+    "summary": {
+      "drafts_exception": 0,
+      "drafts_posted": 582,
+      "drafts_total": 582,
+      "drafts_validated": 0,
+      "economic_events_linked": 589,
+      "operational_events": 704,
+      "pending_operational_events": 115
+    }
+  }
+}

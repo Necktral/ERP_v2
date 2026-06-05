@@ -1,0 +1,56 @@
+{
+  "all_cycles_green": true,
+  "consecutive_green_count": 2,
+  "consecutive_green_cycles": [
+    {
+      "all_green": true,
+      "files": [
+        "40_live_adapter_cycle_20260309_105613.json",
+        "41_live_gl_cycle_20260309_105613.json",
+        "42_live_intercompany_cycle_20260309_105613.json",
+        "43_live_consolidated_close_20260309_105613.json",
+        "44_live_snapshot_20260309_105613.json",
+        "45_live_rollback_20260309_105613.json"
+      ],
+      "status": {
+        "40_live_adapter_cycle_20260309_105613.json": true,
+        "41_live_gl_cycle_20260309_105613.json": true,
+        "42_live_intercompany_cycle_20260309_105613.json": true,
+        "43_live_consolidated_close_20260309_105613.json": true,
+        "44_live_snapshot_20260309_105613.json": true,
+        "45_live_rollback_20260309_105613.json": true
+      },
+      "timestamp": "20260309_105613"
+    },
+    {
+      "all_green": true,
+      "files": [
+        "50_live_adapter_cycle_20260309_110414.json",
+        "51_live_gl_cycle_20260309_110414.json",
+        "52_live_intercompany_cycle_20260309_110414.json",
+        "53_live_consolidated_close_20260309_110414.json",
+        "54_live_snapshot_20260309_110414.json",
+        "55_live_rollback_20260309_110414.json"
+      ],
+      "status": {
+        "50_live_adapter_cycle_20260309_110414.json": true,
+        "51_live_gl_cycle_20260309_110414.json": true,
+        "52_live_intercompany_cycle_20260309_110414.json": true,
+        "53_live_consolidated_close_20260309_110414.json": true,
+        "54_live_snapshot_20260309_110414.json": true,
+        "55_live_rollback_20260309_110414.json": true
+      },
+      "timestamp": "20260309_110414"
+    }
+  ],
+  "generated_at": "2026-03-09T17:04:52.034533+00:00",
+  "schema_version": 1,
+  "scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  }
+}

@@ -1,0 +1,247 @@
+{
+    "setup_data": {
+        "token": "",
+        "warehouseId": 10,
+        "authTransport": "cookie",
+        "csrf": "",
+        "itemId": 10
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "checks": {
+                    "inventory_warehouse_create status valid": {
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "inventory_warehouse_create status valid",
+                        "path": "::setup::inventory_warehouse_create status valid",
+                        "id": "55c4b722d45f4a0f5faec25b54407d1a"
+                    },
+                    "inventory_item_create status valid": {
+                        "path": "::setup::inventory_item_create status valid",
+                        "id": "f9676fb7af4777914c3316392e5118e1",
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "inventory_item_create status valid"
+                    },
+                    "inventory_seed_receive status valid": {
+                        "id": "754570f9bc88f717fe0fcf3ab62db5cd",
+                        "passes": 1,
+                        "fails": 0,
+                        "name": "inventory_seed_receive status valid",
+                        "path": "::setup::inventory_seed_receive status valid"
+                    }
+                },
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {}
+            }
+        },
+        "checks": {
+            "accounting_draft_approve status valid": {
+                "path": "::accounting_draft_approve status valid",
+                "id": "4ed6893da9618849c96900e417b6f012",
+                "passes": 13,
+                "fails": 0,
+                "name": "accounting_draft_approve status valid"
+            },
+            "inventory_receive status valid": {
+                "name": "inventory_receive status valid",
+                "path": "::inventory_receive status valid",
+                "id": "f07763983013ef81d43169b2baf437fd",
+                "passes": 14,
+                "fails": 0
+            },
+            "billing_doc_create status valid": {
+                "fails": 0,
+                "name": "billing_doc_create status valid",
+                "path": "::billing_doc_create status valid",
+                "id": "c92b6ea47ce50845361a0693dd12e433",
+                "passes": 12
+            },
+            "accounting_draft_post status valid": {
+                "name": "accounting_draft_post status valid",
+                "path": "::accounting_draft_post status valid",
+                "id": "1e540656541530e7c14ee0edbdbbfeda",
+                "passes": 13,
+                "fails": 0
+            },
+            "inventory_issue status valid": {
+                "fails": 0,
+                "name": "inventory_issue status valid",
+                "path": "::inventory_issue status valid",
+                "id": "4953c74f21c13fe4e6f933583d5eed4b",
+                "passes": 14
+            },
+            "billing_doc_issue status valid": {
+                "name": "billing_doc_issue status valid",
+                "path": "::billing_doc_issue status valid",
+                "id": "ba89bd149a9272da52716cd6481ff5b6",
+                "passes": 12,
+                "fails": 0
+            },
+            "billing_doc_void status valid": {
+                "name": "billing_doc_void status valid",
+                "path": "::billing_doc_void status valid",
+                "id": "e634812c6786a785f839eefd23121ab0",
+                "passes": 12,
+                "fails": 0
+            }
+        }
+    },
+    "metrics": {
+        "http_req_connecting": {
+            "avg": 0.0018065660036166364,
+            "min": 0,
+            "med": 0,
+            "max": 0.265244,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "checks": {
+            "passes": 93,
+            "fails": 0,
+            "value": 1
+        },
+        "vus_max": {
+            "max": 3,
+            "value": 3,
+            "min": 3
+        },
+        "iteration_duration": {
+            "avg": 2742.6290796800004,
+            "min": 699.916551,
+            "med": 3186.9904355,
+            "max": 4973.437923,
+            "p(90)": 4208.6137797,
+            "p(95)": 4224.059952
+        },
+        "http_req_waiting": {
+            "med": 12.294839,
+            "max": 345.232695,
+            "p(90)": 104.0000224,
+            "p(95)": 138.4019052,
+            "avg": 35.41155065822788,
+            "min": 6.265221
+        },
+        "data_received": {
+            "count": 677497,
+            "rate": 7199.096033796696
+        },
+        "operational_error_rate": {
+            "passes": 0,
+            "fails": 93,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "posting_cycle_ms": {
+            "p(95)": 250.11946425000002,
+            "avg": 154.57390623076918,
+            "min": 107.542791,
+            "med": 139.54378150000002,
+            "max": 280.197972,
+            "p(90)": 207.70687700000002,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_duration": {
+            "avg": 60.06229499095845,
+            "min": 7.149913,
+            "med": 51.963118,
+            "max": 376.395197,
+            "p(90)": 139.199445,
+            "p(95)": 155.89901319999998
+        },
+        "inventory_write_ms": {
+            "p(90)": 188.82710250000002,
+            "p(95)": 237.19639969999994,
+            "avg": 139.14880857142856,
+            "min": 86.654123,
+            "med": 129.28301349999998,
+            "max": 275.546089,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "billing_write_ms": {
+            "max": 203.608692,
+            "p(90)": 157.764923,
+            "p(95)": 186.01345625,
+            "avg": 118.06728424999999,
+            "min": 70.045892,
+            "med": 110.6955105,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_blocked": {
+            "min": 0.002211,
+            "med": 0.004746,
+            "max": 1.10893,
+            "p(90)": 0.0074724,
+            "p(95)": 0.009173999999999998,
+            "avg": 0.008914585895117535
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(95)": 226.95751019999966,
+            "avg": 136.1186629022556,
+            "min": 70.045892,
+            "med": 125.99763,
+            "max": 347.474124,
+            "p(90)": 186.4735218
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 3
+        },
+        "http_req_tls_handshaking": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0
+        },
+        "http_req_sending": {
+            "p(95)": 0.077725,
+            "avg": 0.0411770054249548,
+            "min": 0.009581,
+            "med": 0.039846,
+            "max": 0.320891,
+            "p(90)": 0.06364740000000002
+        },
+        "http_reqs": {
+            "count": 553,
+            "rate": 5.876188539122052
+        },
+        "data_sent": {
+            "rate": 2388.389051648075,
+            "count": 224768
+        },
+        "http_req_receiving": {
+            "med": 40.730677,
+            "max": 368.377208,
+            "p(90)": 44.686942200000004,
+            "p(95)": 46.60948079999999,
+            "avg": 24.609567327305598,
+            "min": 0.077061
+        },
+        "http_req_failed": {
+            "fails": 133,
+            "passes": 420,
+            "value": 0.759493670886076
+        },
+        "iterations": {
+            "count": 100,
+            "rate": 1.0626019058086893
+        }
+    }
+}

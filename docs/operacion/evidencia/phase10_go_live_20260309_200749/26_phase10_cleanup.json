@@ -1,0 +1,23 @@
+80 objects imported automatically (use -v 2 for details).
+
+{
+  "blocked_run_id": "564f4460-d38a-49c9-94f1-819ed303337a",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "resolved_count": 1,
+  "resolved_current_run_count": 0,
+  "resolved_exceptions": [
+    {
+      "close_run_id": "250be003-e693-4843-a762-e75c7ff07cda",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "fcd557db-812b-4c9c-9629-1842c0b65100",
+      "status": "RESOLVED"
+    }
+  ],
+  "resolved_legacy_count": 1,
+  "schema_version": 1,
+  "stale_packaged_run_ids": [],
+  "stale_packaged_runs_reopened": 0
+}

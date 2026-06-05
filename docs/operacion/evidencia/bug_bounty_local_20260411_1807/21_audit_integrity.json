@@ -1,0 +1,74 @@
+[INFO] 2026-04-11 18:08:45,294 axes.apps: AXES: BEGIN version 8.1.0, blocking by ip_address or combination of username and user_agent (request_id=)
+Traceback (most recent call last):
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 279, in ensure_connection
+    self.connect()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/postgresql/base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/psycopg/connection.py", line 122, in connect
+    raise last_ex.with_traceback(None)
+psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "erp_user"
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/necktral/ERP_CRM/backend/manage.py", line 18, in <module>
+    runpy.run_path(str(root / "src" / "manage.py"), run_name="__main__")
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/runpy.py", line 289, in run_path
+    return _run_module_code(code, init_globals, run_name,
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/runpy.py", line 96, in _run_module_code
+    _run_code(code, mod_globals, init_globals,
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/necktral/ERP_CRM/backend/src/manage.py", line 8, in <module>
+    raise SystemExit(main())
+  File "/home/necktral/ERP_CRM/backend/src/config/manage.py", line 17, in main
+    execute_from_command_line(argv or sys.argv)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/core/management/base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/core/management/base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "/home/necktral/ERP_CRM/backend/src/apps/modulos/audit/management/commands/audit_verify_chain.py", line 84, in handle
+    if seed_minimal and not AuditEvent.objects.filter(partition_key="SYSTEM").exists():
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/models/query.py", line 1298, in exists
+    return self.query.has_results(using=self.db)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/models/sql/query.py", line 674, in has_results
+    return compiler.has_results()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1591, in has_results
+    return bool(self.execute_sql(SINGLE))
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/models/sql/compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 320, in cursor
+    return self._cursor()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 279, in ensure_connection
+    self.connect()
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/base/base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/utils/asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/django/db/backends/postgresql/base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "/home/necktral/.pyenv/versions/3.10.14/lib/python3.10/site-packages/psycopg/connection.py", line 122, in connect
+    raise last_ex.with_traceback(None)
+django.db.utils.OperationalError: connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "erp_user"

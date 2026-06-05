@@ -1,0 +1,35 @@
+{
+  "all_green": true,
+  "checks": [
+    {
+      "cycle_passed": true,
+      "failed_checks": [],
+      "file": "40_live_adapter_cycle_20260309_105613.json"
+    },
+    {
+      "cycle_passed": true,
+      "failed_checks": [],
+      "file": "41_live_gl_cycle_20260309_105613.json"
+    },
+    {
+      "cycle_passed": true,
+      "file": "42_live_intercompany_cycle_20260309_105613.json"
+    },
+    {
+      "close_passed": true,
+      "file": "43_live_consolidated_close_20260309_105613.json"
+    },
+    {
+      "failed_checks": [],
+      "file": "44_live_snapshot_20260309_105613.json",
+      "snapshot_passed": true
+    },
+    {
+      "file": "45_live_rollback_20260309_105613.json",
+      "rollback_required": false,
+      "triggers": []
+    }
+  ],
+  "schema_version": 1,
+  "timestamp": "20260309_105613"
+}

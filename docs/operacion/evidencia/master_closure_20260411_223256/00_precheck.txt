@@ -1,0 +1,9 @@
+timestamp=20260411_223256
+branch=feat/u6-release-supplychain-20260325
+head=fae3fa026b38fd5efbccdfe4cc3d5e5ab110437e
+company_id=5
+branch_id=6
+parent_company_id=5
+company_ids=5
+year=2026
+month=04

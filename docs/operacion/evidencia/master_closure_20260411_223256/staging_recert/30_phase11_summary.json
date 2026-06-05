@@ -1,0 +1,28 @@
+{
+  "checks": {
+    "blocked_passed": true,
+    "cycle_clean_consecutive_max": 2,
+    "cycle_clean_consecutive_required": 2,
+    "gate_passed": true,
+    "happy_passed": true,
+    "precheck_passed": true
+  },
+  "evidence_hash": "519a28cf92ebb212e781fd27835543cdbac82ff9f5c6e084cabf947b31565314",
+  "files": {
+    "blocked": "23_phase11_blocked.json",
+    "cycles": [
+      "24_phase11_cycle_1.json",
+      "24_phase11_cycle_2.json"
+    ],
+    "gate": "25_phase11_gate.json",
+    "happy": "22_phase11_happy.json",
+    "precheck": "00_phase11_precheck.json",
+    "prod_manifest": "21_phase11_prod_manifest.json",
+    "staging_manifest": "20_phase11_staging_manifest.json"
+  },
+  "generated_at": "2026-04-12T04:57:22.980155+00:00",
+  "phase11_go_live_passed": true,
+  "schema_version": 1,
+  "signature": "519a28cf92ebb212e781fd27835543cdbac82ff9f5c6e084cabf947b31565314",
+  "signature_type": "sha256"
+}

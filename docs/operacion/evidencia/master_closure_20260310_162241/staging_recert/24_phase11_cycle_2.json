@@ -1,0 +1,118 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_confirmed_unclosed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_blocking_exceptions_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "cycle": {
+    "closed": 0,
+    "confirmed": 0,
+    "differences": 0,
+    "disputed": 0,
+    "open_items": 0,
+    "processed": 0,
+    "report_hash": "b1d0170ab84e9213b9d3369eafd7c624797f4b1cb2da677123613acd83b06e1d"
+  },
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 2,
+    "failed": 0,
+    "retried": 0,
+    "sent": 2
+  },
+  "dispatch_before": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "evidence_hash": "f56a36145b787772a97411ddca4a8c59d334258f74e0b4fd3e60b5a28e329c81",
+  "generated_at": "2026-03-10T22:31:43.527007+00:00",
+  "health": {
+    "blocked_consolidation_count": 0,
+    "disputed_intercompany_count": 0,
+    "disputed_outside_sla_count": 0,
+    "inbox_failed_count": 0,
+    "open_consolidation_exception_count": 0,
+    "open_dispute_case_count": 0,
+    "open_intercompany_blocking_exception_count": 0,
+    "open_intercompany_count": 0,
+    "open_outside_sla_count": 0,
+    "outbox_failed_count": 0,
+    "stale_confirmed_unclosed_count": 0
+  },
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "f56a36145b787772a97411ddca4a8c59d334258f74e0b4fd3e60b5a28e329c81",
+  "signature_type": "sha256",
+  "sla": {
+    "dispute_sla_hours": 24,
+    "escalated": 0,
+    "open_sla_hours": 24,
+    "resolved": 0
+  }
+}

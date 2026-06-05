@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-12T20:35:41.827455+00:00",
+  "started_at": "2026-04-12T20:35:39.702126+00:00",
+  "timezone": "America/Managua",
+  "seed": 20260412,
+  "base_url": "http://localhost:8000/api",
+  "status": "FAIL",
+  "pass": false,
+  "global_error": "No fue posible completar verify 2FA",
+  "required_modules": [
+    "iam",
+    "organization",
+    "hr",
+    "retail_fuel",
+    "sync",
+    "accounting"
+  ],
+  "module_results": {
+    "iam": {
+      "steps": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass": true
+    }
+  },
+  "http_contract": {
+    "default_allowed_statuses": [
+      200,
+      201
+    ],
+    "status_overrides": {
+      "iam.bootstrap_status": [
+        200
+      ],
+      "iam.bootstrap_init": [
+        201
+      ],
+      "iam.login_plain": [
+        200
+      ],
+      "iam.bootstrap_org": [
+        200
+      ],
+      "iam.2fa_enable": [
+        200
+      ],
+      "iam.2fa_confirm": [
+        200
+      ],
+      "iam.login_2fa_challenge": [
+        202
+      ],
+      "iam.2fa_verify": [
+        200
+      ],
+      "iam.2fa_verify_denied": [
+        400
+      ],
+      "iam.refresh": [
+        200
+      ],
+      "iam.logout": [
+        204
+      ],
+      "org.create_company": [
+        201
+      ],
+      "org.create_branch": [
+        201
+      ],
+      "hr.create_position": [
+        201
+      ],
+      "hr.create_employee": [
+        201
+      ],
+      "hr.create_assignment": [
+        201
+      ],
+      "hr.provision_user": [
+        201
+      ],
+      "hr.reset_temp_password": [
+        200
+      ],
+      "hr.revoke_access": [
+        200
+      ],
+      "fuel.shift_open": [
+        201
+      ],
+      "fuel.shift_close": [
+        200
+      ],
+      "fuel.shift_report": [
+        200
+      ],
+      "fuel.daily_report": [
+        200
+      ],
+      "retail.pos_session_open": [
+        201
+      ],
+      "retail.pos_session_close": [
+        200
+      ],
+      "retail.ticket_open": [
+        201
+      ],
+      "retail.ticket_checkout": [
+        200
+      ],
+      "retail.ticket_void": [
+        200
+      ],
+      "retail.ticket_comp_retry": [
+        200
+      ],
+      "sync.edge_challenge": [
+        201
+      ],
+      "sync.edge_handshake": [
+        201
+      ],
+      "sync.edge_capabilities": [
+        200
+      ],
+      "sync.edge_bad_signature": [
+        401
+      ],
+      "accounting.coa_upsert": [
+        200
+      ],
+      "accounting.fx_rate_upsert": [
+        200,
+        201
+      ],
+      "accounting.intercompany_create": [
+        201
+      ],
+      "accounting.intercompany_confirm": [
+        200
+      ],
+      "accounting.intercompany_reconcile": [
+        200
+      ],
+      "accounting.intercompany_close": [
+        200
+      ],
+      "accounting.consolidation_run": [
+        200,
+        201
+      ],
+      "accounting.consolidation_tb": [
+        200
+      ],
+      "accounting.consolidation_pnl": [
+        200
+      ],
+      "accounting.report_tb": [
+        200
+      ],
+      "accounting.report_pnl": [
+        200
+      ],
+      "accounting.journal_entry_reverse": [
+        200,
+        201
+      ]
+    },
+    "violations_count": 0
+  },
+  "orphan_checks": {},
+  "intercompany_consistency": {},
+  "context": {
+    "admin_username": "root_lifecycle",
+    "admin_user_id": 1,
+    "company_a_id": 2,
+    "company_b_id": null,
+    "branch_a1_id": 3,
+    "branch_a2_id": null,
+    "branch_b1_id": null
+  },
+  "steps": [
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_status",
+      "action": "Bootstrap status",
+      "expected": "sistema fresh=true [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_fresh_assert",
+      "action": "Validar estado fresh",
+      "expected": "is_fresh=true",
+      "actual": "is_fresh=True",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_init",
+      "action": "Bootstrap init admin",
+      "expected": "admin creado [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_plain",
+      "action": "Login inicial",
+      "expected": "token header emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_org",
+      "action": "Bootstrap organización base",
+      "expected": "holding/company/branch creados [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_enable",
+      "action": "Habilitar setup 2FA",
+      "expected": "secret TOTP emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_confirm",
+      "action": "Confirmar 2FA",
+      "expected": "2FA activo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge",
+      "action": "Login con challenge 2FA",
+      "expected": "challenge one-time [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify_denied",
+      "action": "Verificar denegación sin segundo factor válido",
+      "expected": "acceso denegado [[400]]",
+      "actual": "HTTP 400",
+      "passed": true,
+      "http_status": 400,
+      "detail": "Código inválido."
+    }
+  ]
+}

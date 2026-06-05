@@ -1,0 +1,46 @@
+{
+  "blocked": true,
+  "close_run_status": "REOPENED_EXCEPTION",
+  "deterministic_replay": true,
+  "evidence_hash": "9b528012db9f1203411bc161cd8abdf81ec16986a6a691124a24e3e0562d5b83",
+  "first_counts": {
+    "journal_entries": 14,
+    "journal_entry_lines": 42,
+    "missing_lines": 0
+  },
+  "first_manifest_hash": "fcfaf5e070409dc45dad7201996b4e99d76463f9782ba85d50fd018a3b2a147f",
+  "generated_at": "2026-03-09T05:44:41.003116+00:00",
+  "go_live_passed": true,
+  "manifest_hash": "fcfaf5e070409dc45dad7201996b4e99d76463f9782ba85d50fd018a3b2a147f",
+  "passed": true,
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "posting_first": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "posting_second": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "revaluation_run_id": "c22a38c6-7c0b-4b4a-8588-b98e970dd929",
+  "run_id": "3731c2ed-dc09-4a71-99f0-571a17642c74",
+  "schema_version": 1,
+  "second_counts": {
+    "journal_entries": 14,
+    "journal_entry_lines": 42,
+    "missing_lines": 0
+  },
+  "second_manifest_hash": "fcfaf5e070409dc45dad7201996b4e99d76463f9782ba85d50fd018a3b2a147f",
+  "signature": "9b528012db9f1203411bc161cd8abdf81ec16986a6a691124a24e3e0562d5b83",
+  "signature_type": "sha256"
+}

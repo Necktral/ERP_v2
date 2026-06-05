@@ -1,0 +1,55 @@
+{
+  "status": "FAIL",
+  "evidence_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260411_1807",
+  "checks": {
+    "gitleaks_clean": false,
+    "gitleaks_findings": 7,
+    "pip_audit_blocking_clean": true,
+    "pip_audit_blocking_count": 0,
+    "npm_audit_blocking_clean": false,
+    "npm_audit_blocking_count": 5,
+    "manage_check_pass": true,
+    "audit_chain_pass": false,
+    "security_pytest_pass": false,
+    "static_scan_pass": true
+  },
+  "tool_exit_codes": {
+    "gitleaks_rc": 1,
+    "pip_audit_rc": 1,
+    "npm_audit_rc": 1,
+    "static_scan_rc": 0,
+    "manage_check_rc": 0,
+    "audit_chain_rc": 1,
+    "security_pytest_rc": 1
+  },
+  "blocking_findings": {
+    "pip": [],
+    "npm": [
+      {
+        "name": "axios",
+        "severity": "critical",
+        "fix": true
+      },
+      {
+        "name": "lodash",
+        "severity": "high",
+        "fix": true
+      },
+      {
+        "name": "path-to-regexp",
+        "severity": "high",
+        "fix": true
+      },
+      {
+        "name": "picomatch",
+        "severity": "high",
+        "fix": true
+      },
+      {
+        "name": "vite",
+        "severity": "high",
+        "fix": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+/home/necktral/ERP_CRM/qa/static_scan_backend.sh: line 32: /home/necktral/ERP_CRM/qa/reports/static_scan.txt: Permission denied

@@ -1,0 +1,531 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "migration": "facturacion.0002_phase6_adapter_b"
+      },
+      "name": "phase6_migration_applied",
+      "passed": true
+    },
+    {
+      "detail": {
+        "branch_config_id": null,
+        "fiscal_mode": ""
+      },
+      "name": "branch_fiscal_mode_b_active",
+      "passed": false
+    },
+    {
+      "detail": {
+        "phase7_enabled": false
+      },
+      "name": "phase7_enabled_for_company",
+      "passed": false
+    },
+    {
+      "detail": {
+        "active_coa_count": 0
+      },
+      "name": "active_chart_of_accounts_present",
+      "passed": false
+    },
+    {
+      "detail": {
+        "active_rules_count": 0
+      },
+      "name": "active_posting_rules_present",
+      "passed": false
+    },
+    {
+      "detail": {
+        "timezone": "America/Managua"
+      },
+      "name": "timezone_matches_operational_default",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence_hash": "2c8bddd6a7707adab1bbc6a3d3264d739fd2819291aa283d062ab2b77da3f97d",
+  "generated_at": "2026-04-12T04:30:38.430535+00:00",
+  "health": {
+    "phase6": {
+      "cec_blocking_open_count": 0,
+      "contingency_open_count": 0,
+      "failed_jobs_count": 0,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "manifest_hash": "53f751286a441a0047af94697604f723e10a4a0983520b0d018146971db6991b",
+  "phase6_manifest": {
+    "branch_fiscal_config": {
+      "count": 0,
+      "hash": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+      "items": []
+    },
+    "database": {
+      "engine": "django.db.backends.postgresql",
+      "server_version": "16.2",
+      "vendor": "postgresql"
+    },
+    "environment": {
+      "app_version": "",
+      "django_version": "5.2.12",
+      "git_commit_sha": "",
+      "language_code": "es",
+      "python_version": "3.10.19",
+      "timezone": "America/Managua",
+      "use_tz": true
+    },
+    "generated_at": "2026-04-12T04:30:38.270394+00:00",
+    "migrations": {
+      "count": 115,
+      "hash": "4b989c3b855a5ca66febf5b90b36e9e9d015716d61b90aa1d4a2bbabc41c552e",
+      "items": [
+        "accounting.0001_initial",
+        "accounting.0002_shadow_ledger_phase4a",
+        "accounting.0003_phase5_sod_actor_trace",
+        "accounting.0004_phase7a_gl_core",
+        "accounting.0005_phase7b_intercompany_consolidation",
+        "accounting.0006_phase7b_performance_indexes",
+        "accounting.0007_phase11_intercompany_advanced",
+        "accounting.0008_operational_posting_config",
+        "accounting.0009_rename_acc_coa_comp_type_act_idx_accounting__company_41d161_idx_and_more",
+        "accounting.0010_intercompany_effective_at",
+        "accounts.0001_initial",
+        "accounts.0002_user_must_change_password",
+        "accounts.0003_user_is_setup_complete",
+        "accounts.0004_refresh_token_session",
+        "accounts.0005_user_totp_fields",
+        "accounts.0006_two_factor_challenge",
+        "accounts.0007_rename_accounts_re_user_id_6cc004_idx_accounts_re_user_id_7e85a1_idx_and_more",
+        "admin.0001_initial",
+        "admin.0002_logentry_remove_auto_add",
+        "admin.0003_logentry_add_action_flag_choices",
+        "audit.0001_initial",
+        "audit.0002_audit_event_signature_key_id",
+        "auth.0001_initial",
+        "auth.0002_alter_permission_name_max_length",
+        "auth.0003_alter_user_email_max_length",
+        "auth.0004_alter_user_username_opts",
+        "auth.0005_alter_user_last_login_null",
+        "auth.0006_require_contenttypes_0002",
+        "auth.0007_alter_validators_add_error_messages",
+        "auth.0008_alter_user_username_max_length",
+        "auth.0009_alter_user_last_name_max_length",
+        "auth.0010_alter_group_name_max_length",
+        "auth.0011_update_proxy_permissions",
+        "auth.0012_alter_user_first_name_max_length",
+        "axes.0001_initial",
+        "axes.0002_auto_20151217_2044",
+        "axes.0003_auto_20160322_0929",
+        "axes.0004_auto_20181024_1538",
+        "axes.0005_remove_accessattempt_trusted",
+        "axes.0006_remove_accesslog_trusted",
+        "axes.0007_alter_accessattempt_unique_together",
+        "axes.0008_accessfailurelog",
+        "axes.0009_add_session_hash",
+        "axes.0010_accessattemptexpiration",
+        "cec.0001_initial",
+        "cec.0002_phase3_fields",
+        "cec.0003_rename_cec_cecexc_status_826f17_idx_cec_cecexce_status_20932b_idx_and_more",
+        "compras.0001_initial",
+        "contenttypes.0001_initial",
+        "contenttypes.0002_remove_content_type_name",
+        "dashboard.0001_initial",
+        "estacion_servicios.0001_initial",
+        "estacion_servicios.0002_uom_and_precision",
+        "estacion_servicios.0003_price_uom_and_field_renames",
+        "estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null",
+        "estacion_servicios.0005_amounts_dual_entered_and_canonical",
+        "estacion_servicios.0006_fuel_uom_preference_unified",
+        "estacion_servicios.0007_alter_fueluompreference_user_related_name",
+        "estacion_servicios.0008_fuelsale_billing_and_inventory_links",
+        "estacion_servicios.0009_fuelsale_compensation_state",
+        "estacion_servicios.0010_rename_estacion_se_company__c8e61a_idx_estacion_se_company_54b2c6_idx_and_more",
+        "facturacion.0001_initial",
+        "facturacion.0002_phase6_adapter_b",
+        "facturacion.0003_accounting_links",
+        "facturacion.0004_billingdocument_source_refs",
+        "facturacion.0005_rename_facturacion_company_99f3f6_idx_facturacion_company_e59730_idx_and_more",
+        "hr.0001_initial",
+        "hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more",
+        "hr.0003_employmentassignment_employee_active_started_idx",
+        "hr.0004_rename_hr_employassign_emp_active_start_idx_hr_employme_employe_4b785a_idx",
+        "iam.0001_initial",
+        "iam.0002_initial",
+        "iam.0003_orgunit_parent_type_name_idx",
+        "iam.0004_rename_iam_orgunit_parent_type_name_idx_iam_orgunit_parent__f0840d_idx",
+        "integration.0001_initial",
+        "integration.0002_outbox_next_attempt_at",
+        "integration.0003_rename_integratio_consume_6ab9e4_idx_integration_consume_253f49_idx_and_more",
+        "inventarios.0001_initial",
+        "inventarios.0002_stockmovement_accounting_links",
+        "inventarios.0003_remove_inventoryitem_uniq_inv_sku_per_company_and_more",
+        "org.0001_initial",
+        "org.0002_alter_branchprofile_id_alter_companyprofile_id",
+        "org.0003_branchprofile_fuel_uom_defaults",
+        "org.0004_user_fuel_uom_preference",
+        "org.0005_rename_idx_userfueluompref_user_branch_org_userfue_user_id_f9159c_idx_and_more",
+        "payments.0001_initial",
+        "payments.0002_rename_payments_ca_session_80ee8d_idx_payments_ca_session_c5f759_idx_and_more",
+        "rbac.0001_initial",
+        "rbac.0002_roleassignment_origin",
+        "rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx",
+        "rbac.0004_role_permission_active_indexes",
+        "rbac.0005_rename_rbac_perm_active_code_idx_rbac_permis_is_acti_42ab9f_idx_and_more",
+        "reporting.0001_initial",
+        "reporting.0002_reportrun_result_payload_json_reportexportlog_and_more",
+        "reporting.0003_dataset_quality_fields",
+        "retail_pos.0001_initial",
+        "retail_pos.0002_posedgechallenge_posedgesession_and_more",
+        "retail_pos.0003_posticket_compensation_attempts_and_more",
+        "retail_pos.0004_posticket_ck_pos_ticket_comp_pending_state_and_more",
+        "sessions.0001_initial",
+        "sync.0001_initial",
+        "sync_engine.0001_initial",
+        "sync_engine.0002_sync_v2_request_auth",
+        "token_blacklist.0001_initial",
+        "token_blacklist.0002_outstandingtoken_jti_hex",
+        "token_blacklist.0003_auto_20171017_2007",
+        "token_blacklist.0004_auto_20171017_2013",
+        "token_blacklist.0005_remove_outstandingtoken_jti",
+        "token_blacklist.0006_auto_20171017_2113",
+        "token_blacklist.0007_auto_20171017_2214",
+        "token_blacklist.0008_migrate_to_bigautofield",
+        "token_blacklist.0010_fix_migrate_to_bigautofield",
+        "token_blacklist.0011_linearizes_history",
+        "token_blacklist.0012_alter_outstandingtoken_user",
+        "token_blacklist.0013_alter_blacklistedtoken_options_and_more"
+      ],
+      "phase6_migration": "facturacion.0002_phase6_adapter_b",
+      "phase6_migration_applied": true
+    },
+    "parity_fingerprint": "4bb20bc58f3a171c64e1eab44c64f37428f7448701d7d745ee0f0ed03f6785b1",
+    "pilot_scope": {
+      "branch_id": 6,
+      "branch_name": "B-qa_edge_459c37a5fd",
+      "company_id": 5,
+      "company_name": "C-qa_edge_459c37a5fd"
+    },
+    "required_permissions": {
+      "count": 8,
+      "hash": "05eaff31a4544043a4fc2bf19cb1552a5baab179f71d4b51612121a7337946fa",
+      "items": [
+        {
+          "code": "billing.doc.contingency",
+          "is_active": false
+        },
+        {
+          "code": "billing.doc.contingency.resolve",
+          "is_active": false
+        },
+        {
+          "code": "billing.doc.print",
+          "is_active": false
+        },
+        {
+          "code": "billing.fiscal.config.read",
+          "is_active": false
+        },
+        {
+          "code": "billing.fiscal.config.update",
+          "is_active": false
+        },
+        {
+          "code": "cec.close_run.create",
+          "is_active": false
+        },
+        {
+          "code": "cec.close_run.read",
+          "is_active": false
+        },
+        {
+          "code": "cec.close_run.update",
+          "is_active": false
+        }
+      ]
+    },
+    "schema_version": 1
+  },
+  "phase7_manifest": {
+    "accounting_config": {
+      "functional_currency": "NIO",
+      "fx_gain_account_code": "",
+      "fx_loss_account_code": "",
+      "hash": "b355ef2865066a911835b68c7bd45628d74b81d20a525cad036176808a3b7241",
+      "phase7_enabled": false,
+      "retained_earnings_account_code": ""
+    },
+    "chart_of_accounts": {
+      "count": 0,
+      "hash": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+      "items": []
+    },
+    "database": {
+      "engine": "django.db.backends.postgresql",
+      "server_version": "16.2",
+      "vendor": "postgresql"
+    },
+    "environment": {
+      "app_version": "",
+      "django_version": "5.2.12",
+      "git_commit_sha": "",
+      "language_code": "es",
+      "python_version": "3.10.19",
+      "timezone": "America/Managua",
+      "use_tz": true
+    },
+    "generated_at": "2026-04-12T04:30:38.307074+00:00",
+    "migrations": {
+      "count": 115,
+      "hash": "4b989c3b855a5ca66febf5b90b36e9e9d015716d61b90aa1d4a2bbabc41c552e",
+      "items": [
+        "accounting.0001_initial",
+        "accounting.0002_shadow_ledger_phase4a",
+        "accounting.0003_phase5_sod_actor_trace",
+        "accounting.0004_phase7a_gl_core",
+        "accounting.0005_phase7b_intercompany_consolidation",
+        "accounting.0006_phase7b_performance_indexes",
+        "accounting.0007_phase11_intercompany_advanced",
+        "accounting.0008_operational_posting_config",
+        "accounting.0009_rename_acc_coa_comp_type_act_idx_accounting__company_41d161_idx_and_more",
+        "accounting.0010_intercompany_effective_at",
+        "accounts.0001_initial",
+        "accounts.0002_user_must_change_password",
+        "accounts.0003_user_is_setup_complete",
+        "accounts.0004_refresh_token_session",
+        "accounts.0005_user_totp_fields",
+        "accounts.0006_two_factor_challenge",
+        "accounts.0007_rename_accounts_re_user_id_6cc004_idx_accounts_re_user_id_7e85a1_idx_and_more",
+        "admin.0001_initial",
+        "admin.0002_logentry_remove_auto_add",
+        "admin.0003_logentry_add_action_flag_choices",
+        "audit.0001_initial",
+        "audit.0002_audit_event_signature_key_id",
+        "auth.0001_initial",
+        "auth.0002_alter_permission_name_max_length",
+        "auth.0003_alter_user_email_max_length",
+        "auth.0004_alter_user_username_opts",
+        "auth.0005_alter_user_last_login_null",
+        "auth.0006_require_contenttypes_0002",
+        "auth.0007_alter_validators_add_error_messages",
+        "auth.0008_alter_user_username_max_length",
+        "auth.0009_alter_user_last_name_max_length",
+        "auth.0010_alter_group_name_max_length",
+        "auth.0011_update_proxy_permissions",
+        "auth.0012_alter_user_first_name_max_length",
+        "axes.0001_initial",
+        "axes.0002_auto_20151217_2044",
+        "axes.0003_auto_20160322_0929",
+        "axes.0004_auto_20181024_1538",
+        "axes.0005_remove_accessattempt_trusted",
+        "axes.0006_remove_accesslog_trusted",
+        "axes.0007_alter_accessattempt_unique_together",
+        "axes.0008_accessfailurelog",
+        "axes.0009_add_session_hash",
+        "axes.0010_accessattemptexpiration",
+        "cec.0001_initial",
+        "cec.0002_phase3_fields",
+        "cec.0003_rename_cec_cecexc_status_826f17_idx_cec_cecexce_status_20932b_idx_and_more",
+        "compras.0001_initial",
+        "contenttypes.0001_initial",
+        "contenttypes.0002_remove_content_type_name",
+        "dashboard.0001_initial",
+        "estacion_servicios.0001_initial",
+        "estacion_servicios.0002_uom_and_precision",
+        "estacion_servicios.0003_price_uom_and_field_renames",
+        "estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null",
+        "estacion_servicios.0005_amounts_dual_entered_and_canonical",
+        "estacion_servicios.0006_fuel_uom_preference_unified",
+        "estacion_servicios.0007_alter_fueluompreference_user_related_name",
+        "estacion_servicios.0008_fuelsale_billing_and_inventory_links",
+        "estacion_servicios.0009_fuelsale_compensation_state",
+        "estacion_servicios.0010_rename_estacion_se_company__c8e61a_idx_estacion_se_company_54b2c6_idx_and_more",
+        "facturacion.0001_initial",
+        "facturacion.0002_phase6_adapter_b",
+        "facturacion.0003_accounting_links",
+        "facturacion.0004_billingdocument_source_refs",
+        "facturacion.0005_rename_facturacion_company_99f3f6_idx_facturacion_company_e59730_idx_and_more",
+        "hr.0001_initial",
+        "hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more",
+        "hr.0003_employmentassignment_employee_active_started_idx",
+        "hr.0004_rename_hr_employassign_emp_active_start_idx_hr_employme_employe_4b785a_idx",
+        "iam.0001_initial",
+        "iam.0002_initial",
+        "iam.0003_orgunit_parent_type_name_idx",
+        "iam.0004_rename_iam_orgunit_parent_type_name_idx_iam_orgunit_parent__f0840d_idx",
+        "integration.0001_initial",
+        "integration.0002_outbox_next_attempt_at",
+        "integration.0003_rename_integratio_consume_6ab9e4_idx_integration_consume_253f49_idx_and_more",
+        "inventarios.0001_initial",
+        "inventarios.0002_stockmovement_accounting_links",
+        "inventarios.0003_remove_inventoryitem_uniq_inv_sku_per_company_and_more",
+        "org.0001_initial",
+        "org.0002_alter_branchprofile_id_alter_companyprofile_id",
+        "org.0003_branchprofile_fuel_uom_defaults",
+        "org.0004_user_fuel_uom_preference",
+        "org.0005_rename_idx_userfueluompref_user_branch_org_userfue_user_id_f9159c_idx_and_more",
+        "payments.0001_initial",
+        "payments.0002_rename_payments_ca_session_80ee8d_idx_payments_ca_session_c5f759_idx_and_more",
+        "rbac.0001_initial",
+        "rbac.0002_roleassignment_origin",
+        "rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx",
+        "rbac.0004_role_permission_active_indexes",
+        "rbac.0005_rename_rbac_perm_active_code_idx_rbac_permis_is_acti_42ab9f_idx_and_more",
+        "reporting.0001_initial",
+        "reporting.0002_reportrun_result_payload_json_reportexportlog_and_more",
+        "reporting.0003_dataset_quality_fields",
+        "retail_pos.0001_initial",
+        "retail_pos.0002_posedgechallenge_posedgesession_and_more",
+        "retail_pos.0003_posticket_compensation_attempts_and_more",
+        "retail_pos.0004_posticket_ck_pos_ticket_comp_pending_state_and_more",
+        "sessions.0001_initial",
+        "sync.0001_initial",
+        "sync_engine.0001_initial",
+        "sync_engine.0002_sync_v2_request_auth",
+        "token_blacklist.0001_initial",
+        "token_blacklist.0002_outstandingtoken_jti_hex",
+        "token_blacklist.0003_auto_20171017_2007",
+        "token_blacklist.0004_auto_20171017_2013",
+        "token_blacklist.0005_remove_outstandingtoken_jti",
+        "token_blacklist.0006_auto_20171017_2113",
+        "token_blacklist.0007_auto_20171017_2214",
+        "token_blacklist.0008_migrate_to_bigautofield",
+        "token_blacklist.0010_fix_migrate_to_bigautofield",
+        "token_blacklist.0011_linearizes_history",
+        "token_blacklist.0012_alter_outstandingtoken_user",
+        "token_blacklist.0013_alter_blacklistedtoken_options_and_more"
+      ]
+    },
+    "parity_fingerprint": "4394fa8e228535201416a623d2fcd955c46790f66e7a654261edf85bf3f4bfd9",
+    "required_permissions": {
+      "count": 6,
+      "hash": "cf0830408ddbefef98fea2f32c61b7534b99755ddfd7aaa176c7082bbc078257",
+      "items": [
+        {
+          "code": "accounting.coa.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.coa.update",
+          "is_active": false
+        },
+        {
+          "code": "accounting.fx_rate.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.fx_rate.update",
+          "is_active": false
+        },
+        {
+          "code": "accounting.report.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.revaluation.run",
+          "is_active": false
+        }
+      ]
+    },
+    "revaluation_state": {
+      "completed_runs_count": 0,
+      "hash": "b458d68332b69a698bc1665c739fd99e7026df8caa6a12c3fab5a07268db30c5",
+      "latest": {}
+    },
+    "schema_version": 1,
+    "scope": {
+      "company_id": 5,
+      "company_name": "C-qa_edge_459c37a5fd"
+    }
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "branch_name": "B-qa_edge_459c37a5fd",
+    "company_id": 5,
+    "company_name": "C-qa_edge_459c37a5fd"
+  },
+  "preflight_passed": false,
+  "schema_version": 1,
+  "signature": "2c8bddd6a7707adab1bbc6a3d3264d739fd2819291aa283d062ab2b77da3f97d",
+  "signature_type": "sha256",
+  "stale_minutes": 30,
+  "thresholds": {
+    "disputed": 0,
+    "inbox_failed": 0,
+    "missing_lines": 0,
+    "open_intercompany": 0,
+    "outbox_failed": 0,
+    "stale_revaluation": 0
+  }
+}

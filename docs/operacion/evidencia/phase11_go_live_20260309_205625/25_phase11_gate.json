@@ -1,0 +1,130 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": [
+          "second_cycle_hash y third_cycle_hash deben coincidir.",
+          "health.open_intercompany_blocking_exception_count debe ser 0 para happy."
+        ]
+      },
+      "name": "happy_path_evidence_valid",
+      "passed": false
+    },
+    {
+      "detail": {
+        "errors": [
+          "second_cycle_hash y third_cycle_hash deben coincidir."
+        ]
+      },
+      "name": "blocked_path_evidence_valid",
+      "passed": false
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_outside_sla_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_confirmed_unclosed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_blocking_exceptions_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "blocked_consolidation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_tx_id": "8633729d-8a21-43cb-80c7-7e0e89f89de3",
+    "happy_tx_id": "b117aefc-16f2-4d71-81d5-64d3bf64cd5e"
+  },
+  "evidence_hash": "a0d353b23b0676639002a39af83adc5890aae17ebe14b39a20dc7fc2fd68653d",
+  "generated_at": "2026-03-10T02:58:36.968071+00:00",
+  "go_live_passed": false,
+  "health": {
+    "blocked_consolidation_count": 0,
+    "disputed_intercompany_count": 0,
+    "disputed_outside_sla_count": 0,
+    "inbox_failed_count": 0,
+    "open_consolidation_exception_count": 0,
+    "open_dispute_case_count": 0,
+    "open_intercompany_blocking_exception_count": 0,
+    "open_intercompany_count": 0,
+    "open_outside_sla_count": 0,
+    "outbox_failed_count": 0,
+    "stale_confirmed_unclosed_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "a0d353b23b0676639002a39af83adc5890aae17ebe14b39a20dc7fc2fd68653d",
+  "signature_type": "sha256"
+}

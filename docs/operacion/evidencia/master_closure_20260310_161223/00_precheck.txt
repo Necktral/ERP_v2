@@ -1,0 +1,9 @@
+timestamp=20260310_161223
+branch=release/f6-f12-staging-pass-20260310
+head=196be419ce08a34d952194afcb29dd28889f679b
+company_id=5
+branch_id=6
+parent_company_id=5
+company_ids=5
+year=2026
+month=03

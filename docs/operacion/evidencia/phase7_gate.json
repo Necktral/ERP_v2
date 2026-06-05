@@ -1,0 +1,89 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": [
+          "journal_entry_lines debe ser > 0 en happy path."
+        ]
+      },
+      "name": "happy_evidence_valid",
+      "passed": false
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "unbalanced_entries_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_run_id": "00000000-0000-0000-0000-000000000701",
+    "happy_run_id": "00000000-0000-0000-0000-000000000701"
+  },
+  "evidence_hash": "b3a92bef315cd5092945389f1f72da005733a355b00fafc32059bd2ecebd0d5e",
+  "generated_at": "2026-03-09T03:56:50.692070+00:00",
+  "go_live_passed": false,
+  "health": {
+    "inbox_failed_count": 0,
+    "missing_lines_count": 0,
+    "outbox_failed_count": 0,
+    "stale_revaluation_count": 0,
+    "unbalanced_entries_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "b3a92bef315cd5092945389f1f72da005733a355b00fafc32059bd2ecebd0d5e",
+  "signature_type": "sha256"
+}

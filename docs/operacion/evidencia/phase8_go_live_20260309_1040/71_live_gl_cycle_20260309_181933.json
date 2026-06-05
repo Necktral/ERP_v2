@@ -1,0 +1,107 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "unbalanced_entries_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "error": "",
+        "status": "COMPLETED"
+      },
+      "name": "revaluation_not_blocked",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed": 0
+      },
+      "name": "posting_without_failures",
+      "passed": true
+    }
+  ],
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "dispatch_before": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "evidence_hash": "addc6579c15cb426532b88e50d8be3c6b21bcbf2f95460b54cf91bdf22e7c4e3",
+  "generated_at": "2026-03-10T00:19:35.650756+00:00",
+  "health": {
+    "inbox_failed_count": 0,
+    "missing_lines_count": 0,
+    "outbox_failed_count": 0,
+    "stale_revaluation_count": 0,
+    "unbalanced_entries_count": 0
+  },
+  "period": {
+    "month": 3,
+    "year": 2026
+  },
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "posting": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "revaluation": {
+    "entries_created": 0,
+    "idempotent": true,
+    "issues_count": 0,
+    "run_id": "d014ab38-e207-4f30-927a-147c279f9f14",
+    "status": "COMPLETED"
+  },
+  "run_id": "",
+  "schema_version": 1,
+  "signature": "addc6579c15cb426532b88e50d8be3c6b21bcbf2f95460b54cf91bdf22e7c4e3",
+  "signature_type": "sha256"
+}

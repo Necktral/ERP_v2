@@ -1,0 +1,101 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "adapter_class": "AdapterBEmulated",
+        "failure_count": 0,
+        "max_allowed": 0,
+        "provider_check_ok": true,
+        "provider_error": ""
+      },
+      "name": "provider_integrity_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "failed_jobs_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "retry_overdue_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_contingency_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 1,
+    "failed": 0,
+    "retried": 0,
+    "sent": 1
+  },
+  "dispatch_before": {
+    "attempted": 17,
+    "failed": 0,
+    "retried": 0,
+    "sent": 17
+  },
+  "evidence_hash": "7ce1d523d9caaab3b632276ef3b19b5ff4d42ba90c9499bf93dadca6225ae489",
+  "generated_at": "2026-03-10T01:28:52.008257+00:00",
+  "health": {
+    "cec_blocking_open_count": 1,
+    "contingency_open_count": 0,
+    "failed_jobs_count": 0,
+    "inbox_failed_count": 0,
+    "outbox_failed_count": 0,
+    "provider_mode": "EMULATED",
+    "retry_overdue_count": 0,
+    "stale_pending_count": 0
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "print_processing": {
+    "attempted": 1,
+    "contingency": 0,
+    "failed": 0,
+    "printed": 1,
+    "retried": 0
+  },
+  "provider": {
+    "adapter_class": "AdapterBEmulated",
+    "check_ok": true,
+    "error": "",
+    "series": "B"
+  },
+  "schema_version": 1,
+  "signature": "7ce1d523d9caaab3b632276ef3b19b5ff4d42ba90c9499bf93dadca6225ae489",
+  "signature_type": "sha256"
+}

@@ -1,0 +1,39 @@
+{
+  "blocked": false,
+  "create_status": "PENDING",
+  "deterministic_replay": true,
+  "dispute_status": "DISPUTED",
+  "evidence_hash": "447d74a5bfafd203964ae81e46eda091c87419419cc7aa742ca72a03f36cf12b",
+  "expect_blocked": false,
+  "first_cycle_hash": "c4eb67638754365fc36f8dcfd708a7b834e8cd99e8ca8d1001f73cac9adfbbba",
+  "first_cycle_open_items": 0,
+  "generated_at": "2026-03-10T02:49:21.505763+00:00",
+  "go_live_passed": true,
+  "health": {
+    "blocked_consolidation_count": 0,
+    "disputed_intercompany_count": 0,
+    "disputed_outside_sla_count": 0,
+    "inbox_failed_count": 0,
+    "open_consolidation_exception_count": 0,
+    "open_dispute_case_count": 0,
+    "open_intercompany_blocking_exception_count": 0,
+    "open_intercompany_count": 0,
+    "open_outside_sla_count": 0,
+    "outbox_failed_count": 0,
+    "stale_confirmed_unclosed_count": 0
+  },
+  "passed": true,
+  "pilot_scope": {
+    "company_id": 5,
+    "target_company_id": 7
+  },
+  "schema_version": 1,
+  "second_cycle_hash": "e3ea0493bb782350027f32a6330e77cba223b337b183f60ca7584c7739eb0c0a",
+  "second_cycle_open_items": 0,
+  "settle_status": "CLOSED",
+  "signature": "447d74a5bfafd203964ae81e46eda091c87419419cc7aa742ca72a03f36cf12b",
+  "signature_type": "sha256",
+  "third_cycle_hash": "5a0f3a5c97bfea14b6a3e8803ff3d8d0c93c4f23eb33f4ca4a152c0061f03a6b",
+  "third_cycle_open_items": 0,
+  "tx_id": "2ce06612-8590-4ac4-be7d-3a116046a1f3"
+}

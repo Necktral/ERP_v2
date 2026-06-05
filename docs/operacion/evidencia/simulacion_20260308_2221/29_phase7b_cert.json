@@ -1,0 +1,42 @@
+{
+  "blocked": false,
+  "deterministic_replay": true,
+  "evidence_hash": "108bb5ada3663d66c4304be8718d7fd0a296d2ad3a799c696a8d4c6653f17d5e",
+  "first_manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+  "first_metrics": {
+    "balance_sheet_hash": "4d5daee7b2cf60bbb81c46228ddccd980f36ab1f96686ba70b775739d91f261e",
+    "elimination_count": 0,
+    "issues_count": 0,
+    "pnl_hash": "59f0a5479916b61ee4a142063e09159401707cf973266b64959cfe4824b91749",
+    "rows_count": 2,
+    "trial_hash": "f751bad48b948b59280f959a6567d2ce7a2043a52106a191fea40464c58a8c02"
+  },
+  "first_status": "COMPLETED",
+  "generated_at": "2026-03-09T04:35:56.596675+00:00",
+  "go_live_passed": true,
+  "passed": true,
+  "period": {
+    "month": 3,
+    "year": 2026
+  },
+  "pilot_scope": {
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "run_id": "b1758911-8beb-4526-9d50-9b9d14535e3e",
+  "schema_version": 1,
+  "second_manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+  "second_metrics": {
+    "balance_sheet_hash": "4d5daee7b2cf60bbb81c46228ddccd980f36ab1f96686ba70b775739d91f261e",
+    "elimination_count": 0,
+    "issues_count": 0,
+    "pnl_hash": "59f0a5479916b61ee4a142063e09159401707cf973266b64959cfe4824b91749",
+    "rows_count": 2,
+    "trial_hash": "f751bad48b948b59280f959a6567d2ce7a2043a52106a191fea40464c58a8c02"
+  },
+  "second_status": "COMPLETED",
+  "signature": "108bb5ada3663d66c4304be8718d7fd0a296d2ad3a799c696a8d4c6653f17d5e",
+  "signature_type": "sha256"
+}

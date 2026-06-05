@@ -1,0 +1,1076 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-12T20:44:31.561971+00:00",
+  "started_at": "2026-04-12T20:43:17.624112+00:00",
+  "timezone": "America/Managua",
+  "seed": 20260412,
+  "base_url": "http://localhost:8000/api",
+  "status": "FAIL",
+  "pass": false,
+  "global_error": "Paso de validación falló: accounting/integrity.orphan_checks actual=total=1 detail={\"pos_ticket_closed_missing_sale_or_payment\": 0, \"fuel_sale_without_dispense\": 0, \"journal_entry_without_lines\": 1, \"intercompany_or_consolidation_inconsistency\": 0, \"closed_intercompany_with_difference\": 0, \"blocked_consolidation_runs\": 0, \"total\": 1}",
+  "warnings": [
+    "accounting.auto_draft_from_cash_movement delta=0 (before=0, after=0)"
+  ],
+  "required_modules": [
+    "iam",
+    "organization",
+    "hr",
+    "retail_fuel",
+    "sync",
+    "accounting"
+  ],
+  "module_results": {
+    "iam": {
+      "steps": 15,
+      "passed": 15,
+      "failed": 0,
+      "pass": true
+    },
+    "organization": {
+      "steps": 3,
+      "passed": 3,
+      "failed": 0,
+      "pass": true
+    },
+    "hr": {
+      "steps": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass": true
+    },
+    "retail_fuel": {
+      "steps": 30,
+      "passed": 30,
+      "failed": 0,
+      "pass": true
+    },
+    "sync": {
+      "steps": 7,
+      "passed": 7,
+      "failed": 0,
+      "pass": true
+    },
+    "accounting": {
+      "steps": 19,
+      "passed": 18,
+      "failed": 1,
+      "pass": false
+    }
+  },
+  "http_contract": {
+    "default_allowed_statuses": [
+      200,
+      201
+    ],
+    "status_overrides": {
+      "iam.bootstrap_status": [
+        200
+      ],
+      "iam.bootstrap_init": [
+        201
+      ],
+      "iam.login_plain": [
+        200
+      ],
+      "iam.bootstrap_org": [
+        200
+      ],
+      "iam.2fa_enable": [
+        200
+      ],
+      "iam.2fa_confirm": [
+        200
+      ],
+      "iam.login_2fa_challenge": [
+        202
+      ],
+      "iam.login_2fa_challenge_retry": [
+        202
+      ],
+      "iam.2fa_verify": [
+        200
+      ],
+      "iam.2fa_verify_denied": [
+        400
+      ],
+      "iam.refresh": [
+        200
+      ],
+      "iam.logout": [
+        204
+      ],
+      "org.create_company": [
+        201
+      ],
+      "org.create_branch": [
+        201
+      ],
+      "hr.create_position": [
+        201
+      ],
+      "hr.create_employee": [
+        201
+      ],
+      "hr.create_assignment": [
+        201
+      ],
+      "hr.provision_user": [
+        201
+      ],
+      "hr.reset_temp_password": [
+        200
+      ],
+      "hr.revoke_access": [
+        200
+      ],
+      "fuel.shift_open": [
+        201
+      ],
+      "fuel.shift_close": [
+        200
+      ],
+      "fuel.shift_report": [
+        200
+      ],
+      "fuel.daily_report": [
+        200
+      ],
+      "retail.pos_session_open": [
+        201
+      ],
+      "retail.pos_session_close": [
+        200
+      ],
+      "retail.ticket_open": [
+        201
+      ],
+      "retail.ticket_checkout": [
+        200
+      ],
+      "retail.ticket_void": [
+        200
+      ],
+      "retail.ticket_comp_retry": [
+        200
+      ],
+      "sync.edge_challenge": [
+        201
+      ],
+      "sync.edge_handshake": [
+        201
+      ],
+      "sync.edge_capabilities": [
+        200
+      ],
+      "sync.edge_bad_signature": [
+        401
+      ],
+      "accounting.coa_upsert": [
+        200
+      ],
+      "accounting.fx_rate_upsert": [
+        200,
+        201
+      ],
+      "accounting.intercompany_create": [
+        201
+      ],
+      "accounting.intercompany_confirm": [
+        200
+      ],
+      "accounting.intercompany_reconcile": [
+        200
+      ],
+      "accounting.intercompany_close": [
+        200
+      ],
+      "accounting.consolidation_run": [
+        200,
+        201
+      ],
+      "accounting.consolidation_tb": [
+        200
+      ],
+      "accounting.consolidation_pnl": [
+        200
+      ],
+      "accounting.report_tb": [
+        200
+      ],
+      "accounting.report_pnl": [
+        200
+      ],
+      "accounting.journal_entry_reverse": [
+        200,
+        201
+      ]
+    },
+    "violations_count": 0
+  },
+  "orphan_checks": {
+    "pos_ticket_closed_missing_sale_or_payment": 0,
+    "fuel_sale_without_dispense": 0,
+    "journal_entry_without_lines": 1,
+    "intercompany_or_consolidation_inconsistency": 0,
+    "closed_intercompany_with_difference": 0,
+    "blocked_consolidation_runs": 0,
+    "total": 1
+  },
+  "intercompany_consistency": {
+    "run_id": "3c7c4dca-314a-4f54-8704-350235aaab34",
+    "run_status": "COMPLETED",
+    "issues_count": 0,
+    "tx_id": "d31527c2-d876-4216-9764-2d0a99a38ba9"
+  },
+  "context": {
+    "admin_username": "root_lifecycle",
+    "admin_user_id": 1,
+    "company_a_id": 2,
+    "company_b_id": 4,
+    "branch_a1_id": 3,
+    "branch_a2_id": 5,
+    "branch_b1_id": 6
+  },
+  "steps": [
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_status",
+      "action": "Bootstrap status",
+      "expected": "sistema fresh=true [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_fresh_assert",
+      "action": "Validar estado fresh",
+      "expected": "is_fresh=true",
+      "actual": "is_fresh=True",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_init",
+      "action": "Bootstrap init admin",
+      "expected": "admin creado [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_plain",
+      "action": "Login inicial",
+      "expected": "token header emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.bootstrap_org",
+      "action": "Bootstrap organización base",
+      "expected": "holding/company/branch creados [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_enable",
+      "action": "Habilitar setup 2FA",
+      "expected": "secret TOTP emitido [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_confirm",
+      "action": "Confirmar 2FA",
+      "expected": "2FA activo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge",
+      "action": "Login con challenge 2FA",
+      "expected": "challenge one-time [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify_denied",
+      "action": "Verificar denegación sin segundo factor válido",
+      "expected": "acceso denegado [[400]]",
+      "actual": "HTTP 400",
+      "passed": true,
+      "http_status": 400,
+      "detail": "Código inválido."
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge_retry",
+      "action": "Login 2FA (retry tras denegación)",
+      "expected": "challenge one-time [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify",
+      "action": "Verificar challenge 2FA",
+      "expected": "tokens emitidos [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.refresh",
+      "action": "Refresh token",
+      "expected": "rotación de tokens [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.logout",
+      "action": "Logout",
+      "expected": "sesión invalidada [[204]]",
+      "actual": "HTTP 204",
+      "passed": true,
+      "http_status": 204,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.login_2fa_challenge",
+      "action": "Re-login operativo",
+      "expected": "challenge 2FA [[202]]",
+      "actual": "HTTP 202",
+      "passed": true,
+      "http_status": 202,
+      "detail": ""
+    },
+    {
+      "module": "iam",
+      "key": "iam.2fa_verify",
+      "action": "Verify 2FA operativo",
+      "expected": "tokens activos para ciclo completo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_company",
+      "action": "Crear segunda compañía",
+      "expected": "company para intercompany [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_branch",
+      "action": "Crear sucursal #2 en compañía principal",
+      "expected": "branch adicional [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "organization",
+      "key": "org.create_branch",
+      "action": "Crear sucursal en compañía auxiliar",
+      "expected": "branch operativa intercompany [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_position",
+      "action": "Crear puesto Cajero POS",
+      "expected": "position creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_position",
+      "action": "Crear puesto Contador",
+      "expected": "position creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_employee",
+      "action": "Crear empleado Cajero",
+      "expected": "employee creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_assignment",
+      "action": "Asignar cajero a sucursal",
+      "expected": "assignment activa [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.provision_user",
+      "action": "Provisionar usuario de cajero",
+      "expected": "credenciales iniciales emitidas [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.reset_temp_password",
+      "action": "Reset temporal cajero",
+      "expected": "password temporal rotado [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_employee",
+      "action": "Crear empleado Contador",
+      "expected": "employee creada [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.create_assignment",
+      "action": "Asignar contador",
+      "expected": "assignment activa [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.provision_user",
+      "action": "Provisionar usuario contador",
+      "expected": "credenciales iniciales emitidas [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "hr",
+      "key": "hr.revoke_access",
+      "action": "Revoke controlado contador",
+      "expected": "acceso revocado de forma auditable [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.grant_admin",
+      "action": "Asignar rol fuel_admin a admin",
+      "expected": "grant activo",
+      "actual": "granted=True",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.shift_open",
+      "action": "Abrir turno fuel",
+      "expected": "turno OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.pos_session_open",
+      "action": "Abrir sesión POS/caja",
+      "expected": "sesión OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #1",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #1",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #2",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #2",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #3",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #3",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #4",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #4",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #5",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #5",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #6",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #6",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #7",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #7",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #8",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #8",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #9",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #9",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_open",
+      "action": "Abrir ticket POS #10",
+      "expected": "ticket CART_OPEN [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_checkout",
+      "action": "Checkout ticket POS #10",
+      "expected": "ticket CLOSED con venta/pago [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_comp_retry",
+      "action": "Reintento compensación POS",
+      "expected": "retry idempotente/resuelto [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.ticket_void",
+      "action": "Void ticket POS",
+      "expected": "ticket VOIDED [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "retail.pos_session_close",
+      "action": "Cerrar sesión POS",
+      "expected": "sesión CLOSED [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.shift_close",
+      "action": "Cerrar turno fuel",
+      "expected": "turno CLOSED [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.shift_report",
+      "action": "Reporte cierre de turno",
+      "expected": "reporte disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "fuel.daily_report",
+      "action": "Reporte cierre diario",
+      "expected": "reporte disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "retail_fuel",
+      "key": "accounting.auto_draft_from_cash_movement",
+      "action": "Validar generación automática de borradores contables",
+      "expected": "delta_drafts > 0",
+      "actual": "delta_drafts=0 (before=0, after=0)",
+      "passed": true,
+      "http_status": null,
+      "detail": "warning:no_drafts_generated"
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_challenge",
+      "action": "Emitir challenge edge",
+      "expected": "challenge nonce emitido [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_handshake",
+      "action": "Handshake edge",
+      "expected": "session ACTIVE con periféricos sincronizados [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_capabilities",
+      "action": "Consultar registry de capacidades",
+      "expected": "registry consistente [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_capabilities_assert",
+      "action": "Validar capacidad THERMAL_PRINTER",
+      "expected": "THERMAL_PRINTER presente",
+      "actual": "has_printer=True",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_challenge",
+      "action": "Emitir challenge para prueba BAD_SIGNATURE",
+      "expected": "challenge emitido [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "sync",
+      "key": "sync.edge_bad_signature",
+      "action": "Validar rechazo BAD_SIGNATURE",
+      "expected": "rechazo estable de firma inválida [[401]]",
+      "actual": "HTTP 401",
+      "passed": true,
+      "http_status": 401,
+      "detail": "BAD_SIGNATURE"
+    },
+    {
+      "module": "sync",
+      "key": "sync.batch_pytest",
+      "action": "Validar batch sync command (ticket+compensación)",
+      "expected": "pytest rc=0",
+      "actual": "pytest_rc=0",
+      "passed": true,
+      "http_status": null,
+      "detail": "..                                                                       [100%]"
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.coa_upsert",
+      "action": "Upsert CoA compañía principal",
+      "expected": "catálogo activo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.coa_upsert",
+      "action": "Upsert CoA compañía auxiliar",
+      "expected": "catálogo activo [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.fx_rate_upsert",
+      "action": "Configurar FX",
+      "expected": "FX rate vigente [[200, 201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_grants_seeded",
+      "action": "Seed grants intercompany",
+      "expected": "grants WRITE activos",
+      "actual": "ok=true",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_create",
+      "action": "Crear transacción intercompany",
+      "expected": "tx PENDING [[201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_confirm",
+      "action": "Confirmar intercompany",
+      "expected": "tx CONFIRMED [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_reconcile",
+      "action": "Conciliar intercompany",
+      "expected": "diferencia cero [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_close",
+      "action": "Cerrar intercompany",
+      "expected": "tx CLOSED [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.consolidation_run",
+      "action": "Correr consolidación por período efectivo",
+      "expected": "run COMPLETED|idempotent [[200, 201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.consolidation_tb",
+      "action": "Generar TB consolidado",
+      "expected": "reporte consolidado disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.consolidation_pnl",
+      "action": "Generar PyG consolidado",
+      "expected": "reporte consolidado disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.report_tb",
+      "action": "Generar TB operativo",
+      "expected": "TB por período disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.report_pnl",
+      "action": "Generar PyG operativo",
+      "expected": "PyG por período disponible [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.journal_entries_list",
+      "action": "Listar asientos del período",
+      "expected": "listado de asientos [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.manual_seed_entry",
+      "action": "Seed técnico de asiento para reversa",
+      "expected": "entry_id disponible",
+      "actual": "entry_id=1",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.journal_entry_reverse",
+      "action": "Reversa de asiento",
+      "expected": "reversa creada o idempotente [[200, 201]]",
+      "actual": "HTTP 201",
+      "passed": true,
+      "http_status": 201,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.consolidation_summary",
+      "action": "Validar resumen de consolidación",
+      "expected": "summary consistente [[200]]",
+      "actual": "HTTP 200",
+      "passed": true,
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "accounting.intercompany_consistency",
+      "action": "Consistencia intercompany/consolidación",
+      "expected": "issues_count=0 y status COMPLETED",
+      "actual": "run_status=COMPLETED issues_count=0",
+      "passed": true,
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "module": "accounting",
+      "key": "integrity.orphan_checks",
+      "action": "Validar huérfanos mínimos obligatorios",
+      "expected": "total=0",
+      "actual": "total=1",
+      "passed": false,
+      "http_status": null,
+      "detail": "{\"pos_ticket_closed_missing_sale_or_payment\": 0, \"fuel_sale_without_dispense\": 0, \"journal_entry_without_lines\": 1, \"intercompany_or_consolidation_inconsistency\": 0, \"closed_intercompany_with_difference\": 0, \"blocked_consolidation_runs\": 0, \"total\": 1}"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "baseline_hashes": {
+    "phase6_branch_fiscal_config_hash": "0bcc2abdc9d2078b0723d8ec2b10937e200fe822e0fbc43ce22e6863ab166a07",
+    "phase6_migrations_hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "phase6_required_permissions_hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88",
+    "phase7_accounting_config_hash": "1cb00b3eca0c5cef3752e9487351ea31f1d7395be1701469c0977186fd49e56f",
+    "phase7_chart_of_accounts_hash": "15e441cbf5d53885eff2cbc403702daee2de27050cc5c5259d76e50b8515486d",
+    "phase7_migrations_hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "phase7_required_permissions_hash": "cf0830408ddbefef98fea2f32c61b7534b99755ddfd7aaa176c7082bbc078257",
+    "phase8_parity_fingerprint": "b1a9e3c1011d03988616a489b88b8c5be001de88040adf3ebb7d3e5baecd6be6"
+  },
+  "evidence_hash": "b7f42b51a43ea5006ab7d3673ff73e3c2fc7ae4a0b75dc544165a9220ad26f22",
+  "generated_at": "2026-03-09T16:40:07.505050+00:00",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "release": {
+    "backend_image": "",
+    "environment": "",
+    "phase6_app_version": "",
+    "phase6_git_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+    "phase7_app_version": "",
+    "phase7_git_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+    "release_version": ""
+  },
+  "schema_version": 1,
+  "signature": "b7f42b51a43ea5006ab7d3673ff73e3c2fc7ae4a0b75dc544165a9220ad26f22",
+  "signature_type": "sha256"
+}

@@ -1,0 +1,56 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "active_ruleset_count": 1
+      },
+      "name": "active_ruleset_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "happy_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "consumer": "accounting.projector",
+        "failed_count": 0,
+        "max_allowed": 0
+      },
+      "name": "projector_inbox_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "company_id": 2,
+  "company_name": "C",
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_run_id": "c1f5da45-c33a-4cf0-9fed-66b80f86fd49",
+    "happy_run_id": "98a78195-0d67-43d9-b04a-3f3aaf8bbb6f"
+  },
+  "evidence_hash": "b6032ee8757781775ff4a2ec2ef4bffb7b632f5cc9f382e43fe32226804bd8d7",
+  "generated_at": "2026-03-08T18:54:07.679743+00:00",
+  "go_live_passed": true,
+  "max_inbox_failed": 0,
+  "parity_mismatches": [],
+  "schema_version": 1,
+  "signature": "b6032ee8757781775ff4a2ec2ef4bffb7b632f5cc9f382e43fe32226804bd8d7",
+  "signature_type": "sha256"
+}

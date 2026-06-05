@@ -1,0 +1,516 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "migration": "facturacion.0002_phase6_adapter_b"
+      },
+      "name": "phase6_migration_applied",
+      "passed": true
+    },
+    {
+      "detail": {
+        "branch_config_id": 2,
+        "fiscal_mode": "B"
+      },
+      "name": "branch_fiscal_mode_b_active",
+      "passed": true
+    },
+    {
+      "detail": {
+        "phase7_enabled": true
+      },
+      "name": "phase7_enabled_for_company",
+      "passed": true
+    },
+    {
+      "detail": {
+        "active_coa_count": 3
+      },
+      "name": "active_chart_of_accounts_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "active_rules_count": 2
+      },
+      "name": "active_posting_rules_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "timezone": "America/Managua"
+      },
+      "name": "timezone_matches_operational_default",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence_hash": "fdc47de27a15ba86bc26ba871ccdccac4477eb2a683899bb044737524aba984f",
+  "generated_at": "2026-03-09T04:22:38.268977+00:00",
+  "health": {
+    "phase6": {
+      "cec_blocking_open_count": 1,
+      "contingency_open_count": 1,
+      "failed_jobs_count": 1,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "manifest_hash": "d96aff6c7b8b769f2491d8db1b8678cbe6b0ab5fa6ea898d52c0d582ec5d9ebf",
+  "phase6_manifest": {
+    "branch_fiscal_config": {
+      "count": 1,
+      "hash": "06494f064b8082a6b1c6ab10ed42b964653b6fc7acfa41b6d83469178973a503",
+      "items": [
+        {
+          "adapter_code": "EMULATED_B",
+          "branch_id": 6,
+          "company_id": 5,
+          "contingency_max_attempts": 2,
+          "fiscal_mode": "B",
+          "is_active": true,
+          "print_required": true,
+          "strict_integrity": true,
+          "updated_at": "2026-03-09T03:55:21.753581+00:00"
+        }
+      ]
+    },
+    "database": {
+      "engine": "django.db.backends.postgresql",
+      "server_version": "16.2",
+      "vendor": "postgresql"
+    },
+    "environment": {
+      "app_version": "",
+      "django_version": "5.2.9",
+      "git_commit_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+      "language_code": "es",
+      "python_version": "3.10.14",
+      "timezone": "America/Managua",
+      "use_tz": true
+    },
+    "generated_at": "2026-03-09T04:22:38.176127+00:00",
+    "migrations": {
+      "count": 85,
+      "hash": "9421ea5fdc14e55a2c3f20367027d626e57551eb3be695fed7542817f648d605",
+      "items": [
+        "accounting.0001_initial",
+        "accounting.0002_shadow_ledger_phase4a",
+        "accounting.0003_phase5_sod_actor_trace",
+        "accounting.0004_phase7a_gl_core",
+        "accounting.0005_phase7b_intercompany_consolidation",
+        "accounts.0001_initial",
+        "accounts.0002_user_must_change_password",
+        "accounts.0003_user_is_setup_complete",
+        "accounts.0004_refresh_token_session",
+        "accounts.0005_user_totp_fields",
+        "accounts.0006_two_factor_challenge",
+        "admin.0001_initial",
+        "admin.0002_logentry_remove_auto_add",
+        "admin.0003_logentry_add_action_flag_choices",
+        "audit.0001_initial",
+        "audit.0002_audit_event_signature_key_id",
+        "auth.0001_initial",
+        "auth.0002_alter_permission_name_max_length",
+        "auth.0003_alter_user_email_max_length",
+        "auth.0004_alter_user_username_opts",
+        "auth.0005_alter_user_last_login_null",
+        "auth.0006_require_contenttypes_0002",
+        "auth.0007_alter_validators_add_error_messages",
+        "auth.0008_alter_user_username_max_length",
+        "auth.0009_alter_user_last_name_max_length",
+        "auth.0010_alter_group_name_max_length",
+        "auth.0011_update_proxy_permissions",
+        "auth.0012_alter_user_first_name_max_length",
+        "axes.0001_initial",
+        "axes.0002_auto_20151217_2044",
+        "axes.0003_auto_20160322_0929",
+        "axes.0004_auto_20181024_1538",
+        "axes.0005_remove_accessattempt_trusted",
+        "axes.0006_remove_accesslog_trusted",
+        "axes.0007_alter_accessattempt_unique_together",
+        "axes.0008_accessfailurelog",
+        "axes.0009_add_session_hash",
+        "axes.0010_accessattemptexpiration",
+        "cec.0001_initial",
+        "cec.0002_phase3_fields",
+        "contenttypes.0001_initial",
+        "contenttypes.0002_remove_content_type_name",
+        "estacion_servicios.0001_initial",
+        "estacion_servicios.0002_uom_and_precision",
+        "estacion_servicios.0003_price_uom_and_field_renames",
+        "estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null",
+        "estacion_servicios.0005_amounts_dual_entered_and_canonical",
+        "estacion_servicios.0006_fuel_uom_preference_unified",
+        "estacion_servicios.0007_alter_fueluompreference_user_related_name",
+        "estacion_servicios.0008_fuelsale_billing_and_inventory_links",
+        "facturacion.0001_initial",
+        "facturacion.0002_phase6_adapter_b",
+        "hr.0001_initial",
+        "hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more",
+        "hr.0003_employmentassignment_employee_active_started_idx",
+        "iam.0001_initial",
+        "iam.0002_initial",
+        "iam.0003_orgunit_parent_type_name_idx",
+        "integration.0001_initial",
+        "integration.0002_outbox_next_attempt_at",
+        "inventarios.0001_initial",
+        "org.0001_initial",
+        "org.0002_alter_branchprofile_id_alter_companyprofile_id",
+        "org.0003_branchprofile_fuel_uom_defaults",
+        "org.0004_user_fuel_uom_preference",
+        "payments.0001_initial",
+        "rbac.0001_initial",
+        "rbac.0002_roleassignment_origin",
+        "rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx",
+        "rbac.0004_role_permission_active_indexes",
+        "sessions.0001_initial",
+        "sync.0001_initial",
+        "sync_engine.0001_initial",
+        "token_blacklist.0001_initial",
+        "token_blacklist.0002_outstandingtoken_jti_hex",
+        "token_blacklist.0003_auto_20171017_2007",
+        "token_blacklist.0004_auto_20171017_2013",
+        "token_blacklist.0005_remove_outstandingtoken_jti",
+        "token_blacklist.0006_auto_20171017_2113",
+        "token_blacklist.0007_auto_20171017_2214",
+        "token_blacklist.0008_migrate_to_bigautofield",
+        "token_blacklist.0010_fix_migrate_to_bigautofield",
+        "token_blacklist.0011_linearizes_history",
+        "token_blacklist.0012_alter_outstandingtoken_user",
+        "token_blacklist.0013_alter_blacklistedtoken_options_and_more"
+      ],
+      "phase6_migration": "facturacion.0002_phase6_adapter_b",
+      "phase6_migration_applied": true
+    },
+    "parity_fingerprint": "0133089b8d058f0e17719c3f48334bbda7100d49dd61d9b43d876fb373756d07",
+    "pilot_scope": {
+      "branch_id": 6,
+      "branch_name": "Pilot Branch ae8000",
+      "company_id": 5,
+      "company_name": "Pilot Company ae8000"
+    },
+    "required_permissions": {
+      "count": 8,
+      "hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88",
+      "items": [
+        {
+          "code": "cec.close_run.create",
+          "is_active": true
+        },
+        {
+          "code": "cec.close_run.read",
+          "is_active": true
+        },
+        {
+          "code": "cec.close_run.update",
+          "is_active": true
+        },
+        {
+          "code": "billing.doc.contingency",
+          "is_active": false
+        },
+        {
+          "code": "billing.doc.contingency.resolve",
+          "is_active": false
+        },
+        {
+          "code": "billing.doc.print",
+          "is_active": false
+        },
+        {
+          "code": "billing.fiscal.config.read",
+          "is_active": false
+        },
+        {
+          "code": "billing.fiscal.config.update",
+          "is_active": false
+        }
+      ]
+    },
+    "schema_version": 1
+  },
+  "phase7_manifest": {
+    "accounting_config": {
+      "functional_currency": "NIO",
+      "fx_gain_account_code": "7901",
+      "fx_loss_account_code": "6901",
+      "hash": "1cb00b3eca0c5cef3752e9487351ea31f1d7395be1701469c0977186fd49e56f",
+      "phase7_enabled": true,
+      "retained_earnings_account_code": "7901"
+    },
+    "chart_of_accounts": {
+      "count": 3,
+      "hash": "f683a032c6487757add57c51d03837a8761e4086ebf23e9bc9e4334a06ac9883",
+      "items": [
+        {
+          "account_type": "ASSET",
+          "code": "1101",
+          "is_active": true,
+          "is_postable": true,
+          "is_revaluable": true,
+          "name": "Caja",
+          "parent__code": null
+        },
+        {
+          "account_type": "EXPENSE",
+          "code": "6901",
+          "is_active": true,
+          "is_postable": true,
+          "is_revaluable": false,
+          "name": "Perdida FX",
+          "parent__code": null
+        },
+        {
+          "account_type": "REVENUE",
+          "code": "7901",
+          "is_active": true,
+          "is_postable": true,
+          "is_revaluable": false,
+          "name": "Ganancia FX",
+          "parent__code": null
+        }
+      ]
+    },
+    "database": {
+      "engine": "django.db.backends.postgresql",
+      "server_version": "16.2",
+      "vendor": "postgresql"
+    },
+    "environment": {
+      "app_version": "",
+      "django_version": "5.2.9",
+      "git_commit_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+      "language_code": "es",
+      "python_version": "3.10.14",
+      "timezone": "America/Managua",
+      "use_tz": true
+    },
+    "generated_at": "2026-03-09T04:22:38.202227+00:00",
+    "migrations": {
+      "count": 85,
+      "hash": "9421ea5fdc14e55a2c3f20367027d626e57551eb3be695fed7542817f648d605",
+      "items": [
+        "accounting.0001_initial",
+        "accounting.0002_shadow_ledger_phase4a",
+        "accounting.0003_phase5_sod_actor_trace",
+        "accounting.0004_phase7a_gl_core",
+        "accounting.0005_phase7b_intercompany_consolidation",
+        "accounts.0001_initial",
+        "accounts.0002_user_must_change_password",
+        "accounts.0003_user_is_setup_complete",
+        "accounts.0004_refresh_token_session",
+        "accounts.0005_user_totp_fields",
+        "accounts.0006_two_factor_challenge",
+        "admin.0001_initial",
+        "admin.0002_logentry_remove_auto_add",
+        "admin.0003_logentry_add_action_flag_choices",
+        "audit.0001_initial",
+        "audit.0002_audit_event_signature_key_id",
+        "auth.0001_initial",
+        "auth.0002_alter_permission_name_max_length",
+        "auth.0003_alter_user_email_max_length",
+        "auth.0004_alter_user_username_opts",
+        "auth.0005_alter_user_last_login_null",
+        "auth.0006_require_contenttypes_0002",
+        "auth.0007_alter_validators_add_error_messages",
+        "auth.0008_alter_user_username_max_length",
+        "auth.0009_alter_user_last_name_max_length",
+        "auth.0010_alter_group_name_max_length",
+        "auth.0011_update_proxy_permissions",
+        "auth.0012_alter_user_first_name_max_length",
+        "axes.0001_initial",
+        "axes.0002_auto_20151217_2044",
+        "axes.0003_auto_20160322_0929",
+        "axes.0004_auto_20181024_1538",
+        "axes.0005_remove_accessattempt_trusted",
+        "axes.0006_remove_accesslog_trusted",
+        "axes.0007_alter_accessattempt_unique_together",
+        "axes.0008_accessfailurelog",
+        "axes.0009_add_session_hash",
+        "axes.0010_accessattemptexpiration",
+        "cec.0001_initial",
+        "cec.0002_phase3_fields",
+        "contenttypes.0001_initial",
+        "contenttypes.0002_remove_content_type_name",
+        "estacion_servicios.0001_initial",
+        "estacion_servicios.0002_uom_and_precision",
+        "estacion_servicios.0003_price_uom_and_field_renames",
+        "estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null",
+        "estacion_servicios.0005_amounts_dual_entered_and_canonical",
+        "estacion_servicios.0006_fuel_uom_preference_unified",
+        "estacion_servicios.0007_alter_fueluompreference_user_related_name",
+        "estacion_servicios.0008_fuelsale_billing_and_inventory_links",
+        "facturacion.0001_initial",
+        "facturacion.0002_phase6_adapter_b",
+        "hr.0001_initial",
+        "hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more",
+        "hr.0003_employmentassignment_employee_active_started_idx",
+        "iam.0001_initial",
+        "iam.0002_initial",
+        "iam.0003_orgunit_parent_type_name_idx",
+        "integration.0001_initial",
+        "integration.0002_outbox_next_attempt_at",
+        "inventarios.0001_initial",
+        "org.0001_initial",
+        "org.0002_alter_branchprofile_id_alter_companyprofile_id",
+        "org.0003_branchprofile_fuel_uom_defaults",
+        "org.0004_user_fuel_uom_preference",
+        "payments.0001_initial",
+        "rbac.0001_initial",
+        "rbac.0002_roleassignment_origin",
+        "rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx",
+        "rbac.0004_role_permission_active_indexes",
+        "sessions.0001_initial",
+        "sync.0001_initial",
+        "sync_engine.0001_initial",
+        "token_blacklist.0001_initial",
+        "token_blacklist.0002_outstandingtoken_jti_hex",
+        "token_blacklist.0003_auto_20171017_2007",
+        "token_blacklist.0004_auto_20171017_2013",
+        "token_blacklist.0005_remove_outstandingtoken_jti",
+        "token_blacklist.0006_auto_20171017_2113",
+        "token_blacklist.0007_auto_20171017_2214",
+        "token_blacklist.0008_migrate_to_bigautofield",
+        "token_blacklist.0010_fix_migrate_to_bigautofield",
+        "token_blacklist.0011_linearizes_history",
+        "token_blacklist.0012_alter_outstandingtoken_user",
+        "token_blacklist.0013_alter_blacklistedtoken_options_and_more"
+      ]
+    },
+    "parity_fingerprint": "14997414b8330f4e41d681adc3457fba69b0097b7e6750bdf1914c550d4541ab",
+    "required_permissions": {
+      "count": 6,
+      "hash": "cf0830408ddbefef98fea2f32c61b7534b99755ddfd7aaa176c7082bbc078257",
+      "items": [
+        {
+          "code": "accounting.coa.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.coa.update",
+          "is_active": false
+        },
+        {
+          "code": "accounting.fx_rate.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.fx_rate.update",
+          "is_active": false
+        },
+        {
+          "code": "accounting.report.read",
+          "is_active": false
+        },
+        {
+          "code": "accounting.revaluation.run",
+          "is_active": false
+        }
+      ]
+    },
+    "revaluation_state": {
+      "completed_runs_count": 1,
+      "hash": "d0803196ff5fe70310294572894fd7820b29cbda5b4eb6cf1b4ccdfb05413e5c",
+      "latest": {
+        "completed_at": "2026-03-09 03:56:29.173291+00:00",
+        "month": 3,
+        "run_id": "d014ab38-e207-4f30-927a-147c279f9f14",
+        "year": 2026
+      }
+    },
+    "schema_version": 1,
+    "scope": {
+      "company_id": 5,
+      "company_name": "Pilot Company ae8000"
+    }
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "branch_name": "Pilot Branch ae8000",
+    "company_id": 5,
+    "company_name": "Pilot Company ae8000"
+  },
+  "preflight_passed": true,
+  "schema_version": 1,
+  "signature": "fdc47de27a15ba86bc26ba871ccdccac4477eb2a683899bb044737524aba984f",
+  "signature_type": "sha256",
+  "stale_minutes": 30,
+  "thresholds": {
+    "disputed": 0,
+    "inbox_failed": 0,
+    "missing_lines": 0,
+    "open_intercompany": 0,
+    "outbox_failed": 0,
+    "stale_revaluation": 0
+  }
+}

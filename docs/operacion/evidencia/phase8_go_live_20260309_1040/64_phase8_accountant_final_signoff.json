@@ -1,0 +1,15 @@
+{
+  "adjustments_json": {},
+  "evidence_hash": "acbfe284eff08c130eeb2afcd53c999f69219fad1e50c8f76cd1307950c711dd",
+  "final_signoff": true,
+  "generated_at": "2026-03-09T20:47:43.963363+00:00",
+  "linked_evidence": [],
+  "policy": "ON_DEMAND_FINAL_REQUIRED",
+  "review_date": "2026-03-09",
+  "reviewer": "contador.principal",
+  "schema_version": 1,
+  "signature": "acbfe284eff08c130eeb2afcd53c999f69219fad1e50c8f76cd1307950c711dd",
+  "signature_type": "sha256",
+  "status": "FINAL_APPROVED",
+  "summary": "Sign-off final aprobado para ventana F8; ajustes revisados y consistentes."
+}

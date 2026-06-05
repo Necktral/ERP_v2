@@ -1,0 +1,7 @@
+[INFO] 2026-03-10 15:47:21,197 axes.apps: AXES: BEGIN version 8.1.0, blocking by ip_address or combination of username and user_agent (request_id=)
+{
+  "errors": [],
+  "events_scanned": 1623,
+  "ok": true,
+  "partitions_scanned": 3
+}

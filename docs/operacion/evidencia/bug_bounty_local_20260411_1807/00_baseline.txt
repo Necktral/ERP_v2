@@ -1,0 +1,13 @@
+git_status:
+
+git_head:
+7153c39456c14e3b9795071bb4dbf92c9dcce3f8
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.3.1, build c2be9cc

@@ -1,0 +1,91 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "happy_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "failed_jobs_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "retry_overdue_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_contingency_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_run_id": "3979cf0e-dae5-4d0d-84af-8512c3e7174d",
+    "happy_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f"
+  },
+  "evidence_hash": "387f92325543e160e95b2b9ed2de9c4e4da717abe59ddf88f54e1037fc4abde6",
+  "generated_at": "2026-04-12T04:48:33.954581+00:00",
+  "go_live_passed": true,
+  "health": {
+    "cec_blocking_open_count": 1,
+    "contingency_open_count": 0,
+    "failed_jobs_count": 0,
+    "inbox_failed_count": 0,
+    "outbox_failed_count": 0,
+    "provider_mode": "EMULATED",
+    "retry_overdue_count": 0,
+    "stale_pending_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "387f92325543e160e95b2b9ed2de9c4e4da717abe59ddf88f54e1037fc4abde6",
+  "signature_type": "sha256"
+}

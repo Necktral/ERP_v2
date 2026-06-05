@@ -1,0 +1,49 @@
+{
+  "status": "FAIL",
+  "evidence_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260320_1207",
+  "checks": {
+    "gitleaks_clean": true,
+    "gitleaks_findings": 0,
+    "pip_audit_blocking_clean": true,
+    "pip_audit_blocking_count": 0,
+    "npm_audit_blocking_clean": false,
+    "npm_audit_blocking_count": 3,
+    "manage_check_pass": true,
+    "audit_chain_pass": true,
+    "security_pytest_pass": true,
+    "static_scan_pass": true,
+    "dast_pass": true,
+    "dast_enabled": false,
+    "dast_high_count": 0
+  },
+  "tool_exit_codes": {
+    "gitleaks_rc": 0,
+    "pip_audit_rc": 0,
+    "npm_audit_rc": 1,
+    "static_scan_rc": 0,
+    "manage_check_rc": 0,
+    "audit_chain_rc": 0,
+    "security_pytest_rc": 0,
+    "dast_rc": 0
+  },
+  "blocking_findings": {
+    "pip": [],
+    "npm": [
+      {
+        "name": "@quasar/app-vite",
+        "severity": "high",
+        "fix": true
+      },
+      {
+        "name": "flatted",
+        "severity": "high",
+        "fix": true
+      },
+      {
+        "name": "serialize-javascript",
+        "severity": "high",
+        "fix": true
+      }
+    ]
+  }
+}

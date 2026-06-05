@@ -1,0 +1,146 @@
+{
+  "baseline": {
+    "critical_seq_scans": 1,
+    "explain_passed": true,
+    "max_critical_scans": 1,
+    "preflight_passed": true,
+    "snapshot_pre_passed": true
+  },
+  "evidence_files": [
+    "01_staging_preflight.json",
+    "02_finance_snapshot_pre.json",
+    "03_finance_explain.json",
+    "10_phase6_staging_manifest.json",
+    "11_phase6_prod_manifest.json",
+    "12_phase6_happy.json",
+    "13_phase6_blocked.json",
+    "14_phase6_gate.json",
+    "15_phase6_cycle_1.json",
+    "16_phase6_cycle_2.json",
+    "20_phase7_staging_manifest.json",
+    "21_phase7_prod_manifest.json",
+    "22_phase7_happy.json",
+    "23_phase7_blocked.json",
+    "24_phase7_gate.json",
+    "25_phase7_cycle_1.json",
+    "26_phase7_cycle_2.json",
+    "27_phase7b_cycle.json",
+    "28_phase7b_close.json",
+    "29_phase7b_cert.json",
+    "30_phase7b_gate.json",
+    "31_phase7b_cert_replay.json",
+    "32_finance_snapshot_post.json"
+  ],
+  "generated_at": "2026-03-09T04:40:41.180632+00:00",
+  "manifest_hash": "a6ab7380e544464f638fb76f2aa287c000336839e289eeafe32a72878b3e2d67",
+  "operational_health": {
+    "snapshot_post_health": {
+      "phase6": {
+        "cec_blocking_open_count": 5,
+        "contingency_open_count": 2,
+        "failed_jobs_count": 2,
+        "inbox_failed_count": 0,
+        "outbox_failed_count": 0,
+        "retry_overdue_count": 0,
+        "stale_pending_count": 0
+      },
+      "phase7a": {
+        "inbox_failed_count": 0,
+        "missing_lines_count": 0,
+        "outbox_failed_count": 0,
+        "stale_revaluation_count": 0,
+        "unbalanced_entries_count": 0
+      },
+      "phase7b": {
+        "blocked_consolidation_count": 0,
+        "disputed_intercompany_count": 0,
+        "inbox_failed_count": 0,
+        "open_consolidation_exception_count": 0,
+        "open_intercompany_count": 0,
+        "outbox_failed_count": 0
+      }
+    },
+    "snapshot_post_manifest_hash": "3d5b27f679de7801bb247c5360ada1b4c1e35287e6c6a9b3e307d1ccc52c1696",
+    "snapshot_post_passed": true,
+    "snapshot_pre_manifest_hash": "fef201f8e4edeaf64092757ab92d1ffd664e6fcd1d9897f3f11335011b48ff40"
+  },
+  "overall_status": "PASS",
+  "phase6": {
+    "blocked_passed": true,
+    "cycle_health_stable": true,
+    "deterministic_blocked": true,
+    "deterministic_happy": true,
+    "gate_passed": true,
+    "happy_passed": true,
+    "health": {
+      "cec_blocking_open_count": 5,
+      "contingency_open_count": 2,
+      "failed_jobs_count": 2,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "manifests": {
+      "blocked": "fb962d639068032a29e6ef115a082f8ff0622477678d748f5bbcca4a37c28080",
+      "gate": "411239cefd9440ab24dd657c1bff4c5ac1604cb8a9cd770a5a0a9eebb63de9e4",
+      "happy": "f5d1136b349e90b435a9809c4288dfd981662a4c5f18dc9943e93fa50778e14a"
+    }
+  },
+  "phase7a": {
+    "blocked_passed": true,
+    "cycle_health_stable": true,
+    "deterministic_blocked": true,
+    "deterministic_happy": true,
+    "gate_passed": true,
+    "happy_passed": true,
+    "health": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "manifests": {
+      "blocked": "fcfaf5e070409dc45dad7201996b4e99d76463f9782ba85d50fd018a3b2a147f",
+      "gate": "b3912115d7446e2157e7f4ebc4650b3315817eaba5b12754ab4a9c7f9328d3ae",
+      "happy": "89c8d7f46886bfe37426244be49e3132bb6a20bc31fde3f95218e2aef6449390"
+    }
+  },
+  "phase7b": {
+    "certification_passed": true,
+    "deterministic_replay": true,
+    "gate_passed": true,
+    "health": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    },
+    "manifests": {
+      "certification": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+      "gate": "fecea605dc57750c8d84829a9ca270d553a89fa58e7557f448b37d1af176dc0f",
+      "replay": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e"
+    }
+  },
+  "regression": {
+    "command": "pytest -q login_module/src",
+    "exit_code": 0,
+    "passed": true
+  },
+  "schema_version": 1,
+  "signature": "a6ab7380e544464f638fb76f2aa287c000336839e289eeafe32a72878b3e2d67",
+  "signature_type": "sha256",
+  "simulation_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "output_dir": "docs/operacion/evidencia/simulacion_20260308_2221",
+    "parent_company_id": 5,
+    "timezone": "America/Managua"
+  }
+}

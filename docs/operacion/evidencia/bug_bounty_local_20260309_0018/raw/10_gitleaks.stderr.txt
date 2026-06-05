@@ -1,0 +1,24 @@
+Unable to find image 'ghcr.io/gitleaks/gitleaks:latest' locally
+latest: Pulling from gitleaks/gitleaks
+08e774557393: Pulling fs layer
+b93f69cf8789: Pulling fs layer
+7186f27ab0ed: Pulling fs layer
+a75652748546: Download complete
+08e774557393: Download complete
+b93f69cf8789: Download complete
+b93f69cf8789: Pull complete
+7186f27ab0ed: Download complete
+7186f27ab0ed: Pull complete
+08e774557393: Pull complete
+Digest: sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+Status: Downloaded newer image for ghcr.io/gitleaks/gitleaks:latest
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+[90m6:18AM[0m [32mINF[0m [1m133 commits scanned.[0m
+[90m6:18AM[0m [32mINF[0m [1mscanned ~179702215 bytes (179.70 MB) in 14.7s[0m
+[90m6:18AM[0m [33mWRN[0m [1mleaks found: 72[0m

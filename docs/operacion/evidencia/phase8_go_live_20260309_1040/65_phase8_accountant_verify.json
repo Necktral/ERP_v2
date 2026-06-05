@@ -1,0 +1,52 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 1
+      },
+      "name": "final_approved_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "open_observations": []
+      },
+      "name": "open_observations_resolved",
+      "passed": true
+    }
+  ],
+  "evidence_hash": "4df202779ab4f708a13bbe7c3583d7961bb5ca712cc5953c6f1058ab73318fcc",
+  "final_approved_present": true,
+  "final_signoff": {
+    "file": "64_phase8_accountant_final_signoff.json",
+    "generated_at": "2026-03-09T20:47:43.963363+00:00",
+    "review_date": "2026-03-09",
+    "reviewer": "contador.principal",
+    "status": "FINAL_APPROVED",
+    "summary": "Sign-off final aprobado para ventana F8; ajustes revisados y consistentes."
+  },
+  "generated_at": "2026-03-10T01:10:46.503248+00:00",
+  "open_observations": [],
+  "policy": "ON_DEMAND_FINAL_REQUIRED",
+  "rows": [
+    {
+      "file": "64_phase8_accountant_final_signoff.json",
+      "generated_at": "2026-03-09T20:47:43.963363+00:00",
+      "review_date": "2026-03-09",
+      "reviewer": "contador.principal",
+      "status": "FINAL_APPROVED",
+      "summary": "Sign-off final aprobado para ventana F8; ajustes revisados y consistentes."
+    }
+  ],
+  "schema_version": 1,
+  "signature": "4df202779ab4f708a13bbe7c3583d7961bb5ca712cc5953c6f1058ab73318fcc",
+  "signature_type": "sha256",
+  "signoff_passed": true,
+  "status_by_day": {
+    "2026-03-09": "FINAL_APPROVED"
+  },
+  "window": {
+    "end": "2026-03-22",
+    "start": "2026-03-09"
+  }
+}

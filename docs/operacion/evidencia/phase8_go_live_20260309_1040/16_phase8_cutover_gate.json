@@ -1,0 +1,135 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "phase6_gate_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "phase7_gate_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "phase7b_gate_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "cutover_passed": true,
+  "cutover_window": {
+    "executed_at": "2026-03-09T16:41:50.204447+00:00"
+  },
+  "evidence": {
+    "phase6_gate_hash": "7156cee1975299e985386ed9fae60f26d46264d0dc28c45dceb44b2e1a3d4630",
+    "phase7_gate_hash": "a4ae7f64d5024a31c4158ac44010e8531d46d0fe06fd5d71261fd89e741acc17",
+    "phase7b_gate_hash": "086ccc10627a0d1ebd18fa406fcdbb297f9dd695b494bb91d4ab591c4d0e9ccf"
+  },
+  "evidence_hash": "eb7ffe68eafa1a32178fdd17d23cfb2a1186ae67358a302f3ce2248d3ad19bae",
+  "generated_at": "2026-03-09T16:41:50.204439+00:00",
+  "health": {
+    "generated_at": "2026-03-09T16:41:50.204412+00:00",
+    "phase6": {
+      "cec_blocking_open_count": 8,
+      "contingency_open_count": 0,
+      "failed_jobs_count": 0,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "eb7ffe68eafa1a32178fdd17d23cfb2a1186ae67358a302f3ce2248d3ad19bae",
+  "signature_type": "sha256"
+}

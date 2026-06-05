@@ -1,0 +1,29 @@
+{
+  "company_id": 5,
+  "cycle": {
+    "closed": 0,
+    "company_id": 5,
+    "confirmed": 0,
+    "differences": 0,
+    "disputed": 0,
+    "generated_at": "2026-03-09T17:21:47.538732+00:00",
+    "issues": [],
+    "issues_count": 0,
+    "open_items": 0,
+    "processed": 0,
+    "schema_version": 1
+  },
+  "cycle_passed": true,
+  "dispatch": {
+    "attempted": 1,
+    "failed": 0,
+    "retried": 0,
+    "sent": 1
+  },
+  "evidence_hash": "f18deb970e3c88dcf46f7e85ad13ba330f188025dcc80bbe76e73e0f7a66dc2b",
+  "generated_at": "2026-03-09T17:21:47.558877+00:00",
+  "schema_version": 1,
+  "signature": "f18deb970e3c88dcf46f7e85ad13ba330f188025dcc80bbe76e73e0f7a66dc2b",
+  "signature_type": "sha256",
+  "strict": true
+}

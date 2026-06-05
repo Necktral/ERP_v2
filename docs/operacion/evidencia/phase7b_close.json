@@ -1,0 +1,121 @@
+{
+  "close_passed": true,
+  "dispatch": {
+    "attempted": 1,
+    "failed": 0,
+    "retried": 0,
+    "sent": 1
+  },
+  "evidence_hash": "a504ae1625852f7fd0e71cea3f12f8a04486cbd3ba3a9557aefdeaf4d560e594",
+  "generated_at": "2026-03-09T03:58:59.328854+00:00",
+  "idempotent": false,
+  "issues_count": 0,
+  "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+  "period": {
+    "month": 3,
+    "year": 2026
+  },
+  "pilot_scope": {
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "run_id": "b1758911-8beb-4526-9d50-9b9d14535e3e",
+  "schema_version": 1,
+  "signature": "a504ae1625852f7fd0e71cea3f12f8a04486cbd3ba3a9557aefdeaf4d560e594",
+  "signature_type": "sha256",
+  "status": "COMPLETED",
+  "summary": {
+    "balance_sheet": {
+      "as_of": "2026-03-31",
+      "assets": {
+        "rows": [
+          {
+            "account_code": "1101",
+            "account_name": "Caja",
+            "balance": "100.00"
+          }
+        ],
+        "total": "100.00"
+      },
+      "equity": {
+        "rows": [],
+        "total": "0.00"
+      },
+      "liabilities": {
+        "rows": [],
+        "total": "0.00"
+      },
+      "totals": {
+        "assets": "100.00",
+        "liabilities_plus_equity": "0.00"
+      }
+    },
+    "company_ids": [
+      5
+    ],
+    "issues": [],
+    "issues_count": 0,
+    "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+    "metrics": {
+      "balance_sheet_hash": "4d5daee7b2cf60bbb81c46228ddccd980f36ab1f96686ba70b775739d91f261e",
+      "elimination_count": 0,
+      "issues_count": 0,
+      "pnl_hash": "59f0a5479916b61ee4a142063e09159401707cf973266b64959cfe4824b91749",
+      "rows_count": 2,
+      "trial_hash": "f751bad48b948b59280f959a6567d2ce7a2043a52106a191fea40464c58a8c02"
+    },
+    "period": {
+      "date_from": "2026-03-01",
+      "date_to": "2026-03-31",
+      "month": 3,
+      "year": 2026
+    },
+    "pnl": {
+      "rows": [
+        {
+          "account_code": "7901",
+          "account_name": "Ganancia FX",
+          "account_type": "REVENUE",
+          "balance": "100.00"
+        }
+      ],
+      "totals": {
+        "expense": "0.00",
+        "net_income": "100.00",
+        "revenue": "100.00"
+      }
+    },
+    "schema_version": 1,
+    "status": "COMPLETED",
+    "trial_balance": {
+      "rows": [
+        {
+          "account_code": "1101",
+          "account_name": "Caja",
+          "account_type": "ASSET",
+          "credit_net": "0.00",
+          "credit_total": "0.00",
+          "debit_net": "100.00",
+          "debit_total": "100.00",
+          "elimination_credit": "0.00",
+          "elimination_debit": "0.00",
+          "net_balance": "100.00"
+        },
+        {
+          "account_code": "7901",
+          "account_name": "Ganancia FX",
+          "account_type": "REVENUE",
+          "credit_net": "100.00",
+          "credit_total": "100.00",
+          "debit_net": "0.00",
+          "debit_total": "0.00",
+          "elimination_credit": "0.00",
+          "elimination_debit": "0.00",
+          "net_balance": "100.00"
+        }
+      ]
+    }
+  }
+}

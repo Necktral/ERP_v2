@@ -1,0 +1,11 @@
+{
+  "status": "operational_block",
+  "hard_cut_productivo_completado": false,
+  "reason": "pending_physical_device_steps",
+  "next_required_steps": [
+    "device_enroll",
+    "device_batch_signed",
+    "audit_correlation",
+    "closure_or_rollback_decision"
+  ]
+}

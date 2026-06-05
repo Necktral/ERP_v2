@@ -1,0 +1,124 @@
+{
+  "blocked": false,
+  "close_run_status": "PACKAGED",
+  "deterministic_replay": true,
+  "doc_type": "SUPPLIER_INVOICE",
+  "env_manifest": {
+    "generated_at": "2026-03-10T01:58:53.104099+00:00",
+    "migrations": {
+      "count": 87,
+      "hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0"
+    },
+    "parity_fingerprint": "165e1ce69c6c810ca125001fc9c3f47b3d206ab86bbb0c7597355ca66ad5f011",
+    "pilot_scope": {
+      "branch_id": 6,
+      "company_id": 5
+    },
+    "posting_rules": {
+      "count": 1,
+      "hash": "b19c755c7c3ca1392e6c364a2b331bd69fb18a1db4fefc4cbd3b491c7b80db5f",
+      "items": [
+        {
+          "code": "shadow_ledger_v1",
+          "scope_company_id": 5,
+          "status": "ACTIVE",
+          "version": 10
+        }
+      ]
+    },
+    "procurement_state": {
+      "docs_draft": 0,
+      "docs_posted": 15,
+      "docs_total": 15,
+      "docs_voided": 0,
+      "hash": "af1598c77755a5e0ace54e20b0c78a8f2d547a03c8f8797a16b5e8627b36cbad"
+    },
+    "required_permissions": {
+      "count": 4,
+      "hash": "8578230b8bd9e17293519e7b3fc6e456ca379316b1e9d01ca1c5eb90b7f4fdbb",
+      "items": [
+        {
+          "code": "procurement.doc.create",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.post",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.read",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.void",
+          "is_active": false
+        }
+      ]
+    },
+    "schema_version": 1
+  },
+  "evidence_hash": "1cbeb16dea72d700df9e17e97b1a83cd9fc62e2b7867006cdc0fc7d2ee168ba6",
+  "expect_blocked": false,
+  "first_counts": {
+    "blocking_exceptions": 0,
+    "economic_events": 1,
+    "journal_drafts_exception": 0,
+    "journal_drafts_total": 1,
+    "journal_drafts_validated": 0,
+    "journal_entries_posted": 1
+  },
+  "first_manifest_hash": "33e075f268a6e6e4080c8071fbf70c0d0a1e597b47702740ba3ac3f43675505c",
+  "generated_at": "2026-03-10T01:58:53.090275+00:00",
+  "go_live_passed": true,
+  "manifest_hash": "33e075f268a6e6e4080c8071fbf70c0d0a1e597b47702740ba3ac3f43675505c",
+  "passed": true,
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "posting_first": {
+    "approved": 0,
+    "attempted": 1,
+    "errors": [],
+    "failed": 0,
+    "posted": 1,
+    "skipped": 0
+  },
+  "posting_second": {
+    "approved": 0,
+    "attempted": 1,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 1
+  },
+  "projection_first": {
+    "blocked": false,
+    "close_run_status": "PACKAGED",
+    "economic_events_created": 1,
+    "exceptions_opened": 0,
+    "journal_drafts_generated": 1,
+    "run_id": "c3fa373b-f857-45ee-a401-53bcfc3e6e61"
+  },
+  "projection_second": {
+    "blocked": false,
+    "close_run_status": "PACKAGED",
+    "economic_events_created": 0,
+    "exceptions_opened": 0,
+    "journal_drafts_generated": 0,
+    "run_id": "c3fa373b-f857-45ee-a401-53bcfc3e6e61"
+  },
+  "run_id": "c3fa373b-f857-45ee-a401-53bcfc3e6e61",
+  "schema_version": 1,
+  "second_counts": {
+    "blocking_exceptions": 0,
+    "economic_events": 1,
+    "journal_drafts_exception": 0,
+    "journal_drafts_total": 1,
+    "journal_drafts_validated": 0,
+    "journal_entries_posted": 1
+  },
+  "second_manifest_hash": "33e075f268a6e6e4080c8071fbf70c0d0a1e597b47702740ba3ac3f43675505c",
+  "signature": "1cbeb16dea72d700df9e17e97b1a83cd9fc62e2b7867006cdc0fc7d2ee168ba6",
+  "signature_type": "sha256"
+}

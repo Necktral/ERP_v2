@@ -1,0 +1,65 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "consumer": "accounting.projector",
+        "failed_count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0,
+        "stale_minutes": 30
+      },
+      "name": "stale_pending_triggers_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "projection_failed": 0
+      },
+      "name": "projection_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "company_id": 2,
+  "consumer": "accounting.projector",
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "dispatch_before": {
+    "attempted": 2,
+    "failed": 0,
+    "retried": 0,
+    "sent": 2
+  },
+  "evidence_hash": "cbc9506793a461b84421c714d84272d1f1b3a3acc4ea6e5fb3ebc03af11a3c80",
+  "generated_at": "2026-03-08T19:08:43.633458+00:00",
+  "projection": {
+    "attempted": 6,
+    "blocked": 0,
+    "failed": 0,
+    "processed": 0,
+    "skipped": 6
+  },
+  "schema_version": 1,
+  "signature": "cbc9506793a461b84421c714d84272d1f1b3a3acc4ea6e5fb3ebc03af11a3c80",
+  "signature_type": "sha256"
+}

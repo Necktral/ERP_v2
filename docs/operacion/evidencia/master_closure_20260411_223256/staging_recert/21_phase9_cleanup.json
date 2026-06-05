@@ -1,0 +1,27 @@
+96 objects imported automatically (use -v 2 for details).
+
+{
+  "docs_considered": 1,
+  "docs_touched": [
+    {
+      "doc_id": 5,
+      "fiscal_status": "CONTINGENCY",
+      "metadata_cleared": true
+    }
+  ],
+  "failed_jobs_retried": 1,
+  "generated_at": "2026-04-12T04:46:28.410105+00:00",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "retried_jobs": [
+    {
+      "attempt_count": 2,
+      "doc_id": 5,
+      "job_id": 5,
+      "status": "PENDING"
+    }
+  ],
+  "schema_version": 1
+}

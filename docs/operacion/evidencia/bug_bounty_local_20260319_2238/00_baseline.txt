@@ -1,0 +1,21 @@
+git_status:
+ M kernels/facturacion/models.py
+ M kernels/facturacion/services.py
+ M qa/k6/operational_posting_load.js
+ M qa/run_operational_performance_gate.sh
+ M simulacion/run_advanced_integral.sh
+?? .env.backup.20260319_220144
+?? kernels/facturacion/migrations/0005_bill_number_unique_nonzero.py
+?? kernels/facturacion/tests/test_numbering_constraints.py
+
+git_head:
+fa7ffdf42d28d463c8c6a54609d09974e9cc5f92
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.2.1, build a5c7197

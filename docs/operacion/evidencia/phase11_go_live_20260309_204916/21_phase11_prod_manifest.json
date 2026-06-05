@@ -1,0 +1,102 @@
+{
+  "company_links": {
+    "count": 1,
+    "hash": "68f035001aa385ef39a9bb2048072643f74909595b424258d4f282e5da412c4e",
+    "items": [
+      {
+        "from_company_id": 7,
+        "is_active": true,
+        "status": "ACTIVE",
+        "to_company_id": 5
+      }
+    ]
+  },
+  "dispute_reasons": {
+    "count": 1,
+    "hash": "839c97a2e961c6ee11d2e1bcd19724922d54c2204b2d2d6a400cafb4e91234ae",
+    "items": [
+      {
+        "code": "AMOUNT_MISMATCH",
+        "is_active": true,
+        "requires_evidence": true,
+        "severity": "HIGH",
+        "version": 1
+      }
+    ]
+  },
+  "generated_at": "2026-03-10T02:49:19.979344+00:00",
+  "migrations": {
+    "count": 88,
+    "hash": "429f52d564fb660de1b8e51757baf2e64118aabff2dbb32437ceb112151b90e4"
+  },
+  "parity_fingerprint": "4d08f2e8272099df05064417d1c58f5b75f123e3a7137c0eac7ac69aa0a14d82",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "required_permissions": {
+    "count": 7,
+    "hash": "926a75721cf06cd0a3fbaec7da5e860f33f9af346ee4924477cff7cb8838b924",
+    "items": [
+      {
+        "code": "accounting.intercompany.dispute",
+        "is_active": true
+      },
+      {
+        "code": "accounting.intercompany.reconcile",
+        "is_active": true
+      },
+      {
+        "code": "accounting.intercompany.settle",
+        "is_active": true
+      },
+      {
+        "code": "accounting.intercompany.write",
+        "is_active": true
+      },
+      {
+        "code": "accounting.consolidation.read",
+        "is_active": false
+      },
+      {
+        "code": "accounting.consolidation.run",
+        "is_active": false
+      },
+      {
+        "code": "accounting.intercompany.read",
+        "is_active": false
+      }
+    ]
+  },
+  "schema_version": 1,
+  "write_grants": {
+    "count": 4,
+    "hash": "8be289b1fc10881a1118a9637884d5d3e07e76eba671ad88fbc2f081f5cbc030",
+    "items": [
+      {
+        "link__from_company_id": 7,
+        "link__to_company_id": 5,
+        "permission__code": "accounting.intercompany.dispute",
+        "scope_org_unit_id": null
+      },
+      {
+        "link__from_company_id": 7,
+        "link__to_company_id": 5,
+        "permission__code": "accounting.intercompany.reconcile",
+        "scope_org_unit_id": null
+      },
+      {
+        "link__from_company_id": 7,
+        "link__to_company_id": 5,
+        "permission__code": "accounting.intercompany.settle",
+        "scope_org_unit_id": null
+      },
+      {
+        "link__from_company_id": 7,
+        "link__to_company_id": 5,
+        "permission__code": "accounting.intercompany.write",
+        "scope_org_unit_id": null
+      }
+    ]
+  }
+}

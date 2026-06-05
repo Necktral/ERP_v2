@@ -1,0 +1,397 @@
+80 objects imported automatically (use -v 2 for details).
+
+{
+  "blocked_run_id": "1162c72f-8893-468d-a763-15e0c14168a1",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "resolved_count": 63,
+  "resolved_current_run_count": 1,
+  "resolved_exceptions": [
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "bcd10ff1-88bb-4dd1-9415-f39b6ed77f35",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "4065d595-ea19-44bf-b88c-27565278d26e",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "47572766-3b56-4051-b1f4-d946e4fa645d",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "13431862-5fec-4aac-a592-4002ea3614ab",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "9165aa4f-cdba-43c2-9ce2-3d1cafc0277e",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "d9a36705-7079-453b-85c7-9d183a35c15f",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "1a5993e7-4783-4a46-8007-39b5feae498d",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "b3ad174a-12bb-4b67-a621-24939d364942",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "55cc3788-0caa-4dac-8d08-d51cc2775dbd",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "a25c2414-31d7-4701-aa78-83434a7ddfe0",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "1cd05313-318c-4c39-83e4-a1953419e787",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "37c20497-21ce-46b1-8f6e-838eccaa36a5",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "245e5bb2-4022-4770-8563-5413d252e638",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "6e4ae658-ab06-4cc7-a700-b7db6b7021ce",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "8759d730-5049-4b45-a1dc-606bb6b748e4",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7c8bed0f-9785-44ff-bb33-768dc28ccf85",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2ee023f1-85af-4ea3-ae32-a13d7a49f724",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7d8ff238-37b1-4519-b541-32690bc77104",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "04ea7fb5-5aaa-43c4-ab4f-22be66f394b3",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "192dc71f-81ec-4b80-9800-f7ce6cfec511",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "300e1fbf-83ca-414f-a7b0-4040b57cd498",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "82c9ee1b-05b2-41a8-9ea4-fe71e6afbb30",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "51175714-1ff9-456f-ac0c-fbdec9479cef",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "53b1dd5b-41b6-4d49-b882-14d6ec91b221",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7ef0d9dd-fc1c-4037-bfd4-e6df8aa7ee7f",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "08581bc7-9a97-45ea-9ec8-7ceefc5b399c",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "672b2188-2c14-405d-965b-45b2939f3b16",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "3e11ef92-9301-41b3-b1cc-84f0998e067f",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "f42bc569-9f26-445f-8010-4c2ce00d96d3",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "c9047f26-7767-4608-a7c4-ecf0916815d8",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "532ffc03-78b0-47a2-af95-f04b06d6e7dd",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "c72ca7b3-f99a-4f04-8f58-301e8b3c6fc5",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2279b68d-4292-41ca-b62e-40d35bd87318",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "fc3ac54a-f82e-40e0-bf7f-cc7d489e8cde",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "277f37e2-6e56-4473-8d88-3c7e0a13df8f",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "3f401276-445d-4be7-8a61-5f6fcbcff417",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "07aa17c8-f5a9-445f-b333-5b78e854af8c",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "17745d27-3d64-485e-b508-a607f08dc245",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "3526560a-6b04-4ea6-8cea-7cebbb3df0b8",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7689f4bb-ea5a-4fff-bb8d-d8be0669c52a",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "bd006856-27b7-48fe-adc0-44a7e6bd7a50",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "1c273225-5bf3-46ad-bba1-85a30bf8d2b6",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "6e7001e4-d717-4133-a353-d9143b8128b0",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2efb8985-a82c-4529-85f0-ac8af90cdb17",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "fd670885-7daa-4c64-85c5-0079ddf6799c",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "b8d1a2e8-8fd1-4dd0-819d-b802cfd0ed56",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2148ae37-42f2-4814-a519-eb9fd09fc6bb",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2118c58e-78b5-4aa0-b62d-ed7b3b958958",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "ce069c41-ac9d-434d-a6c9-a5e61ab8c5d2",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7cb1004c-a3f8-41b0-af5f-7e1533c36b1f",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "74880fbc-affd-4b4f-9803-2366bb034381",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "4d57b4de-cae7-47d8-8556-71f4c9516e26",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "d16369d0-17a8-432d-90f4-4bd25af4cb98",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "639f9a75-58af-49fb-bbba-d5ebf5989438",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "a15ec610-4941-4ce1-8b8b-a67bd72529b8",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "72ed1732-ebeb-48ac-a093-d2f36fd57256",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "22fcf14c-3541-4420-bda8-94537c1a5667",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "5458a970-dd99-4ea3-8e05-2e3c966c74ec",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "6dc64729-db1d-4f3a-99dd-54917adf2f40",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "ad591d28-4592-48e0-8e2a-db719a1a114a",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "750eb321-9f43-4f4a-968c-058565cf440c",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "715c96ba-069f-4d71-a0c1-89b2df9ce693",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "b9430f72-98f7-4340-9a49-5ae28229b189",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1dac5590-7626-47cd-9f70-9384b392b5ff",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "8e3d50f3-defa-4e8c-85f7-71bee76cb89a",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "c3fa373b-f857-45ee-a401-53bcfc3e6e61",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "fc4bd0e6-40dd-432e-8b0b-93f6b1e92f74",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1162c72f-8893-468d-a763-15e0c14168a1",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "34ad3418-0b7c-4049-8281-6e9575489b2a",
+      "status": "RESOLVED"
+    }
+  ],
+  "resolved_legacy_count": 62,
+  "schema_version": 1,
+  "stale_packaged_run_ids": [
+    "96930eb5-39cd-4a4c-a027-de090c1a594b"
+  ],
+  "stale_packaged_runs_reopened": 1
+}

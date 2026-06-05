@@ -1,0 +1,56 @@
+{
+  "f8_precondition": {
+    "details": {
+      "accountant_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/65_phase8_accountant_verify.json",
+      "branch_id": 6,
+      "burn_in_days": [
+        "2026-03-09",
+        "2026-03-10",
+        "2026-03-11",
+        "2026-03-12",
+        "2026-03-13",
+        "2026-03-14",
+        "2026-03-15",
+        "2026-03-16",
+        "2026-03-17",
+        "2026-03-18",
+        "2026-03-19",
+        "2026-03-20",
+        "2026-03-21",
+        "2026-03-22"
+      ],
+      "burn_in_failed_days": [],
+      "burn_in_passed": true,
+      "company_id": 5,
+      "final_approved_present": true,
+      "phase8_status": "READY_TO_CLOSE_F8",
+      "rollback_required": false,
+      "signoff_passed": true,
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/33_phase8_master_summary.json",
+      "verify_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/17_phase8_burnin_verify.json"
+    },
+    "errors": [],
+    "f8_closed": true
+  },
+  "generated_at": "2026-03-10T01:31:47.071354+00:00",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "series": "B"
+  },
+  "precheck_passed": false,
+  "provider_check": {
+    "log_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_go_live_http_20260309_193145/01_phase9_provider_check.txt",
+    "ok": false,
+    "output": "[INFO] 2026-03-09 19:31:46,390 axes.apps: AXES: BEGIN version 8.1.0, blocking by ip_address or combination of username and user_agent (request_id=)\nCommandError: provider test failed: Provider URL error: [Errno 111] Connection refused\n",
+    "return_code": 1
+  },
+  "provider_runtime_override": {
+    "FISCAL_ADAPTER_B_HTTP_API_KEY_configured": true,
+    "FISCAL_ADAPTER_B_HTTP_BASE_URL_configured": true,
+    "FISCAL_ADAPTER_B_HTTP_TIMEOUT_SECONDS": "10",
+    "FISCAL_ADAPTER_B_HTTP_VERIFY_TLS": "1",
+    "FISCAL_ADAPTER_B_PROVIDER": "HTTP"
+  },
+  "schema_version": 1
+}

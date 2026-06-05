@@ -1,0 +1,25 @@
+git_status:
+ M Makefile
+ M simulacion/README.md
+ M simulacion/dashboards/k6-load-testing-results.json
+ M simulacion/docker-compose.monitoring.yaml
+ M simulacion/run_simulation.sh
+?? .env.backup.20260313_221656
+?? .env.loadtest
+?? .env.loadtest.example
+?? simulacion/advanced_run.env.example
+?? simulacion/reports/
+?? simulacion/run_advanced_integral.sh
+?? simulacion/run_smoke.sh
+
+git_head:
+e53131cb356ecba80fe9d58a861c707e54df17ea
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.2.1, build a5c7197

@@ -1,0 +1,87 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "happy_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "unbalanced_entries_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_run_id": "00000000-0000-0000-0000-000000000701",
+    "happy_run_id": "3731c2ed-dc09-4a71-99f0-571a17642c74"
+  },
+  "evidence_hash": "a4ae7f64d5024a31c4158ac44010e8531d46d0fe06fd5d71261fd89e741acc17",
+  "generated_at": "2026-03-09T16:41:48.166418+00:00",
+  "go_live_passed": true,
+  "health": {
+    "inbox_failed_count": 0,
+    "missing_lines_count": 0,
+    "outbox_failed_count": 0,
+    "stale_revaluation_count": 0,
+    "unbalanced_entries_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "a4ae7f64d5024a31c4158ac44010e8531d46d0fe06fd5d71261fd89e741acc17",
+  "signature_type": "sha256"
+}

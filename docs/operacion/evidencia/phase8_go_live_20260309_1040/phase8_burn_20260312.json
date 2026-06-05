@@ -1,0 +1,177 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "intercompany_cycle_errors_empty",
+      "passed": true
+    },
+    {
+      "detail": {
+        "error": "",
+        "status": "COMPLETED"
+      },
+      "name": "consolidation_not_failed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed": 0
+      },
+      "name": "posting_without_failures",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 1,
+    "failed": 0,
+    "retried": 0,
+    "sent": 1
+  },
+  "dispatch_before": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "evidence_hash": "db16d9bab6e6f14e822c010a93a040e645ec72045bf5e7b40b0d7f12def4e6b1",
+  "generated_at": "2026-03-10T00:21:34.424625+00:00",
+  "health": {
+    "generated_at": "2026-03-10T00:21:34.424596+00:00",
+    "phase6": {
+      "cec_blocking_open_count": 0,
+      "contingency_open_count": 0,
+      "failed_jobs_count": 0,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "period": {
+    "month": 3,
+    "year": 2026
+  },
+  "phase6_processing": {
+    "attempted": 0,
+    "contingency": 0,
+    "failed": 0,
+    "printed": 0,
+    "retried": 0
+  },
+  "phase7a_posting": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "phase7a_revaluation": {
+    "entries_created": 0,
+    "idempotent": true,
+    "issues_count": 0,
+    "run_id": "d014ab38-e207-4f30-927a-147c279f9f14",
+    "status": "COMPLETED"
+  },
+  "phase7b_consolidation": {
+    "idempotent": true,
+    "issues_count": 0,
+    "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+    "run_id": "b1758911-8beb-4526-9d50-9b9d14535e3e",
+    "status": "COMPLETED"
+  },
+  "phase7b_intercompany": [
+    {
+      "closed": 0,
+      "company_id": 5,
+      "confirmed": 0,
+      "differences": 0,
+      "disputed": 0,
+      "open_items": 0,
+      "processed": 0,
+      "report_hash": "24c8deb2798f526ad5d627796ca557efd9e1d68092ec13b356e69f356b8b12d3"
+    }
+  ],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "db16d9bab6e6f14e822c010a93a040e645ec72045bf5e7b40b0d7f12def4e6b1",
+  "signature_type": "sha256"
+}

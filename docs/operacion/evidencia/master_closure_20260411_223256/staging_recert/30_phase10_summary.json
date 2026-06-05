@@ -1,0 +1,30 @@
+{
+  "checks": {
+    "blocked_passed": true,
+    "cycle_clean_consecutive_max": 2,
+    "cycle_clean_consecutive_required": 2,
+    "gate_passed": true,
+    "happy_passed": true,
+    "precheck_passed": true
+  },
+  "evidence_hash": "b697469ead50f01fe9ae96fb5c001665753ab2f303056abe45a39562677f9749",
+  "files": {
+    "blocked": "23_phase10_blocked.json",
+    "cleanup": "26_phase10_cleanup.json",
+    "cycles": [
+      "24_phase10_cycle_1.json",
+      "24_phase10_cycle_2.json",
+      "24_phase10_cycle_3.json"
+    ],
+    "gate": "25_phase10_gate.json",
+    "happy": "22_phase10_happy.json",
+    "precheck": "00_phase10_precheck.json",
+    "prod_manifest": "21_phase10_prod_manifest.json",
+    "staging_manifest": "20_phase10_staging_manifest.json"
+  },
+  "generated_at": "2026-04-12T04:53:49.986792+00:00",
+  "phase10_go_live_passed": true,
+  "schema_version": 1,
+  "signature": "b697469ead50f01fe9ae96fb5c001665753ab2f303056abe45a39562677f9749",
+  "signature_type": "sha256"
+}

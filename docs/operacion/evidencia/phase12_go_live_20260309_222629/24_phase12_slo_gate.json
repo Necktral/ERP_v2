@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 3,
+        "periods": [
+          "2026-01",
+          "2026-02",
+          "2026-03"
+        ]
+      },
+      "name": "minimum_periods_covered",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_count": 0,
+        "failed_periods": [],
+        "max_allowed": 0
+      },
+      "name": "failed_periods_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0
+      },
+      "name": "threshold_violations_empty",
+      "passed": true
+    }
+  ],
+  "evidence_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase12_go_live_20260309_222629",
+  "evidence_hash": "0d16defa53c61876d71b90dea39d997862b0e9f3ca1ef3a48054f4e9cc738d22",
+  "failed_periods": [],
+  "fx_policy_applied": "ALERT",
+  "generated_at": "2026-03-10T04:26:42.373273+00:00",
+  "pattern": "22_phase12_monthly_close_*.json",
+  "periods": [
+    "2026-01",
+    "2026-02",
+    "2026-03"
+  ],
+  "schema_version": 2,
+  "signature": "0d16defa53c61876d71b90dea39d997862b0e9f3ca1ef3a48054f4e9cc738d22",
+  "signature_type": "sha256",
+  "slo_passed": true,
+  "threshold_violations": [],
+  "warnings": []
+}

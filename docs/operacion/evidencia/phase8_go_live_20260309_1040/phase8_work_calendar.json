@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "mode": "HYBRID",
+  "timezone": "America/Managua",
+  "window_start": "2026-03-09",
+  "window_end": "2026-03-22",
+  "required_pass_days": 14,
+  "allow_eventual_close": true,
+  "accountant_policy": "ON_DEMAND_FINAL_REQUIRED",
+  "manual_days": {
+    "2026-03-09": "FULL",
+    "2026-03-10": "FULL",
+    "2026-03-11": "FULL",
+    "2026-03-12": "FULL",
+    "2026-03-13": "FULL",
+    "2026-03-14": "MINIMAL",
+    "2026-03-15": "MINIMAL",
+    "2026-03-16": "FULL",
+    "2026-03-17": "FULL",
+    "2026-03-18": "FULL",
+    "2026-03-19": "FULL",
+    "2026-03-20": "FULL",
+    "2026-03-21": "MINIMAL",
+    "2026-03-22": "MINIMAL"
+  },
+  "default_week_profile": {
+    "monday": "FULL",
+    "tuesday": "FULL",
+    "wednesday": "FULL",
+    "thursday": "FULL",
+    "friday": "FULL",
+    "saturday": "MINIMAL",
+    "sunday": "MINIMAL"
+  }
+}
