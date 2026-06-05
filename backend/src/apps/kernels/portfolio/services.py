@@ -413,6 +413,26 @@ def create_payable(
     # Publicar evento
     _publish_payable_created_event(payable)
 
+    _write_portfolio_audit_event(
+        actor_user=created_by,
+        company=payable.company,
+        branch=payable.branch,
+        event_type="PORTFOLIO_PAYABLE_CREATED",
+        subject_type="PAYABLE",
+        subject_id=str(payable.obligation_id),
+        after_snapshot={
+            "status": payable.status,
+            "principal_amount": str(payable.principal_amount),
+            "currency": payable.currency,
+            "due_date": payable.due_date.isoformat(),
+        },
+        metadata={
+            "party_id": payable.party_id,
+            "reference_type": payable.reference_type,
+            "reference_id": payable.reference_id,
+        },
+    )
+
     return payable
 
 
@@ -436,6 +456,65 @@ def _publish_payable_created_event(payable: Payable):
             "withholding_tax_amount": str(payable.withholding_tax_amount),
         }
     )
+
+
+def link_procurement_document_to_payable(*, outbox_event, actor_user=None) -> Dict[str, Any]:
+    """Crea una CxP desde un evento PROCUREMENT.ProcurementDocumentPosted con proveedor fuerte.
+
+    - Gate: requiere ``supplier_party`` (sin Party fuerte no hay dueño del saldo → no-op para
+      el modo legacy de proveedor textual).
+    - Idempotente por (reference_type="PROCUREMENT_DOC", reference_id=doc_id).
+    - Reusa ``create_payable`` (que audita PORTFOLIO_PAYABLE_CREATED + publica PayableCreated).
+      Ownership: Compras genera el documento; portfolio posee el saldo.
+    """
+    payload = outbox_event.payload if isinstance(outbox_event.payload, dict) else {}
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+
+    party_id = data.get("supplier_party_id")
+    if not party_id:
+        return {"status": "SKIPPED_NO_PARTY"}
+
+    doc_id = data.get("doc_id")
+    if doc_id is None:
+        return {"status": "SKIPPED_NO_DOC"}
+    doc_id = int(doc_id)
+    company = outbox_event.company
+
+    with transaction.atomic():
+        existing = Payable.objects.filter(
+            company=company, reference_type="PROCUREMENT_DOC", reference_id=doc_id
+        ).first()
+        if existing is not None:
+            return {"status": "EXISTS", "payable_id": str(existing.obligation_id)}
+
+        party = Party.objects.filter(id=int(party_id), company=company).first()
+        if party is None:
+            return {"status": "SKIPPED_PARTY_NOT_FOUND"}
+
+        principal = Decimal(str(data.get("total") or "0"))
+        if principal <= 0:
+            return {"status": "SKIPPED_NON_POSITIVE_AMOUNT"}
+
+        issue_date = timezone.localtime(outbox_event.occurred_at).date()
+        payable = create_payable(
+            company=company,
+            branch=outbox_event.branch,
+            party=party,
+            reference_type="PROCUREMENT_DOC",
+            reference_id=doc_id,
+            principal_amount=principal,
+            currency=str(data.get("currency") or "NIO"),
+            issue_date=issue_date,
+            due_date=issue_date,
+            supplier_invoice_number=str(data.get("supplier_ref") or ""),
+            created_by=actor_user,
+            metadata={
+                "source_module": "PROCUREMENT",
+                "source_event_id": str(getattr(outbox_event, "event_id", "")),
+                "supplier_display_name": str(data.get("supplier_display_name") or ""),
+            },
+        )
+    return {"status": "CREATED", "payable_id": str(payable.obligation_id)}
 
 
 # ============================================================================
