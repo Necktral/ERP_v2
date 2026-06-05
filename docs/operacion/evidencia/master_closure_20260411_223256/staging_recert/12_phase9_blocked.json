@@ -1,0 +1,93 @@
+{
+  "blocked": true,
+  "blocked_path_mode": "EMULATED_FALLBACK",
+  "cec_blocking_exceptions": 1,
+  "close_run_status": "REOPENED_EXCEPTION",
+  "contingency_counts": {
+    "open_contingency_docs": 1
+  },
+  "deterministic_replay": true,
+  "env_manifest": {
+    "generated_at": "2026-04-12T04:46:26.894721+00:00",
+    "parity_fingerprint": "6f527e7322ebdb009507f7adbf7ad69175fd4197a52805494d0de1081548acb5",
+    "phase6": {
+      "branch_fiscal_config_hash": "7e6aaea6623764623558cb10018080ba6834223de17c1198be3f98d24b0f1b89",
+      "migrations_hash": "4b989c3b855a5ca66febf5b90b36e9e9d015716d61b90aa1d4a2bbabc41c552e",
+      "parity_fingerprint": "af22267274cd7b5df1c5640bf8f478a21cbdeb28fddf595e2e99facfab5cdba9",
+      "required_permissions_hash": "05eaff31a4544043a4fc2bf19cb1552a5baab179f71d4b51612121a7337946fa"
+    },
+    "pilot_scope": {
+      "branch_id": 6,
+      "company_id": 5
+    },
+    "provider_config": {
+      "contingency_max_attempts": 2,
+      "emulated_fallback_enabled": true,
+      "hash": "f697dfae11076ceef93559f3b349a579397ff25b6c426e2a921e8a082225f797",
+      "http_api_key_configured": false,
+      "http_base_url_configured": false,
+      "http_timeout_seconds": 15,
+      "http_verify_tls": true,
+      "print_required": true,
+      "provider_mode": "EMULATED",
+      "resolved_adapter_class": "AdapterBEmulated",
+      "resolved_adapter_code": "EMULATED_B",
+      "runtime_adapter_code": "EMULATED_B",
+      "runtime_mode": "B",
+      "strict_integrity": true
+    },
+    "schema_version": 1
+  },
+  "evidence_hash": "31aa12ee33a0fd31fefb1b35d2f51e8cecca06fe92c376b23f66d136dd8fe374",
+  "expect_blocked": true,
+  "first_counts": {
+    "billing_events_for_doc": 7,
+    "cec_blocking_exceptions": 1,
+    "cec_total_exceptions": 1,
+    "contingency_docs_open": 1,
+    "doc_print_attempt_count": 2,
+    "print_jobs_failed": 1,
+    "print_jobs_pending": 0,
+    "print_jobs_printed": 0,
+    "print_jobs_retry": 0,
+    "print_jobs_total": 1
+  },
+  "first_manifest_hash": "e073f0a9f5d5f1512218a2310f327ad6c05913e221602761767801cc8f718332",
+  "generated_at": "2026-04-12T04:46:26.879220+00:00",
+  "go_live_passed": true,
+  "job_counts": {
+    "failed": 1,
+    "pending": 0,
+    "printed": 0,
+    "retry": 0,
+    "total": 1
+  },
+  "manifest_hash": "e073f0a9f5d5f1512218a2310f327ad6c05913e221602761767801cc8f718332",
+  "passed": true,
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "provider_adapter_class": "AdapterBEmulated",
+  "provider_check_error": "",
+  "provider_check_ok": true,
+  "provider_mode": "EMULATED",
+  "run_id": "3979cf0e-dae5-4d0d-84af-8512c3e7174d",
+  "scenario_adapter_code": "EMULATED_B",
+  "schema_version": 1,
+  "second_counts": {
+    "billing_events_for_doc": 7,
+    "cec_blocking_exceptions": 1,
+    "cec_total_exceptions": 1,
+    "contingency_docs_open": 1,
+    "doc_print_attempt_count": 2,
+    "print_jobs_failed": 1,
+    "print_jobs_pending": 0,
+    "print_jobs_printed": 0,
+    "print_jobs_retry": 0,
+    "print_jobs_total": 1
+  },
+  "second_manifest_hash": "e073f0a9f5d5f1512218a2310f327ad6c05913e221602761767801cc8f718332",
+  "signature": "31aa12ee33a0fd31fefb1b35d2f51e8cecca06fe92c376b23f66d136dd8fe374",
+  "signature_type": "sha256"
+}

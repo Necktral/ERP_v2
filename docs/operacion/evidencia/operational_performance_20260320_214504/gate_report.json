@@ -1,0 +1,42 @@
+{
+  "gate_name": "operational_performance_balance_profile",
+  "k6": {
+    "billing_write_ms_count": 0.0,
+    "billing_write_ms_p95": 415.4046742499998,
+    "http_reqs_count": 605.0,
+    "inventory_write_ms_count": 0.0,
+    "inventory_write_ms_p95": 385.06619804999985,
+    "iterations_count": 84.0,
+    "operational_error_rate": 0.0,
+    "posting_cycle_ms_count": 0.0,
+    "posting_cycle_ms_p95": 770.5923618
+  },
+  "k6_exit_code": 99,
+  "outbox_failed": {
+    "after_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "before_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "delta_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "no_growth": true
+  },
+  "passed": false,
+  "reasons": [
+    "billing_write_ms p95=415.40 > 400",
+    "posting_cycle_ms p95=770.59 > 400",
+    "billing_write_ms_samples_missing",
+    "inventory_write_ms_samples_missing",
+    "posting_cycle_ms_samples_missing",
+    "k6_exit_code=99"
+  ]
+}

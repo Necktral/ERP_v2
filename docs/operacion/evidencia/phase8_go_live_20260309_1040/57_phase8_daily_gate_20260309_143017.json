@@ -1,0 +1,19 @@
+{
+  "accountant_final_signoff_present": false,
+  "accountant_review_status_today": "NONE",
+  "accountant_verify_file": "65_phase8_accountant_verify.json",
+  "burn_cycle_passed": true,
+  "burn_file": "phase8_burn_20260309.json",
+  "daily_passed": true,
+  "date": "20260309",
+  "date_iso": "2026-03-09",
+  "day_mode_resolved": "FULL",
+  "eventual_close_applied": false,
+  "eventual_close_evidence": "",
+  "generated_at": "2026-03-09T20:30:23.908245+00:00",
+  "rollback_file": "18_phase8_rollback_eval.json",
+  "rollback_required": false,
+  "rollback_triggers": [],
+  "schema_version": 1,
+  "verify_file": "17_phase8_burnin_verify.json"
+}

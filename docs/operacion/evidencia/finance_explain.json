@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-03-09T04:00:47.363873+00:00",
+  "results": [
+    {
+      "critical_seq_scan": false,
+      "error": "",
+      "name": "trial_balance",
+      "ok": true,
+      "plan": "Sort  (cost=35.96..36.39 rows=170 width=470)\n  Sort Key: accounting_chartofaccount.code\n  ->  HashAggregate  (cost=27.11..29.66 rows=170 width=470)\n        Group Key: accounting_chartofaccount.code, accounting_chartofaccount.name, accounting_chartofaccount.account_type\n        ->  Hash Join  (cost=13.97..23.74 rows=270 width=446)\n              Hash Cond: (accounting_journalentryline.account_id = accounting_chartofaccount.id)\n              ->  Nested Loop  (cost=0.15..9.20 rows=270 width=48)\n                    ->  Seq Scan on accounting_journalentry  (cost=0.00..1.02 rows=1 width=8)\n                          Filter: (is_posted AND (entry_date >= '2026-03-01'::date) AND (entry_date <= '2026-03-31'::date) AND (company_id = 5) AND (branch_id = 6))\n                    ->  Index Scan using acc_jline_entry_line_idx on accounting_journalentryline  (cost=0.15..8.17 rows=1 width=56)\n                          Index Cond: (journal_entry_id = accounting_journalentry.id)\n              ->  Hash  (cost=11.70..11.70 rows=170 width=414)\n                    ->  Seq Scan on accounting_chartofaccount  (cost=0.00..11.70 rows=170 width=414)",
+      "sql": "SELECT \"accounting_chartofaccount\".\"code\" AS \"account__code\", \"accounting_chartofaccount\".\"name\" AS \"account__name\", \"accounting_chartofaccount\".\"account_type\" AS \"account__account_type\", COALESCE(SUM(\"accounting_journalentryline\".\"debit_base\"), 0.00) AS \"debit_total\", COALESCE(SUM(\"accounting_journalentryline\".\"credit_base\"), 0.00) AS \"credit_total\" FROM \"accounting_journalentryline\" INNER JOIN \"accounting_journalentry\" ON (\"accounting_journalentryline\".\"journal_entry_id\" = \"accounting_journalentry\".\"id\") INNER JOIN \"accounting_chartofaccount\" ON (\"accounting_journalentryline\".\"account_id\" = \"accounting_chartofaccount\".\"id\") WHERE (\"accounting_journalentry\".\"company_id\" = 5 AND \"accounting_journalentry\".\"is_posted\" AND \"accounting_journalentry\".\"branch_id\" = 6 AND \"accounting_journalentry\".\"entry_date\" >= 2026-03-01 AND \"accounting_journalentry\".\"entry_date\" <= 2026-03-31) GROUP BY 1, 2, 3 ORDER BY 1 ASC"
+    },
+    {
+      "critical_seq_scan": false,
+      "error": "",
+      "name": "general_ledger",
+      "ok": true,
+      "plan": "Sort  (cost=20.78..20.78 rows=2 width=1370)\n  Sort Key: accounting_journalentry.entry_date, accounting_journalentryline.journal_entry_id, accounting_journalentryline.line_no\n  ->  Nested Loop  (cost=0.27..20.77 rows=2 width=1370)\n        ->  Nested Loop  (cost=0.15..20.30 rows=2 width=713)\n              ->  Seq Scan on accounting_chartofaccount  (cost=0.00..12.12 rows=1 width=449)\n                    Filter: ((code)::text = '1101'::text)\n              ->  Index Scan using acc_jline_account_created_idx on accounting_journalentryline  (cost=0.15..8.17 rows=1 width=264)\n                    Index Cond: (account_id = accounting_chartofaccount.id)\n        ->  Index Scan using accounting_journalentry_pkey on accounting_journalentry  (cost=0.12..0.20 rows=1 width=657)\n              Index Cond: (id = accounting_journalentryline.journal_entry_id)\n              Filter: (is_posted AND (entry_date >= '2026-03-01'::date) AND (entry_date <= '2026-03-31'::date) AND (company_id = 5) AND (branch_id = 6))",
+      "sql": "SELECT \"accounting_journalentryline\".\"id\", \"accounting_journalentryline\".\"journal_entry_id\", \"accounting_journalentryline\".\"line_no\", \"accounting_journalentryline\".\"account_id\", \"accounting_journalentryline\".\"account_code_snapshot\", \"accounting_journalentryline\".\"currency\", \"accounting_journalentryline\".\"fx_rate\", \"accounting_journalentryline\".\"amount_tx\", \"accounting_journalentryline\".\"debit_base\", \"accounting_journalentryline\".\"credit_base\", \"accounting_journalentryline\".\"meta_json\", \"accounting_journalentryline\".\"created_at\", \"accounting_journalentry\".\"id\", \"accounting_journalentry\".\"draft_id\", \"accounting_journalentry\".\"period_id\", \"accounting_journalentry\".\"company_id\", \"accounting_journalentry\".\"branch_id\", \"accounting_journalentry\".\"entry_date\", \"accounting_journalentry\".\"description\", \"accounting_journalentry\".\"debit_total\", \"accounting_journalentry\".\"credit_total\", \"accounting_journalentry\".\"is_posted\", \"accounting_journalentry\".\"posted_at\", \"accounting_journalentry\".\"posted_by_id\", \"accounting_journalentry\".\"reversed_entry_id\", \"accounting_journalentry\".\"metadata\", \"accounting_chartofaccount\".\"id\", \"accounting_chartofaccount\".\"company_id\", \"accounting_chartofaccount\".\"code\", \"accounting_chartofaccount\".\"name\", \"accounting_chartofaccount\".\"account_type\", \"accounting_chartofaccount\".\"parent_id\", \"accounting_chartofaccount\".\"is_postable\", \"accounting_chartofaccount\".\"is_active\", \"accounting_chartofaccount\".\"is_revaluable\", \"accounting_chartofaccount\".\"created_at\", \"accounting_chartofaccount\".\"updated_at\" FROM \"accounting_journalentryline\" INNER JOIN \"accounting_chartofaccount\" ON (\"accounting_journalentryline\".\"account_id\" = \"accounting_chartofaccount\".\"id\") INNER JOIN \"accounting_journalentry\" ON (\"accounting_journalentryline\".\"journal_entry_id\" = \"accounting_journalentry\".\"id\") WHERE (\"accounting_chartofaccount\".\"code\" = 1101 AND \"accounting_journalentry\".\"company_id\" = 5 AND \"accounting_journalentry\".\"is_posted\" AND \"accounting_journalentry\".\"branch_id\" = 6 AND \"accounting_journalentry\".\"entry_date\" >= 2026-03-01 AND \"accounting_journalentry\".\"entry_date\" <= 2026-03-31) ORDER BY \"accounting_journalentry\".\"entry_date\" ASC, \"accounting_journalentryline\".\"journal_entry_id\" ASC, \"accounting_journalentryline\".\"line_no\" ASC"
+    },
+    {
+      "critical_seq_scan": true,
+      "error": "",
+      "name": "intercompany_cycle",
+      "ok": true,
+      "plan": "Sort  (cost=11.13..11.14 rows=1 width=1266)\n  Sort Key: created_at, id\n  ->  Seq Scan on accounting_intercompanytransaction  (cost=0.00..11.12 rows=1 width=1266)\n        Filter: (((status)::text = ANY ('{PENDING,DIFFERENCE,DISPUTED}'::text[])) AND ((source_company_id = 5) OR (target_company_id = 5)))",
+      "sql": "SELECT \"accounting_intercompanytransaction\".\"id\", \"accounting_intercompanytransaction\".\"tx_id\", \"accounting_intercompanytransaction\".\"source_company_id\", \"accounting_intercompanytransaction\".\"target_company_id\", \"accounting_intercompanytransaction\".\"source_journal_entry_id\", \"accounting_intercompanytransaction\".\"target_journal_entry_id\", \"accounting_intercompanytransaction\".\"status\", \"accounting_intercompanytransaction\".\"reference_code\", \"accounting_intercompanytransaction\".\"currency\", \"accounting_intercompanytransaction\".\"amount\", \"accounting_intercompanytransaction\".\"source_account_code\", \"accounting_intercompanytransaction\".\"target_account_code\", \"accounting_intercompanytransaction\".\"source_side\", \"accounting_intercompanytransaction\".\"target_side\", \"accounting_intercompanytransaction\".\"matched_amount_source\", \"accounting_intercompanytransaction\".\"matched_amount_target\", \"accounting_intercompanytransaction\".\"difference_amount\", \"accounting_intercompanytransaction\".\"description\", \"accounting_intercompanytransaction\".\"metadata_json\", \"accounting_intercompanytransaction\".\"created_by_id\", \"accounting_intercompanytransaction\".\"confirmed_by_id\", \"accounting_intercompanytransaction\".\"closed_by_id\", \"accounting_intercompanytransaction\".\"created_at\", \"accounting_intercompanytransaction\".\"confirmed_at\", \"accounting_intercompanytransaction\".\"closed_at\", \"accounting_intercompanytransaction\".\"updated_at\" FROM \"accounting_intercompanytransaction\" WHERE ((\"accounting_intercompanytransaction\".\"source_company_id\" = 5 OR \"accounting_intercompanytransaction\".\"target_company_id\" = 5) AND \"accounting_intercompanytransaction\".\"status\" IN (PENDING, DIFFERENCE, DISPUTED)) ORDER BY \"accounting_intercompanytransaction\".\"created_at\" ASC, \"accounting_intercompanytransaction\".\"id\" ASC"
+    },
+    {
+      "critical_seq_scan": false,
+      "error": "",
+      "name": "consolidation_scope",
+      "ok": true,
+      "plan": "Sort  (cost=8.18..8.18 rows=1 width=1266)\n  Sort Key: created_at, id\n  ->  Index Scan using acc_ic_tx_scope_stat_idx on accounting_intercompanytransaction  (cost=0.14..8.17 rows=1 width=1266)\n        Index Cond: ((source_company_id = 5) AND (target_company_id = 5) AND (created_at >= '2026-03-01 06:00:00+00'::timestamp with time zone) AND (created_at <= '2026-04-01 05:59:59.999999+00'::timestamp with time zone))\n        Filter: ((status)::text = ANY ('{CONFIRMED,CLOSED}'::text[]))",
+      "sql": "SELECT \"accounting_intercompanytransaction\".\"id\", \"accounting_intercompanytransaction\".\"tx_id\", \"accounting_intercompanytransaction\".\"source_company_id\", \"accounting_intercompanytransaction\".\"target_company_id\", \"accounting_intercompanytransaction\".\"source_journal_entry_id\", \"accounting_intercompanytransaction\".\"target_journal_entry_id\", \"accounting_intercompanytransaction\".\"status\", \"accounting_intercompanytransaction\".\"reference_code\", \"accounting_intercompanytransaction\".\"currency\", \"accounting_intercompanytransaction\".\"amount\", \"accounting_intercompanytransaction\".\"source_account_code\", \"accounting_intercompanytransaction\".\"target_account_code\", \"accounting_intercompanytransaction\".\"source_side\", \"accounting_intercompanytransaction\".\"target_side\", \"accounting_intercompanytransaction\".\"matched_amount_source\", \"accounting_intercompanytransaction\".\"matched_amount_target\", \"accounting_intercompanytransaction\".\"difference_amount\", \"accounting_intercompanytransaction\".\"description\", \"accounting_intercompanytransaction\".\"metadata_json\", \"accounting_intercompanytransaction\".\"created_by_id\", \"accounting_intercompanytransaction\".\"confirmed_by_id\", \"accounting_intercompanytransaction\".\"closed_by_id\", \"accounting_intercompanytransaction\".\"created_at\", \"accounting_intercompanytransaction\".\"confirmed_at\", \"accounting_intercompanytransaction\".\"closed_at\", \"accounting_intercompanytransaction\".\"updated_at\" FROM \"accounting_intercompanytransaction\" WHERE (\"accounting_intercompanytransaction\".\"created_at\" >= 2026-03-01 00:00:00-06:00 AND \"accounting_intercompanytransaction\".\"created_at\" <= 2026-03-31 23:59:59.999999-06:00 AND \"accounting_intercompanytransaction\".\"source_company_id\" IN (5) AND \"accounting_intercompanytransaction\".\"status\" IN (CONFIRMED, CLOSED) AND \"accounting_intercompanytransaction\".\"target_company_id\" IN (5)) ORDER BY \"accounting_intercompanytransaction\".\"created_at\" ASC, \"accounting_intercompanytransaction\".\"id\" ASC"
+    }
+  ],
+  "schema_version": 1,
+  "scope": {
+    "account_code": "1101",
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "period": {
+      "date_from": "2026-03-01",
+      "date_to": "2026-03-31"
+    }
+  },
+  "summary": {
+    "critical_seq_scans": 1,
+    "failed_explains": 0,
+    "max_critical_scans": 100,
+    "passed": true,
+    "queries": 4
+  }
+}

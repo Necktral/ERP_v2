@@ -1,0 +1,1 @@
+Static scan OK: /home/necktral/ERP_CRM/qa/reports/static_scan.txt

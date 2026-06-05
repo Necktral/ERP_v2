@@ -1,0 +1,168 @@
+{
+    "metrics": {
+        "http_req_connecting": {
+            "p(90)": 2.5351608,
+            "p(95)": 2.8520558999999994,
+            "avg": 1.056317,
+            "min": 0,
+            "med": 0,
+            "max": 3.168951
+        },
+        "data_received": {
+            "count": 3007,
+            "rate": 5467.166912742207
+        },
+        "inventory_write_ms": {
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "data_sent": {
+            "count": 1211,
+            "rate": 2201.775567452881
+        },
+        "billing_write_ms": {
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_receiving": {
+            "p(90)": 43.7921442,
+            "p(95)": 44.0959461,
+            "avg": 28.952251,
+            "min": 1.095276,
+            "med": 41.361729,
+            "max": 44.399748
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 3,
+            "value": 0
+        },
+        "posting_cycle_ms": {
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_blocked": {
+            "med": 0.013344,
+            "max": 3.751361,
+            "p(90)": 3.0037576,
+            "p(95)": 3.3775592999999997,
+            "avg": 1.2587810000000001,
+            "min": 0.011638
+        },
+        "operational_error_rate": {
+            "passes": 0,
+            "fails": 3,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_duration{expected_response:true}": {
+            "med": 155.339922,
+            "max": 256.878375,
+            "p(90)": 236.5706844,
+            "p(95)": 246.7245297,
+            "avg": 180.70655766666667,
+            "min": 129.901376
+        },
+        "http_req_waiting": {
+            "p(95)": 241.23848499999997,
+            "avg": 151.50193666666667,
+            "min": 85.243184,
+            "med": 113.872348,
+            "max": 255.390278,
+            "p(90)": 227.08669199999997
+        },
+        "http_req_duration": {
+            "p(95)": 246.7245297,
+            "avg": 180.70655766666667,
+            "min": 129.901376,
+            "med": 155.339922,
+            "max": 256.878375,
+            "p(90)": 236.5706844
+        },
+        "checks": {
+            "passes": 3,
+            "fails": 0,
+            "value": 1
+        },
+        "http_reqs": {
+            "count": 3,
+            "rate": 5.4544398863407455
+        },
+        "http_req_sending": {
+            "avg": 0.25237,
+            "min": 0.105845,
+            "med": 0.258444,
+            "max": 0.392821,
+            "p(90)": 0.3659456,
+            "p(95)": 0.3793833
+        }
+    },
+    "root_group": {
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "auth_login status valid": {
+                            "name": "auth_login status valid",
+                            "path": "::setup::auth_login status valid",
+                            "id": "28f950ece627be91e76b2bd095266c91",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "inventory_warehouse_create status valid": {
+                            "fails": 0,
+                            "name": "inventory_warehouse_create status valid",
+                            "path": "::setup::inventory_warehouse_create status valid",
+                            "id": "55c4b722d45f4a0f5faec25b54407d1a",
+                            "passes": 1
+                        },
+                        "inventory_item_create status valid": {
+                            "path": "::setup::inventory_item_create status valid",
+                            "id": "f9676fb7af4777914c3316392e5118e1",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "inventory_item_create status valid"
+                        }
+                    }
+            }
+        },
+        "checks": {},
+        "name": "",
+        "path": ""
+    }
+}

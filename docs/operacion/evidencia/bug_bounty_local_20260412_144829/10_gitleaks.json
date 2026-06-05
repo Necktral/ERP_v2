@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 474,
+  "EndLine": 474,
+  "StartColumn": 14,
+  "EndColumn": 40,
+  "Match": "key=\"iam.2fa_verify_denied\"",
+  "Secret": "iam.2fa_verify_denied",
+  "File": "/repo/qa/product_lifecycle_full_cycle.py",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 3.5585186,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/repo/qa/product_lifecycle_full_cycle.py:generic-api-key:474"
+ }
+]

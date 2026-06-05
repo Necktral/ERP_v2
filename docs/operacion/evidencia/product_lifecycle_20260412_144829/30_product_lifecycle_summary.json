@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-12T20:58:18.617223+00:00",
+  "timezone": "America/Managua",
+  "seed": 20260412,
+  "status": "FAIL",
+  "functional": {
+    "pass": true,
+    "status": "PASS",
+    "file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/product_lifecycle_20260412_144829/20_product_lifecycle_functional.json",
+    "global_error": ""
+  },
+  "load": {
+    "pass": true,
+    "security_profile": {
+      "pass": true,
+      "summary_file": "/home/necktral/ERP_CRM/qa/reports/gate3_security_summary.json",
+      "failure_class": "none",
+      "rc": 0
+    },
+    "performance_profile": {
+      "pass": true,
+      "summary_file": "/home/necktral/ERP_CRM/qa/reports/gate3_performance_summary.json",
+      "failure_class": "none",
+      "rc": 0
+    }
+  },
+  "security": {
+    "pass": false,
+    "bug_bounty": {
+      "status": "FAIL",
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260412_144829/30_bug_bounty_summary.json",
+      "rc": 0
+    }
+  },
+  "module_results": {
+    "iam": {
+      "steps": 15,
+      "passed": 15,
+      "failed": 0,
+      "pass": true
+    },
+    "organization": {
+      "steps": 3,
+      "passed": 3,
+      "failed": 0,
+      "pass": true
+    },
+    "hr": {
+      "steps": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass": true
+    },
+    "retail_fuel": {
+      "steps": 30,
+      "passed": 30,
+      "failed": 0,
+      "pass": true
+    },
+    "sync": {
+      "steps": 7,
+      "passed": 7,
+      "failed": 0,
+      "pass": true
+    },
+    "accounting": {
+      "steps": 19,
+      "passed": 19,
+      "failed": 0,
+      "pass": true
+    }
+  },
+  "http_contract": {
+    "default_allowed_statuses": [
+      200,
+      201
+    ],
+    "status_overrides": {
+      "iam.bootstrap_status": [
+        200
+      ],
+      "iam.bootstrap_init": [
+        201
+      ],
+      "iam.login_plain": [
+        200
+      ],
+      "iam.bootstrap_org": [
+        200
+      ],
+      "iam.2fa_enable": [
+        200
+      ],
+      "iam.2fa_confirm": [
+        200
+      ],
+      "iam.login_2fa_challenge": [
+        202
+      ],
+      "iam.login_2fa_challenge_retry": [
+        202
+      ],
+      "iam.2fa_verify": [
+        200
+      ],
+      "iam.2fa_verify_denied": [
+        400
+      ],
+      "iam.refresh": [
+        200
+      ],
+      "iam.logout": [
+        204
+      ],
+      "org.create_company": [
+        201
+      ],
+      "org.create_branch": [
+        201
+      ],
+      "hr.create_position": [
+        201
+      ],
+      "hr.create_employee": [
+        201
+      ],
+      "hr.create_assignment": [
+        201
+      ],
+      "hr.provision_user": [
+        201
+      ],
+      "hr.reset_temp_password": [
+        200
+      ],
+      "hr.revoke_access": [
+        200
+      ],
+      "fuel.shift_open": [
+        201
+      ],
+      "fuel.shift_close": [
+        200
+      ],
+      "fuel.shift_report": [
+        200
+      ],
+      "fuel.daily_report": [
+        200
+      ],
+      "retail.pos_session_open": [
+        201
+      ],
+      "retail.pos_session_close": [
+        200
+      ],
+      "retail.ticket_open": [
+        201
+      ],
+      "retail.ticket_checkout": [
+        200
+      ],
+      "retail.ticket_void": [
+        200
+      ],
+      "retail.ticket_comp_retry": [
+        200
+      ],
+      "sync.edge_challenge": [
+        201
+      ],
+      "sync.edge_handshake": [
+        201
+      ],
+      "sync.edge_capabilities": [
+        200
+      ],
+      "sync.edge_bad_signature": [
+        401
+      ],
+      "accounting.coa_upsert": [
+        200
+      ],
+      "accounting.fx_rate_upsert": [
+        200,
+        201
+      ],
+      "accounting.intercompany_create": [
+        201
+      ],
+      "accounting.intercompany_confirm": [
+        200
+      ],
+      "accounting.intercompany_reconcile": [
+        200
+      ],
+      "accounting.intercompany_close": [
+        200
+      ],
+      "accounting.consolidation_run": [
+        200,
+        201
+      ],
+      "accounting.consolidation_tb": [
+        200
+      ],
+      "accounting.consolidation_pnl": [
+        200
+      ],
+      "accounting.report_tb": [
+        200
+      ],
+      "accounting.report_pnl": [
+        200
+      ],
+      "accounting.journal_entry_reverse": [
+        200,
+        201
+      ]
+    },
+    "violations_count": 0
+  },
+  "orphan_checks": {
+    "pos_ticket_closed_missing_sale_or_payment": 0,
+    "fuel_sale_without_dispense": 0,
+    "journal_entry_without_lines": 0,
+    "intercompany_or_consolidation_inconsistency": 0,
+    "closed_intercompany_with_difference": 0,
+    "blocked_consolidation_runs": 0,
+    "total": 0
+  },
+  "intercompany_consistency": {
+    "run_id": "9e932766-ea85-48f0-a025-d7d3bad97d44",
+    "run_status": "COMPLETED",
+    "issues_count": 0,
+    "tx_id": "f8471d8c-6c1e-4187-8943-b28d97dd357c"
+  },
+  "load_security_results": {
+    "gate3_security": {
+      "exit_code": 0,
+      "failure_class": "none",
+      "failure_reason": "",
+      "generated_at": "2026-04-12T20:52:19.193560+00:00",
+      "metrics": {
+        "auth_acl_p95_ms": 14.24,
+        "auth_login_p95_ms": null,
+        "auth_me_p95_ms": 18.88,
+        "backend_http_429_count": 0,
+        "backend_http_5xx_count": 0,
+        "backend_traceback_count": 0,
+        "http_req_failed_rate_pct": 0.0,
+        "http_reqs_per_sec": 0.696095
+      },
+      "passed": true,
+      "profile": "security",
+      "thresholds": {
+        "auth_acl_p95_ms_max": 600.0,
+        "auth_login_p95_ms_max": 600.0,
+        "auth_me_p95_ms_max": 500.0,
+        "http_req_failed_rate_pct_max": 1.0
+      }
+    },
+    "gate3_performance": {
+      "exit_code": 0,
+      "failure_class": "none",
+      "failure_reason": "",
+      "generated_at": "2026-04-12T20:56:42.333338+00:00",
+      "metrics": {
+        "auth_acl_p95_ms": 41.05,
+        "auth_login_p95_ms": 186.22,
+        "auth_me_p95_ms": 48.22,
+        "backend_http_429_count": 0,
+        "backend_http_5xx_count": 0,
+        "backend_traceback_count": 0,
+        "http_req_failed_rate_pct": 0.0,
+        "http_reqs_per_sec": 39.030338
+      },
+      "passed": true,
+      "profile": "performance",
+      "thresholds": {
+        "auth_acl_p95_ms_max": 600.0,
+        "auth_login_p95_ms_max": 900.0,
+        "auth_me_p95_ms_max": 500.0,
+        "http_req_failed_rate_pct_max": 1.0
+      }
+    },
+    "bug_bounty": {
+      "status": "FAIL",
+      "evidence_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260412_144829",
+      "checks": {
+        "gitleaks_clean": false,
+        "gitleaks_findings": 1,
+        "pip_audit_blocking_clean": true,
+        "pip_audit_blocking_count": 0,
+        "npm_audit_blocking_clean": true,
+        "npm_audit_blocking_count": 0,
+        "manage_check_pass": true,
+        "audit_chain_pass": true,
+        "security_pytest_pass": true,
+        "static_scan_pass": true
+      },
+      "tool_exit_codes": {
+        "gitleaks_rc": 1,
+        "pip_audit_rc": 1,
+        "npm_audit_rc": 0,
+        "static_scan_rc": 0,
+        "manage_check_rc": 0,
+        "audit_chain_rc": 0,
+        "security_pytest_rc": 0
+      },
+      "blocking_findings": {
+        "pip": [],
+        "npm": []
+      }
+    }
+  }
+}

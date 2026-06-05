@@ -1,0 +1,3 @@
+60337 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/13_trivy_fs.json
+  145 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/14_static_scan.txt
+60482 total

@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-03-10T21:53:06.909584+00:00",
+  "parity_fingerprint": "a00f9b9b1442bad3d22c8e1c0217691e1f178a77ffe3fd1903cd7b9c8f8ee482",
+  "phase6": {
+    "branch_fiscal_config_hash": "d9fdaa433d4789dd777fa69903c503aba8a102fd33952639df5793a89326862d",
+    "migrations_hash": "429f52d564fb660de1b8e51757baf2e64118aabff2dbb32437ceb112151b90e4",
+    "parity_fingerprint": "eaca52a42ccc00811ca5dd4ccccc09e6c27861579bac855dee0f0189ef3f33ca",
+    "required_permissions_hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88"
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "provider_config": {
+    "contingency_max_attempts": 2,
+    "emulated_fallback_enabled": true,
+    "hash": "f697dfae11076ceef93559f3b349a579397ff25b6c426e2a921e8a082225f797",
+    "http_api_key_configured": false,
+    "http_base_url_configured": false,
+    "http_timeout_seconds": 15,
+    "http_verify_tls": true,
+    "print_required": true,
+    "provider_mode": "EMULATED",
+    "resolved_adapter_class": "AdapterBEmulated",
+    "resolved_adapter_code": "EMULATED_B",
+    "runtime_adapter_code": "EMULATED_B",
+    "runtime_mode": "B",
+    "strict_integrity": true
+  },
+  "schema_version": 1
+}

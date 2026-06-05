@@ -1,0 +1,3 @@
+13242 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/11_pip_audit.json
+14223 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/12_npm_audit.json
+27465 total

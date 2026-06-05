@@ -1,0 +1,36 @@
+# F8 burn-in operation (piloto 5/6) - example crontab
+# Timezone operativa
+CRON_TZ=America/Managua
+
+# Entorno base
+ROOT=/home/necktral/ERP_CRM
+OUT_DIR=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040
+COMPANY_ID=5
+BRANCH_ID=6
+PARENT_COMPANY_ID=5
+COMPANY_IDS=5
+PHASE8_CALENDAR_FILE=/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_work_calendar.json
+
+# Ventana calendario del burn-in
+PHASE8_START_DATE=2026-03-09
+PHASE8_END_DATE=2026-03-22
+# 1 = reinicia ventana automáticamente si falla el cierre diario
+PHASE8_AUTO_RESET_ON_FAIL=0
+
+# Revisión temprana del modo del día (07:50) para ajustes manuales del calendario
+50 7 * * * cd $ROOT && ./qa/run_phase8_calendar_guard.sh day-mode >> $OUT_DIR/cron_day_mode.log 2>&1
+
+# Operación continua calendario (cada 5 minutos, 08:00-17:59)
+*/5 8-17 * * * cd $ROOT && ./qa/run_phase8_calendar_guard.sh live-tick >> $OUT_DIR/cron_live_tick.log 2>&1
+
+# Cierre diario si el día resolvió FULL (18:05)
+5 18 * * * cd $ROOT && ./qa/run_phase8_calendar_guard.sh daily-close-full >> $OUT_DIR/cron_burnin_daily.log 2>&1
+
+# Cierre diario si el día resolvió MINIMAL (10:00)
+0 10 * * * cd $ROOT && ./qa/run_phase8_calendar_guard.sh daily-close-minimal >> $OUT_DIR/cron_burnin_daily.log 2>&1
+
+# Verificación final estricta en fecha objetivo (22-mar-2026, 10:20)
+20 10 22 3 * cd $ROOT && ./qa/run_phase8_calendar_guard.sh final-verify >> $OUT_DIR/cron_burnin_verify.log 2>&1
+
+# F9 D+1 kickoff controlado (solo si F8 burn-in PASS)
+0 9 23 3 * cd /home/necktral/ERP_CRM && ./docs/operacion/evidencia/phase8_go_live_20260309_1040/run_phase9_dplus1.sh >> /home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/cron_phase9_dplus1.log 2>&1

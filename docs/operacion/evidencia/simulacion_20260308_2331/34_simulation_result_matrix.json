@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-03-09T05:53:21.550543+00:00",
+  "manifest_hash": "9c78f84382889222956f9e04fd1a568b404800f43a4c82fd40b5d8bbbf29d6d4",
+  "overall_status": "PASS",
+  "rows": [
+    {
+      "area": "Baseline preflight",
+      "cause_root": "Preflight unificado en verde.",
+      "corrective_action": "Mantener control de paridad y thresholds.",
+      "eta": "Aplicado",
+      "evidence": "01_staging_preflight.json",
+      "status": "PASS"
+    },
+    {
+      "area": "F6 happy path",
+      "cause_root": "Adapter B emulado emitio/imprimio y cerro PACKAGED.",
+      "corrective_action": "Sostener run_adapter_b_cycle cada 5 min.",
+      "eta": "Operativo continuo",
+      "evidence": "12_phase6_happy.json",
+      "status": "PASS"
+    },
+    {
+      "area": "F6 blocked path",
+      "cause_root": "Escenario bloqueado controlado genero contingencia y bloqueo CEC.",
+      "corrective_action": "Mantener trazabilidad de contingencias abiertas.",
+      "eta": "Antes de promocion",
+      "evidence": "13_phase6_blocked.json",
+      "status": "PASS"
+    },
+    {
+      "area": "F6 go-live gate",
+      "cause_root": "Gate F6 estricto en verde.",
+      "corrective_action": "Mantener thresholds para run operativo.",
+      "eta": "Aplicado",
+      "evidence": "14_phase6_gate.json",
+      "status": "PASS"
+    },
+    {
+      "area": "F7A happy+blocked+gate",
+      "cause_root": "Posting real con JournalEntryLine y gate verde.",
+      "corrective_action": "Mantener revaluacion mensual y SoD.",
+      "eta": "Cierre mensual",
+      "evidence": "22_phase7_happy.json,23_phase7_blocked.json,24_phase7_gate.json",
+      "status": "PASS"
+    },
+    {
+      "area": "F7B consolidacion+gate",
+      "cause_root": "Consolidacion determinista sin bloqueos.",
+      "corrective_action": "Sostener ciclo intercompany/consolidacion.",
+      "eta": "Operativo continuo",
+      "evidence": "29_phase7b_cert.json,30_phase7b_gate.json",
+      "status": "PASS"
+    },
+    {
+      "area": "Determinismo (doble corrida)",
+      "cause_root": "Metricas y/o hashes estables en replay.",
+      "corrective_action": "Mantener verificacion de replay por fase.",
+      "eta": "Inmediato ante desviacion",
+      "evidence": "15_phase6_cycle_1.json,16_phase6_cycle_2.json,25_phase7_cycle_1.json,26_phase7_cycle_2.json,29_phase7b_cert.json,31_phase7b_cert_replay.json",
+      "status": "PASS"
+    },
+    {
+      "area": "Salud operacional cierre",
+      "cause_root": "Snapshot operacional post en verde.",
+      "corrective_action": "Monitoreo permanente con snapshot y alertas.",
+      "eta": "Operativo continuo",
+      "evidence": "32_finance_snapshot_post.json",
+      "status": "PASS"
+    },
+    {
+      "area": "Regresion backend",
+      "cause_root": "Suite completa en verde.",
+      "corrective_action": "Mantener pytest completo como gate obligatorio.",
+      "eta": "Aplicado",
+      "evidence": "pytest -q login_module/src",
+      "status": "PASS"
+    }
+  ],
+  "schema_version": 1,
+  "signature": "9c78f84382889222956f9e04fd1a568b404800f43a4c82fd40b5d8bbbf29d6d4",
+  "signature_type": "sha256"
+}

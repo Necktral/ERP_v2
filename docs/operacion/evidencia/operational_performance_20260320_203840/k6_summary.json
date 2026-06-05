@@ -1,0 +1,261 @@
+{
+    "metrics": {
+        "data_received": {
+            "count": 9464250,
+            "rate": 75477.75405617325
+        },
+        "http_req_failed": {
+            "passes": 7549,
+            "fails": 201,
+            "value": 0.9740645161290322
+        },
+        "http_req_blocked": {
+            "avg": 0.005376479870967731,
+            "min": 0.002091,
+            "med": 0.004466,
+            "max": 1.643966,
+            "p(90)": 0.006461,
+            "p(95)": 0.007452049999999992
+        },
+        "operational_error_rate": {
+            "passes": 3745,
+            "fails": 201,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.9490623416117587
+        },
+        "http_req_connecting": {
+            "max": 0.371487,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0.00017495896774193548,
+            "min": 0,
+            "med": 0
+        },
+        "vus_max": {
+            "max": 5,
+            "value": 5,
+            "min": 5
+        },
+        "iteration_duration": {
+            "min": 69.097665,
+            "med": 136.271028,
+            "max": 1476.546266,
+            "p(90)": 175.8601331,
+            "p(95)": 210.3920351499999,
+            "avg": 157.7588703002104
+        },
+        "iterations": {
+            "count": 3804,
+            "rate": 30.337044819154507
+        },
+        "posting_cycle_ms": {
+            "max": 545.88612,
+            "p(90)": 485.53258400000004,
+            "p(95)": 526.16171435,
+            "avg": 304.95106622727275,
+            "min": 80.13466,
+            "med": 285.2985555,
+            "thresholds": {
+                "p(95)<400": true
+            }
+        },
+        "vus": {
+            "min": 5,
+            "max": 5,
+            "value": 5
+        },
+        "data_sent": {
+            "count": 2906443,
+            "rate": 23178.993573953176
+        },
+        "http_req_receiving": {
+            "min": 0.102425,
+            "med": 42.828253000000004,
+            "max": 772.626361,
+            "p(90)": 46.369314200000005,
+            "p(95)": 47.3816038,
+            "avg": 43.93354956903217
+        },
+        "inventory_write_ms": {
+            "avg": 191.62815691071432,
+            "min": 91.974903,
+            "med": 195.581051,
+            "max": 358.845445,
+            "p(90)": 265.2307605,
+            "p(95)": 288.15507225,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "checks": {
+            "passes": 201,
+            "fails": 3745,
+            "value": 0.050937658388241255
+        },
+        "billing_write_ms": {
+            "max": 455.690156,
+            "p(90)": 276.5864193,
+            "p(95)": 319.6292639,
+            "avg": 185.76036470000003,
+            "min": 71.807488,
+            "med": 165.606032,
+            "thresholds": {
+                "p(95)<400": false
+            }
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "http_req_sending": {
+            "p(90)": 0.05299100000000001,
+            "p(95)": 0.06084244999999996,
+            "avg": 0.03598887741935473,
+            "min": 0.009026,
+            "med": 0.036239,
+            "max": 0.880941
+        },
+        "http_req_waiting": {
+            "avg": 34.35159567819358,
+            "min": 6.33603,
+            "med": 25.429586,
+            "max": 804.896539,
+            "p(90)": 54.494229000000004,
+            "p(95)": 77.91685249999999
+        },
+        "http_req_duration{expected_response:true}": {
+            "max": 545.88612,
+            "p(90)": 322.980781,
+            "p(95)": 384.397198,
+            "avg": 202.88998663184083,
+            "min": 71.807488,
+            "med": 182.152049
+        },
+        "http_reqs": {
+            "count": 7750,
+            "rate": 61.806545044281656
+        },
+        "http_req_duration": {
+            "p(95)": 123.18970784999993,
+            "avg": 78.32113412464517,
+            "min": 11.102424,
+            "med": 67.7562015,
+            "max": 850.870823,
+            "p(90)": 99.23552289999999
+        }
+    },
+    "setup_data": {
+        "authTransport": "cookie",
+        "csrf": "yDuSIUP6vyRzHPMPk5rVNXDNYPqlWEJ7pcZ0bMvSfUA",
+        "itemId": 3,
+        "token": "",
+        "warehouseId": 3
+    },
+    "root_group": {
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {
+                        "auth_login status valid": {
+                            "fails": 0,
+                            "name": "auth_login status valid",
+                            "path": "::setup::auth_login status valid",
+                            "id": "28f950ece627be91e76b2bd095266c91",
+                            "passes": 1
+                        },
+                        "inventory_warehouse_create status valid": {
+                            "id": "55c4b722d45f4a0f5faec25b54407d1a",
+                            "passes": 1,
+                            "fails": 0,
+                            "name": "inventory_warehouse_create status valid",
+                            "path": "::setup::inventory_warehouse_create status valid"
+                        },
+                        "inventory_item_create status valid": {
+                            "name": "inventory_item_create status valid",
+                            "path": "::setup::inventory_item_create status valid",
+                            "id": "f9676fb7af4777914c3316392e5118e1",
+                            "passes": 1,
+                            "fails": 0
+                        },
+                        "inventory_seed_receive status valid": {
+                            "name": "inventory_seed_receive status valid",
+                            "path": "::setup::inventory_seed_receive status valid",
+                            "id": "754570f9bc88f717fe0fcf3ab62db5cd",
+                            "passes": 1,
+                            "fails": 0
+                        }
+                    }
+            }
+        },
+        "checks": {
+            "auth_login status valid": {
+                "name": "auth_login status valid",
+                "path": "::auth_login status valid",
+                "id": "f0f379430c669ec907355e78496525bf",
+                "passes": 59,
+                "fails": 3745
+            },
+            "inventory_receive status valid": {
+                "passes": 28,
+                "fails": 0,
+                "name": "inventory_receive status valid",
+                "path": "::inventory_receive status valid",
+                "id": "f07763983013ef81d43169b2baf437fd"
+            },
+            "billing_doc_create status valid": {
+                "path": "::billing_doc_create status valid",
+                "id": "c92b6ea47ce50845361a0693dd12e433",
+                "passes": 20,
+                "fails": 0,
+                "name": "billing_doc_create status valid"
+            },
+            "accounting_draft_approve status valid": {
+                "path": "::accounting_draft_approve status valid",
+                "id": "4ed6893da9618849c96900e417b6f012",
+                "passes": 11,
+                "fails": 0,
+                "name": "accounting_draft_approve status valid"
+            },
+            "billing_doc_issue status valid": {
+                "name": "billing_doc_issue status valid",
+                "path": "::billing_doc_issue status valid",
+                "id": "ba89bd149a9272da52716cd6481ff5b6",
+                "passes": 20,
+                "fails": 0
+            },
+            "inventory_issue status valid": {
+                "fails": 0,
+                "name": "inventory_issue status valid",
+                "path": "::inventory_issue status valid",
+                "id": "4953c74f21c13fe4e6f933583d5eed4b",
+                "passes": 28
+            },
+            "accounting_draft_post status valid": {
+                "name": "accounting_draft_post status valid",
+                "path": "::accounting_draft_post status valid",
+                "id": "1e540656541530e7c14ee0edbdbbfeda",
+                "passes": 11,
+                "fails": 0
+            },
+            "billing_doc_void status valid": {
+                "passes": 20,
+                "fails": 0,
+                "name": "billing_doc_void status valid",
+                "path": "::billing_doc_void status valid",
+                "id": "e634812c6786a785f839eefd23121ab0"
+            }
+        },
+        "name": "",
+        "path": ""
+    }
+}

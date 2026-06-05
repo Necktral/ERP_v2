@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-04-13T22:09:18.369868Z",
+  "overall_status": "PASS",
+  "classification": {
+    "canonical": "/api/sync/* -> sync_engine",
+    "legacy_parallel": "/api/sync-hmac/* -> sync (wrapper opcional)"
+  },
+  "context": {
+    "base_url": "http://localhost:8000/api",
+    "company_id": 2,
+    "branch_id": 3
+  },
+  "ids": {
+    "challenge_id": "65d708b0-bf0e-43b0-a683-dc4bf9f0cf09",
+    "device_id": "431bedb1-f0be-4cf0-a405-55c31bb4e6ff",
+    "batch_id": "e80a1bc0-f6f7-47e4-a023-09cd2f903f7f"
+  },
+  "checks": [
+    {
+      "name": "login",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "a74c62debbb74e35bbdffe350507c867",
+      "reason": "",
+      "trace": null
+    },
+    {
+      "name": "challenge",
+      "ok": true,
+      "http_status": 201,
+      "request_id": "35f9dc6ca2754a028c22e739fb6894d3",
+      "reason": "",
+      "trace": {
+        "request_id": "35f9dc6ca2754a028c22e739fb6894d3",
+        "audit_event_id": "eb4c4341-022e-468a-9649-b9f309f23715"
+      }
+    },
+    {
+      "name": "enroll",
+      "ok": true,
+      "http_status": 201,
+      "request_id": "sync-probe-8b300a7e87fb43118b62",
+      "reason": "",
+      "trace": {
+        "request_id": "sync-probe-8b300a7e87fb43118b62",
+        "audit_event_id": "c34bdd68-bf5a-42ce-8517-7db09e7fbc19"
+      }
+    },
+    {
+      "name": "batch_signed_demo_ping",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "7910f723b703468691f2fc459666fbf0",
+      "reason": "",
+      "trace": {
+        "request_id": "7910f723b703468691f2fc459666fbf0",
+        "channel": "sync_v2"
+      }
+    },
+    {
+      "name": "revoke",
+      "ok": true,
+      "http_status": 200,
+      "request_id": "b998717e4cb9466aa032a1223fdfe317",
+      "reason": "",
+      "trace": null
+    }
+  ],
+  "evidence": {
+    "challenge": {
+      "challenge_id": "65d708b0-bf0e-43b0-a683-dc4bf9f0cf09",
+      "expires_at": "2026-04-13T22:24:18.058492+00:00",
+      "trace": {
+        "request_id": "35f9dc6ca2754a028c22e739fb6894d3",
+        "audit_event_id": "eb4c4341-022e-468a-9649-b9f309f23715"
+      }
+    },
+    "enroll": {
+      "device_id": "431bedb1-f0be-4cf0-a405-55c31bb4e6ff",
+      "device_status": "ACTIVE",
+      "trace": {
+        "request_id": "sync-probe-8b300a7e87fb43118b62",
+        "audit_event_id": "c34bdd68-bf5a-42ce-8517-7db09e7fbc19"
+      }
+    },
+    "batch": {
+      "batch_id": "e80a1bc0-f6f7-47e4-a023-09cd2f903f7f",
+      "command_id": "908144d3-c837-43d4-9da0-9bd6e0fe3048",
+      "trace": {
+        "request_id": "7910f723b703468691f2fc459666fbf0",
+        "channel": "sync_v2"
+      },
+      "summary": {
+        "received": 1,
+        "applied": 1,
+        "rejected": 0,
+        "duplicate": 0
+      }
+    },
+    "revoke": {
+      "device_id": "431bedb1-f0be-4cf0-a405-55c31bb4e6ff",
+      "status": "REVOKED"
+    }
+  }
+}

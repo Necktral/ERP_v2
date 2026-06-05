@@ -1,0 +1,18 @@
+{
+  "evidence_hash": "20980c2875b98eee855567a311887c8913f870df0fa122a124b66a1299d8fde5",
+  "generated_at": "2026-03-09T17:04:21.456692+00:00",
+  "inputs": {
+    "burnin_reports": [
+      "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/phase8_burn_20260309.json"
+    ],
+    "cutover_report": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/16_phase8_cutover_gate.json",
+    "sustained_minutes": 15
+  },
+  "recommended_actions": [],
+  "rollback_required": false,
+  "schema_version": 1,
+  "signature": "20980c2875b98eee855567a311887c8913f870df0fa122a124b66a1299d8fde5",
+  "signature_type": "sha256",
+  "trigger_count": 0,
+  "triggers": []
+}

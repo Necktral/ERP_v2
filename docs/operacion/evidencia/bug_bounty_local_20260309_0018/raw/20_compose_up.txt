@@ -1,0 +1,7 @@
+ Container erpcrm_db Running 
+ Container erpcrm_backend Recreate 
+ Container erpcrm_backend Recreated 
+ Container erpcrm_db Waiting 
+ Container erpcrm_db Healthy 
+ Container erpcrm_backend Starting 
+ Container erpcrm_backend Started 

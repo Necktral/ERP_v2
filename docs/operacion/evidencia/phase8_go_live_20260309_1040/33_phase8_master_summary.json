@@ -1,0 +1,52 @@
+{
+  "accountant_final_signoff_present": true,
+  "accountant_review_status_today": "NONE",
+  "accountant_verify_file": "65_phase8_accountant_verify.json",
+  "burn_in": {
+    "burn_in_passed": true,
+    "days_covered": 14,
+    "failed_days": 0,
+    "min_days_required": 14
+  },
+  "burnin_calendar_tracker": "61_phase8_burnin_calendar_tracker.json",
+  "burnin_window": {
+    "end": "2026-03-22",
+    "start": "2026-03-09"
+  },
+  "cutover_passed": true,
+  "day_mode_resolved": "MINIMAL",
+  "eventual_close_applied": false,
+  "eventual_close_evidence": "",
+  "generated_at": "2026-03-10T00:25:27.878337+00:00",
+  "latest_daily_gate": "57_phase8_daily_gate_20260309_182520.json",
+  "latest_live_all_green": true,
+  "latest_live_cycle": "55_live_rollback_20260309_110414.json",
+  "live_consecutive_green_count": 2,
+  "live_stability_file": "56_live_stability_summary.json",
+  "next_actions": [
+    "Run qa/run_phase8_go_live.sh burnin-day daily until 14 distinct days are covered.",
+    "Run qa/run_phase8_go_live.sh verify-burnin after day 14 and require strict pass.",
+    "Keep qa/run_phase8_go_live.sh rollback-check daily and enforce zero critical triggers."
+  ],
+  "phase6_gate_passed": true,
+  "phase7_gate_passed": true,
+  "phase7b_gate_passed": true,
+  "precutover_passed": true,
+  "pytest": {
+    "command": "pytest -q login_module/src",
+    "evidence_file": "19_pytest_login_module_src.txt",
+    "exit_code": 0
+  },
+  "rollback_required": false,
+  "rollback_triggers": [],
+  "schema_version": 1,
+  "scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "status": "READY_TO_CLOSE_F8"
+}

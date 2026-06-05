@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-03-09T18:43:43.741660+00:00",
+  "phase8_continuation": {
+    "cron_hybrid_installed": true,
+    "daily_close_manual_executed_today": true,
+    "days_passed": 1,
+    "days_pending": 13,
+    "latest_daily_gate_file": "57_phase8_daily_gate_20260309_124159.json",
+    "latest_daily_passed": true,
+    "latest_rollback_file": "18_phase8_rollback_eval.json",
+    "latest_rollback_required": false,
+    "live_tick_manual_executed_today": true,
+    "target_end_date": "2026-03-22"
+  },
+  "phase9_dplus1": {
+    "guard_behavior": "phase9 blocked until F8 burn_in_passed=true",
+    "guard_skip_evidence": "90_phase9_skip_f8_not_passed.json",
+    "guard_test_rc": 4,
+    "launcher_script": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/run_phase9_dplus1.sh",
+    "scheduled_in_cron": true,
+    "scheduled_time_local": "2026-03-23 09:00 America/Managua"
+  },
+  "schema_version": 1,
+  "scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  }
+}

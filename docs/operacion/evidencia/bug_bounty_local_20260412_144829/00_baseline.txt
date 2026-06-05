@@ -1,0 +1,18 @@
+git_status:
+ M Makefile
+ M backend/src/apps/kernels/accounting/services.py
+?? qa/contracts/product_lifecycle_full_cycle_contract.json
+?? qa/product_lifecycle_full_cycle.py
+?? qa/run_product_lifecycle_full_cycle.sh
+
+git_head:
+e74ed956a2a468a2398037dc8a77186f9c1fc0ac
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.3.1, build c2be9cc

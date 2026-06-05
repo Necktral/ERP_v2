@@ -1,0 +1,40 @@
+{
+  "evidence_hash": "3daf069a6977380892d31344f15abc1f3ad4bc355a9408bd24deba4b52262309",
+  "generated_at": "2026-03-09T16:40:06.511430+00:00",
+  "parity_fingerprint": "b1a9e3c1011d03988616a489b88b8c5be001de88040adf3ebb7d3e5baecd6be6",
+  "phase6": {
+    "app_version": "",
+    "branch_fiscal_config_hash": "0bcc2abdc9d2078b0723d8ec2b10937e200fe822e0fbc43ce22e6863ab166a07",
+    "git_commit_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+    "migrations_hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "parity_fingerprint": "b0bcf5e44a3ce60f51044ffd192369efb23cf464519250bc311fb09a9674c2d4",
+    "required_permissions_hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88"
+  },
+  "phase7": {
+    "accounting_config_hash": "1cb00b3eca0c5cef3752e9487351ea31f1d7395be1701469c0977186fd49e56f",
+    "app_version": "",
+    "chart_of_accounts_hash": "15e441cbf5d53885eff2cbc403702daee2de27050cc5c5259d76e50b8515486d",
+    "git_commit_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+    "migrations_hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "parity_fingerprint": "e989730dc78f15ded0fd79c122f42507461f23bdfd5edea9411bfbee4ff9e9a4",
+    "required_permissions_hash": "cf0830408ddbefef98fea2f32c61b7534b99755ddfd7aaa176c7082bbc078257"
+  },
+  "phase7b_scope": {
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5,
+    "scope_hash": "dd228bc135fe290c0f601c5b7511e2aafd879986ffa4b8e8c1ff4b9db7621918"
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "3daf069a6977380892d31344f15abc1f3ad4bc355a9408bd24deba4b52262309",
+  "signature_type": "sha256"
+}

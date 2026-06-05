@@ -1,0 +1,175 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "available_days": 1,
+        "required_days": 1
+      },
+      "name": "pilot_days_available",
+      "passed": true
+    },
+    {
+      "detail": {
+        "required_days": 1,
+        "stable_streak_days": 1
+      },
+      "name": "stable_streak_days",
+      "passed": true
+    },
+    {
+      "detail": {
+        "gate_found": true,
+        "gate_passed": true,
+        "required": true
+      },
+      "name": "performance_gate_passed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "latest_status_by_role": {
+          "FUNCTIONAL": "APPROVED",
+          "TECHNICAL": "FINAL_APPROVED"
+        },
+        "missing_or_unapproved_roles": [],
+        "required": true,
+        "required_roles": [
+          "FUNCTIONAL",
+          "TECHNICAL"
+        ]
+      },
+      "name": "owner_approvals_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "open_observations_roles": []
+      },
+      "name": "open_observations_resolved",
+      "passed": true
+    },
+    {
+      "detail": {
+        "final_signoff_file": "operational_go_live_final_signoff.json",
+        "final_signoff_present": true,
+        "required": true
+      },
+      "name": "final_signoff_present",
+      "passed": true
+    }
+  ],
+  "evidence_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149",
+  "generated_at": "2026-03-11T04:14:52.331071+00:00",
+  "go_live_passed": true,
+  "latest_performance_gate": {
+    "gate_name": "operational_performance_balance_profile",
+    "k6": {
+      "billing_write_ms_p95": 0.0,
+      "inventory_write_ms_p95": 0.0,
+      "operational_error_rate": 0.0,
+      "posting_cycle_ms_p95": 0.0
+    },
+    "outbox_failed": {
+      "after_by_module": {
+        "ACCOUNTING": 0,
+        "BILLING": 0,
+        "INVENTORY": 0
+      },
+      "before_by_module": {
+        "ACCOUNTING": 0,
+        "BILLING": 0,
+        "INVENTORY": 0
+      },
+      "delta_by_module": {
+        "ACCOUNTING": 0,
+        "BILLING": 0,
+        "INVENTORY": 0
+      },
+      "no_growth": true
+    },
+    "passed": true,
+    "reasons": []
+  },
+  "required_days": 1,
+  "review_summary": {
+    "final_signoff": {
+      "file": "operational_go_live_final_signoff.json",
+      "final_signoff": true,
+      "generated_at": "2026-03-11T04:12:30.727301+00:00",
+      "linked_evidence": [
+        "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/performance/gate_report.json",
+        "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/pilot/pilot_stage3.json"
+      ],
+      "path": "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/operational_go_live_final_signoff.json",
+      "review_date": "2026-03-10",
+      "reviewer": "owner_tecnico",
+      "role": "TECHNICAL",
+      "status": "FINAL_APPROVED",
+      "summary": "Final go-live signoff approved for pilot scope."
+    },
+    "final_signoff_present": true,
+    "invalid_review_rows_count": 0,
+    "invalid_review_rows_sample": [],
+    "latest_review_by_role": {
+      "FUNCTIONAL": {
+        "file": "operational_go_live_review_FUNCTIONAL_20260310_221227.json",
+        "final_signoff": false,
+        "generated_at": "2026-03-11T04:12:27.834932+00:00",
+        "linked_evidence": [
+          "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/performance/gate_report.json",
+          "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/pilot/pilot_stage3.json"
+        ],
+        "path": "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/operational_go_live_review_FUNCTIONAL_20260310_221227.json",
+        "review_date": "2026-03-10",
+        "reviewer": "owner_funcional",
+        "role": "FUNCTIONAL",
+        "status": "APPROVED",
+        "summary": "Functional checklist approved for pilot go-live."
+      },
+      "TECHNICAL": {
+        "file": "operational_go_live_final_signoff.json",
+        "final_signoff": true,
+        "generated_at": "2026-03-11T04:12:30.727301+00:00",
+        "linked_evidence": [
+          "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/performance/gate_report.json",
+          "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/pilot/pilot_stage3.json"
+        ],
+        "path": "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/operational_go_live_final_signoff.json",
+        "review_date": "2026-03-10",
+        "reviewer": "owner_tecnico",
+        "role": "TECHNICAL",
+        "status": "FINAL_APPROVED",
+        "summary": "Final go-live signoff approved for pilot scope."
+      }
+    },
+    "latest_status_by_role": {
+      "FUNCTIONAL": "APPROVED",
+      "TECHNICAL": "FINAL_APPROVED"
+    },
+    "missing_or_unapproved_roles": [],
+    "open_observations_roles": [],
+    "require_final_signoff": true,
+    "require_owner_approvals": true,
+    "required_roles": [
+      "FUNCTIONAL",
+      "TECHNICAL"
+    ],
+    "review_rows_count": 3
+  },
+  "risk_level": "LOW",
+  "schema_version": 1,
+  "stability": [
+    {
+      "close_ok": false,
+      "day": "2026-03-11",
+      "draft_exception_count": 0,
+      "failed_outbox_total": 0,
+      "fuel_failed_count": 0,
+      "fuel_pending_count": 0,
+      "path": "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/pilot/pilot_stage3.json",
+      "pending_operational_events_count": 325,
+      "reconciliation_mismatch_count": 3,
+      "stable": true
+    }
+  ]
+}

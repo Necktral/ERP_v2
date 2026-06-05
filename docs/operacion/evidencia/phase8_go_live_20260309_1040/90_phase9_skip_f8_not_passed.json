@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-03-09T18:43:28.093608+00:00",
+  "phase9_started": false,
+  "reason": "f8_burnin_not_passed",
+  "schema_version": 1,
+  "verify_payload": {
+    "burn_in_passed": false,
+    "checks": [
+      {
+        "detail": {
+          "days": 1,
+          "min_required": 14
+        },
+        "name": "minimum_days_covered",
+        "passed": false
+      },
+      {
+        "detail": {
+          "failed_days": [],
+          "max_allowed": 0
+        },
+        "name": "failed_days_within_threshold",
+        "passed": true
+      }
+    ],
+    "days": [
+      "2026-03-09"
+    ],
+    "failed_days": [],
+    "generated_at": "2026-03-09T18:42:04.571512+00:00",
+    "passed_days": [
+      "2026-03-09"
+    ],
+    "rows": [
+      {
+        "cycle_passed": false,
+        "date": "2026-03-09",
+        "evidence_hash": "",
+        "file": "61_phase8_burnin_calendar_tracker.json"
+      },
+      {
+        "cycle_passed": true,
+        "date": "2026-03-09",
+        "evidence_hash": "486acd9ab49f2ed975e924155239a8b7178350f6e6bd487062e4c1bf153a5148",
+        "file": "phase8_burn_20260309.json"
+      }
+    ],
+    "schema_version": 1
+  },
+  "verify_ref": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/17_phase8_burnin_verify.json"
+}

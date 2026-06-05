@@ -1,0 +1,35 @@
+{
+  "gate_name": "operational_performance_balance_profile",
+  "k6": {
+    "billing_write_ms_count": 0.0,
+    "billing_write_ms_p95": 142.46316479999993,
+    "http_reqs_count": 3825.0,
+    "inventory_write_ms_count": 0.0,
+    "inventory_write_ms_p95": 198.92006525,
+    "iterations_count": 1581.0,
+    "operational_error_rate": 0.0,
+    "posting_cycle_ms_count": 0.0,
+    "posting_cycle_ms_p95": 299.38078095000003
+  },
+  "k6_exit_code": 0,
+  "outbox_failed": {
+    "after_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "before_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "delta_by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "no_growth": true
+  },
+  "passed": true,
+  "reasons": []
+}

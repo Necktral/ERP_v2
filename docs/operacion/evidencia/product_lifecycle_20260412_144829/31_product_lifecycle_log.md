@@ -1,0 +1,107 @@
+# Product Lifecycle Full Cycle Log
+
+- Generated at (UTC): `2026-04-12T20:50:29.102985+00:00`
+- Timezone reference: `America/Managua`
+- Seed: `20260412`
+- Functional status: **PASS**
+
+## Step Trace
+
+- [IAM] -> Bootstrap status -> sistema fresh=true [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Validar estado fresh -> is_fresh=true -> PASS | actual: is_fresh=True
+- [IAM] -> Bootstrap init admin -> admin creado [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [IAM] -> Login inicial -> token header emitido [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Bootstrap organización base -> holding/company/branch creados [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Habilitar setup 2FA -> secret TOTP emitido [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Confirmar 2FA -> 2FA activo [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Login con challenge 2FA -> challenge one-time [[202]] -> PASS | actual: HTTP 202 (http=202)
+- [IAM] -> Verificar denegación sin segundo factor válido -> acceso denegado [[400]] -> PASS | actual: HTTP 400 (http=400)
+  - detail: Código inválido.
+- [IAM] -> Login 2FA (retry tras denegación) -> challenge one-time [[202]] -> PASS | actual: HTTP 202 (http=202)
+- [IAM] -> Verificar challenge 2FA -> tokens emitidos [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Refresh token -> rotación de tokens [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [IAM] -> Logout -> sesión invalidada [[204]] -> PASS | actual: HTTP 204 (http=204)
+- [IAM] -> Re-login operativo -> challenge 2FA [[202]] -> PASS | actual: HTTP 202 (http=202)
+- [IAM] -> Verify 2FA operativo -> tokens activos para ciclo completo [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ORGANIZATION] -> Crear segunda compañía -> company para intercompany [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [ORGANIZATION] -> Crear sucursal #2 en compañía principal -> branch adicional [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [ORGANIZATION] -> Crear sucursal en compañía auxiliar -> branch operativa intercompany [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Crear puesto Cajero POS -> position creada [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Crear puesto Contador -> position creada [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Crear empleado Cajero -> employee creada [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Asignar cajero a sucursal -> assignment activa [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Provisionar usuario de cajero -> credenciales iniciales emitidas [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Reset temporal cajero -> password temporal rotado [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [HR] -> Crear empleado Contador -> employee creada [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Asignar contador -> assignment activa [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Provisionar usuario contador -> credenciales iniciales emitidas [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [HR] -> Revoke controlado contador -> acceso revocado de forma auditable [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Asignar rol fuel_admin a admin -> grant activo -> PASS | actual: granted=True
+- [RETAIL_FUEL] -> Abrir turno fuel -> turno OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Abrir sesión POS/caja -> sesión OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Abrir ticket POS #1 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #1 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #2 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #2 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #3 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #3 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #4 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #4 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #5 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #5 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #6 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #6 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #7 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #7 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #8 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #8 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #9 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #9 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Abrir ticket POS #10 -> ticket CART_OPEN [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [RETAIL_FUEL] -> Checkout ticket POS #10 -> ticket CLOSED con venta/pago [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Reintento compensación POS -> retry idempotente/resuelto [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Void ticket POS -> ticket VOIDED [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Cerrar sesión POS -> sesión CLOSED [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Cerrar turno fuel -> turno CLOSED [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Reporte cierre de turno -> reporte disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Reporte cierre diario -> reporte disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [RETAIL_FUEL] -> Validar generación automática de borradores contables -> delta_drafts > 0 -> PASS | actual: delta_drafts=0 (before=0, after=0)
+  - detail: warning:no_drafts_generated
+- [SYNC] -> Emitir challenge edge -> challenge nonce emitido [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [SYNC] -> Handshake edge -> session ACTIVE con periféricos sincronizados [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [SYNC] -> Consultar registry de capacidades -> registry consistente [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [SYNC] -> Validar capacidad THERMAL_PRINTER -> THERMAL_PRINTER presente -> PASS | actual: has_printer=True
+- [SYNC] -> Emitir challenge para prueba BAD_SIGNATURE -> challenge emitido [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [SYNC] -> Validar rechazo BAD_SIGNATURE -> rechazo estable de firma inválida [[401]] -> PASS | actual: HTTP 401 (http=401)
+  - detail: BAD_SIGNATURE
+- [SYNC] -> Validar batch sync command (ticket+compensación) -> pytest rc=0 -> PASS | actual: pytest_rc=0
+  - detail: ..                                                                       [100%]
+- [ACCOUNTING] -> Upsert CoA compañía principal -> catálogo activo [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Upsert CoA compañía auxiliar -> catálogo activo [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Configurar FX -> FX rate vigente [[200, 201]] -> PASS | actual: HTTP 201 (http=201)
+- [ACCOUNTING] -> Seed grants intercompany -> grants WRITE activos -> PASS | actual: ok=true
+- [ACCOUNTING] -> Crear transacción intercompany -> tx PENDING [[201]] -> PASS | actual: HTTP 201 (http=201)
+- [ACCOUNTING] -> Confirmar intercompany -> tx CONFIRMED [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Conciliar intercompany -> diferencia cero [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Cerrar intercompany -> tx CLOSED [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Correr consolidación por período efectivo -> run COMPLETED|idempotent [[200, 201]] -> PASS | actual: HTTP 201 (http=201)
+- [ACCOUNTING] -> Generar TB consolidado -> reporte consolidado disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Generar PyG consolidado -> reporte consolidado disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Generar TB operativo -> TB por período disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Generar PyG operativo -> PyG por período disponible [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Listar asientos del período -> listado de asientos [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Seed técnico de asiento para reversa -> entry_id disponible -> PASS | actual: entry_id=1
+- [ACCOUNTING] -> Reversa de asiento -> reversa creada o idempotente [[200, 201]] -> PASS | actual: HTTP 201 (http=201)
+- [ACCOUNTING] -> Validar resumen de consolidación -> summary consistente [[200]] -> PASS | actual: HTTP 200 (http=200)
+- [ACCOUNTING] -> Consistencia intercompany/consolidación -> issues_count=0 y status COMPLETED -> PASS | actual: run_status=COMPLETED issues_count=0
+- [ACCOUNTING] -> Validar huérfanos mínimos obligatorios -> total=0 -> PASS | actual: total=0
+  - detail: {"pos_ticket_closed_missing_sale_or_payment": 0, "fuel_sale_without_dispense": 0, "journal_entry_without_lines": 0, "intercompany_or_consolidation_inconsistency": 0, "closed_intercompany_with_difference": 0, "blocked_consolidation_runs": 0, "total": 0}
+
+## Non-Functional Consolidation
+
+- Functional: **PASS**
+- Orphan checks total: `0`
+- Gate3 security: **PASS**
+- Gate3 performance: **PASS**
+- Bug bounty: **FAIL**
+- Final status: **FAIL**

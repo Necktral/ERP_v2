@@ -1,0 +1,47 @@
+83 objects imported automatically (use -v 2 for details).
+
+{
+  "blocked_run_id": "cffce2a1-16a6-4379-857f-29b46f8f2f97",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "resolved_count": 5,
+  "resolved_current_run_count": 0,
+  "resolved_exceptions": [
+    {
+      "close_run_id": "50b7803a-eb20-4cc2-b1ce-9a0663cad044",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "ed56bc5c-c67d-4f51-b677-4fe8d4a8d6b2",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "50b7803a-eb20-4cc2-b1ce-9a0663cad044",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "66a3bb56-250f-4152-a183-2b363bc25d97",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "50b7803a-eb20-4cc2-b1ce-9a0663cad044",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "77dc5957-5ddf-45d0-a5fe-104b84611615",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "50b7803a-eb20-4cc2-b1ce-9a0663cad044",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "69584665-1dd7-45b4-a00c-0173dffbc763",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "0c22b231-2f7d-4385-97bb-888b7033e9bd",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "009c9901-52c3-4350-acd7-b2d48cefbd16",
+      "status": "RESOLVED"
+    }
+  ],
+  "resolved_legacy_count": 5,
+  "schema_version": 1,
+  "stale_packaged_run_ids": [],
+  "stale_packaged_runs_reopened": 0
+}

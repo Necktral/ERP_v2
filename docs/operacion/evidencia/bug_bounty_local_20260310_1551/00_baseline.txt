@@ -1,0 +1,21 @@
+git_status:
+ M .gitleaks.toml
+ M docs/README.md
+ M docs/contexto_nucleos.md
+ M docs/operacion/README.md
+ M qa/README.md
+?? docs/operacion/PLAN_MAESTRO_F1_F12_CIERRE_OPERATIVO_v1.0.md
+?? docs/operacion/PR_RELEASE_F1_F12_CHECKLIST.md
+?? qa/run_master_f1_f12_closure.sh
+
+git_head:
+a09a17e934d38a0625c22522edc08be8b7e6dcda
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.2.1, build a5c7197

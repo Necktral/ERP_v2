@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-03-10T01:32:33.784198+00:00",
+  "parity_fingerprint": "a498353ffd0d73dffbb0962bf56d6d75008e6d2711e55b94f70eab4d1e4efe4a",
+  "phase6": {
+    "branch_fiscal_config_hash": "2902c9946b33a4516f38f15c856cbb91c750d4b997a5585edde9454412463837",
+    "migrations_hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "parity_fingerprint": "9d7cdef55bde7f86b54554157a0310c7b66723a232afd64d1eedb5a733291fd5",
+    "required_permissions_hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88"
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "provider_config": {
+    "contingency_max_attempts": 2,
+    "emulated_fallback_enabled": true,
+    "hash": "28d3aa4ab0805727bb895eba88d04045a32136a8d19ef2168972800366ad41be",
+    "http_api_key_configured": true,
+    "http_base_url_configured": true,
+    "http_timeout_seconds": 10,
+    "http_verify_tls": true,
+    "print_required": true,
+    "provider_mode": "HTTP",
+    "resolved_adapter_class": "AdapterBHttp",
+    "resolved_adapter_code": "EMULATED_B",
+    "runtime_adapter_code": "EMULATED_B",
+    "runtime_mode": "B",
+    "strict_integrity": true
+  },
+  "schema_version": 1
+}

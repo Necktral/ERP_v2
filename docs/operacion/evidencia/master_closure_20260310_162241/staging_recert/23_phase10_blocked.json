@@ -1,0 +1,124 @@
+{
+  "blocked": true,
+  "close_run_status": "REOPENED_EXCEPTION",
+  "deterministic_replay": true,
+  "doc_type": "ADJUSTMENT",
+  "env_manifest": {
+    "generated_at": "2026-03-10T22:25:42.958885+00:00",
+    "migrations": {
+      "count": 88,
+      "hash": "429f52d564fb660de1b8e51757baf2e64118aabff2dbb32437ceb112151b90e4"
+    },
+    "parity_fingerprint": "8336aef625bd6246aa826a95875710e92f3a9fae1a51ddfa319d7f34fc2bb8ef",
+    "pilot_scope": {
+      "branch_id": 6,
+      "company_id": 5
+    },
+    "posting_rules": {
+      "count": 1,
+      "hash": "9bb96802fd4563229c0611406bdec820d40e749b849942011001912ba1484d9d",
+      "items": [
+        {
+          "code": "shadow_ledger_v1",
+          "scope_company_id": 5,
+          "status": "ACTIVE",
+          "version": 15
+        }
+      ]
+    },
+    "procurement_state": {
+      "docs_draft": 0,
+      "docs_posted": 25,
+      "docs_total": 25,
+      "docs_voided": 0,
+      "hash": "25667c3968aeb9ff3acd9d8983e2ab9745ee27988c24cfb014d3748f912cf8c5"
+    },
+    "required_permissions": {
+      "count": 4,
+      "hash": "8578230b8bd9e17293519e7b3fc6e456ca379316b1e9d01ca1c5eb90b7f4fdbb",
+      "items": [
+        {
+          "code": "procurement.doc.create",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.post",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.read",
+          "is_active": false
+        },
+        {
+          "code": "procurement.doc.void",
+          "is_active": false
+        }
+      ]
+    },
+    "schema_version": 1
+  },
+  "evidence_hash": "032cca14e553a3296368d2709ca7873f03e9f80dd09e4c3d84c09fb07b748030",
+  "expect_blocked": true,
+  "first_counts": {
+    "blocking_exceptions": 1,
+    "economic_events": 1,
+    "journal_drafts_exception": 0,
+    "journal_drafts_total": 0,
+    "journal_drafts_validated": 0,
+    "journal_entries_posted": 0
+  },
+  "first_manifest_hash": "558d49664da9b02788e1181af233f184ece8f0c7831645ad4cc7308bfd48e90e",
+  "generated_at": "2026-03-10T22:25:42.945894+00:00",
+  "go_live_passed": true,
+  "manifest_hash": "558d49664da9b02788e1181af233f184ece8f0c7831645ad4cc7308bfd48e90e",
+  "passed": true,
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "posting_first": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "posting_second": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "projection_first": {
+    "blocked": true,
+    "close_run_status": "REOPENED_EXCEPTION",
+    "economic_events_created": 1,
+    "exceptions_opened": 1,
+    "journal_drafts_generated": 0,
+    "run_id": "063783f6-58b9-4d9c-a961-df26b9cee35d"
+  },
+  "projection_second": {
+    "blocked": true,
+    "close_run_status": "REOPENED_EXCEPTION",
+    "economic_events_created": 0,
+    "exceptions_opened": 0,
+    "journal_drafts_generated": 0,
+    "run_id": "063783f6-58b9-4d9c-a961-df26b9cee35d"
+  },
+  "run_id": "063783f6-58b9-4d9c-a961-df26b9cee35d",
+  "schema_version": 1,
+  "second_counts": {
+    "blocking_exceptions": 1,
+    "economic_events": 1,
+    "journal_drafts_exception": 0,
+    "journal_drafts_total": 0,
+    "journal_drafts_validated": 0,
+    "journal_entries_posted": 0
+  },
+  "second_manifest_hash": "558d49664da9b02788e1181af233f184ece8f0c7831645ad4cc7308bfd48e90e",
+  "signature": "032cca14e553a3296368d2709ca7873f03e9f80dd09e4c3d84c09fb07b748030",
+  "signature_type": "sha256"
+}

@@ -1,0 +1,57 @@
+ M .env.example
+ M docs/README.md
+ M docs/operacion/README.md
+ M frontend/package-lock.json
+ M login_module/src/apps/audit/contracts.py
+ M login_module/src/apps/rbac/seed_v01.py
+ M login_module/src/apps/sync/tests/test_sync_batch.py
+ M login_module/src/config/drf_exception_handler.py
+ M login_module/src/config/settings/base.py
+ M login_module/src/config/urls.py
+ M login_module/src/tests/test_seed_rbac_v01_command.py
+ M modulos/facturacion/models.py
+ M modulos/facturacion/serializers.py
+ M modulos/facturacion/services.py
+ M modulos/facturacion/urls.py
+ M modulos/facturacion/views.py
+ M modulos/inventarios/services.py
+ M modulos/inventarios/views.py
+?? docs/ARQUITECTURA_DOMINIO_Y_CONTROL_v1.0.md
+?? docs/contexto_nucleos.md
+?? docs/operacion/ADAPTER_B_FASE6_CERTIFICACION_v1.0.md
+?? docs/operacion/CHECKLIST_PROMOCION_PRODUCCION_FASE6_7B_v1.0.md
+?? docs/operacion/GL_FASE7A_CERTIFICACION_v1.0.md
+?? docs/operacion/GL_FASE7B_INTERCOMPANY_CONSOLIDACION_v1.0.md
+?? docs/operacion/MATRIZ_OWNERSHIP_SLA_FASE6_7B_v1.0.md
+?? docs/operacion/SHADOW_LEDGER_FASE4A_CERTIFICACION_v1.0.md
+?? docs/operacion/STAGING_FIRST_EJECUCION_TOTAL_v1.0.md
+?? docs/operacion/evidencia/
+?? login_module/src/apps/accounting/
+?? login_module/src/apps/cec/
+?? login_module/src/apps/integration/
+?? login_module/src/apps/payments/
+?? login_module/src/tests/test_architecture_kernels_models.py
+?? login_module/src/tests/test_kernel_boundary_errors.py
+?? login_module/src/tests/test_phase10_procurement_4b.py
+?? login_module/src/tests/test_phase2_canonical_events.py
+?? login_module/src/tests/test_phase2_cec_integration_api.py
+?? login_module/src/tests/test_phase2_payments_api.py
+?? login_module/src/tests/test_phase3_cec_execute_api.py
+?? login_module/src/tests/test_phase3_cec_orchestrator.py
+?? login_module/src/tests/test_phase3_outbox_dispatcher.py
+?? login_module/src/tests/test_phase4_go_live_gate.py
+?? login_module/src/tests/test_phase4_operational_certification.py
+?? login_module/src/tests/test_phase4_shadow_ledger.py
+?? login_module/src/tests/test_phase4_shadow_ledger_cycle_command.py
+?? login_module/src/tests/test_phase5_accounting_api.py
+?? login_module/src/tests/test_phase5_posting_controlled.py
+?? login_module/src/tests/test_phase6_adapter_b_readiness.py
+?? login_module/src/tests/test_phase6_go_live_toolchain.py
+?? login_module/src/tests/test_phase7a_gl_core.py
+?? login_module/src/tests/test_phase7b_intercompany_consolidation.py
+?? login_module/src/tests/test_phase8_go_live_toolchain.py
+?? modulos/compras/
+?? modulos/facturacion/certification.py
+?? modulos/facturacion/fiscal_adapters.py
+?? modulos/facturacion/management/
+?? modulos/facturacion/migrations/0002_phase6_adapter_b.py

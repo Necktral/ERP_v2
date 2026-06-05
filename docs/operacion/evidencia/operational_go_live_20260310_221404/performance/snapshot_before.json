@@ -1,0 +1,47 @@
+{
+  "branch_id": 10,
+  "company_id": 9,
+  "failed_outbox": {
+    "by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "total": 0
+  },
+  "fuel_compensation": {
+    "failed_count": 0,
+    "pending_count": 0
+  },
+  "gate_summary": {
+    "blocked": false,
+    "blocking_reasons": [],
+    "draft_exception_count": 0,
+    "failed_outbox_count": 0,
+    "failed_outbox_sample": [],
+    "force_applied": false,
+    "pending_drafts_count": 0,
+    "pending_operational_events_count": 0,
+    "period_end": "2026-03-31",
+    "period_start": "2026-03-01",
+    "reconciliation_mismatch_count": 0
+  },
+  "generated_at": "2026-03-11T04:14:05.684002+00:00",
+  "period": {
+    "date_from": "2026-03-01",
+    "date_to": "2026-03-31"
+  },
+  "reconciliation": {
+    "by_event_type": [],
+    "pending_operational_events": [],
+    "summary": {
+      "drafts_exception": 0,
+      "drafts_posted": 0,
+      "drafts_total": 0,
+      "drafts_validated": 0,
+      "economic_events_linked": 0,
+      "operational_events": 0,
+      "pending_operational_events": 0
+    }
+  }
+}

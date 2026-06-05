@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-04-12T01:40:18.986318Z",
+  "bug_bounty_dir": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260411_1932",
+  "gate3_security": {
+    "passed": true,
+    "failure_class": "none"
+  },
+  "gate3_performance": {
+    "passed": true,
+    "failure_class": "none"
+  },
+  "bug_bounty": {
+    "status": "PASS",
+    "checks": {
+      "gitleaks_clean": true,
+      "gitleaks_findings": 0,
+      "pip_audit_blocking_clean": true,
+      "pip_audit_blocking_count": 0,
+      "npm_audit_blocking_clean": true,
+      "npm_audit_blocking_count": 0,
+      "manage_check_pass": true,
+      "audit_chain_pass": true,
+      "security_pytest_pass": true,
+      "static_scan_pass": true
+    }
+  },
+  "overall_passed": true
+}

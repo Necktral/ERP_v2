@@ -1,0 +1,14 @@
+{
+  "final_signoff": false,
+  "generated_at": "2026-03-11T04:12:29.300436+00:00",
+  "linked_evidence": [
+    "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/performance/gate_report.json",
+    "/home/necktral/ERP_CRM/docs/operacion/evidencia/operational_go_live_20260310_221149/pilot/pilot_stage3.json"
+  ],
+  "review_date": "2026-03-10",
+  "reviewer": "owner_tecnico",
+  "role": "TECHNICAL",
+  "schema_version": 1,
+  "status": "APPROVED",
+  "summary": "Technical checklist approved for pilot go-live."
+}

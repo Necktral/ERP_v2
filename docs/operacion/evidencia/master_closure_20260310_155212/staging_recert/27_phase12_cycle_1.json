@@ -1,0 +1,284 @@
+{
+  "canonical_manifest": {
+    "checks": [
+      {
+        "name": "blocked_consolidation_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "consolidation_not_failed",
+        "passed": true
+      },
+      {
+        "name": "disputed_intercompany_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "fx_revaluation_policy",
+        "passed": true
+      },
+      {
+        "name": "inbox_failed_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "intercompany_cycle_errors_empty",
+        "passed": true
+      },
+      {
+        "name": "missing_lines_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "open_consolidation_exception_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "open_intercompany_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "outbox_failed_within_threshold",
+        "passed": true
+      },
+      {
+        "name": "posting_without_failures",
+        "passed": true
+      },
+      {
+        "name": "stale_revaluation_within_threshold",
+        "passed": true
+      }
+    ],
+    "consolidation": {
+      "issues_count": 0,
+      "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+      "status": "COMPLETED"
+    },
+    "cycle_passed": true,
+    "fx_policy_applied": "ALERT",
+    "health": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "intercompany": [
+      {
+        "closed": 0,
+        "company_id": 5,
+        "confirmed": 0,
+        "differences": 0,
+        "disputed": 0,
+        "open_items": 0,
+        "processed": 0
+      }
+    ],
+    "period_key": "2026-03",
+    "posting": {
+      "failed": 0
+    },
+    "revaluation": {
+      "fx_blocked_warning": false,
+      "issues_count": 0,
+      "status": "COMPLETED"
+    },
+    "risk_level": "LOW",
+    "schema_version": 2,
+    "scope_hash": "c6b5edd03633a87f80755d89ff710be0d84f56f449d3eb10f50184b53518832e",
+    "warnings": []
+  },
+  "checks": [
+    {
+      "detail": {
+        "fx_blocked_warning": false,
+        "policy": "ALERT",
+        "status": "COMPLETED"
+      },
+      "name": "fx_revaluation_policy",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "blocked_consolidation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_consolidation_exception_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "intercompany_cycle_errors_empty",
+      "passed": true
+    },
+    {
+      "detail": {
+        "error": "",
+        "status": "COMPLETED"
+      },
+      "name": "consolidation_not_failed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed": 0
+      },
+      "name": "posting_without_failures",
+      "passed": true
+    }
+  ],
+  "consolidation": {
+    "idempotent": true,
+    "issues_count": 0,
+    "manifest_hash": "68af0816d5b59fdadb83735110a5339f00ecdaabc6ac11b003ba266d0f841b3e",
+    "run_id": "b1758911-8beb-4526-9d50-9b9d14535e3e",
+    "status": "COMPLETED"
+  },
+  "consumer": "accounting.projector",
+  "cycle_passed": true,
+  "dispatch_after": {
+    "attempted": 1,
+    "failed": 0,
+    "retried": 0,
+    "sent": 1
+  },
+  "dispatch_before": {
+    "attempted": 0,
+    "failed": 0,
+    "retried": 0,
+    "sent": 0
+  },
+  "evidence_hash": "fe4b6d9471585d51a415b43d574dad49564a740c94ecd69c1aa43d9f9bad3b3a",
+  "fx_policy_applied": "ALERT",
+  "generated_at": "2026-03-10T22:01:26.526708+00:00",
+  "go_live_passed": true,
+  "health": {
+    "inbox_failed_count": 0,
+    "outbox_failed_count": 0,
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "intercompany": [
+    {
+      "closed": 0,
+      "company_id": 5,
+      "confirmed": 0,
+      "differences": 0,
+      "disputed": 0,
+      "open_items": 0,
+      "processed": 0,
+      "report_hash": "8de2348eddd0fa7d2088ac6e73018a18af90564c8bf5e16afd1e380d8bc89b96"
+    }
+  ],
+  "manifest_hash": "86a4e8e21f28b00391bdaf17a8dc491bfca18b0302f536d529026d118d9cfcc3",
+  "period": {
+    "month": 3,
+    "year": 2026
+  },
+  "period_key": "2026-03",
+  "pilot_scope": {
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "posting": {
+    "approved": 0,
+    "attempted": 0,
+    "errors": [],
+    "failed": 0,
+    "posted": 0,
+    "skipped": 0
+  },
+  "revaluation": {
+    "entries_created": 0,
+    "fx_blocked_warning": false,
+    "idempotent": true,
+    "issues_count": 0,
+    "run_id": "d014ab38-e207-4f30-927a-147c279f9f14",
+    "status": "COMPLETED"
+  },
+  "risk_level": "LOW",
+  "schema_version": 2,
+  "scope_hash": "c6b5edd03633a87f80755d89ff710be0d84f56f449d3eb10f50184b53518832e",
+  "signature": "fe4b6d9471585d51a415b43d574dad49564a740c94ecd69c1aa43d9f9bad3b3a",
+  "signature_type": "sha256",
+  "warnings": []
+}

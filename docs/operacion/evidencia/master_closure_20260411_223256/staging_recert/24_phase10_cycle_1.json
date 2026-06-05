@@ -1,0 +1,88 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_procurement_drafts_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 19,
+        "max_allowed": 0
+      },
+      "name": "open_procurement_blocking_exceptions_within_threshold",
+      "passed": false
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "posting_failed_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "cycle_passed": false,
+  "dispatch_after": {
+    "attempted": 4,
+    "failed": 0,
+    "retried": 0,
+    "sent": 4
+  },
+  "dispatch_before": {
+    "attempted": 20,
+    "failed": 0,
+    "retried": 0,
+    "sent": 20
+  },
+  "evidence_hash": "fffca0ecde700e75744abc39b45eb7ecca0268c517f4ef4aa4e0d4541340aab7",
+  "generated_at": "2026-04-12T04:49:43.541410+00:00",
+  "health": {
+    "inbox_failed_count": 0,
+    "open_procurement_blocking_exceptions_count": 19,
+    "open_procurement_drafts_count": 0,
+    "outbox_failed_count": 0
+  },
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "posting": {
+    "approved": 0,
+    "attempted": 4,
+    "errors": [],
+    "failed": 0,
+    "posted": 4,
+    "skipped": 0
+  },
+  "projection": {
+    "attempted": 6,
+    "blocked": 3,
+    "failed": 0,
+    "processed": 3,
+    "skipped": 3
+  },
+  "schema_version": 1,
+  "signature": "fffca0ecde700e75744abc39b45eb7ecca0268c517f4ef4aa4e0d4541340aab7",
+  "signature_type": "sha256"
+}

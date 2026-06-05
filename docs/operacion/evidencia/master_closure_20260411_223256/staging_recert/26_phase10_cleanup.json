@@ -1,0 +1,131 @@
+96 objects imported automatically (use -v 2 for details).
+
+{
+  "blocked_run_id": "27236d63-0318-482f-8f9b-e428f0f7501c",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "resolved_count": 19,
+  "resolved_current_run_count": 0,
+  "resolved_exceptions": [
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "0c88515c-0037-4744-9c51-c48fe543d806",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7a01f601-7209-4605-a06a-16900425469e",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "550b7a6f-d2ae-46d5-8157-cca8bbb98307",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "1bda4702-ad42-4cf3-9774-de4892104f7b",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "42d9685b-1f4d-4f45-a77d-cca4cd5f4620",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "f2c41973-7d10-405c-a0b6-1e3441df0d6b",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2cd73b17-273e-4426-9a24-b7a0b55c8885",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "a9971767-2d4b-490d-b98c-252a15b26eeb",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "438b3e05-0581-41b3-80d0-029f609f3269",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "33b9f1ea-59ab-4dfc-ae19-1ff3aa023199",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "b48c0bb4-57aa-4d56-9ec4-08f03e1dd667",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "7a7ef954-02f5-46da-ba56-fc32cf4da021",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "93f84a80-5e0c-4a14-8e6f-43340cf5e5e9",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "1477080f-0353-4c84-98e6-e297e5821f55",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2f204790-7378-4332-af72-120e4bcf4c48",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "67581e7c-7c3f-4785-a7ec-3db264708afc",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "4ec10a19-402d-4777-b1be-bdf127dc6d81",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "2fee0e41-07d4-4207-94cc-dbe73eee5b8b",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "1e1bf0b5-cec5-4103-8ae2-504d37b7dc3f",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "31598299-c791-45d1-b12f-d15b15d53459",
+      "status": "RESOLVED"
+    },
+    {
+      "close_run_id": "a8596c86-1ea8-4805-98ab-f48bf017f5c6",
+      "code": "SHADOW_RULESET_NOT_FOUND",
+      "exception_id": "c459c583-3d53-47ab-b687-75d29d2a44ab",
+      "status": "RESOLVED"
+    }
+  ],
+  "resolved_legacy_count": 19,
+  "schema_version": 1,
+  "stale_packaged_run_ids": [],
+  "stale_packaged_runs_reopened": 0
+}

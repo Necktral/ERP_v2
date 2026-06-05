@@ -1,0 +1,91 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "happy_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "blocked_path_evidence_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "consumer": "accounting.projector",
+        "failed_count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_jobs_count": 2,
+        "max_allowed": 2
+      },
+      "name": "failed_jobs_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "retry_overdue_count": 0
+      },
+      "name": "retry_overdue_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "contingency_open_count": 2,
+        "max_allowed": 2
+      },
+      "name": "open_contingency_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence": {
+    "blocked_run_id": "6b55296e-3d1c-450a-9191-afa9c25b1ea4",
+    "happy_run_id": "3731c2ed-dc09-4a71-99f0-571a17642c74"
+  },
+  "evidence_hash": "411239cefd9440ab24dd657c1bff4c5ac1604cb8a9cd770a5a0a9eebb63de9e4",
+  "generated_at": "2026-03-09T04:24:43.835819+00:00",
+  "go_live_passed": true,
+  "health": {
+    "cec_blocking_open_count": 5,
+    "contingency_open_count": 2,
+    "failed_jobs_count": 2,
+    "inbox_failed_count": 0,
+    "outbox_failed_count": 0,
+    "retry_overdue_count": 0,
+    "stale_pending_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "411239cefd9440ab24dd657c1bff4c5ac1604cb8a9cd770a5a0a9eebb63de9e4",
+  "signature_type": "sha256"
+}

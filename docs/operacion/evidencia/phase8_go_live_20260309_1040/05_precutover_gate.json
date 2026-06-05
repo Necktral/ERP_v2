@@ -1,0 +1,155 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "evidence_hash": "1305158f66bbc2aae5ac08f01bbf42742a07b7bdab66abb5e382faecb3f3ac3c",
+        "file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/03_preflight.json",
+        "preflight_passed": true
+      },
+      "name": "preflight_passed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "evidence_hash": "89a24e596d42b44e38317740e1f5aefcbba9f28f91373fe62a4fd06915289a9e",
+        "file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/04_snapshot.json",
+        "snapshot_passed": true
+      },
+      "name": "snapshot_passed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "mismatches": []
+      },
+      "name": "release_baseline_matches_manifest",
+      "passed": true
+    },
+    {
+      "detail": {
+        "checks": {
+          "audit_chain_pass": true,
+          "gitleaks_clean": true,
+          "manage_check_pass": true,
+          "npm_audit_blocking_clean": true,
+          "pip_audit_blocking_clean": true,
+          "security_pytest_pass": true
+        },
+        "status": "PASS"
+      },
+      "name": "security_summary_passed",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "max_allowed": 0,
+        "phase6": 0,
+        "phase7a": 0,
+        "phase7b": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "missing_lines_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "stale_revaluation_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_intercompany_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "disputed_intercompany_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence_hash": "461751b72ffd11f304d4c5830cc941af94d1d42e613f8b0a75c9395f1f307381",
+  "generated_at": "2026-03-09T16:40:13.280896+00:00",
+  "health": {
+    "generated_at": "2026-03-09T16:40:13.280867+00:00",
+    "phase6": {
+      "cec_blocking_open_count": 8,
+      "contingency_open_count": 1,
+      "failed_jobs_count": 1,
+      "inbox_failed_count": 0,
+      "outbox_failed_count": 0,
+      "retry_overdue_count": 0,
+      "stale_pending_count": 0
+    },
+    "phase7a": {
+      "inbox_failed_count": 0,
+      "missing_lines_count": 0,
+      "outbox_failed_count": 0,
+      "stale_revaluation_count": 0,
+      "unbalanced_entries_count": 0
+    },
+    "phase7b": {
+      "blocked_consolidation_count": 0,
+      "disputed_intercompany_count": 0,
+      "inbox_failed_count": 0,
+      "open_consolidation_exception_count": 0,
+      "open_intercompany_count": 0,
+      "outbox_failed_count": 0
+    }
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5,
+    "company_ids": [
+      5
+    ],
+    "parent_company_id": 5
+  },
+  "precutover_passed": true,
+  "references": {
+    "preflight_report": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/03_preflight.json",
+    "prod_manifest": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/02_phase8_prod_manifest.json",
+    "release_baseline": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/01_phase8_release_baseline.json",
+    "security_summary": "/home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0141/30_bug_bounty_summary.json",
+    "snapshot_report": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/04_snapshot.json",
+    "staging_manifest": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/00_phase8_staging_manifest.json"
+  },
+  "schema_version": 1,
+  "signature": "461751b72ffd11f304d4c5830cc941af94d1d42e613f8b0a75c9395f1f307381",
+  "signature_type": "sha256"
+}

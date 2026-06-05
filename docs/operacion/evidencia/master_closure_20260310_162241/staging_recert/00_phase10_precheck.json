@@ -1,0 +1,47 @@
+{
+  "details": {
+    "f8": {
+      "accountant_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/65_phase8_accountant_verify.json",
+      "burn_in_passed": true,
+      "final_approved_present": true,
+      "rollback_required": false,
+      "signoff_passed": true,
+      "status": "READY_TO_CLOSE_F8",
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/33_phase8_master_summary.json",
+      "verify_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase8_go_live_20260309_1040/17_phase8_burnin_verify.json"
+    },
+    "f9_emulated": {
+      "checks": {
+        "blocked_passed": true,
+        "cycle_clean_consecutive_max": 2,
+        "cycle_clean_consecutive_required": 2,
+        "gate_passed": true,
+        "happy_passed": true,
+        "parity_passed": true,
+        "precheck_passed": true
+      },
+      "phase9_go_live_passed": true,
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_go_live_20260309_192841/30_phase9_summary.json"
+    },
+    "f9_http": {
+      "checks": {
+        "blocked_passed": true,
+        "cycle_clean_consecutive_max": 2,
+        "cycle_clean_consecutive_required": 2,
+        "gate_passed": true,
+        "happy_passed": true,
+        "parity_passed": true,
+        "precheck_passed": true
+      },
+      "phase9_go_live_passed": true,
+      "summary_file": "/home/necktral/ERP_CRM/docs/operacion/evidencia/phase9_go_live_http_20260309_193230/30_phase9_summary.json"
+    },
+    "scope": {
+      "branch_id": 6,
+      "company_id": 5
+    }
+  },
+  "errors": [],
+  "precheck_passed": true,
+  "schema_version": 1
+}

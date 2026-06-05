@@ -1,0 +1,4 @@
+ 303 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/20_django_check.txt
+  86 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/21_audit_integrity.json
+2233 /home/necktral/ERP_CRM/docs/operacion/evidencia/bug_bounty_local_20260309_0018/22_security_pytest.txt
+2622 total

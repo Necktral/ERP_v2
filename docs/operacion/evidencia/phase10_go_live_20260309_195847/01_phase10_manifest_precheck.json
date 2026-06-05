@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-03-10T01:58:49.234050+00:00",
+  "migrations": {
+    "count": 87,
+    "hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0"
+  },
+  "parity_fingerprint": "ac58eb09d63d71c4c71c264a0d7debd35936cc8a8042d5f2bac00634caca3d1f",
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "posting_rules": {
+    "count": 1,
+    "hash": "b19c755c7c3ca1392e6c364a2b331bd69fb18a1db4fefc4cbd3b491c7b80db5f",
+    "items": [
+      {
+        "code": "shadow_ledger_v1",
+        "scope_company_id": 5,
+        "status": "ACTIVE",
+        "version": 10
+      }
+    ]
+  },
+  "procurement_state": {
+    "docs_draft": 0,
+    "docs_posted": 14,
+    "docs_total": 14,
+    "docs_voided": 0,
+    "hash": "f22070f5632f045079f005489838859085863eb8b86b62128d55e68b91d0b3d4"
+  },
+  "required_permissions": {
+    "count": 4,
+    "hash": "8578230b8bd9e17293519e7b3fc6e456ca379316b1e9d01ca1c5eb90b7f4fdbb",
+    "items": [
+      {
+        "code": "procurement.doc.create",
+        "is_active": false
+      },
+      {
+        "code": "procurement.doc.post",
+        "is_active": false
+      },
+      {
+        "code": "procurement.doc.read",
+        "is_active": false
+      },
+      {
+        "code": "procurement.doc.void",
+        "is_active": false
+      }
+    ]
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,72 @@
+{
+  "certification_ref": {
+    "manifest_hash": "6dcad3a90f2b6a5919d70e1cfdc750a5e69effcf81b8f8eba7adcd417aa1f36d",
+    "run_id": "5acb4de8-cb3a-49e8-b22c-bbe05a1c0a07"
+  },
+  "checks": [
+    {
+      "detail": {
+        "mismatches_count": 0
+      },
+      "name": "parity_no_drift",
+      "passed": true
+    },
+    {
+      "detail": {
+        "errors": []
+      },
+      "name": "certification_valid",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "inbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "outbox_failed_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_procurement_drafts_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0,
+        "max_allowed": 0
+      },
+      "name": "open_procurement_blocking_exceptions_within_threshold",
+      "passed": true
+    }
+  ],
+  "consumer": "accounting.projector",
+  "evidence_hash": "7e03cc77ee829f29010c5aff90a0cf33ae70fce87973caba885c57fa67e02f7a",
+  "generated_at": "2026-03-10T22:29:39.210390+00:00",
+  "go_live_passed": true,
+  "health": {
+    "inbox_failed_count": 0,
+    "open_procurement_blocking_exceptions_count": 0,
+    "open_procurement_drafts_count": 0,
+    "outbox_failed_count": 0
+  },
+  "parity_mismatches": [],
+  "pilot_scope": {
+    "branch_id": 6,
+    "company_id": 5
+  },
+  "schema_version": 1,
+  "signature": "7e03cc77ee829f29010c5aff90a0cf33ae70fce87973caba885c57fa67e02f7a",
+  "signature_type": "sha256"
+}

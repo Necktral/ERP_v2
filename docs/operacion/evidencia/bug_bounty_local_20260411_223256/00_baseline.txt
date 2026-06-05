@@ -1,0 +1,14 @@
+git_status:
+ M qa/run_master_f1_f12_closure.sh
+
+git_head:
+fae3fa026b38fd5efbccdfe4cc3d5e5ab110437e
+
+python_version:
+Python 3.10.14
+
+node_version:
+v24.12.0
+
+docker_version:
+Docker version 29.3.1, build c2be9cc

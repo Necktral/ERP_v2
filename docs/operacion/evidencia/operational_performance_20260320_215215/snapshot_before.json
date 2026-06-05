@@ -1,0 +1,84 @@
+{
+  "branch_id": 3,
+  "company_id": 2,
+  "failed_outbox": {
+    "by_module": {
+      "ACCOUNTING": 0,
+      "BILLING": 0,
+      "INVENTORY": 0
+    },
+    "total": 0
+  },
+  "fuel_compensation": {
+    "failed_count": 0,
+    "pending_count": 0
+  },
+  "gate_summary": {
+    "blocked": true,
+    "blocking_reasons": [
+      "PENDING_DRAFTS",
+      "RECONCILIATION_MISMATCH"
+    ],
+    "draft_exception_count": 0,
+    "failed_outbox_count": 0,
+    "failed_outbox_sample": [],
+    "force_applied": false,
+    "pending_drafts_count": 24373,
+    "pending_operational_events_count": 0,
+    "period_end": "2026-03-31",
+    "period_start": "2026-03-01",
+    "reconciliation_mismatch_count": 1
+  },
+  "generated_at": "2026-03-21T03:52:48.377484+00:00",
+  "period": {
+    "date_from": "2026-03-01",
+    "date_to": "2026-03-31"
+  },
+  "reconciliation": {
+    "by_event_type": [
+      {
+        "draft_amount": "165137.50",
+        "draft_exception_count": 0,
+        "event_type": "InventoryMovementPosted",
+        "linked_count": 10316,
+        "operational_amount": "165137.50",
+        "operational_count": 10316,
+        "posted_amount": "13220.00",
+        "posted_count": 934,
+        "source_module": "INVENTORY"
+      },
+      {
+        "draft_amount": "1142640.00",
+        "draft_exception_count": 0,
+        "event_type": "DocumentIssued",
+        "linked_count": 8280,
+        "operational_amount": "1142640.00",
+        "operational_count": 8280,
+        "posted_amount": "109434.00",
+        "posted_count": 793,
+        "source_module": "BILLING"
+      },
+      {
+        "draft_amount": "1142640.00",
+        "draft_exception_count": 0,
+        "event_type": "DocumentVoided",
+        "linked_count": 8280,
+        "operational_amount": "0.00",
+        "operational_count": 8280,
+        "posted_amount": "107088.00",
+        "posted_count": 776,
+        "source_module": "BILLING"
+      }
+    ],
+    "pending_operational_events": [],
+    "summary": {
+      "drafts_exception": 0,
+      "drafts_posted": 2503,
+      "drafts_total": 26876,
+      "drafts_validated": 8,
+      "economic_events_linked": 26876,
+      "operational_events": 26876,
+      "pending_operational_events": 0
+    }
+  }
+}

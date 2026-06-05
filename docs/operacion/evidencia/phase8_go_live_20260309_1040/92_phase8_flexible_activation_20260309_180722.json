@@ -1,0 +1,43 @@
+{
+  "calendar_file": "phase8_work_calendar.json",
+  "calendar_mode": "HYBRID",
+  "date_local": "2026-03-09",
+  "evidence_hash": "5042c3ff191651253f7ea67a3351c9755c7abd8532703e61122875d7ab6d1940",
+  "f9_unlocked": false,
+  "generated_at": "2026-03-10T00:07:22.548040+00:00",
+  "mode_by_day": {
+    "2026-03-09": "FULL",
+    "2026-03-10": "FULL",
+    "2026-03-11": "FULL",
+    "2026-03-12": "FULL",
+    "2026-03-13": "FULL",
+    "2026-03-14": "MINIMAL",
+    "2026-03-15": "MINIMAL",
+    "2026-03-16": "FULL",
+    "2026-03-17": "FULL",
+    "2026-03-18": "FULL",
+    "2026-03-19": "FULL",
+    "2026-03-20": "FULL",
+    "2026-03-21": "MINIMAL",
+    "2026-03-22": "MINIMAL"
+  },
+  "next_required_checkpoint_date": "2026-03-10",
+  "plan": "F8 Flexible cierre formal 10-22 marzo 2026",
+  "required_pass_days": 14,
+  "schema_version": 1,
+  "state": {
+    "accountant_signoff_passed": true,
+    "burn_in_passed": false,
+    "days_covered": 1,
+    "failed_days": [],
+    "final_approved_present": true,
+    "latest_daily_gate": "57_phase8_daily_gate_20260309_180653.json",
+    "latest_daily_passed": true,
+    "rollback_required": false,
+    "summary_status": "IN_PROGRESS_BURN_IN"
+  },
+  "window": {
+    "end": "2026-03-22",
+    "start": "2026-03-09"
+  }
+}

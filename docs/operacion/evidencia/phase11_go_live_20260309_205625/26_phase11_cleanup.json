@@ -1,0 +1,21 @@
+83 objects imported automatically (use -v 2 for details).
+
+{
+  "close_errors": [],
+  "closed_count": 2,
+  "closed_tx_ids": [
+    "8633729d-8a21-43cb-80c7-7e0e89f89de3",
+    "a10a9c58-05e1-4bc2-bbc8-ca3704ede06f"
+  ],
+  "pilot_scope": {
+    "company_id": 5
+  },
+  "resolved_exceptions_count": 0,
+  "schema_version": 1,
+  "settled_dispute_cases_count": 0,
+  "target_tx_ids": [
+    "8633729d-8a21-43cb-80c7-7e0e89f89de3",
+    "a10a9c58-05e1-4bc2-bbc8-ca3704ede06f",
+    "b117aefc-16f2-4d71-81d5-64d3bf64cd5e"
+  ]
+}

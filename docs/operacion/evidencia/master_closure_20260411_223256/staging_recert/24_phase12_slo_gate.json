@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "detail": {
+        "count": 3,
+        "periods": [
+          "2026-02",
+          "2026-03",
+          "2026-04"
+        ]
+      },
+      "name": "minimum_periods_covered",
+      "passed": true
+    },
+    {
+      "detail": {
+        "failed_count": 0,
+        "failed_periods": [],
+        "max_allowed": 0
+      },
+      "name": "failed_periods_within_threshold",
+      "passed": true
+    },
+    {
+      "detail": {
+        "count": 0
+      },
+      "name": "threshold_violations_empty",
+      "passed": true
+    }
+  ],
+  "evidence_dir": "/app/docs/operacion/evidencia/master_closure_20260411_223256/staging_recert",
+  "evidence_hash": "fd44c03c557d3c8cfd7a56b02ec8493467703438b755204787a5aae13911fa5a",
+  "failed_periods": [],
+  "fx_policy_applied": "ALERT",
+  "generated_at": "2026-04-12T04:59:46.888595+00:00",
+  "pattern": "22_phase12_monthly_close_*.json",
+  "periods": [
+    "2026-02",
+    "2026-03",
+    "2026-04"
+  ],
+  "schema_version": 2,
+  "signature": "fd44c03c557d3c8cfd7a56b02ec8493467703438b755204787a5aae13911fa5a",
+  "signature_type": "sha256",
+  "slo_passed": true,
+  "threshold_violations": [],
+  "warnings": []
+}

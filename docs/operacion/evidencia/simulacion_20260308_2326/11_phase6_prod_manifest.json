@@ -1,0 +1,178 @@
+{
+  "branch_fiscal_config": {
+    "count": 1,
+    "hash": "f181bc4bfb5dd6bc6ee892dd1a17e3c4d5565d46ea1a5f13696054660daef679",
+    "items": [
+      {
+        "adapter_code": "EMULATED_B",
+        "branch_id": 6,
+        "company_id": 5,
+        "contingency_max_attempts": 5,
+        "fiscal_mode": "B",
+        "is_active": true,
+        "print_required": true,
+        "strict_integrity": true,
+        "updated_at": "2026-03-09T04:39:15.724691+00:00"
+      }
+    ]
+  },
+  "database": {
+    "engine": "django.db.backends.postgresql",
+    "server_version": "16.2",
+    "vendor": "postgresql"
+  },
+  "environment": {
+    "app_version": "",
+    "django_version": "5.2.9",
+    "git_commit_sha": "5d63121ed38546e361adcd90d655b3d1c3fdda03",
+    "language_code": "es",
+    "python_version": "3.10.14",
+    "timezone": "America/Managua",
+    "use_tz": true
+  },
+  "evidence_hash": "e458717b292a3eb43538bc31eda6b7cd1baee7f75418a80146ce25cc5a3f92f4",
+  "generated_at": "2026-03-09T05:26:45.285400+00:00",
+  "migrations": {
+    "count": 87,
+    "hash": "58bbffd019f78b243b3508fba59b1669dce47765aec0f49e08bbaa77d958bac0",
+    "items": [
+      "accounting.0001_initial",
+      "accounting.0002_shadow_ledger_phase4a",
+      "accounting.0003_phase5_sod_actor_trace",
+      "accounting.0004_phase7a_gl_core",
+      "accounting.0005_phase7b_intercompany_consolidation",
+      "accounting.0006_phase7b_performance_indexes",
+      "accounts.0001_initial",
+      "accounts.0002_user_must_change_password",
+      "accounts.0003_user_is_setup_complete",
+      "accounts.0004_refresh_token_session",
+      "accounts.0005_user_totp_fields",
+      "accounts.0006_two_factor_challenge",
+      "admin.0001_initial",
+      "admin.0002_logentry_remove_auto_add",
+      "admin.0003_logentry_add_action_flag_choices",
+      "audit.0001_initial",
+      "audit.0002_audit_event_signature_key_id",
+      "auth.0001_initial",
+      "auth.0002_alter_permission_name_max_length",
+      "auth.0003_alter_user_email_max_length",
+      "auth.0004_alter_user_username_opts",
+      "auth.0005_alter_user_last_login_null",
+      "auth.0006_require_contenttypes_0002",
+      "auth.0007_alter_validators_add_error_messages",
+      "auth.0008_alter_user_username_max_length",
+      "auth.0009_alter_user_last_name_max_length",
+      "auth.0010_alter_group_name_max_length",
+      "auth.0011_update_proxy_permissions",
+      "auth.0012_alter_user_first_name_max_length",
+      "axes.0001_initial",
+      "axes.0002_auto_20151217_2044",
+      "axes.0003_auto_20160322_0929",
+      "axes.0004_auto_20181024_1538",
+      "axes.0005_remove_accessattempt_trusted",
+      "axes.0006_remove_accesslog_trusted",
+      "axes.0007_alter_accessattempt_unique_together",
+      "axes.0008_accessfailurelog",
+      "axes.0009_add_session_hash",
+      "axes.0010_accessattemptexpiration",
+      "cec.0001_initial",
+      "cec.0002_phase3_fields",
+      "compras.0001_initial",
+      "contenttypes.0001_initial",
+      "contenttypes.0002_remove_content_type_name",
+      "estacion_servicios.0001_initial",
+      "estacion_servicios.0002_uom_and_precision",
+      "estacion_servicios.0003_price_uom_and_field_renames",
+      "estacion_servicios.0004_backfill_entered_fields_and_enforce_not_null",
+      "estacion_servicios.0005_amounts_dual_entered_and_canonical",
+      "estacion_servicios.0006_fuel_uom_preference_unified",
+      "estacion_servicios.0007_alter_fueluompreference_user_related_name",
+      "estacion_servicios.0008_fuelsale_billing_and_inventory_links",
+      "facturacion.0001_initial",
+      "facturacion.0002_phase6_adapter_b",
+      "hr.0001_initial",
+      "hr.0002_remove_positionrolemap_hr_positionrolemap_position_isactive_idx_and_more",
+      "hr.0003_employmentassignment_employee_active_started_idx",
+      "iam.0001_initial",
+      "iam.0002_initial",
+      "iam.0003_orgunit_parent_type_name_idx",
+      "integration.0001_initial",
+      "integration.0002_outbox_next_attempt_at",
+      "inventarios.0001_initial",
+      "org.0001_initial",
+      "org.0002_alter_branchprofile_id_alter_companyprofile_id",
+      "org.0003_branchprofile_fuel_uom_defaults",
+      "org.0004_user_fuel_uom_preference",
+      "payments.0001_initial",
+      "rbac.0001_initial",
+      "rbac.0002_roleassignment_origin",
+      "rbac.0003_rename_rbac_roleas_origin_isactive_idx_rbac_roleas_origin_7700cc_idx",
+      "rbac.0004_role_permission_active_indexes",
+      "sessions.0001_initial",
+      "sync.0001_initial",
+      "sync_engine.0001_initial",
+      "token_blacklist.0001_initial",
+      "token_blacklist.0002_outstandingtoken_jti_hex",
+      "token_blacklist.0003_auto_20171017_2007",
+      "token_blacklist.0004_auto_20171017_2013",
+      "token_blacklist.0005_remove_outstandingtoken_jti",
+      "token_blacklist.0006_auto_20171017_2113",
+      "token_blacklist.0007_auto_20171017_2214",
+      "token_blacklist.0008_migrate_to_bigautofield",
+      "token_blacklist.0010_fix_migrate_to_bigautofield",
+      "token_blacklist.0011_linearizes_history",
+      "token_blacklist.0012_alter_outstandingtoken_user",
+      "token_blacklist.0013_alter_blacklistedtoken_options_and_more"
+    ],
+    "phase6_migration": "facturacion.0002_phase6_adapter_b",
+    "phase6_migration_applied": true
+  },
+  "parity_fingerprint": "232f6c858a66222187fd5df9dd29e38b6e06a946d0ab7ab59b235b1d63109b0f",
+  "pilot_scope": {
+    "branch_id": 6,
+    "branch_name": "Pilot Branch ae8000",
+    "company_id": 5,
+    "company_name": "Pilot Company ae8000"
+  },
+  "required_permissions": {
+    "count": 8,
+    "hash": "8052e2dffbdc3035ab5a7b3db2fc88879ec83fef6623f811cd20ff4ee876cb88",
+    "items": [
+      {
+        "code": "cec.close_run.create",
+        "is_active": true
+      },
+      {
+        "code": "cec.close_run.read",
+        "is_active": true
+      },
+      {
+        "code": "cec.close_run.update",
+        "is_active": true
+      },
+      {
+        "code": "billing.doc.contingency",
+        "is_active": false
+      },
+      {
+        "code": "billing.doc.contingency.resolve",
+        "is_active": false
+      },
+      {
+        "code": "billing.doc.print",
+        "is_active": false
+      },
+      {
+        "code": "billing.fiscal.config.read",
+        "is_active": false
+      },
+      {
+        "code": "billing.fiscal.config.update",
+        "is_active": false
+      }
+    ]
+  },
+  "schema_version": 1,
+  "signature": "e458717b292a3eb43538bc31eda6b7cd1baee7f75418a80146ce25cc5a3f92f4",
+  "signature_type": "sha256"
+}
