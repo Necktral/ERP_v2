@@ -1,0 +1,15 @@
+Processing /tmp/nt_pkg_check_src
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: necktral-backend
+  Building wheel for necktral-backend (pyproject.toml): started
+  Building wheel for necktral-backend (pyproject.toml): finished with status 'done'
+  Created wheel for necktral-backend: filename=necktral_backend-0.1.0-py3-none-any.whl size=641057 sha256=d35075eb4e4da20b1a88ced5bd9ec38542c8b588801f2f93f436ebbfe4d1b87e
+  Stored in directory: /tmp/pip-ephem-wheel-cache-zusxx67_/wheels/a0/93/b1/98374f2354e707f66f5dd1d15c2632f51c293b54101b914eaf
+Successfully built necktral-backend
+Installing collected packages: necktral-backend
+Successfully installed necktral-backend-0.1.0

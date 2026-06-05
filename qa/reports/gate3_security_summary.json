@@ -1,0 +1,24 @@
+{
+  "exit_code": 0,
+  "failure_class": "none",
+  "failure_reason": "",
+  "generated_at": "2026-04-12T21:46:13.831237+00:00",
+  "metrics": {
+    "auth_acl_p95_ms": 14.2,
+    "auth_login_p95_ms": null,
+    "auth_me_p95_ms": 17.95,
+    "backend_http_429_count": 0,
+    "backend_http_5xx_count": 0,
+    "backend_traceback_count": 0,
+    "http_req_failed_rate_pct": 0.0,
+    "http_reqs_per_sec": 0.697061
+  },
+  "passed": true,
+  "profile": "security",
+  "thresholds": {
+    "auth_acl_p95_ms_max": 600.0,
+    "auth_login_p95_ms_max": 600.0,
+    "auth_me_p95_ms_max": 500.0,
+    "http_req_failed_rate_pct_max": 1.0
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-05-25T23:03:06.548892+00:00",
+  "git": {
+    "branch": "feat/transfer-settlement-visibility",
+    "head_sha": "481d408cf274f257107a473e9c2350458ea0ab16",
+    "head_subject": "Merge pull request #89 from Necktral/fix/security-js-cookie-audit-gate"
+  },
+  "contracts": {
+    "qa/contracts/github_required_checks.json": {
+      "exists": true,
+      "size_bytes": 1092
+    },
+    "qa/contracts/github_master_ruleset.json": {
+      "exists": true,
+      "size_bytes": 602
+    },
+    "qa/contracts/security_exceptions.json": {
+      "exists": true,
+      "size_bytes": 1434
+    }
+  },
+  "reports": {
+    "qa/reports/github_required_checks_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/action_pin_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/runner_hygiene_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/security_exceptions_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/security_findings_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/migration_safety_guard.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/route_contract_report.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/kernel_compat_usage.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/coverage_by_domain.json": {
+      "exists": true,
+      "status": "passed"
+    },
+    "qa/reports/pr_blast_radius.json": {
+      "exists": true,
+      "status": "passed"
+    }
+  },
+  "supply_chain_artifacts": {
+    "qa_sbom_backend.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_sbom_frontend.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_pip_audit_u6.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_npm_audit_u6.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_security_exceptions_guard_u6.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_security_findings_guard_u6.json": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    },
+    "qa_supply_chain_artifacts.sha256": {
+      "exists": false,
+      "size_bytes": 0,
+      "source_of_truth": "supply-chain-ci"
+    }
+  },
+  "pos_contract_reports": {
+    "qa/reports/retail_pos_backend_contract_guard.txt": {
+      "exists": true,
+      "size_bytes": 80
+    },
+    "qa/reports/sync_pos_contract_guard.txt": {
+      "exists": true,
+      "size_bytes": 80
+    },
+    "qa/reports/frontend_pos_queue_contract_guard.txt": {
+      "exists": true,
+      "size_bytes": 1410
+    }
+  },
+  "supply_chain_policy": {
+    "mode": "ci_only_external_artifacts",
+    "required_in_ci": true,
+    "required_in_local": false,
+    "required_in_current_run": false
+  },
+  "ruleset_verify": {
+    "path": "qa/reports/github_master_ruleset_verify.json",
+    "status": "passed"
+  },
+  "evidence_output": {
+    "path": "qa/reports/release_evidence_u6.json",
+    "status": "generated"
+  },
+  "summary": {
+    "contracts_all_present": true,
+    "gate1_core_reports_present": true,
+    "security_findings_report_present": true,
+    "supply_chain_artifacts_raw_present": false,
+    "supply_chain_artifacts_present": true,
+    "pos_contract_reports_present": true
+  }
+}

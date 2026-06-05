@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-27T20:11:15.051290+00:00",
+  "pip_report": "qa_pip_audit.json",
+  "npm_report": "qa_npm_audit.json",
+  "exceptions_contract": "qa/contracts/security_exceptions.json",
+  "issues": [],
+  "unresolved_findings": [],
+  "excepted_findings": []
+}

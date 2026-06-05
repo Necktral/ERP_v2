@@ -1,0 +1,9 @@
+{
+  "baseline_dataset_count": 14,
+  "baseline_path": "/app/qa/contracts/reporting_dataset_contract_baseline.json",
+  "current_dataset_count": 14,
+  "guard": "reporting_contract_version_guard",
+  "issue_count": 0,
+  "issues": [],
+  "passed": true
+}

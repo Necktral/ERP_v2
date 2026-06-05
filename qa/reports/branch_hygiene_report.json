@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-03-24T18:05:58.660250+00:00",
+  "ttl_days": 14,
+  "keep": [
+    "main",
+    "master"
+  ],
+  "stale_count": 0,
+  "branches": [
+    {
+      "name": "main",
+      "committer_date": "2026-01-25T19:10:40+00:00",
+      "age_days": 57,
+      "status": "kept",
+      "reason": "protected_keep_list"
+    },
+    {
+      "name": "master",
+      "committer_date": "2026-03-24T17:59:53+00:00",
+      "age_days": 0,
+      "status": "kept",
+      "reason": "protected_keep_list"
+    }
+  ]
+}

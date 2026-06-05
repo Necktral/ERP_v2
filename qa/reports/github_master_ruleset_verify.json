@@ -1,0 +1,89 @@
+{
+  "status": "passed",
+  "mode": "verify",
+  "generated_at": "2026-03-26T02:25:13.592788+00:00",
+  "contract_file": "qa/contracts/github_master_ruleset.json",
+  "owner": "NECKTRAL",
+  "repo": "NECKTRAL",
+  "branch": "master",
+  "issues": [],
+  "details": {
+    "protection": {
+      "url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection",
+      "required_status_checks": {
+        "url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection/required_status_checks",
+        "strict": true,
+        "contexts": [
+          "QA CI (Gates 1–3) / qa",
+          "Security CI (Blocking) / security",
+          "Auth Load Simulation / load-test",
+          "PM Snapshot / snapshot",
+          "Supply Chain CI / supply-chain"
+        ],
+        "contexts_url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection/required_status_checks/contexts",
+        "checks": [
+          {
+            "context": "QA CI (Gates 1–3) / qa",
+            "app_id": null
+          },
+          {
+            "context": "Security CI (Blocking) / security",
+            "app_id": null
+          },
+          {
+            "context": "Auth Load Simulation / load-test",
+            "app_id": null
+          },
+          {
+            "context": "PM Snapshot / snapshot",
+            "app_id": null
+          },
+          {
+            "context": "Supply Chain CI / supply-chain",
+            "app_id": null
+          }
+        ]
+      },
+      "required_pull_request_reviews": {
+        "url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection/required_pull_request_reviews",
+        "dismiss_stale_reviews": false,
+        "require_code_owner_reviews": true,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 1
+      },
+      "required_signatures": {
+        "url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection/required_signatures",
+        "enabled": false
+      },
+      "enforce_admins": {
+        "url": "https://api.github.com/repos/Necktral/Necktral/branches/master/protection/enforce_admins",
+        "enabled": true
+      },
+      "required_linear_history": {
+        "enabled": false
+      },
+      "allow_force_pushes": {
+        "enabled": false
+      },
+      "allow_deletions": {
+        "enabled": false
+      },
+      "block_creations": {
+        "enabled": false
+      },
+      "required_conversation_resolution": {
+        "enabled": true
+      },
+      "lock_branch": {
+        "enabled": false
+      },
+      "allow_fork_syncing": {
+        "enabled": false
+      }
+    },
+    "repo": {
+      "default_branch": "master",
+      "delete_branch_on_merge": true
+    }
+  }
+}

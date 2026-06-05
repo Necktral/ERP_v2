@@ -1,0 +1,227 @@
+{
+  "run_started_at": "2026-05-25T22:53:19Z",
+  "run_finished_at": "2026-05-25T23:03:06Z",
+  "run_status": "passed",
+  "failed_gate": null,
+  "profile": "default",
+  "manifest": null,
+  "overrides": [],
+  "gates": {
+    "setup": "passed",
+    "gate1": "passed",
+    "gate2": "passed",
+    "gate3": "passed"
+  },
+  "artifacts": {
+    "static_scan.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:55:43.009868+00:00"
+    },
+    "bandit.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:55:43.545573+00:00"
+    },
+    "ruff.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:55:52.735984+00:00"
+    },
+    "mypy_strict_critical.txt": {
+      "gate": "gate1",
+      "status": "missing",
+      "fresh": false,
+      "generated_at": null
+    },
+    "mypy.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:56:11.307040+00:00"
+    },
+    "static_gate_summary.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:56:11.542699+00:00"
+    },
+    "kernel_compat_usage.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:53:51.703193+00:00"
+    },
+    "makemigrations_check.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:56:13.716669+00:00"
+    },
+    "migration_safety_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:56:14.172480+00:00"
+    },
+    "mypy_delta.json": {
+      "gate": "gate1",
+      "status": "missing",
+      "fresh": false,
+      "generated_at": null
+    },
+    "mypy_delta.txt": {
+      "gate": "gate1",
+      "status": "missing",
+      "fresh": false,
+      "generated_at": null
+    },
+    "reporting_contract_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:02.227027+00:00"
+    },
+    "route_contract_report.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:53:54.567789+00:00"
+    },
+    "readme_section_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:53:55.581609+00:00"
+    },
+    "pr_blast_radius.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:53:55.910210+00:00"
+    },
+    "package_install.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:28.680849+00:00"
+    },
+    "package_imports.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:28.833151+00:00"
+    },
+    "package_check.txt": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:30.704972+00:00"
+    },
+    "architecture_dependency_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:32.560892+00:00"
+    },
+    "action_pin_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:32.697184+00:00"
+    },
+    "github_required_checks_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:32.837484+00:00"
+    },
+    "runner_hygiene_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:32.989810+00:00"
+    },
+    "security_exceptions_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:54:33.943880+00:00"
+    },
+    "security_findings_guard.json": {
+      "gate": "gate1",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:55:42.430427+00:00"
+    },
+    "pytest.xml": {
+      "gate": "gate2",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:59:36.004529+00:00"
+    },
+    "coverage.xml": {
+      "gate": "gate2",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:59:38.826705+00:00"
+    },
+    "coverage.txt": {
+      "gate": "gate2",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T22:59:40.902870+00:00"
+    },
+    "sync_contract_guard.txt": {
+      "gate": "gate2",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:00:19.297417+00:00"
+    },
+    "coverage_by_domain.json": {
+      "gate": "gate2",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:02:55.955787+00:00"
+    },
+    "audit_integrity.json": {
+      "gate": "gate3",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:02:59.290681+00:00"
+    },
+    "reporting_r8_gate.json": {
+      "gate": "gate3",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:03:05.608864+00:00"
+    },
+    "reporting_r8_gate_guard.json": {
+      "gate": "gate3",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:03:06.358681+00:00"
+    },
+    "reporting_observability_snapshot.json": {
+      "gate": "gate3",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:03:03.363701+00:00"
+    },
+    "release_evidence_u6.json": {
+      "gate": "gate3",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:03:06.557787+00:00"
+    },
+    "qa-ci-run.log": {
+      "gate": "setup",
+      "status": "generated",
+      "fresh": true,
+      "generated_at": "2026-05-25T23:03:06.561769+00:00"
+    }
+  }
+}

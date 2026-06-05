@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "artifact": "qa/reports/reporting_r8_gate.json",
+  "gate_status": "PASS",
+  "failure_class": "none",
+  "issues": []
+}

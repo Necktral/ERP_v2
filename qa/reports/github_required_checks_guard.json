@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-27T20:10:03.562123+00:00",
+  "contract_file": "qa/contracts/github_required_checks.json",
+  "required_checks_count": 5,
+  "issues": [],
+  "observed_workflows": {
+    ".github/workflows/qa-ci.yml": {
+      "workflow_name": "QA CI (Gates 1–3)",
+      "jobs": [
+        "qa"
+      ]
+    },
+    ".github/workflows/security-ci.yml": {
+      "workflow_name": "Security CI (Blocking)",
+      "jobs": [
+        "security"
+      ]
+    },
+    ".github/workflows/auth-load-simulation.yml": {
+      "workflow_name": "Auth Load Simulation",
+      "jobs": [
+        "load-test"
+      ]
+    },
+    ".github/workflows/pm-snapshot.yml": {
+      "workflow_name": "PM Snapshot",
+      "jobs": [
+        "snapshot"
+      ]
+    },
+    ".github/workflows/supply-chain-ci.yml": {
+      "workflow_name": "Supply Chain CI",
+      "jobs": [
+        "supply-chain"
+      ]
+    }
+  }
+}

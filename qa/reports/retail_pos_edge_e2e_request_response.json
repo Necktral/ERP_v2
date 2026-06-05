@@ -1,0 +1,317 @@
+[
+  {
+    "name": "login",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/auth/login/",
+      "payload": {
+        "username": "qa_edge_5a2f853dee",
+        "password": "pass12345"
+      }
+    },
+    "response": {
+      "http_status": 200,
+      "latency_ms": 184,
+      "body": {
+        "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc5NzUwNzY4LCJpYXQiOjE3Nzk3NTAxNjgsImp0aSI6IjgzZDYyN2NlNGY4ZDQxMzI5ODkxNzhlMWRlZGMxZmUwIiwidXNlcl9pZCI6IjEifQ.mFX-aSgHvbZEpSZeh5qlXBYcgv48Ojl2SoDCRqaoAD0",
+        "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc4MDM1NDk2OCwiaWF0IjoxNzc5NzUwMTY4LCJqdGkiOiJmOTU2MGY0MDNkZGE0YjhiYmJjNTU3MDNlMTRlMDNmNCIsInVzZXJfaWQiOiIxIn0.R2aojmnLz6UGUZ_cOh76XLO21EcEG7gpRkQe7rVPEi4"
+      }
+    }
+  },
+  {
+    "name": "challenge_happy",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/peripherals/edge/challenge/",
+      "payload": {
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "metadata": {
+          "source": "qa-retail-pos-edge-e2e"
+        }
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "latency_ms": 63,
+      "body": {
+        "challenge_id": "47b7c606-60b4-494f-a1b8-4335d6f6c83a",
+        "nonce": "ae1f3e046e8743cfbb5c621ed59a27f6",
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "issued_at": "2026-05-25T23:02:49.218219Z",
+        "expires_at": "2026-05-25T23:04:49.218219Z"
+      }
+    }
+  },
+  {
+    "name": "handshake_happy",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/peripherals/edge/handshake/",
+      "payload": {
+        "capability_registry": {
+          "DRAWER": "experimental",
+          "SCALE": "experimental",
+          "SCANNER": "supported",
+          "THERMAL_PRINTER": "supported"
+        },
+        "challenge_id": "47b7c606-60b4-494f-a1b8-4335d6f6c83a",
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "devices": [
+          {
+            "capability_level": "supported",
+            "device_key": "printer-main",
+            "device_kind": "THERMAL_PRINTER",
+            "metadata": {
+              "driver": "escpos"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "supported",
+            "device_key": "scanner-main",
+            "device_kind": "SCANNER",
+            "metadata": {
+              "driver": "usb-hid"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "experimental",
+            "device_key": "drawer-main",
+            "device_kind": "DRAWER",
+            "metadata": {
+              "driver": "escpos:pulse"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "experimental",
+            "device_key": "scale-main",
+            "device_kind": "SCALE",
+            "metadata": {
+              "driver": "serial"
+            },
+            "status": "DEGRADED"
+          }
+        ],
+        "metadata": {
+          "profile": "fuel",
+          "simulated_by": "qa/simulate_retail_pos_edge.py"
+        },
+        "signature": "t+9kPQcO8mBOTVdPhqfM9uiAQ59M1Wzez9ZXmhKc63A="
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "latency_ms": 124,
+      "body": {
+        "session_id": 1,
+        "session_token": "b02f312e-0d97-441f-bd15-f3311984abeb",
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "status": "ACTIVE",
+        "issued_at": "2026-05-25T23:02:50.563307Z",
+        "expires_at": "2026-05-26T00:02:50.563307Z",
+        "devices_synced": 4,
+        "capability_registry": {
+          "DRAWER": "experimental",
+          "SCALE": "experimental",
+          "SCANNER": "supported",
+          "THERMAL_PRINTER": "supported"
+        }
+      }
+    }
+  },
+  {
+    "name": "capabilities_happy",
+    "request": {
+      "method": "GET",
+      "url": "http://localhost:8000/api/retail/pos/peripherals/capabilities/",
+      "payload": {}
+    },
+    "response": {
+      "http_status": 200,
+      "latency_ms": 70,
+      "body": {
+        "session": {
+          "id": 1,
+          "connector_id": "edge-e2e-qa",
+          "connector_version": "0.2.0",
+          "status": "ACTIVE",
+          "issued_at": "2026-05-25T23:02:50.563307Z",
+          "expires_at": "2026-05-26T00:02:50.563307Z",
+          "last_seen_at": "2026-05-25T23:02:50.563307Z",
+          "capability_registry": {
+            "SCALE": "experimental",
+            "DRAWER": "experimental",
+            "SCANNER": "supported",
+            "THERMAL_PRINTER": "supported"
+          }
+        },
+        "registry": {
+          "DRAWER": "experimental",
+          "SCALE": "experimental",
+          "SCANNER": "supported",
+          "THERMAL_PRINTER": "supported"
+        },
+        "devices": [
+          {
+            "id": 3,
+            "connector_id": "edge-e2e-qa",
+            "connector_version": "0.2.0",
+            "device_key": "drawer-main",
+            "device_kind": "DRAWER",
+            "capability_level": "experimental",
+            "status": "ONLINE",
+            "last_seen_at": "2026-05-25T23:02:50.586367Z",
+            "edge_session_id": 1,
+            "metadata": {
+              "driver": "escpos:pulse"
+            }
+          },
+          {
+            "id": 4,
+            "connector_id": "edge-e2e-qa",
+            "connector_version": "0.2.0",
+            "device_key": "scale-main",
+            "device_kind": "SCALE",
+            "capability_level": "experimental",
+            "status": "DEGRADED",
+            "last_seen_at": "2026-05-25T23:02:50.595511Z",
+            "edge_session_id": 1,
+            "metadata": {
+              "driver": "serial"
+            }
+          },
+          {
+            "id": 2,
+            "connector_id": "edge-e2e-qa",
+            "connector_version": "0.2.0",
+            "device_key": "scanner-main",
+            "device_kind": "SCANNER",
+            "capability_level": "supported",
+            "status": "ONLINE",
+            "last_seen_at": "2026-05-25T23:02:50.580098Z",
+            "edge_session_id": 1,
+            "metadata": {
+              "driver": "usb-hid"
+            }
+          },
+          {
+            "id": 1,
+            "connector_id": "edge-e2e-qa",
+            "connector_version": "0.2.0",
+            "device_key": "printer-main",
+            "device_kind": "THERMAL_PRINTER",
+            "capability_level": "supported",
+            "status": "ONLINE",
+            "last_seen_at": "2026-05-25T23:02:50.569141Z",
+            "edge_session_id": 1,
+            "metadata": {
+              "driver": "escpos"
+            }
+          }
+        ],
+        "count": 4
+      }
+    }
+  },
+  {
+    "name": "challenge_bad_signature",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/peripherals/edge/challenge/",
+      "payload": {
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "metadata": {
+          "source": "qa-retail-pos-edge-e2e"
+        }
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "latency_ms": 141,
+      "body": {
+        "challenge_id": "2c7b0fd7-83a7-48ff-811b-e01b77a91824",
+        "nonce": "6dd49ebd346f4140ad27d3426022b5de",
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "issued_at": "2026-05-25T23:02:52.328855Z",
+        "expires_at": "2026-05-25T23:04:52.328855Z"
+      }
+    }
+  },
+  {
+    "name": "handshake_bad_signature",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/peripherals/edge/handshake/",
+      "payload": {
+        "capability_registry": {
+          "DRAWER": "experimental",
+          "SCALE": "experimental",
+          "SCANNER": "supported",
+          "THERMAL_PRINTER": "supported"
+        },
+        "challenge_id": "2c7b0fd7-83a7-48ff-811b-e01b77a91824",
+        "connector_id": "edge-e2e-qa",
+        "connector_version": "0.2.0",
+        "devices": [
+          {
+            "capability_level": "supported",
+            "device_key": "printer-main",
+            "device_kind": "THERMAL_PRINTER",
+            "metadata": {
+              "driver": "escpos"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "supported",
+            "device_key": "scanner-main",
+            "device_kind": "SCANNER",
+            "metadata": {
+              "driver": "usb-hid"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "experimental",
+            "device_key": "drawer-main",
+            "device_kind": "DRAWER",
+            "metadata": {
+              "driver": "escpos:pulse"
+            },
+            "status": "ONLINE"
+          },
+          {
+            "capability_level": "experimental",
+            "device_key": "scale-main",
+            "device_kind": "SCALE",
+            "metadata": {
+              "driver": "serial"
+            },
+            "status": "DEGRADED"
+          }
+        ],
+        "metadata": {
+          "profile": "fuel",
+          "simulated_by": "qa/simulate_retail_pos_edge.py"
+        },
+        "signature": "YmFkLXNpZ25hdHVyZQ=="
+      }
+    },
+    "response": {
+      "http_status": 401,
+      "latency_ms": 98,
+      "body": {
+        "detail": "BAD_SIGNATURE",
+        "error_code": "BAD_SIGNATURE"
+      }
+    }
+  }
+]

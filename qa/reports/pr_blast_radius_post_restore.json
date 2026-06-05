@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "generated_at": "2026-05-05T00:14:03.907841+00:00",
+  "base_commit": "1ef390af2ed16708f0a3d4f39bc905ff5049996b",
+  "changed_files_count": 8,
+  "changed_files": [
+    "backend/src/apps/modulos/estacion_servicios/migrations/0011_fuelsale_idempotency.py",
+    "backend/src/apps/modulos/estacion_servicios/models.py",
+    "backend/src/apps/modulos/estacion_servicios/serializers.py",
+    "backend/src/apps/modulos/estacion_servicios/services.py",
+    "backend/src/apps/modulos/estacion_servicios/views.py",
+    "backend/src/tests/test_fuel_billing_inventory_integration.py",
+    "docs/design/FUEL_SALE_EXTERNAL_IDEMPOTENCY_20260504.md",
+    "qa/contracts/migration_safety_baseline.json"
+  ],
+  "layers": {
+    "docs": 1,
+    "qa": 1,
+    "runtime_backend": 6
+  },
+  "domains_touched": [
+    "modulos.estacion_servicios"
+  ],
+  "domains_count": 1,
+  "mixed_flags": {
+    "runtime_migration_mix": true,
+    "api_infra_mix": false,
+    "kernel_dashboard_infra_mix": false
+  },
+  "blast_radius_level": "high",
+  "policy": {
+    "requires_design_note": true,
+    "design_note_present": true,
+    "requires_additional_reviewer": true,
+    "required_label": "risk:high"
+  },
+  "issues": []
+}

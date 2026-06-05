@@ -1,0 +1,232 @@
+[
+  {
+    "name": "login",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/auth/login/",
+      "payload": {
+        "username": "qa_pos_pilot_2d186103",
+        "password": "pass12345"
+      }
+    },
+    "response": {
+      "http_status": 200,
+      "body": {
+        "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0NTY4Mzk5LCJpYXQiOjE3NzQ1Njc3OTksImp0aSI6IjllN2RlZmUzYTE3MDQxYjNiMzU4M2IwYmMyZTcyMjk4IiwidXNlcl9pZCI6IjE1In0.7FMI4HjeWgDzOGW9sVFAGqtfmAIfTwMLKxG8nljzmjY",
+        "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc3NTE3MjU5OSwiaWF0IjoxNzc0NTY3Nzk5LCJqdGkiOiIxMzZhZGZiOTI1NWY0MWQ5OWE3YTdlYjM4OWVkYmU4NSIsInVzZXJfaWQiOiIxNSJ9.k4-p9IcRhGuQ_pbmxDr6yrBRAKYCjwdo9eIOTxb4ybc"
+      }
+    }
+  },
+  {
+    "name": "open_shift",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/fuel/shifts/open/",
+      "payload": {
+        "note": "pilot-pos-smoke"
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "body": {
+        "id": 4,
+        "status": "OPEN",
+        "opened_at": "2026-03-26T17:29:59.384805-06:00",
+        "closed_at": null,
+        "note": "pilot-pos-smoke"
+      }
+    }
+  },
+  {
+    "name": "open_session",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/sessions/open/",
+      "payload": {
+        "opening_amount": "25.00",
+        "note": "pilot-open"
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "body": {
+        "id": 1,
+        "status": "OPEN",
+        "cash_session_id": 1,
+        "opening_amount": "25.00",
+        "opened_at": "2026-03-26T23:29:59.785011Z"
+      }
+    }
+  },
+  {
+    "name": "open_ticket",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/tickets/",
+      "payload": {
+        "shift_id": 4,
+        "idempotency_key": "pilot-ticket-001",
+        "external_ref": "PILOT-001",
+        "payment_method": "CASH"
+      }
+    },
+    "response": {
+      "http_status": 201,
+      "body": {
+        "id": 1,
+        "status": "CART_OPEN",
+        "session_id": 1,
+        "shift_id": 4,
+        "external_ref": "PILOT-001",
+        "correlation_id": "pos-ticket-1-dfd5ec7cb45a4b668c83",
+        "sale_type": "PUBLIC",
+        "payment_method": "CASH",
+        "total_amount": "0.00",
+        "customer_name": "",
+        "customer_ref": "",
+        "sale_id": null,
+        "payment_intent_id": "",
+        "cash_movement_id": null,
+        "created_at": "2026-03-26T23:30:00.355118Z",
+        "updated_at": "2026-03-26T23:30:00.355436Z",
+        "checkout_started_at": null,
+        "paid_at": null,
+        "closed_at": null,
+        "voided_at": null,
+        "void_reason": "",
+        "last_error": "",
+        "compensation_pending": false,
+        "compensation_attempts": 0,
+        "compensation_last_error": "",
+        "compensation_next_retry_at": null,
+        "last_compensation_at": null,
+        "lines": []
+      }
+    }
+  },
+  {
+    "name": "checkout_ticket",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/tickets/1/checkout/",
+      "payload": {
+        "line": {
+          "product": "DIESEL",
+          "volume": "5.0000",
+          "volume_uom": "LITER",
+          "unit_price_entered": "40.0000",
+          "unit_price_uom": "PER_LITER",
+          "metadata": {
+            "source": "pilot"
+          }
+        }
+      }
+    },
+    "response": {
+      "http_status": 200,
+      "body": {
+        "id": 1,
+        "status": "CLOSED",
+        "session_id": 1,
+        "shift_id": 4,
+        "external_ref": "PILOT-001",
+        "correlation_id": "pos-ticket-1-dfd5ec7cb45a4b668c83",
+        "sale_type": "PUBLIC",
+        "payment_method": "CASH",
+        "total_amount": "200.00",
+        "customer_name": "",
+        "customer_ref": "",
+        "sale_id": 1,
+        "payment_intent_id": "fe57c76b-432f-426e-882c-da3c3de36017",
+        "cash_movement_id": 1,
+        "created_at": "2026-03-26T23:30:00.355118Z",
+        "updated_at": "2026-03-26T23:30:01.025879Z",
+        "checkout_started_at": "2026-03-26T23:30:00.777341Z",
+        "paid_at": "2026-03-26T23:30:01.025704Z",
+        "closed_at": "2026-03-26T23:30:01.025704Z",
+        "voided_at": null,
+        "void_reason": "",
+        "last_error": "",
+        "compensation_pending": false,
+        "compensation_attempts": 0,
+        "compensation_last_error": "",
+        "compensation_next_retry_at": null,
+        "last_compensation_at": "2026-03-26T23:30:01.025704Z",
+        "lines": [
+          {
+            "id": 1,
+            "line_no": 1,
+            "line_type": "FUEL",
+            "product": "DIESEL",
+            "volume": "5.0000",
+            "volume_uom": "LITER",
+            "unit_price_entered": "40.0000",
+            "unit_price_uom": "PER_LITER",
+            "amount_estimated": "200.00",
+            "metadata": {
+              "source": "pilot"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "cockpit_read",
+    "request": {
+      "method": "GET",
+      "url": "http://localhost:8000/api/retail/pos/cockpit/",
+      "payload": {}
+    },
+    "response": {
+      "http_status": 200,
+      "body": {
+        "session": {
+          "id": 1,
+          "status": "OPEN",
+          "cash_session_id": 1,
+          "opened_at": "2026-03-26T23:29:59.785011Z",
+          "opened_by": 15,
+          "opening_amount": "25.00"
+        },
+        "tickets": {
+          "pending": 0,
+          "closed": 1,
+          "voided": 0
+        },
+        "compensation": {
+          "pending": 0,
+          "overdue": 0,
+          "max_pending_age_min": 0
+        },
+        "peripherals": {
+          "total": 0,
+          "online": 0,
+          "degraded": 0,
+          "offline": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "close_session",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8000/api/retail/pos/sessions/1/close/",
+      "payload": {
+        "counted_amount": "25.00",
+        "note": "pilot-close"
+      }
+    },
+    "response": {
+      "http_status": 200,
+      "body": {
+        "id": 1,
+        "status": "CLOSED",
+        "counted_amount": "25.00",
+        "difference_amount": "0.00",
+        "closed_at": "2026-03-26T23:30:01.583035Z"
+      }
+    }
+  }
+]
