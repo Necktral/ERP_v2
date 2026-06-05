@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -12,6 +13,8 @@ from apps.modulos.parties.models import Party, PartyRole
 from apps.modulos.parties.services import assign_party_role
 
 from .models import PurchaseDocument, PurchaseDocStatus, PurchaseDocType, PurchaseSequence
+
+logger = logging.getLogger(__name__)
 
 
 class ProcurementError(Exception):
@@ -180,7 +183,7 @@ def post_purchase_document(*, request, actor, doc_id: int) -> dict:
         doc.posted_at = timezone.now()
         doc.save(update_fields=["number", "status", "posted_at"])
 
-        publish_outbox_event(
+        posted_outbox = publish_outbox_event(
             request=request,
             source_module="PROCUREMENT",
             event_type="ProcurementDocumentPosted",
@@ -202,6 +205,24 @@ def post_purchase_document(*, request, actor, doc_id: int) -> dict:
             company=company,
             branch=branch,
         )
+
+        # CxP (portfolio): un documento de compra con proveedor fuerte (Party) genera una cuenta
+        # por pagar. Best-effort: la cartera no debe romper el posteo (portfolio posee el saldo).
+        try:
+            from apps.kernels.portfolio.services import link_procurement_document_to_payable
+
+            link_procurement_document_to_payable(outbox_event=posted_outbox, actor_user=actor)
+        except Exception as exc:  # noqa: BLE001 - aislar el efecto de cartera del posteo
+            logger.exception(
+                "procurement_payable_link_post_failed",
+                extra={
+                    "company_id": company.id,
+                    "branch_id": branch.id,
+                    "doc_id": int(doc.id),
+                    "event_id": str(getattr(posted_outbox, "event_id", "")),
+                    "error": str(exc),
+                },
+            )
 
         return {
             "ok": True,
