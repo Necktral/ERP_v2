@@ -36,6 +36,7 @@ def seed_rbac_v01() -> SeedResult:
         "cashier": "Caja (placeholder).",
         "billing_manager": "Gestión de facturación (kernel).",
         "procurement_manager": "Gestión de compras/procurement (kernel).",
+        "payroll_manager": "Planillero: opera planilla y asistencia de campo con SoD anti autoaprobación.",
         "sync_admin": "Administración de Sync (enroll/revoke) (placeholder).",
 
         # FUEL (Estación de Servicios)
@@ -45,7 +46,6 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_auditor": "Auditor Estación (solo lectura de operación y reportes).",
 
         # NOMINA / Asistencia de campo
-        "payroll_manager": "Planillero: opera planilla y asistencia de campo (NO aprueba — SoD).",
         "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
     }
 
@@ -187,6 +187,12 @@ def seed_rbac_v01() -> SeedResult:
         "report.definition.manage": "Gestionar definiciones y metadatos de datasets.",
         "report.dashboard.read": "Ver dashboards y vistas guardadas de reporting.",
         "report.dashboard.compose": "Crear y gestionar vistas guardadas para dashboards.",
+        # --- Nómina field capture / AttendanceReport ---
+        "nomina.field.manage": "Gestionar cuadrillas de campo.",
+        "nomina.attendance.read": "Ver reportes de asistencia derivados.",
+        "nomina.attendance.review": "Solicitar revisión/aprobación de asistencia de campo.",
+        "nomina.attendance.approve": "Aprobar asistencia de campo como checker SoD.",
+        "nomina.attendance.build": "Materializar AttendanceReport desde captura aprobada.",
 
         # --- Compat / legacy (tests + transición) ---
         # Nota: se conservan porque varios tests usan estos códigos como canary de RBAC.
@@ -390,6 +396,23 @@ def seed_rbac_v01() -> SeedResult:
             "report.definition.manage",
             "report.dashboard.read",
             "report.dashboard.compose",
+            # Nómina
+            "nomina.config.read",
+            "nomina.config.manage",
+            "nomina.period.read",
+            "nomina.period.create",
+            "nomina.sheet.read",
+            "nomina.sheet.create",
+            "nomina.sheet.manage",
+            "nomina.entry.read",
+            "nomina.entry.create",
+            "nomina.field.read",
+            "nomina.field.manage",
+            "nomina.field.capture",
+            "nomina.attendance.read",
+            "nomina.attendance.review",
+            "nomina.attendance.approve",
+            "nomina.attendance.build",
             # Portfolio (cartera CxC/CxP/crédito)
             "portfolio.receivable.read",
             "portfolio.receivable.write",
@@ -487,6 +510,18 @@ def seed_rbac_v01() -> SeedResult:
             "report.snapshot.generate",
             "report.dashboard.read",
             "report.dashboard.compose",
+            # Nómina operativa de sucursal
+            "nomina.period.read",
+            "nomina.sheet.read",
+            "nomina.sheet.create",
+            "nomina.sheet.manage",
+            "nomina.entry.read",
+            "nomina.entry.create",
+            "nomina.field.read",
+            "nomina.field.manage",
+            "nomina.field.capture",
+            "nomina.attendance.read",
+            "nomina.attendance.review",
             # Compat
             "inventory.read",
             "inventory.write",
@@ -583,6 +618,24 @@ def seed_rbac_v01() -> SeedResult:
             "reports.view",
         ],
         "sync_admin": ["sync.device.enroll", "sync.device.revoke"],
+        "payroll_manager": [
+            "nomina.config.read",
+            "nomina.config.manage",
+            "nomina.period.read",
+            "nomina.period.create",
+            "nomina.sheet.read",
+            "nomina.sheet.create",
+            "nomina.sheet.manage",
+            "nomina.entry.read",
+            "nomina.entry.create",
+            "nomina.field.read",
+            "nomina.field.manage",
+            "nomina.field.capture",
+            "nomina.attendance.read",
+            "nomina.attendance.review",
+            "nomina.attendance.approve",
+            "nomina.attendance.build",
+        ],
 
         # FUEL
         "fuel_admin": [
@@ -764,10 +817,15 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.entry.read",
         "nomina.entry.create",
         "nomina.field.read",
+        "nomina.field.manage",
         "nomina.field.capture",
         "nomina.field.consolidate",
         "nomina.field.approve.request",
         "nomina.field.apply",
+        "nomina.attendance.read",
+        "nomina.attendance.review",
+        "nomina.attendance.approve",
+        "nomina.attendance.build",
         "nomina.inss.read",
         "nomina.inss.manage",
         "nomina.period.approve.request",
@@ -776,6 +834,8 @@ def seed_rbac_v01() -> SeedResult:
     role_to_perms["field_supervisor"] = [
         "nomina.field.read",
         "nomina.field.approve",
+        "nomina.attendance.read",
+        "nomina.attendance.approve",
         "nomina.period.read",
         "nomina.period.approve",
     ]

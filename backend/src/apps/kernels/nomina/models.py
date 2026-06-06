@@ -1487,3 +1487,12 @@ class Holiday(models.Model):
                 return self.specific_date
             return None
         return None
+
+
+from .field.models_field import (  # noqa: E402,F401
+    Crew,
+    CrewMembership,
+    FieldCaptureEvent,
+    FieldCaptureReport,
+    FieldCaptureWorkDay,
+)

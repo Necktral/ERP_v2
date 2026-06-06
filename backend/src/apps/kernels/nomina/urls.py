@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.urls import path
 
+from .field import views_field as field_capture_views
 from .views import (
     HealthView,
     IRBracketView,
@@ -70,4 +71,11 @@ urlpatterns = [
     path("periods/<int:period_id>/inss/elections/", PeriodInssElectionView.as_view()),
     path("periods/<int:period_id>/inss/resolve/", PeriodInssResolveView.as_view()),
     path("periods/<int:period_id>/inss/classify/", PeriodInssClassifyView.as_view()),
+    # Asistencia de campo — captura por cuadrilla (PR #17)
+    path("field/crews/", field_capture_views.FieldCaptureCrewView.as_view()),
+    path("field/capture/work-days/", field_capture_views.FieldCaptureWorkDayView.as_view()),
+    path("field/reports/<int:report_id>/events/", field_capture_views.FieldCaptureEventView.as_view()),
+    path("field/reports/<int:report_id>/approve/request/", field_capture_views.FieldReportApprovalRequestView.as_view()),
+    path("field/reports/<int:report_id>/approve/", field_capture_views.FieldReportApproveView.as_view()),
+    path("field/reports/<int:report_id>/build-attendance/", field_capture_views.FieldReportBuildAttendanceView.as_view()),
 ]
