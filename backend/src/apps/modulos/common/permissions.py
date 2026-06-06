@@ -75,7 +75,7 @@ def rbac_permission(required_permission: str):
             if override is not None:
                 perms = {str(code).strip() for code in list(override) if str(code).strip()}
             else:
-                include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
+                include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", False))
                 perms = get_effective_permissions_for_scope(
                     user,
                     company=company,

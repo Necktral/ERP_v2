@@ -17,7 +17,7 @@ def resolve_effective_permissions(*, user, company, branch, effective_permission
     if company is None:
         raise DatasetScopeError("Contexto inválido: company requerida.")
 
-    include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
+    include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", False))
     return set(
         get_effective_permissions_for_scope(
             user,

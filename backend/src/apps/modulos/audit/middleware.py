@@ -26,8 +26,11 @@ class AuditAccessDeniedMiddleware(MiddlewareMixin):
 
     EXCLUDE_PATH_PREFIXES = (
         "/api/auth/login/",
+        "/api/v1/auth/login/",
         "/api/auth/refresh/",
+        "/api/v1/auth/refresh/",
         "/api/auth/logout/",
+        "/api/v1/auth/logout/",
     )
 
     def process_response(self, request, response):

@@ -14,13 +14,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from django.conf import settings
 from django.test import override_settings
 from django.utils import timezone
-from rest_framework.renderers import JSONRenderer
 from rest_framework.test import APIClient
 
 from apps.modulos.audit.models import AuditEvent
 from apps.modulos.iam.models import OrgUnit
-from apps.modulos.sync.models import DeviceEnrollment
-from apps.modulos.sync.signing import canonical_string, hmac_signature_b64
 from apps.modulos.sync_engine.models import Device
 from apps.modulos.sync_engine.signing import build_request_signing_message, canon_json
 
@@ -468,57 +465,6 @@ def test_sync_batch_v2_hmac_happy_path():
     assert res.data["results"][0]["status"] == "APPLIED"
 
 
-@pytest.mark.django_db
-@override_settings(SYNC_LEGACY_HMAC_ENABLED=True, SYNC_HMAC_WRAPPER_ENABLED=True)
-def test_sync_hmac_wrapper_mode_executes_core_and_keeps_legacy_shape():
-    client = APIClient()
-    company, branch = _mk_scope()
-
-    secret = base64.b64encode(os.urandom(32)).decode("utf-8")
-    legacy_id = uuid.uuid4()
-    DeviceEnrollment.objects.create(id=legacy_id, secret_b64=secret, device_name="legacy-wrapper")
-    Device.objects.create(
-        id=legacy_id,
-        company=company,
-        branch=branch,
-        label="core-wrapper",
-        status=Device.Status.ACTIVE,
-        public_key=b"\x02" * 32,
-        hmac_secret_b64=secret,
-    )
-
-    body = {
-        "commands": [
-            {
-                "command_id": str(uuid.uuid4()),
-                "type": "PING",
-                "payload": {"msg": "qa-auth-sync-smoke"},
-            }
-        ]
-    }
-    raw = JSONRenderer().render(body)
-    ts = int(timezone.now().timestamp())
-    nonce = "nonce-wrapper-1"
-    sig = hmac_signature_b64(secret, canonical_string(ts=ts, nonce=nonce, raw_body=raw))
-
-    res = client.post(
-        "/api/sync-hmac/batch/",
-        data=body,
-        format="json",
-        HTTP_X_DEVICE_ID=str(legacy_id),
-        HTTP_X_DEVICE_TS=str(ts),
-        HTTP_X_DEVICE_NONCE=nonce,
-        HTTP_X_DEVICE_SIGNATURE=sig,
-    )
-    assert res.status_code == 200
-    payload = res.json()
-    assert payload["device_id"] == str(legacy_id)
-    assert payload["results"][0]["result"]["status"] == "OK"
-    assert payload["results"][0]["result"]["data"]["pong"] is True
-    assert isinstance(payload.get("trace"), dict)
-    assert payload["trace"]["request_id"] == res["X-Request-Id"]
-    assert payload["trace"]["channel"] == "sync_legacy"
-    assert payload["trace"]["legacy_wrapper"] is True
-    assert res["Deprecation"] == "true"
-    assert "Sunset" in res
-    assert "deprecation" in res["Link"]
+def test_sync_hmac_legacy_route_is_retired():
+    res = APIClient().post("/api/sync-hmac/batch/", data={}, format="json")
+    assert res.status_code == 404

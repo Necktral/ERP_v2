@@ -162,7 +162,7 @@ def build_acl_snapshot(user) -> dict:
     companies_payload: list[dict[str, Any]] = []
     for company in companies:
         branches = get_accessible_branches(user, company)
-        include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", True))
+        include_global = bool(getattr(settings, "RBAC_INCLUDE_GLOBAL_USERROLES", False))
         perms_for_company = sorted(
             list(get_effective_permissions_for_scope(user, company=company, branch=None, include_global=include_global))
         )

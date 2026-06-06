@@ -28,12 +28,19 @@ class OrgContextMiddleware:
     EXEMPT_PATH_PREFIXES = (
         "/admin/",
         "/api/auth/login/",
+        "/api/v1/auth/login/",
         "/api/auth/refresh/",
+        "/api/v1/auth/refresh/",
         "/api/auth/logout/",
+        "/api/v1/auth/logout/",
         "/api/auth/me/",
+        "/api/v1/auth/me/",
         "/api/auth/me/acl/",
+        "/api/v1/auth/me/acl/",
         "/api/auth/bootstrap/",
+        "/api/v1/auth/bootstrap/",
         "/api/schema/",
+        "/api/v1/schema/",
         "/api/docs/",
     )
 

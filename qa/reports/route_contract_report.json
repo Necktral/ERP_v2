@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "generated_at": "2026-05-27T20:09:33.067120+00:00",
+  "generated_at": "2026-06-06T00:19:01.559734+00:00",
   "top_level_routes": [
     {
       "prefix": "/admin/",
@@ -67,12 +67,20 @@
       "module": "apps.modulos.common.urls"
     },
     {
+      "prefix": "/api/nomina/",
+      "module": "apps.kernels.nomina.urls"
+    },
+    {
       "prefix": "/api/org/",
       "module": "apps.modulos.org.urls"
     },
     {
       "prefix": "/api/payments/",
       "module": "apps.kernels.payments.urls"
+    },
+    {
+      "prefix": "/api/portfolio/",
+      "module": "apps.kernels.portfolio.urls"
     },
     {
       "prefix": "/api/procurement/",
@@ -91,12 +99,12 @@
       "module": "apps.modulos.retail_pos.urls"
     },
     {
-      "prefix": "/api/sync-hmac/",
-      "module": "apps.modulos.sync.urls"
-    },
-    {
       "prefix": "/api/sync/",
       "module": "apps.modulos.sync_engine.urls"
+    },
+    {
+      "prefix": "/api/v1/",
+      "module": "list"
     }
   ],
   "policy": {

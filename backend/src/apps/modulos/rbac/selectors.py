@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 def get_effective_permissions_for_scope(
-    user, *, company: OrgUnit, branch: OrgUnit | None = None, include_global: bool = True
+    user, *, company: OrgUnit, branch: OrgUnit | None = None, include_global: bool = False
 ) -> set[str]:
     """
     Permisos efectivos para un usuario en un contexto (company + opcional branch).
@@ -17,7 +17,7 @@ def get_effective_permissions_for_scope(
     Reglas:
       - si hay RoleAssignment a COMPANY aplica a toda la empresa (todas sus branches)
       - si hay RoleAssignment a BRANCH aplica solo a esa branch
-      - include_global=True incluye UserRole (legacy) como permisos globales (transicional)
+      - include_global=True conserva acceso explícito al catálogo UserRole legacy para auditoría/backoffice
     """
 
     from .models import RoleAssignment, RolePermission, UserRole
