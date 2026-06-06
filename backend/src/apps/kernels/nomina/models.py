@@ -34,6 +34,7 @@ DEFAULT_MIN_WAGE_AGRO = Decimal("6188.02")        # sector agropecuario 2026
 class PeriodType(models.TextChoices):
     FIRST_HALF = "FIRST_HALF", "Primera quincena (1-15)"
     SECOND_HALF = "SECOND_HALF", "Segunda quincena (16-fin)"
+    CATORCENA = "CATORCENA", "Catorcena"
     MONTHLY = "MONTHLY", "Mensual"
 
 
@@ -85,6 +86,52 @@ class AbsenceReason(models.TextChoices):
     INSS_SUBSIDY = "INSS_SUBSIDY", "Subsidio INSS (enfermedad)"
     HOLIDAY = "HOLIDAY", "Feriado"
     VACATION = "VACATION", "Vacaciones"
+
+
+class FieldWorkDayStatus(models.TextChoices):
+    OPEN = "OPEN", "Abierto"
+    ROLLCALL_SUBMITTED = "ROLLCALL_SUBMITTED", "Lista enviada"
+    CREW_REPORTS_PENDING = "CREW_REPORTS_PENDING", "Reportes pendientes"
+    IN_REVIEW = "IN_REVIEW", "En revision"
+    APPROVED = "APPROVED", "Aprobado"
+    LOCKED = "LOCKED", "Bloqueado"
+
+
+class FieldRollCallLineStatus(models.TextChoices):
+    PRESENT = "PRESENT", "Presente"
+    ABSENT = "ABSENT", "Ausente"
+    UNKNOWN = "UNKNOWN", "No confirmado"
+
+
+class FieldCrewReportStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Borrador"
+    SUBMITTED = "SUBMITTED", "Enviado"
+    RETURNED_FOR_CORRECTION = "RETURNED_FOR_CORRECTION", "Devuelto"
+    REVIEWED = "REVIEWED", "Revisado"
+    APPROVED = "APPROVED", "Aprobado"
+    REJECTED = "REJECTED", "Rechazado"
+
+
+class FieldWorkerEventType(models.TextChoices):
+    PRESENT = "PRESENT", "Presente"
+    ABSENT = "ABSENT", "Ausente"
+    SICK = "SICK", "Enfermo"
+    ACCIDENT = "ACCIDENT", "Accidente"
+    TRANSFERRED = "TRANSFERRED", "Trasladado"
+    PERMISSION = "PERMISSION", "Permiso"
+    LEFT_EARLY = "LEFT_EARLY", "Salio temprano"
+    JOINED_LATE = "JOINED_LATE", "Ingreso tarde"
+    DISMISSED = "DISMISSED", "Despedido"
+    OTHER = "OTHER", "Otro"
+
+
+class FieldAttendanceConsolidationStatus(models.TextChoices):
+    OK = "OK", "OK"
+    WARNING = "WARNING", "Advertencia"
+    CONFLICT = "CONFLICT", "Conflicto"
+    BLOCKED = "BLOCKED", "Bloqueado"
+    APPROVED = "APPROVED", "Aprobado"
+    LOCKED_FOR_PAYROLL = "LOCKED_FOR_PAYROLL", "Bloqueado para nomina"
 
 
 # ---------------------------------------------------------------------------
@@ -751,6 +798,280 @@ class AttendanceReport(models.Model):
     def __str__(self) -> str:
         name = self.employee.full_name if self.employee_id else self.employee_name
         return f"{name} | {self.period} [{self.source}]"
+
+
+# ---------------------------------------------------------------------------
+# Field Attendance — Control diario de asistencia de campo
+# ---------------------------------------------------------------------------
+
+class FieldWorkDay(models.Model):
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="field_work_days_company")
+    branch = models.ForeignKey(
+        "iam.OrgUnit", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="field_work_days_branch"
+    )
+    payroll_period = models.ForeignKey(
+        PayrollPeriod, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="field_work_days"
+    )
+    work_date = models.DateField(db_index=True)
+    status = models.CharField(
+        max_length=24, choices=FieldWorkDayStatus.choices,
+        default=FieldWorkDayStatus.OPEN, db_index=True
+    )
+    opened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_work_days_opened"
+    )
+    opened_at = models.DateTimeField(default=timezone.now, editable=False)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_work_days_approved"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "work_date"],
+                condition=models.Q(branch__isnull=True),
+                name="uq_fwd_c_date_null_branch",
+            ),
+            models.UniqueConstraint(
+                fields=["company", "branch", "work_date"],
+                condition=models.Q(branch__isnull=False),
+                name="uq_fwd_c_branch_date",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "work_date"], name="ix_fwd_c_b_date"),
+            models.Index(fields=["company", "status"], name="ix_fwd_c_status"),
+            models.Index(fields=["payroll_period", "status"], name="ix_fwd_period_status"),
+        ]
+
+    def __str__(self) -> str:
+        branch = f" / {self.branch}" if self.branch_id else ""
+        return f"{self.company}{branch} | {self.work_date}"
+
+
+class FieldRollCall(models.Model):
+    work_day = models.OneToOneField(FieldWorkDay, on_delete=models.PROTECT, related_name="rollcall")
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_rollcalls_submitted"
+    )
+    submitted_at = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        indexes = [
+            models.Index(fields=["submitted_by", "submitted_at"], name="ix_frc_submitter_at"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Rollcall {self.work_day}"
+
+
+class FieldRollCallLine(models.Model):
+    rollcall = models.ForeignKey(FieldRollCall, on_delete=models.CASCADE, related_name="lines")
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="field_rollcall_lines")
+    status = models.CharField(
+        max_length=12, choices=FieldRollCallLineStatus.choices,
+        default=FieldRollCallLineStatus.UNKNOWN, db_index=True
+    )
+    absence_reason = models.CharField(max_length=64, blank=True, default="")
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["rollcall", "employee"], name="uq_frl_rollcall_employee"),
+        ]
+        indexes = [
+            models.Index(fields=["employee", "status"], name="ix_frl_employee_status"),
+        ]
+
+
+class FieldCrew(models.Model):
+    work_day = models.ForeignKey(FieldWorkDay, on_delete=models.PROTECT, related_name="crews")
+    name = models.CharField(max_length=160)
+    supervisor_employee = models.ForeignKey(
+        "hr.Employee", on_delete=models.PROTECT, related_name="field_crews_supervised"
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["work_day", "name"], name="uq_fc_workday_name"),
+        ]
+        indexes = [
+            models.Index(fields=["work_day", "supervisor_employee"], name="ix_fc_workday_supervisor"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} | {self.work_day}"
+
+
+class FieldCrewReport(models.Model):
+    crew = models.OneToOneField(FieldCrew, on_delete=models.PROTECT, related_name="report")
+    status = models.CharField(
+        max_length=24, choices=FieldCrewReportStatus.choices,
+        default=FieldCrewReportStatus.DRAFT, db_index=True
+    )
+    labor_code = models.CharField(max_length=64, blank=True, default="")
+    labor_name = models.CharField(max_length=160, blank=True, default="")
+    zone_label = models.CharField(max_length=160, blank=True, default="")
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_crew_reports_submitted"
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_crew_reports_reviewed"
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        indexes = [
+            models.Index(fields=["status"], name="ix_fcr_status"),
+            models.Index(fields=["submitted_by", "submitted_at"], name="ix_fcr_submitter_at"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Report {self.crew}"
+
+
+class FieldCrewReportLine(models.Model):
+    report = models.ForeignKey(FieldCrewReport, on_delete=models.CASCADE, related_name="lines")
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="field_crew_report_lines")
+    event_type = models.CharField(
+        max_length=16, choices=FieldWorkerEventType.choices,
+        default=FieldWorkerEventType.PRESENT, db_index=True
+    )
+    day_value = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("1.00"))
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["report", "employee"], name="uq_fcrl_report_employee"),
+            models.CheckConstraint(
+                condition=models.Q(day_value__gte=0, day_value__lte=1),
+                name="ck_fcrl_day_value_range",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["employee", "event_type"], name="ix_fcrl_emp_event"),
+        ]
+
+
+class FieldWorkerEvent(models.Model):
+    work_day = models.ForeignKey(FieldWorkDay, on_delete=models.PROTECT, related_name="worker_events")
+    crew_report = models.ForeignKey(
+        FieldCrewReport, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="worker_events"
+    )
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="field_worker_events")
+    event_type = models.CharField(max_length=16, choices=FieldWorkerEventType.choices, db_index=True)
+    occurred_at = models.DateTimeField(default=timezone.now)
+    details = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_worker_events_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "nomina"
+        indexes = [
+            models.Index(fields=["work_day", "employee"], name="ix_fwe_workday_employee"),
+            models.Index(fields=["event_type"], name="ix_fwe_type"),
+        ]
+
+
+class FieldTransfer(models.Model):
+    work_day = models.ForeignKey(FieldWorkDay, on_delete=models.PROTECT, related_name="transfers")
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="field_transfers")
+    from_crew = models.ForeignKey(FieldCrew, on_delete=models.PROTECT, related_name="transfers_out")
+    to_crew = models.ForeignKey(FieldCrew, on_delete=models.PROTECT, related_name="transfers_in")
+    reason = models.TextField()
+    transferred_at = models.DateTimeField(default=timezone.now)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_transfers_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(from_crew=models.F("to_crew")),
+                name="ck_ft_different_crews",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["work_day", "employee"], name="ix_ft_workday_employee"),
+        ]
+
+
+class FieldAttendanceConsolidation(models.Model):
+    work_day = models.ForeignKey(FieldWorkDay, on_delete=models.PROTECT, related_name="consolidations")
+    payroll_period = models.ForeignKey(
+        PayrollPeriod, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="field_attendance_consolidations"
+    )
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="field_attendance_consolidations")
+    status = models.CharField(
+        max_length=24, choices=FieldAttendanceConsolidationStatus.choices,
+        default=FieldAttendanceConsolidationStatus.OK, db_index=True
+    )
+    day_value = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal("0.00"))
+    primary_event_type = models.CharField(max_length=16, choices=FieldWorkerEventType.choices, blank=True, default="")
+    conflict_codes = models.JSONField(default=list, blank=True)
+    source_summary = models.JSONField(default=dict, blank=True)
+    has_inss_snapshot = models.BooleanField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="field_consolidations_approved"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["work_day", "employee"], name="uq_fac_workday_employee"),
+            models.CheckConstraint(
+                condition=models.Q(day_value__gte=0, day_value__lte=1),
+                name="ck_fac_day_value_range",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["work_day", "status"], name="ix_fac_workday_status"),
+            models.Index(fields=["employee", "status"], name="ix_fac_employee_status"),
+        ]
 
 
 # ---------------------------------------------------------------------------
