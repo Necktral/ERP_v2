@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import date as _date
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.modulos.audit.writer import write_event
@@ -36,6 +39,7 @@ from .models import (
     FieldWorkDayStatus,
     FieldWorkerEvent,
     FieldWorkerEventType,
+    Holiday,
     IRBracket,
     NominaConfig,
     PayrollEntry,
@@ -1265,3 +1269,76 @@ def apply_field_attendance_to_sheet(*, request, actor, sheet: PayrollSheet) -> d
         except FieldAttendanceError:
             skipped.append(entry.id)
     return {"applied": applied, "skipped": skipped}
+
+
+# ---------------------------------------------------------------------------
+# Calendario de feriados — resolución por período
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ResolvedHoliday:
+    """Un feriado del catálogo materializado a una fecha concreta dentro de un período."""
+    date: _date
+    holiday_id: int
+    code: str
+    name: str
+    legal_type: str
+    locality: str
+    applies_to_payroll: bool
+    pays_premium: bool
+    premium_rate: Decimal | None
+
+
+def holidays_for_period(
+    period: PayrollPeriod,
+    *,
+    only_payroll: bool = False,
+    include_company_specific: bool = True,
+) -> list[ResolvedHoliday]:
+    """Feriados del catálogo que caen dentro del rango [start_date, end_date] del período.
+
+    Es lo que permite al revisor de la planilla *ubicar* los días feriados precargados.
+    No auto-resuelve por geografía: devuelve todos los aplicables (catálogo nacional +
+    feriados propios de la empresa) y el revisor decide cuáles cuentan.
+
+    - ``only_payroll``: solo los que por defecto cuentan para la planilla
+      (excluye asuetos estatales no adoptados).
+    - ``include_company_specific``: incluir feriados propios de la empresa del período
+      además del catálogo nacional compartido (``company`` NULL).
+    """
+    if period.start_date is None or period.end_date is None:
+        return []
+
+    qs = Holiday.objects.filter(is_active=True)
+    if include_company_specific and period.company_id is not None:
+        qs = qs.filter(Q(company__isnull=True) | Q(company_id=period.company_id))
+    else:
+        qs = qs.filter(company__isnull=True)
+    if only_payroll:
+        qs = qs.filter(applies_to_payroll=True)
+
+    years = range(period.start_date.year, period.end_date.year + 1)
+    resolved: list[ResolvedHoliday] = []
+    for holiday in qs:
+        for year in years:
+            holiday_date = holiday.date_for_year(year)
+            if holiday_date is None or not (period.start_date <= holiday_date <= period.end_date):
+                continue
+            resolved.append(ResolvedHoliday(
+                date=holiday_date,
+                holiday_id=holiday.id,
+                code=holiday.code,
+                name=holiday.name,
+                legal_type=holiday.legal_type,
+                locality=holiday.locality,
+                applies_to_payroll=holiday.applies_to_payroll,
+                pays_premium=holiday.pays_premium,
+                premium_rate=holiday.premium_rate,
+            ))
+    resolved.sort(key=lambda r: (r.date, r.name))
+    return resolved
+
+
+def holiday_dates_for_period(period: PayrollPeriod, *, only_payroll: bool = True) -> set[_date]:
+    """Conjunto de fechas feriadas del período (para cruzar con la asistencia)."""
+    return {r.date for r in holidays_for_period(period, only_payroll=only_payroll)}
