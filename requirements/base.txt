@@ -41,3 +41,10 @@ argon2-cffi==25.1.0
 
 # Driver PostgreSQL
 psycopg[binary]==3.3.2
+
+# PDF de la planilla legal (HTML→PDF). Requiere libs de sistema cairo/pango en la
+# imagen (ver docker/backend.Dockerfile.*). El import es lazy en planilla_pdf.py.
+# pydyf se PINEA: weasyprint 62.3 rompe con pydyf>=0.11 ('super' object has no
+# attribute 'transform'); 0.10.0 es el par compatible verificado.
+weasyprint==62.3
+pydyf==0.10.0

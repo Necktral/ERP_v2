@@ -8,11 +8,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencias del sistema (psycopg, etc.)
+# Dependencias del sistema (psycopg, y cairo/pango para WeasyPrint → PDF de planilla)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
+    fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 # Dependencias Python (cacheable)
