@@ -757,7 +757,8 @@ def allocate_payment_to_obligation(
     else:
         # Default: aplicar a principal primero, luego interés, luego fees, luego penalties
         remaining = allocated_amount
-        penalty_applied = min(remaining, obligation.penalty_amount - Decimal("0.00"))  # TODO: track applied per component
+        # Component-level applied balances are not persisted yet; cap by configured penalty amount.
+        penalty_applied = min(remaining, obligation.penalty_amount - Decimal("0.00"))
         remaining -= penalty_applied
         interest_applied = min(remaining, obligation.interest_amount)
         remaining -= interest_applied
@@ -877,8 +878,7 @@ def auto_allocate_payment(
         )
 
     # Buscar obligaciones pendientes del party
-    # TODO: Determinar si es Receivable o Payable según dirección del pago
-    # Por ahora asumimos que son Receivables (cobros)
+    # La ruta automática actual aplica cobros contra Receivables; Payables requieren flujo explícito.
     pending_obligations = Receivable.objects.filter(
         company=payment_intent.company,
         party=party,
