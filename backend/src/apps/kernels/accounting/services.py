@@ -109,6 +109,7 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("PAYMENTS", "CashSessionClosed"),
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
+    ("NOMINA", "PayrollPeriodApproved"),
 }
 TRANSFER_PAYMENT_ACCOUNTING_EVENTS = {
     ("PAYMENTS", "PaymentCaptured"),
@@ -121,6 +122,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryMovementPosted"),
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
+    ("NOMINA", "PayrollPeriodApproved"),
 }
 ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
     ("PAYMENTS", "PaymentCaptured"),
