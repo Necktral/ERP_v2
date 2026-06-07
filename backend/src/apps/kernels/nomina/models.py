@@ -1173,3 +1173,100 @@ class PayrollLoanDeduction(models.Model):
         indexes = [
             models.Index(fields=["credit_id", "credit_type"], name="ix_loandeduc_credit"),
         ]
+
+
+# ---------------------------------------------------------------------------
+# Régimen INSS — afiliación maestra fechada + elección por período
+# (el "dolor de cabeza": trabajadores que cotizan un período y al siguiente no)
+# ---------------------------------------------------------------------------
+
+class InssRegime(models.TextChoices):
+    AFFILIATED = "AFFILIATED", "Cotiza INSS"
+    NOT_AFFILIATED = "NOT_AFFILIATED", "No cotiza INSS"
+
+
+class EmployeeInssEnrollment(models.Model):
+    """Afiliación INSS del empleado, fechada (effective-dated). Verdad maestra del régimen."""
+
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inss_enrollments_company")
+    employee = models.ForeignKey("hr.Employee", on_delete=models.PROTECT, related_name="inss_enrollments")
+    regime = models.CharField(max_length=16, choices=InssRegime.choices, default=InssRegime.AFFILIATED)
+    effective_from = models.DateField(db_index=True)
+    effective_to = models.DateField(null=True, blank=True)
+    reason = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="inss_enrollments_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(fields=["employee", "effective_from"], name="uq_inss_enroll_emp_from"),
+        ]
+        indexes = [
+            models.Index(fields=["employee", "effective_from"], name="ix_inss_enroll_emp_from"),
+            models.Index(fields=["company", "regime"], name="ix_inss_enroll_c_regime"),
+        ]
+
+    def __str__(self) -> str:
+        return f"emp:{self.employee_id} {self.regime} desde {self.effective_from}"
+
+    @classmethod
+    def resolve_for(cls, employee, on_date) -> str:
+        """Régimen vigente del empleado en la fecha; AFFILIATED por defecto si no hay afiliación."""
+        enrollment = (
+            cls.objects.filter(employee=employee, effective_from__lte=on_date)
+            .filter(models.Q(effective_to__isnull=True) | models.Q(effective_to__gte=on_date))
+            .order_by("-effective_from")
+            .first()
+        )
+        return enrollment.regime if enrollment is not None else InssRegime.AFFILIATED
+
+
+class InssElectionSource(models.TextChoices):
+    ENROLLMENT = "ENROLLMENT", "Desde afiliación"
+    OVERRIDE = "OVERRIDE", "Override del período"
+
+
+class PayrollInssElection(models.Model):
+    """Elección INSS efectiva para un período (resuelta desde afiliación o por override auditado)."""
+
+    period = models.ForeignKey(PayrollPeriod, on_delete=models.CASCADE, related_name="inss_elections")
+    employee = models.ForeignKey(
+        "hr.Employee", null=True, blank=True,
+        on_delete=models.PROTECT, related_name="inss_elections"
+    )
+    cedula = models.CharField(max_length=20, blank=True, default="")
+    elected_has_inss = models.BooleanField()
+    source = models.CharField(max_length=16, choices=InssElectionSource.choices, default=InssElectionSource.ENROLLMENT)
+    reason = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="inss_elections_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["period", "employee"],
+                condition=models.Q(employee__isnull=False),
+                name="uq_inss_election_period_emp",
+            ),
+            models.UniqueConstraint(
+                fields=["period", "cedula"],
+                condition=models.Q(employee__isnull=True) & ~models.Q(cedula=""),
+                name="uq_inss_election_period_cedula",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["period", "source"], name="ix_inss_elec_period_src"),
+        ]
+
+    def __str__(self) -> str:
+        who = self.employee_id or self.cedula
+        return f"{who} period:{self.period_id} INSS={self.elected_has_inss}"

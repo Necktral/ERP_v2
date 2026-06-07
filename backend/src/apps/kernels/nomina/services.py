@@ -925,7 +925,19 @@ def resolve_worker_inss(employee, *, period=None) -> bool | None:
     """
     if employee is None:
         return None
-    # (1) F2-1 régimen INSS aún no está en esta rama → se resolverá aquí cuando exista.
+    # (1) F2-1: elección del período > afiliación fechada del empleado.
+    if period is not None:
+        from .models import EmployeeInssEnrollment, InssRegime, PayrollInssElection
+
+        elected = (
+            PayrollInssElection.objects.filter(period=period, employee=employee)
+            .values_list("elected_has_inss", flat=True)
+            .first()
+        )
+        if elected is not None:
+            return bool(elected)
+        if EmployeeInssEnrollment.objects.filter(employee=employee).exists():
+            return EmployeeInssEnrollment.resolve_for(employee, period.start_date) == InssRegime.AFFILIATED
     # (2) Continuidad desde la última planilla registrada del empleado.
     last_has_inss = (
         PayrollEntry.objects.filter(employee=employee)

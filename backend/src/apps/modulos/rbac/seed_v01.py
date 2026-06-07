@@ -80,6 +80,10 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.sheet.manage": "Enviar/aprobar planillas.",
         "nomina.entry.read": "Ver líneas de planilla.",
         "nomina.entry.create": "Crear/calcular líneas de planilla.",
+        "nomina.inss.read": "Ver régimen/elección INSS.",
+        "nomina.inss.manage": "Gestionar afiliación y elección INSS por período.",
+        "nomina.period.approve.request": "Solicitar aprobación de período (maker, SoD).",
+        "nomina.period.approve": "Aprobar período de planilla (checker, SoD).",
         # NOMINA — Asistencia de campo (Field Attendance)
         "nomina.field.read": "Ver asistencia de campo (días, cuadrillas, consolidación).",
         "nomina.field.capture": "Capturar asistencia de campo (lista, cuadrilla, reporte, evento, traslado).",
@@ -764,11 +768,19 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.field.consolidate",
         "nomina.field.approve.request",
         "nomina.field.apply",
+        "nomina.inss.read",
+        "nomina.inss.manage",
+        "nomina.period.approve.request",
     ]
     role_to_perms["payroll_manager"] = list(_nomina_field_maker_perms)
-    role_to_perms["field_supervisor"] = ["nomina.field.read", "nomina.field.approve"]
+    role_to_perms["field_supervisor"] = [
+        "nomina.field.read",
+        "nomina.field.approve",
+        "nomina.period.read",
+        "nomina.period.approve",
+    ]
     _admin_codes = role_to_perms.get("company_admin", [])
-    for code in (*_nomina_field_maker_perms, "nomina.field.approve"):
+    for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):
         if code not in _admin_codes:
             _admin_codes.append(code)
 
