@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import InventoryItem, ItemLot, LotBalance, StockBalance, StockMovement, UoM, Warehouse, WarehouseType
@@ -25,11 +27,11 @@ class ItemCreateSerializer(serializers.Serializer):
     barcode = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
     uom = serializers.ChoiceField(choices=UoM.choices, required=False, default=UoM.UNIT)
     purchase_uom = serializers.ChoiceField(choices=UoM.choices, required=False, allow_blank=True, default="")
-    purchase_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default="1.000000")
+    purchase_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default=Decimal("1.000000"))
     sale_uom = serializers.ChoiceField(choices=UoM.choices, required=False, allow_blank=True, default="")
-    sale_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default="1.000000")
-    reorder_point = serializers.DecimalField(max_digits=18, decimal_places=4, required=False, default="0.0000")
-    min_stock_qty = serializers.DecimalField(max_digits=18, decimal_places=4, required=False, default="0.0000")
+    sale_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default=Decimal("1.000000"))
+    reorder_point = serializers.DecimalField(max_digits=18, decimal_places=4, required=False, default=Decimal("0.0000"))
+    min_stock_qty = serializers.DecimalField(max_digits=18, decimal_places=4, required=False, default=Decimal("0.0000"))
     max_stock_qty = serializers.DecimalField(max_digits=18, decimal_places=4, required=False, allow_null=True, default=None)
     track_lots = serializers.BooleanField(required=False, default=False)
     track_expiry = serializers.BooleanField(required=False, default=False)
@@ -56,7 +58,7 @@ class MovementReceiveSerializer(serializers.Serializer):
     lot_number = serializers.CharField(max_length=80, required=False, allow_blank=True)
     expiry_date = serializers.DateField(required=False, allow_null=True)
     movement_uom = serializers.ChoiceField(choices=UoM.choices, required=False, allow_blank=True, default="")
-    movement_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default="1.000000")
+    movement_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default=Decimal("1.000000"))
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
     note = serializers.CharField(max_length=255, required=False, allow_blank=True)
     source_module = serializers.CharField(max_length=32, required=False, allow_blank=True, default="")
@@ -70,7 +72,7 @@ class MovementIssueSerializer(serializers.Serializer):
     qty = serializers.DecimalField(max_digits=18, decimal_places=4)
     lot_id = serializers.IntegerField(required=False, allow_null=True)
     movement_uom = serializers.ChoiceField(choices=UoM.choices, required=False, allow_blank=True, default="")
-    movement_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default="1.000000")
+    movement_uom_factor = serializers.DecimalField(max_digits=14, decimal_places=6, required=False, default=Decimal("1.000000"))
     allow_negative = serializers.BooleanField(required=False, default=False)
     idempotency_key = serializers.CharField(max_length=96, required=False, allow_blank=True)
     note = serializers.CharField(max_length=255, required=False, allow_blank=True)

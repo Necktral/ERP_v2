@@ -1124,7 +1124,7 @@ def refund_payment_intent_for_scope(
             reason=(reason or "")[:255],
             idempotency_key=idempotency_key,
             provider_refund_id=provider_refund_id or "",
-            created_by=actor if getattr(actor, "id", None) else None,
+            created_by=cast(Any, actor) if getattr(actor, "id", None) else None,
         )
 
         previous_status = intent.status

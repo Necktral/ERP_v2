@@ -749,7 +749,10 @@ class AttendanceReport(models.Model):
         ]
 
     def __str__(self) -> str:
-        name = self.employee.full_name if self.employee_id else self.employee_name
+        employee = self.employee if self.employee_id else None
+        name = self.employee_name
+        if employee is not None and not name:
+            name = f"{employee.first_name} {employee.last_name}".strip()
         return f"{name} | {self.period} [{self.source}]"
 
 

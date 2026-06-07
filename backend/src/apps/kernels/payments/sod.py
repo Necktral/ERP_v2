@@ -21,6 +21,7 @@ from django.http import HttpRequest
 from apps.modulos.iam.approvals import approve as _approve_request
 from apps.modulos.iam.approvals import mark_executed, request_approval
 from apps.modulos.iam.models import ApprovalRequest
+from apps.modulos.iam.models import OrgUnit
 
 from .models import CashSession, PaymentIntent, PaymentRefund
 from .services import (
@@ -43,6 +44,13 @@ _REFUNDABLE_STATES = (
 )
 
 
+def _company_from_request(request: HttpRequest) -> OrgUnit:
+    company = getattr(request, "company", None)
+    if not isinstance(company, OrgUnit):
+        raise PaymentsValidationError("X-Company-Id requerido")
+    return company
+
+
 # --------------------------------------------------------------------------- #
 # Refund de PaymentIntent
 # --------------------------------------------------------------------------- #
@@ -56,7 +64,7 @@ def request_refund(
     reason: str = "",
     idempotency_key: str = "",
 ) -> ApprovalRequest:
-    company = request.company
+    company = _company_from_request(request)
     branch = getattr(request, "branch", None)
     intent = PaymentIntent.objects.filter(payment_id=payment_id, company=company, branch=branch).first()
     if intent is None:
@@ -93,9 +101,12 @@ def approve_and_refund(*, request: HttpRequest, approver, approval: ApprovalRequ
     # Valida SoD (approver != maker) y permiso del aprobador en el scope.
     approval = _approve_request(approval=approval, approver=approver, request=request)
     payload = approval.payload or {}
+    branch = approval.branch
+    if branch is None:
+        raise PaymentsValidationError("X-Branch-Id requerido")
     refund = refund_payment_intent_for_scope(
         company=approval.company,
-        branch=approval.branch,
+        branch=branch,
         actor=approver,
         request=request,
         payment_id=str(payload["payment_id"]),
@@ -119,7 +130,7 @@ def request_reopen(
     reason: str,
     idempotency_key: str = "",
 ) -> ApprovalRequest:
-    company = request.company
+    company = _company_from_request(request)
     branch = getattr(request, "branch", None)
     session = CashSession.objects.filter(id=session_id, company=company, branch=branch).first()
     if session is None:

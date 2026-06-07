@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from io import StringIO
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -290,7 +291,7 @@ def test_operational_snapshot_and_pilot_commands_cover_rollout_and_errors(tmp_pa
 def test_reverse_journal_entry_command_delegates_and_validates_actor(monkeypatch: pytest.MonkeyPatch) -> None:
     import apps.kernels.accounting.management.commands.reverse_journal_entry as cmd_mod
 
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     def fake_reverse(**kwargs):
         captured.update(kwargs)

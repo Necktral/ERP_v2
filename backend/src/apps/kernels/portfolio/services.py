@@ -773,7 +773,7 @@ def allocate_payment_to_obligation(
         company=payment_intent.company,
         payment_intent=payment_intent,
         obligation_content_type=content_type,
-        obligation_object_id=obligation.id,
+        obligation_object_id=obligation.pk,
         status=AllocationStatus.APPLIED,
         allocated_amount=allocated_amount,
         currency=payment_intent.currency,
