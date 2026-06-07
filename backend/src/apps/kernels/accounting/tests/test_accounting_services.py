@@ -402,7 +402,7 @@ def test_approve_skips_already_approved():
     seed_posting_rules_v1_for_company(company=company)
 
     event = _billing_outbox(company=company, branch=branch)
-    link = link_operational_event_to_accounting(outbox_event=event)
+    link_operational_event_to_accounting(outbox_event=event)
 
     approve_journal_drafts(company_id=company.id)
     # Segunda pasada: draft ya en APPROVED — no hay VALIDATED que procesar
@@ -463,7 +463,7 @@ def test_post_drafts_sod_block_same_approver():
     seed_posting_rules_v1_for_company(company=company)
 
     event = _billing_outbox(company=company, branch=branch)
-    link = link_operational_event_to_accounting(outbox_event=event)
+    link_operational_event_to_accounting(outbox_event=event)
 
     # Aprobar con actor
     approve_journal_drafts(company_id=company.id, actor_user=actor)

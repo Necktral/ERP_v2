@@ -212,7 +212,7 @@ def create_period(
     notes: str = "",
 ) -> PayrollPeriod:
     from .models import PeriodStatus
-    cfg = NominaConfig.get_active(company=company, date=start_date)
+    _ = NominaConfig.get_active(company=company, date=start_date)
     rate = exchange_rate_usd or Decimal("36.6243")
 
     with transaction.atomic():

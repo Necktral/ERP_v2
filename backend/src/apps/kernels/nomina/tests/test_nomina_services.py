@@ -13,13 +13,9 @@ from types import SimpleNamespace
 
 from apps.kernels.nomina.models import (
     DEFAULT_INSS_LABORAL,
-    DEFAULT_INSS_PATRONAL_LARGE,
     DEFAULT_INATEC,
     IRBracket,
-    NominaConfig,
     PayrollEntry,
-    PayrollPeriod,
-    PayrollSheet,
     PeriodType,
     SheetStatus,
     SalaryType,

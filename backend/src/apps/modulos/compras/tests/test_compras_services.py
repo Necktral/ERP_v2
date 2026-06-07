@@ -13,7 +13,6 @@ from django.contrib.auth import get_user_model
 
 from apps.modulos.compras.models import (
     PurchaseDocStatus,
-    PurchaseDocType,
     PurchaseDocument,
     PurchaseSequence,
 )

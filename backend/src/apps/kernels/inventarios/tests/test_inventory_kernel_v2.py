@@ -80,7 +80,7 @@ def test_warehouse_list_and_create():
     r = c.post("/api/inventory/warehouses/", {"name": "Bodega General", "code": "BG", "warehouse_type": "GENERAL"}, format="json")
     assert r.status_code == 201
     assert r.data["warehouse_type"] == "GENERAL"
-    wh_id = r.data["id"]
+    _ = r.data["id"]
 
     # Crear agroquímicos
     r = c.post("/api/inventory/warehouses/", {"name": "Bodega Agro", "code": "BA", "warehouse_type": "AGROCHEMICAL"}, format="json")
@@ -318,7 +318,7 @@ def test_stock_summary_and_kardex():
     assert Decimal(r.data["results"][0]["qty_on_hand"]) == Decimal("25.0000")
 
     # Stock por debajo del reorder_point es false
-    r = c.get(f"/api/inventory/stock/?below_reorder=true")
+    r = c.get("/api/inventory/stock/?below_reorder=true")
     assert r.status_code == 200
     assert r.data["count"] == 0  # 25 > 20
 

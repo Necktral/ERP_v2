@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES, TenderPaymentMethod
+from apps.modulos.common.tender import TENDER_PAYMENT_METHOD_CHOICES
 
 
 # ---------------------------------------------------------------------------
@@ -405,7 +405,8 @@ class BillingDocument(models.Model):
     def clean(self) -> None:
         super().clean()
         if self.customer_party_id and self.company_id:
-            if self.customer_party.company_id != self.company_id:
+            customer_party = self.customer_party
+            if customer_party is not None and customer_party.company_id != self.company_id:
                 raise ValidationError({"customer_party": "customer_party debe pertenecer a la misma company."})
 
     @property

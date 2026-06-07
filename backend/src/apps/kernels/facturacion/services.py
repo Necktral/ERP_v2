@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from django.db import models, transaction
 from django.db.models import Q
@@ -38,6 +38,9 @@ from .models import (
     SalesOrderLine,
     SalesOrderStatus,
 )
+
+if TYPE_CHECKING:
+    from apps.kernels.inventarios.models import InventoryItem
 
 MONEY_Q = Decimal("0.01")
 QTY_Q = Decimal("0.0001")
@@ -589,12 +592,13 @@ def issue_doc(
                     )
 
                 lot_id = ln.lot_id
+                inventory_item = cast("InventoryItem", ln.inventory_item)
                 # Selección de lote dirigida por la CLASE del producto (FEFO/FIFO/AVERAGE):
                 # si trackea lotes y no se especificó lote, elegir según el orden de consumo.
-                if not lot_id and ln.inventory_item.track_lots:
+                if not lot_id and inventory_item.track_lots:
                     from apps.kernels.inventarios.classification import lot_consumption_ordering
 
-                    ordering = lot_consumption_ordering(ln.inventory_item, prefix="lot__") or ("lot__expiry_date", "lot__id")
+                    ordering = lot_consumption_ordering(inventory_item, prefix="lot__") or ("lot__expiry_date", "lot__id")
                     picked = (
                         LotBalance.objects
                         .filter(

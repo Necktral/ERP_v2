@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import IRBracket, NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet
@@ -165,22 +167,22 @@ class PayrollEntryCreateIn(serializers.Serializer):
 
     # Salario
     base_salary_usd = serializers.DecimalField(max_digits=10, decimal_places=4, required=False, allow_null=True)
-    base_salary_nio = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
+    base_salary_nio = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
 
     # Asistencia
     days_in_period = serializers.IntegerField(min_value=1, max_value=31, default=15)
-    days_worked = serializers.DecimalField(max_digits=5, decimal_places=2, default="15.00")
-    days_subsidy = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default="0.00")
-    overtime_hours = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, default="0.00")
+    days_worked = serializers.DecimalField(max_digits=5, decimal_places=2, default=Decimal("15.00"))
+    days_subsidy = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0.00"))
+    overtime_hours = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, default=Decimal("0.00"))
     sunday_worked_days = serializers.IntegerField(min_value=0, required=False, default=0)
 
     # Descuentos adicionales manuales
-    loan_payment = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    food_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    advance_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    store_credit_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    other_deductions = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    other_income = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
-    ir_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default="0.00")
+    loan_payment = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    food_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    advance_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    store_credit_deduction = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    other_deductions = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    other_income = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    ir_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
 
     notes = serializers.CharField(required=False, allow_blank=True, default="")
