@@ -17,8 +17,6 @@ from __future__ import annotations
 import ast
 import pathlib
 
-import pytest
-
 from apps.modulos.audit.contracts import (
     ALLOWED_EVENT_TYPES,
     ALLOWED_REASON_CODES,

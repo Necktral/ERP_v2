@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import InventoryItem, ItemLot, LotBalance, LotStatus, MovementType, StockBalance, StockMovement, UoM, Warehouse, WarehouseType
+from .models import InventoryItem, ItemLot, LotBalance, StockBalance, StockMovement, UoM, Warehouse, WarehouseType
 
 
 # ---------------------------------------------------------------------------

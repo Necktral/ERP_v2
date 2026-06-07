@@ -11,7 +11,7 @@ from apps.modulos.common.pagination import get_limit_offset, paginate_queryset a
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
 
-from .models import IRBracket, NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet, PeriodStatus
+from .models import NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet
 from .serializers import (
     IRBracketIn,
     NominaConfigOut,
