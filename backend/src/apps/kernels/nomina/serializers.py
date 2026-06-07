@@ -4,7 +4,16 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import IRBracket, NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet, PeriodType
+from .models import (
+    FieldAttendanceConsolidation,
+    FieldWorkDay,
+    IRBracket,
+    NominaConfig,
+    PayrollEntry,
+    PayrollPeriod,
+    PayrollSheet,
+    PeriodType,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -189,3 +198,87 @@ class PayrollEntryCreateIn(serializers.Serializer):
     ir_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
 
     notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# ---------------------------------------------------------------------------
+# Field Attendance — asistencia de campo (HTTP)
+# ---------------------------------------------------------------------------
+
+class FieldWorkDayOut(serializers.ModelSerializer):
+    class Meta:
+        model = FieldWorkDay
+        fields = [
+            "id", "company_id", "branch_id", "payroll_period_id", "work_date",
+            "status", "opened_by_id", "opened_at", "approved_by_id", "approved_at",
+            "locked_at", "notes",
+        ]
+
+
+class FieldWorkDayCreateIn(serializers.Serializer):
+    work_date = serializers.DateField()
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
+    payroll_period_id = serializers.IntegerField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FieldRollCallLineIn(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    status = serializers.CharField(required=False, allow_blank=True, default="")
+    absence_reason = serializers.CharField(required=False, allow_blank=True, default="")
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FieldRollCallIn(serializers.Serializer):
+    lines = FieldRollCallLineIn(many=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FieldCrewCreateIn(serializers.Serializer):
+    name = serializers.CharField()
+    supervisor_employee_id = serializers.IntegerField()
+
+
+class FieldCrewReportLineIn(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    event_type = serializers.CharField(required=False, allow_blank=True, default="")
+    day_value = serializers.DecimalField(max_digits=4, decimal_places=2, required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FieldCrewReportIn(serializers.Serializer):
+    lines = FieldCrewReportLineIn(many=True)
+    labor_code = serializers.CharField(required=False, allow_blank=True, default="")
+    labor_name = serializers.CharField(required=False, allow_blank=True, default="")
+    zone_label = serializers.CharField(required=False, allow_blank=True, default="")
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FieldWorkerEventIn(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    event_type = serializers.CharField()
+    details = serializers.CharField(required=False, allow_blank=True, default="")
+    crew_report_id = serializers.IntegerField(required=False, allow_null=True)
+    occurred_at = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class FieldTransferIn(serializers.Serializer):
+    employee_id = serializers.IntegerField()
+    from_crew_id = serializers.IntegerField()
+    to_crew_id = serializers.IntegerField()
+    reason = serializers.CharField()
+
+
+class FieldConsolidateIn(serializers.Serializer):
+    payroll_period_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class FieldAttendanceConsolidationOut(serializers.ModelSerializer):
+    work_date = serializers.DateField(source="work_day.work_date", read_only=True)
+
+    class Meta:
+        model = FieldAttendanceConsolidation
+        fields = [
+            "id", "employee_id", "work_day_id", "work_date", "payroll_period_id",
+            "status", "day_value", "primary_event_type", "conflict_codes",
+            "has_inss_snapshot", "approved_at", "locked_at",
+        ]
