@@ -83,6 +83,7 @@ class AttendanceSource(models.TextChoices):
     SUPERVISOR_APP = "SUPERVISOR_APP", "Reporte jefe de área (app)"
     PAYROLL_REVIEW = "PAYROLL_REVIEW", "Revisión encargado de nómina"
     MANUAL = "MANUAL", "Manual (eventualidad)"
+    FIELD = "FIELD", "Asistencia de campo consolidada"
 
 
 class AttendanceStatus(models.TextChoices):
@@ -853,6 +854,15 @@ class AttendanceReport(models.Model):
 
     class Meta:
         app_label = "nomina"
+        constraints = [
+            # Un reporte por (período, empleado, fuente): hace idempotente el rollup
+            # de la asistencia de campo. Solo aplica a reportes con empleado HR.
+            models.UniqueConstraint(
+                fields=["period", "employee", "source"],
+                condition=models.Q(employee__isnull=False),
+                name="uq_attreport_period_emp_source",
+            ),
+        ]
         indexes = [
             models.Index(fields=["company", "period", "source"], name="ix_att_c_p_src"),
             models.Index(fields=["period", "status"], name="ix_att_p_st"),
