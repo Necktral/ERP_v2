@@ -292,6 +292,8 @@ class PayrollEntryView(APIView):
             days_subsidy=v.get("days_subsidy", Decimal("0.00")),
             overtime_hours=v.get("overtime_hours", Decimal("0.00")),
             sunday_worked_days=v.get("sunday_worked_days", 0),
+            seventh_day_days=v.get("seventh_day_days", Decimal("0.00")),
+            holiday_worked_days=v.get("holiday_worked_days", Decimal("0.00")),
             loan_payment=v.get("loan_payment", Decimal("0.00")),
             food_deduction=v.get("food_deduction", Decimal("0.00")),
             advance_deduction=v.get("advance_deduction", Decimal("0.00")),

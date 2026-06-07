@@ -131,9 +131,10 @@ class PayrollEntryOut(serializers.ModelSerializer):
             "has_inss", "salary_type", "payment_frequency",
             "base_salary_usd", "base_salary_nio", "exchange_rate", "daily_rate_nio",
             "days_in_period", "days_worked", "days_subsidy",
-            "overtime_hours", "sunday_worked_days",
+            "overtime_hours", "sunday_worked_days", "seventh_day_days", "holiday_worked_days",
             # Ingresos
             "quincenal_salary", "subsidy_amount", "overtime_amount", "sunday_bonus_amount",
+            "seventh_day_amount", "holiday_amount",
             "vacation_provision", "thirteenth_month_provision", "other_income", "total_income",
             # Retenciones
             "inss_laboral", "ir_amount", "loan_payment",
@@ -162,7 +163,7 @@ class PayrollEntryCreateIn(serializers.Serializer):
     has_inss = serializers.BooleanField(default=True)
     salary_type = serializers.ChoiceField(choices=["MONTHLY", "DAILY", "HOURLY"], default="MONTHLY")
     payment_frequency = serializers.ChoiceField(
-        choices=["FIRST_HALF", "SECOND_HALF", "MONTHLY"], default="FIRST_HALF"
+        choices=["FIRST_HALF", "SECOND_HALF", "CATORCENA", "MONTHLY"], default="FIRST_HALF"
     )
 
     # Salario
@@ -175,6 +176,8 @@ class PayrollEntryCreateIn(serializers.Serializer):
     days_subsidy = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0.00"))
     overtime_hours = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, default=Decimal("0.00"))
     sunday_worked_days = serializers.IntegerField(min_value=0, required=False, default=0)
+    seventh_day_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default="0.00")
+    holiday_worked_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default="0.00")
 
     # Descuentos adicionales manuales
     loan_payment = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))

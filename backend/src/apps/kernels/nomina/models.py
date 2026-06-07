@@ -22,6 +22,8 @@ DEFAULT_VACATION_RATE = Decimal("0.083333")
 DEFAULT_THIRTEENTH_RATE = Decimal("0.083333")
 DEFAULT_OVERTIME_RATE = Decimal("2.0")            # 2x el valor hora
 DEFAULT_SUNDAY_RATE = Decimal("2.0")              # 2x el salario diario
+DEFAULT_SEVENTH_DAY_RATE = Decimal("1.0")         # séptimo día = 1 día normal pagado
+DEFAULT_HOLIDAY_WORKED_RATE = Decimal("2.0")      # feriado laborado = doble
 DEFAULT_SUBSIDY_EMPLOYER_DAYS = 3                 # días 1-3 paga empresa
 DEFAULT_SUBSIDY_INSS_RATE = Decimal("0.60")       # 60% desde día 4
 DEFAULT_MIN_WAGE_AGRO = Decimal("6188.02")        # sector agropecuario 2026
@@ -217,6 +219,10 @@ class NominaConfig(models.Model):
     seventh_day_rate = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("1.00"),
         help_text="Multiplicador 7mo día de descanso (ej. 1.00 = salario normal)"
+    )
+    holiday_worked_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=DEFAULT_HOLIDAY_WORKED_RATE,
+        help_text="Multiplicador feriado laborado (ej. 2.00 = doble)"
     )
 
     # --- Subsidio por enfermedad ---
@@ -539,12 +545,22 @@ class PayrollEntry(models.Model):
     subsidy_daily_rate = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0.000000"))
     overtime_hours = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0.00"))
     sunday_worked_days = models.PositiveSmallIntegerField(default=0)
+    seventh_day_days = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        help_text="Séptimos días ganados (1 por semana completa; jornaleros DAILY)"
+    )
+    holiday_worked_days = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        help_text="Días feriados laborados"
+    )
 
     # --- INGRESOS (todos calculados, almacenados para auditoría) ---
     quincenal_salary = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     subsidy_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     overtime_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     sunday_bonus_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+    seventh_day_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+    holiday_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     vacation_provision = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     thirteenth_month_provision = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     other_income = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
@@ -636,6 +652,8 @@ class PayrollEntry(models.Model):
             thirteenth_rate = config.thirteenth_month_rate
             overtime_rate = config.overtime_rate
             sunday_rate = config.sunday_bonus_rate
+            seventh_rate = config.seventh_day_rate
+            holiday_rate = config.holiday_worked_rate
             subsidy_inss_rate = config.subsidy_inss_rate
         else:
             inss_laboral_rate = DEFAULT_INSS_LABORAL
@@ -645,6 +663,8 @@ class PayrollEntry(models.Model):
             thirteenth_rate = DEFAULT_THIRTEENTH_RATE
             overtime_rate = DEFAULT_OVERTIME_RATE
             sunday_rate = DEFAULT_SUNDAY_RATE
+            seventh_rate = DEFAULT_SEVENTH_DAY_RATE
+            holiday_rate = DEFAULT_HOLIDAY_WORKED_RATE
             subsidy_inss_rate = DEFAULT_SUBSIDY_INSS_RATE
 
         # 1. Salario base mensual en NIO
@@ -657,12 +677,16 @@ class PayrollEntry(models.Model):
         # 2. Salario diario (base: mes de 30 días)
         self.daily_rate_nio = _r6(monthly_nio / Decimal("30"))
 
-        # 3. Salario quincenal proporcional a días trabajados
+        # 3. Salario del período. Jornaleros (DAILY): siempre proporcional a días
+        #    trabajados (el séptimo día se paga aparte). Mensuales: prorrata o salario completo.
         period_days = Decimal(str(self.days_in_period or 15))
         worked = Decimal(str(self.days_worked))
         quincenal_base = _r2(monthly_nio / 2)
 
-        self.quincenal_salary = _r2(self.daily_rate_nio * worked) if worked < period_days else quincenal_base
+        if self.salary_type == SalaryType.DAILY:
+            self.quincenal_salary = _r2(self.daily_rate_nio * worked)
+        else:
+            self.quincenal_salary = _r2(self.daily_rate_nio * worked) if worked < period_days else quincenal_base
 
         # 4. Subsidio INSS (empresa paga 100% días 1-N, INSS paga 60% desde día N+1)
         subsidy_days = Decimal(str(self.days_subsidy))
@@ -680,6 +704,17 @@ class PayrollEntry(models.Model):
         # 6. Domingos laborados
         self.sunday_bonus_amount = _r2(self.daily_rate_nio * sunday_rate * Decimal(str(self.sunday_worked_days)))
 
+        # 6b. Séptimo día y feriados laborados (jornaleros DAILY; mensuales lo llevan embebido)
+        if self.salary_type == SalaryType.DAILY:
+            self.seventh_day_amount = _r2(self.daily_rate_nio * seventh_rate * Decimal(str(self.seventh_day_days)))
+            self.holiday_amount = _r2(self.daily_rate_nio * holiday_rate * Decimal(str(self.holiday_worked_days)))
+        else:
+            self.seventh_day_amount = Decimal("0.00")
+            self.holiday_amount = Decimal("0.00")
+
+        # Salario básico devengado: base para INSS/IR/patronal (incluye séptimo/feriado).
+        basic_earned = _r2(self.quincenal_salary + self.seventh_day_amount + self.holiday_amount)
+
         # 7. Provisiones (sobre salario mensual proporcional a días trabajados)
         monthly_proportional = _r2(self.daily_rate_nio * worked * 2)
         self.vacation_provision = _r2(monthly_proportional * vacation_rate)
@@ -687,8 +722,8 @@ class PayrollEntry(models.Model):
 
         # 8. Total ingresos
         self.total_income = _r2(
-            self.quincenal_salary + self.subsidy_amount +
-            self.overtime_amount + self.sunday_bonus_amount +
+            self.quincenal_salary + self.seventh_day_amount + self.holiday_amount +
+            self.subsidy_amount + self.overtime_amount + self.sunday_bonus_amount +
             self.vacation_provision + self.thirteenth_month_provision +
             self.other_income
         )
@@ -698,13 +733,13 @@ class PayrollEntry(models.Model):
         if config and not self.ir_amount:
             self.ir_amount = IRBracket.calculate_period_ir(
                 config=config,
-                period_income=self.quincenal_salary,
+                period_income=basic_earned,
                 periods_per_year=periods_per_year(self.payment_frequency),
             )
 
-        # 10. Retenciones
+        # 10. Retenciones (INSS sobre el salario básico devengado, incluye séptimo/feriado)
         if self.has_inss:
-            self.inss_laboral = _r2(self.quincenal_salary * inss_laboral_rate)
+            self.inss_laboral = _r2(basic_earned * inss_laboral_rate)
         else:
             self.inss_laboral = Decimal("0.00")
 
@@ -716,15 +751,15 @@ class PayrollEntry(models.Model):
 
         # 11. Neto
         self.total_devengado = _r2(
-            self.quincenal_salary + self.subsidy_amount +
-            self.overtime_amount + self.sunday_bonus_amount
+            self.quincenal_salary + self.seventh_day_amount + self.holiday_amount +
+            self.subsidy_amount + self.overtime_amount + self.sunday_bonus_amount
         )
         self.net_to_pay = _r2(self.total_devengado - self.total_deductions)
 
-        # 12. Costos patronales
+        # 12. Costos patronales (sobre el salario básico devengado)
         if self.has_inss:
-            self.inss_patronal = _r2(self.quincenal_salary * inss_patronal_rate)
-            self.inatec = _r2(self.quincenal_salary * inatec_rate)
+            self.inss_patronal = _r2(basic_earned * inss_patronal_rate)
+            self.inatec = _r2(basic_earned * inatec_rate)
         else:
             self.inss_patronal = Decimal("0.00")
             self.inatec = Decimal("0.00")

@@ -1166,6 +1166,8 @@ def aggregate_attendance_for_employee(*, period: PayrollPeriod, employee) -> dic
       - SICK / ACCIDENT                 → days_subsidy (día de subsidio INSS)
       - ABSENT / PERMISSION / ...       → no suman (day_value 0)
       - día trabajado en domingo        → sunday_worked_days
+      - séptimo día (por semana calendario): se gana 1 si la semana tuvo trabajo y
+        NO hubo falta INJUSTIFICADA (ABSENT). Subsidio/permiso/vacación NO la rompen.
     """
     consolidations = FieldAttendanceConsolidation.objects.filter(
         payroll_period=period,
@@ -1180,18 +1182,26 @@ def aggregate_attendance_for_employee(*, period: PayrollPeriod, employee) -> dic
     days_subsidy = Decimal("0.00")
     sunday_worked_days = 0
     count = 0
+    weeks: dict[tuple, dict] = defaultdict(lambda: {"worked": False, "unjustified_absence": False})
     for cons in consolidations:
         count += 1
+        wk = cons.work_day.work_date.isocalendar()[:2]  # (año ISO, semana ISO)
+        if cons.primary_event_type == FieldWorkerEventType.ABSENT:
+            weeks[wk]["unjustified_absence"] = True
         if cons.primary_event_type in _FIELD_SUBSIDY_EVENTS:
             days_subsidy += Decimal("1.00")
             continue
         days_worked += cons.day_value
-        if cons.day_value > 0 and cons.work_day.work_date.weekday() == 6:  # 6 = domingo
-            sunday_worked_days += 1
+        if cons.day_value > 0:
+            weeks[wk]["worked"] = True
+            if cons.work_day.work_date.weekday() == 6:  # 6 = domingo
+                sunday_worked_days += 1
+    seventh_day_days = sum(1 for w in weeks.values() if w["worked"] and not w["unjustified_absence"])
     return {
         "days_worked": days_worked.quantize(Decimal("0.01")),
         "days_subsidy": days_subsidy.quantize(Decimal("0.01")),
         "sunday_worked_days": sunday_worked_days,
+        "seventh_day_days": Decimal(seventh_day_days).quantize(Decimal("0.01")),
         "consolidation_count": count,
     }
 
@@ -1218,6 +1228,7 @@ def apply_field_attendance_to_entry(*, request, actor, entry: PayrollEntry) -> P
         entry.days_worked = agg["days_worked"]
         entry.days_subsidy = agg["days_subsidy"]
         entry.sunday_worked_days = agg["sunday_worked_days"]
+        entry.seventh_day_days = agg["seventh_day_days"]
         entry = compute_entry(entry=entry)
 
         FieldAttendanceConsolidation.objects.filter(
