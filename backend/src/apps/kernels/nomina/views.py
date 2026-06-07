@@ -25,6 +25,7 @@ from .serializers import (
     PayrollSheetOut,
 )
 from .planilla_export import render_planilla_xlsx
+from .planilla_pdf import render_planilla_pdf
 from .services import (
     approve_sheet,
     compute_all_entries_in_sheet,
@@ -327,5 +328,22 @@ class PayrollSheetXlsxView(APIView):
         )
         resp["Content-Disposition"] = (
             f'attachment; filename="planilla_{period.year}_{period.month:02d}_sheet{sheet_id}.xlsx"'
+        )
+        return resp
+
+
+class PayrollSheetPdfView(APIView):
+    """Descarga la planilla legal en PDF (WeasyPrint), mismas casillas que el .xlsx."""
+
+    permission_classes = [rbac_permission("nomina.sheet.read")]
+
+    def get(self, request, period_id, sheet_id):
+        company: OrgUnit = request.company
+        period = get_object_or_404(PayrollPeriod, id=period_id, company=company)
+        sheet = get_object_or_404(PayrollSheet, id=sheet_id, period=period)
+        content = render_planilla_pdf(sheet)
+        resp = HttpResponse(content, content_type="application/pdf")
+        resp["Content-Disposition"] = (
+            f'attachment; filename="planilla_{period.year}_{period.month:02d}_sheet{sheet_id}.pdf"'
         )
         return resp
