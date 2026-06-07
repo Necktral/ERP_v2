@@ -5,11 +5,14 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from .models import (
+    EmployeeInssEnrollment,
     FieldAttendanceConsolidation,
     FieldWorkDay,
+    InssRegime,
     IRBracket,
     NominaConfig,
     PayrollEntry,
+    PayrollInssElection,
     PayrollPeriod,
     PayrollSheet,
     PeriodType,
@@ -282,3 +285,43 @@ class FieldAttendanceConsolidationOut(serializers.ModelSerializer):
             "status", "day_value", "primary_event_type", "conflict_codes",
             "has_inss_snapshot", "approved_at", "locked_at",
         ]
+
+
+# ---------------------------------------------------------------------------
+# Régimen INSS — afiliación + elección por período (HTTP)
+# ---------------------------------------------------------------------------
+
+class InssEnrollmentOut(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeInssEnrollment
+        fields = [
+            "id", "company_id", "employee_id", "regime",
+            "effective_from", "effective_to", "reason", "created_at",
+        ]
+
+
+class InssEnrollmentCreateIn(serializers.Serializer):
+    regime = serializers.ChoiceField(choices=InssRegime.values)
+    effective_from = serializers.DateField()
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class InssElectionOut(serializers.ModelSerializer):
+    class Meta:
+        model = PayrollInssElection
+        fields = [
+            "id", "period_id", "employee_id", "cedula",
+            "elected_has_inss", "source", "reason", "created_at", "updated_at",
+        ]
+
+
+class InssElectionSetIn(serializers.Serializer):
+    employee_id = serializers.IntegerField(required=False, allow_null=True)
+    cedula = serializers.CharField(required=False, allow_blank=True, default="")
+    elected_has_inss = serializers.BooleanField()
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("employee_id") and not (attrs.get("cedula") or "").strip():
+            raise serializers.ValidationError("Se requiere employee_id o cedula.")
+        return attrs

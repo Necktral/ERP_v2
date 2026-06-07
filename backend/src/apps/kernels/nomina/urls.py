@@ -27,6 +27,12 @@ from .views_field import (
     FieldWorkDayView,
     FieldWorkerEventView,
 )
+from .views_inss import (
+    EmployeeInssEnrollmentView,
+    PeriodInssClassifyView,
+    PeriodInssElectionView,
+    PeriodInssResolveView,
+)
 
 urlpatterns = [
     path("health/", HealthView.as_view()),
@@ -57,4 +63,9 @@ urlpatterns = [
     path("field/approvals/<uuid:request_id>/approve/", FieldApprovalApproveView.as_view()),
     path("field/crews/<int:crew_id>/report/", FieldCrewReportView.as_view()),
     path("field/sheets/<int:sheet_id>/apply-field-attendance/", FieldApplyToSheetView.as_view()),
+    # Régimen INSS — afiliación fechada + elección por período
+    path("inss/employees/<int:employee_id>/enrollments/", EmployeeInssEnrollmentView.as_view()),
+    path("periods/<int:period_id>/inss/elections/", PeriodInssElectionView.as_view()),
+    path("periods/<int:period_id>/inss/resolve/", PeriodInssResolveView.as_view()),
+    path("periods/<int:period_id>/inss/classify/", PeriodInssClassifyView.as_view()),
 ]
