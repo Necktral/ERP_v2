@@ -375,6 +375,7 @@ class OperationalPostingConfig(models.Model):
     posting_mode = models.CharField(max_length=16, choices=PostingMode.choices, default=PostingMode.HYBRID)
     enable_billing = models.BooleanField(default=True)
     enable_inventory = models.BooleanField(default=True)
+    enable_nomina = models.BooleanField(default=True)
     auto_post_on_write = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
