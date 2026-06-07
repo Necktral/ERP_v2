@@ -13,6 +13,9 @@ from apps.modulos.audit.writer import write_event
 from apps.modulos.iam.models import OrgUnit
 
 from .models import (
+    AttendanceReport,
+    AttendanceSource,
+    AttendanceStatus,
     DEFAULT_INSS_LABORAL,
     DEFAULT_INSS_PATRONAL_LARGE,
     DEFAULT_INSS_PATRONAL_SMALL,
@@ -1269,6 +1272,151 @@ def apply_field_attendance_to_sheet(*, request, actor, sheet: PayrollSheet) -> d
         except FieldAttendanceError:
             skipped.append(entry.id)
     return {"applied": applied, "skipped": skipped}
+
+
+# ---------------------------------------------------------------------------
+# Rollup asistencia de campo → AttendanceReport (reporte legal de período)
+# ---------------------------------------------------------------------------
+
+# Eventos que cuentan como día trabajado (el medio día ya viene en day_value).
+_FIELD_WORKED_EVENTS = {
+    FieldWorkerEventType.PRESENT,
+    FieldWorkerEventType.LEFT_EARLY,
+    FieldWorkerEventType.JOINED_LATE,
+    FieldWorkerEventType.TRANSFERRED,
+}
+
+_ROLLUP_CONSOLIDATION_STATES = [
+    FieldAttendanceConsolidationStatus.APPROVED,
+    FieldAttendanceConsolidationStatus.LOCKED_FOR_PAYROLL,
+]
+
+
+def aggregate_attendance_report_detail(*, period: PayrollPeriod, employee) -> dict:
+    """Desglose detallado de la asistencia de campo APROBADA para el reporte legal.
+
+    A diferencia de ``aggregate_attendance_for_employee`` (que agrupa para la planilla),
+    separa cada tipo de evento en su casilla del AttendanceReport. Mantiene la misma
+    clasificación de "día trabajado" (PRESENT/medio día/traslado) y de "subsidio"
+    (SICK/ACCIDENT) que el puente a planilla, para no desviarse de la planilla.
+    """
+    consolidations = FieldAttendanceConsolidation.objects.filter(
+        payroll_period=period,
+        employee=employee,
+        status__in=_ROLLUP_CONSOLIDATION_STATES,
+    ).select_related("work_day")
+
+    detail: dict = {
+        "days_worked": Decimal("0.00"),
+        "days_absent": Decimal("0.00"),
+        "days_sick": Decimal("0.00"),
+        "days_accident": Decimal("0.00"),
+        "days_subsidy": Decimal("0.00"),
+        "days_transferred": Decimal("0.00"),
+        "sunday_worked_days": 0,
+        "count": 0,
+        "branch_ids": set(),
+    }
+    for cons in consolidations:
+        detail["count"] += 1
+        detail["branch_ids"].add(cons.work_day.branch_id)
+        event_type = cons.primary_event_type
+        if event_type == FieldWorkerEventType.SICK:
+            detail["days_sick"] += Decimal("1.00")
+            detail["days_subsidy"] += Decimal("1.00")
+        elif event_type == FieldWorkerEventType.ACCIDENT:
+            detail["days_accident"] += Decimal("1.00")
+            detail["days_subsidy"] += Decimal("1.00")
+        elif event_type == FieldWorkerEventType.ABSENT:
+            detail["days_absent"] += Decimal("1.00")
+        elif event_type in _FIELD_WORKED_EVENTS:
+            detail["days_worked"] += cons.day_value
+            if event_type == FieldWorkerEventType.TRANSFERRED:
+                detail["days_transferred"] += cons.day_value
+            if cons.day_value > 0 and cons.work_day.work_date.weekday() == 6:  # 6 = domingo
+                detail["sunday_worked_days"] += 1
+        # PERMISSION / DISMISSED / OTHER: no suman a una casilla de días.
+    for key in ("days_worked", "days_absent", "days_sick", "days_accident",
+                "days_subsidy", "days_transferred"):
+        detail[key] = detail[key].quantize(Decimal("0.01"))
+    return detail
+
+
+def rollup_field_attendance_report(*, request, actor, period: PayrollPeriod, employee) -> AttendanceReport:
+    """Deriva (o actualiza) el AttendanceReport de campo de un empleado para el período.
+
+    Des-huerfaniza AttendanceReport: toma la asistencia de campo consolidada y aprobada
+    y la cuaja en el reporte legal de período (fuente FIELD). Idempotente por
+    (período, empleado, fuente): re-ejecutar actualiza el mismo reporte.
+    """
+    detail = aggregate_attendance_report_detail(period=period, employee=employee)
+    if detail["count"] == 0:
+        raise _field_error(
+            "no_attendance",
+            "No hay asistencia de campo aprobada para este empleado en el período.",
+            context={"period_id": period.id, "employee_id": getattr(employee, "id", None)},
+        )
+
+    branch_ids = {b for b in detail["branch_ids"] if b is not None}
+    branch_id = branch_ids.pop() if len(branch_ids) == 1 else None
+    now = timezone.now()
+    with transaction.atomic():
+        report, _created = AttendanceReport.objects.update_or_create(
+            period=period,
+            employee=employee,
+            source=AttendanceSource.FIELD,
+            defaults={
+                "company": period.company,
+                "branch_id": branch_id,
+                "employee_name": getattr(employee, "full_name", "") or "",
+                "status": AttendanceStatus.SUBMITTED,
+                "days_worked": detail["days_worked"],
+                "days_absent": detail["days_absent"],
+                "days_sick": detail["days_sick"],
+                "days_accident": detail["days_accident"],
+                "days_subsidy": detail["days_subsidy"],
+                "days_transferred": detail["days_transferred"],
+                "sunday_worked_days": detail["sunday_worked_days"],
+                "has_conflict": False,
+                "submitted_by": actor,
+                "submitted_at": now,
+            },
+        )
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_ATTENDANCE_REPORT_ROLLUP",
+            subject_type="ATTENDANCE_REPORT",
+            subject_id=report.id,
+            metadata={
+                "period_id": period.id,
+                "employee_id": getattr(employee, "id", None),
+                "days_worked": str(detail["days_worked"]),
+                "consolidation_count": detail["count"],
+            },
+        )
+    return report
+
+
+def rollup_field_attendance_reports_for_period(
+    *, request, actor, period: PayrollPeriod,
+) -> list[AttendanceReport]:
+    """Rollup de todos los empleados con asistencia de campo aprobada en el período."""
+    employees: dict = {}
+    rows = (
+        FieldAttendanceConsolidation.objects.filter(
+            payroll_period=period,
+            status__in=_ROLLUP_CONSOLIDATION_STATES,
+        )
+        .select_related("employee")
+        .order_by("employee_id")
+    )
+    for cons in rows:
+        employees.setdefault(cons.employee_id, cons.employee)
+    return [
+        rollup_field_attendance_report(request=request, actor=actor, period=period, employee=employee)
+        for employee in employees.values()
+    ]
 
 
 # ---------------------------------------------------------------------------
