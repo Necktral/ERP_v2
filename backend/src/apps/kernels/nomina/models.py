@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -1305,3 +1306,172 @@ class PayrollInssElection(models.Model):
     def __str__(self) -> str:
         who = self.employee_id or self.cedula
         return f"{who} period:{self.period_id} INSS={self.elected_has_inss}"
+
+
+# ---------------------------------------------------------------------------
+# Calendario de feriados (catálogo precargado a nivel Nicaragua)
+# ---------------------------------------------------------------------------
+
+def easter_sunday(year: int) -> date:
+    """Domingo de Resurrección (Pascua) para un año del calendario gregoriano.
+
+    Algoritmo anónimo gregoriano (Meeus/Jones/Butcher). Base para los feriados
+    móviles de Nicaragua: Jueves Santo = Pascua − 3, Viernes Santo = Pascua − 2.
+    """
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    el = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * el) // 451
+    month = (h + el - 7 * m + 114) // 31
+    day = ((h + el - 7 * m + 114) % 31) + 1
+    return date(year, month, day)
+
+
+class HolidayLegalType(models.TextChoices):
+    """Naturaleza legal del feriado → define cómo paga y si obliga al sector privado."""
+    NACIONAL_OBLIGATORIO = "NACIONAL_OBLIGATORIO", "Nacional obligatorio (Código del Trabajo)"
+    ASUETO_ESTATAL = "ASUETO_ESTATAL", "Asueto estatal (sector público)"
+    LOCAL = "LOCAL", "Local / fiesta patronal"
+    EMPRESA = "EMPRESA", "De empresa"
+
+
+class HolidayDateKind(models.TextChoices):
+    """Recurrencia de la fecha."""
+    FIXED = "FIXED", "Fija (mes/día, todos los años)"
+    EASTER = "EASTER", "Móvil (offset de días respecto a Pascua)"
+    ONE_OFF = "ONE_OFF", "Puntual (fecha exacta de un año)"
+
+
+class Holiday(models.Model):
+    """Catálogo de feriados, precargado a nivel Nicaragua.
+
+    Diseñado en 3 ejes ortogonales (ver memoria de diseño):
+      - ``legal_type``: naturaleza legal → cómo paga y si aplica al sector privado.
+      - ``date_kind``: recurrencia → fija (mes/día), móvil (offset de Pascua) o puntual.
+      - ``applies_to_payroll``: si por defecto cuenta para la planilla. Los obligatorios
+        sí; los asuetos estatales no (la empresa privada no está obligada).
+
+    Geografía GENERAL: ``locality`` es texto informativo ("Managua", "Nacional"…). No
+    hay auto-resolución por finca/departamento — el revisor de la planilla ubica los
+    días que aplican entre los feriados precargados.
+    """
+    company = models.ForeignKey(
+        "iam.OrgUnit", null=True, blank=True, on_delete=models.CASCADE,
+        related_name="holidays",
+        help_text="NULL = catálogo nacional compartido; no-NULL = feriado propio de la empresa.",
+    )
+    code = models.CharField(
+        max_length=64, blank=True, default="",
+        help_text="Identificador estable (slug) para precarga idempotente y referencia.",
+    )
+    name = models.CharField(max_length=200)
+    legal_type = models.CharField(max_length=24, choices=HolidayLegalType.choices)
+    date_kind = models.CharField(max_length=8, choices=HolidayDateKind.choices)
+
+    # FIXED → mes/día
+    month = models.PositiveSmallIntegerField(null=True, blank=True)
+    day = models.PositiveSmallIntegerField(null=True, blank=True)
+    # EASTER → días respecto al Domingo de Resurrección (Jueves Santo = -3, Viernes Santo = -2)
+    easter_offset = models.SmallIntegerField(null=True, blank=True)
+    # ONE_OFF → fecha exacta
+    specific_date = models.DateField(null=True, blank=True)
+
+    locality = models.CharField(
+        max_length=120, blank=True, default="",
+        help_text="Etiqueta geográfica informativa (general). P.ej. 'Nacional', 'Managua'.",
+    )
+    applies_to_payroll = models.BooleanField(
+        default=True,
+        help_text="Si por defecto cuenta para la planilla. Asuetos estatales = False.",
+    )
+    pays_premium = models.BooleanField(
+        default=True,
+        help_text="Si laborado paga prima (doble). Feriado obligatorio = True.",
+    )
+    premium_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="Multiplicador del día si se labora. NULL = usar NominaConfig.holiday_worked_rate.",
+    )
+
+    is_active = models.BooleanField(default=True, db_index=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "nomina"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "code"],
+                condition=~models.Q(code=""),
+                name="uq_holiday_company_code",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(month__isnull=True)
+                    | models.Q(month__gte=1, month__lte=12)
+                ),
+                name="ck_holiday_month_range",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(day__isnull=True)
+                    | models.Q(day__gte=1, day__lte=31)
+                ),
+                name="ck_holiday_day_range",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "is_active"], name="ix_holiday_company_active"),
+            models.Index(fields=["date_kind"], name="ix_holiday_date_kind"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} [{self.legal_type}]"
+
+    def clean(self) -> None:
+        super().clean()
+        if self.date_kind == HolidayDateKind.FIXED:
+            if self.month is None or self.day is None:
+                raise ValidationError("Feriado FIXED requiere mes y día.")
+            if self.easter_offset is not None or self.specific_date is not None:
+                raise ValidationError("Feriado FIXED no debe llevar easter_offset ni specific_date.")
+        elif self.date_kind == HolidayDateKind.EASTER:
+            if self.easter_offset is None:
+                raise ValidationError("Feriado EASTER requiere easter_offset.")
+            if self.month is not None or self.day is not None or self.specific_date is not None:
+                raise ValidationError("Feriado EASTER solo lleva easter_offset.")
+        elif self.date_kind == HolidayDateKind.ONE_OFF:
+            if self.specific_date is None:
+                raise ValidationError("Feriado ONE_OFF requiere specific_date.")
+            if self.month is not None or self.day is not None or self.easter_offset is not None:
+                raise ValidationError("Feriado ONE_OFF solo lleva specific_date.")
+
+    def date_for_year(self, year: int) -> date | None:
+        """Materializa la fecha concreta de este feriado para un año dado.
+
+        Devuelve ``None`` si no aplica a ese año (puntual de otro año) o si la
+        combinación mes/día es inválida.
+        """
+        if self.date_kind == HolidayDateKind.FIXED:
+            try:
+                return date(year, self.month, self.day)
+            except (TypeError, ValueError):
+                return None
+        if self.date_kind == HolidayDateKind.EASTER:
+            if self.easter_offset is None:
+                return None
+            return easter_sunday(year) + timedelta(days=self.easter_offset)
+        if self.date_kind == HolidayDateKind.ONE_OFF:
+            if self.specific_date is not None and self.specific_date.year == year:
+                return self.specific_date
+            return None
+        return None
