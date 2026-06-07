@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-06-05T23:57:06.311433+00:00",
+  "generated_at": "2026-06-07T21:41:56.171226+00:00",
   "changed_files_floor_pct": 50.0,
   "domains": {
     "apps.kernels.accounting": {
@@ -8,7 +8,7 @@
       "floor_pct": 1.0
     },
     "apps.kernels.nomina": {
-      "baseline_pct": 91.84,
+      "baseline_pct": 91.37,
       "floor_pct": 1.0
     },
     "apps.kernels.reporting": {

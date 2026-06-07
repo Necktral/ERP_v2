@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "generated_at": "2026-06-05T23:57:57.427602+00:00",
+  "generated_at": "2026-06-07T21:42:03.176120+00:00",
   "coverage_report": "qa/reports/coverage.txt",
   "baseline_file": "/app/qa/contracts/coverage_by_domain_baseline.json",
   "changed_files_floor_pct": 50.0,
@@ -213,9 +213,9 @@
     },
     "apps.kernels.nomina": {
       "path_prefix": "backend/src/apps/kernels/nomina/",
-      "covered_lines": 518,
-      "total_lines": 564,
-      "coverage_pct": 91.84,
+      "covered_lines": 519,
+      "total_lines": 568,
+      "coverage_pct": 91.37,
       "files_measured": [
         "backend/src/apps/kernels/nomina/__init__.py",
         "backend/src/apps/kernels/nomina/apps.py",

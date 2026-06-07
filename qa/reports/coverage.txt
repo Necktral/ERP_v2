@@ -70,8 +70,8 @@ src/apps/kernels/accounting/services.py                                         
 src/apps/kernels/accounting/staging_ops.py                                                     79      7    91%   32-34, 56-57, 78, 86
 src/apps/kernels/nomina/__init__.py                                                             0      0   100%
 src/apps/kernels/nomina/apps.py                                                                 5      0   100%
-src/apps/kernels/nomina/models.py                                                             375     26    93%   213, 286-287, 372, 375-377, 427-428, 531, 535-538, 568-575, 579-580, 752-753
-src/apps/kernels/nomina/serializers.py                                                         89      0   100%
+src/apps/kernels/nomina/models.py                                                             378     29    92%   213, 286-287, 372, 375-377, 427-428, 531, 535-538, 568-575, 579-580, 752-756
+src/apps/kernels/nomina/serializers.py                                                         90      0   100%
 src/apps/kernels/nomina/services.py                                                            95     20    79%   128-157, 171-193
 src/apps/kernels/reporting/__init__.py                                                          1      0   100%
 src/apps/kernels/reporting/api/__init__.py                                                      1      0   100%
@@ -176,4 +176,4 @@ src/apps/modulos/sync_engine/serializers.py                                     
 src/apps/modulos/sync_engine/services.py                                                      203      2    99%   571-573
 src/apps/modulos/sync_engine/signing.py                                                        54      2    96%   104-105
 -------------------------------------------------------------------------------------------------------------------------
-TOTAL                                                                                       13330   1458    89%
+TOTAL                                                                                       13334   1461    89%
