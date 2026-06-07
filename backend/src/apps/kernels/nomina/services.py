@@ -1136,3 +1136,109 @@ def approve_field_attendance(
             metadata={"approved_count": approved_count},
         )
     return list(FieldAttendanceConsolidation.objects.filter(work_day=work_day).order_by("employee_id"))
+
+
+# ---------------------------------------------------------------------------
+# Puente asistencia de campo → planilla (PayrollEntry)
+# ---------------------------------------------------------------------------
+
+# Días que suman como trabajados (el día partido ya viene como day_value 0.5).
+_FIELD_SUBSIDY_EVENTS = {FieldWorkerEventType.SICK, FieldWorkerEventType.ACCIDENT}
+
+
+def aggregate_attendance_for_employee(*, period: PayrollPeriod, employee) -> dict:
+    """Agrega la asistencia APROBADA del empleado en el período a días de planilla.
+
+    Mapeo (lo que la nómina necesita):
+      - PRESENT / medio día / traslado → days_worked (suma day_value; medio día = 0.5)
+      - SICK / ACCIDENT                 → days_subsidy (día de subsidio INSS)
+      - ABSENT / PERMISSION / ...       → no suman (day_value 0)
+      - día trabajado en domingo        → sunday_worked_days
+    """
+    consolidations = FieldAttendanceConsolidation.objects.filter(
+        payroll_period=period,
+        employee=employee,
+        status__in=[
+            FieldAttendanceConsolidationStatus.APPROVED,
+            FieldAttendanceConsolidationStatus.LOCKED_FOR_PAYROLL,
+        ],
+    ).select_related("work_day")
+
+    days_worked = Decimal("0.00")
+    days_subsidy = Decimal("0.00")
+    sunday_worked_days = 0
+    count = 0
+    for cons in consolidations:
+        count += 1
+        if cons.primary_event_type in _FIELD_SUBSIDY_EVENTS:
+            days_subsidy += Decimal("1.00")
+            continue
+        days_worked += cons.day_value
+        if cons.day_value > 0 and cons.work_day.work_date.weekday() == 6:  # 6 = domingo
+            sunday_worked_days += 1
+    return {
+        "days_worked": days_worked.quantize(Decimal("0.01")),
+        "days_subsidy": days_subsidy.quantize(Decimal("0.01")),
+        "sunday_worked_days": sunday_worked_days,
+        "consolidation_count": count,
+    }
+
+
+def apply_field_attendance_to_entry(*, request, actor, entry: PayrollEntry) -> PayrollEntry:
+    """Empuja la asistencia APROBADA del empleado a su línea de planilla y recalcula.
+
+    Cierra el hueco de los días tipeados a mano: los días salen de la asistencia
+    aprobada, no del input crudo. Bloquea las consolidaciones aplicadas
+    (LOCKED_FOR_PAYROLL) para que no se recalculen después de entrar a planilla.
+    """
+    if entry.employee_id is None:
+        raise _field_error("missing_employee", "La línea de planilla no tiene empleado para tomar asistencia.")
+    period = entry.sheet.period
+    agg = aggregate_attendance_for_employee(period=period, employee=entry.employee)
+    if agg["consolidation_count"] == 0:
+        raise _field_error(
+            "no_attendance",
+            "No hay asistencia de campo aprobada para este empleado en el período.",
+            context={"entry_id": entry.id, "employee_id": entry.employee_id},
+        )
+
+    with transaction.atomic():
+        entry.days_worked = agg["days_worked"]
+        entry.days_subsidy = agg["days_subsidy"]
+        entry.sunday_worked_days = agg["sunday_worked_days"]
+        entry = compute_entry(entry=entry)
+
+        FieldAttendanceConsolidation.objects.filter(
+            payroll_period=period,
+            employee=entry.employee,
+            status=FieldAttendanceConsolidationStatus.APPROVED,
+        ).update(status=FieldAttendanceConsolidationStatus.LOCKED_FOR_PAYROLL, locked_at=timezone.now())
+
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_ATTENDANCE_APPLIED_TO_PAYROLL",
+            subject_type="PAYROLL_ENTRY",
+            subject_id=entry.id,
+            metadata={
+                "period_id": period.id,
+                "employee_id": entry.employee_id,
+                "days_worked": str(agg["days_worked"]),
+                "days_subsidy": str(agg["days_subsidy"]),
+                "sunday_worked_days": agg["sunday_worked_days"],
+            },
+        )
+    return entry
+
+
+def apply_field_attendance_to_sheet(*, request, actor, sheet: PayrollSheet) -> dict:
+    """Aplica la asistencia aprobada a todas las líneas de la planilla con asistencia disponible."""
+    applied: list[int] = []
+    skipped: list[int] = []
+    for entry in sheet.entries.select_related("employee", "sheet__period").all():
+        try:
+            apply_field_attendance_to_entry(request=request, actor=actor, entry=entry)
+            applied.append(entry.id)
+        except FieldAttendanceError:
+            skipped.append(entry.id)
+    return {"applied": applied, "skipped": skipped}
