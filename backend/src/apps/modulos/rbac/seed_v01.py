@@ -43,6 +43,10 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_supervisor": "Supervisor Estación (cierres, precios, recibos, conciliaciones).",
         "fuel_cashier": "Cajero/operador Estación (ventas/dispenses; sin precios ni ajustes).",
         "fuel_auditor": "Auditor Estación (solo lectura de operación y reportes).",
+
+        # NOMINA / Asistencia de campo
+        "payroll_manager": "Planillero: opera planilla y asistencia de campo (NO aprueba — SoD).",
+        "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
     }
 
     permissions = {
@@ -66,6 +70,23 @@ def seed_rbac_v01() -> SeedResult:
         "hr.assignment.read": "Ver asignaciones laborales.",
         "hr.assignment.create": "Crear asignaciones laborales.",
         "hr.assignment.end": "Finalizar asignaciones laborales.",
+        # NOMINA (planilla) — los views ya los exigían; faltaban en el seed
+        "nomina.config.read": "Ver configuración de nómina (tasas/IR).",
+        "nomina.config.manage": "Crear/actualizar configuración de nómina y tabla IR.",
+        "nomina.period.read": "Ver períodos de planilla.",
+        "nomina.period.create": "Crear períodos de planilla.",
+        "nomina.sheet.read": "Ver planillas/sub-planillas.",
+        "nomina.sheet.create": "Crear planillas/sub-planillas.",
+        "nomina.sheet.manage": "Enviar/aprobar planillas.",
+        "nomina.entry.read": "Ver líneas de planilla.",
+        "nomina.entry.create": "Crear/calcular líneas de planilla.",
+        # NOMINA — Asistencia de campo (Field Attendance)
+        "nomina.field.read": "Ver asistencia de campo (días, cuadrillas, consolidación).",
+        "nomina.field.capture": "Capturar asistencia de campo (lista, cuadrilla, reporte, evento, traslado).",
+        "nomina.field.consolidate": "Consolidar la asistencia de campo del día.",
+        "nomina.field.approve.request": "Solicitar aprobación de asistencia de campo (maker, SoD).",
+        "nomina.field.approve": "Aprobar asistencia de campo (checker, SoD).",
+        "nomina.field.apply": "Aplicar asistencia aprobada a la planilla.",
         # RBAC (para UI admin futura)
         "rbac.roles.read": "Ver roles.",
         "rbac.roles.update": "Actualizar roles.",
@@ -726,6 +747,30 @@ def seed_rbac_v01() -> SeedResult:
         ):
             if code not in codes:
                 codes.append(code)
+
+    # NOMINA / Asistencia de campo — mapeo de roles (SoD: planillero captura/consolida, jefe aprueba)
+    _nomina_field_maker_perms = [
+        "nomina.config.read",
+        "nomina.config.manage",
+        "nomina.period.read",
+        "nomina.period.create",
+        "nomina.sheet.read",
+        "nomina.sheet.create",
+        "nomina.sheet.manage",
+        "nomina.entry.read",
+        "nomina.entry.create",
+        "nomina.field.read",
+        "nomina.field.capture",
+        "nomina.field.consolidate",
+        "nomina.field.approve.request",
+        "nomina.field.apply",
+    ]
+    role_to_perms["payroll_manager"] = list(_nomina_field_maker_perms)
+    role_to_perms["field_supervisor"] = ["nomina.field.read", "nomina.field.approve"]
+    _admin_codes = role_to_perms.get("company_admin", [])
+    for code in (*_nomina_field_maker_perms, "nomina.field.approve"):
+        if code not in _admin_codes:
+            _admin_codes.append(code)
 
     retail_perms_full = [
         "retail.pos.session.open",

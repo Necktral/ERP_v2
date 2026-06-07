@@ -227,6 +227,7 @@ def create_period(
     notes: str = "",
 ) -> PayrollPeriod:
     from .models import PeriodStatus
+
     _ = NominaConfig.get_active(company=company, date=start_date)
     rate = exchange_rate_usd or Decimal("36.6243")
 
@@ -895,14 +896,46 @@ def _calculate_day_value(
     primary_event_type: str,
     rollcall_status: str | None,
     crew_lines: list[FieldCrewReportLine],
+    is_split_transfer: bool = False,
 ) -> Decimal:
     if crew_lines:
+        if is_split_transfer:
+            # Día partido por traslado entre cuadrillas: SUMA las porciones (tope 1.0),
+            # para no sub-pagar al que trabajó en dos cuadrillas el mismo día.
+            total = sum((line.day_value for line in crew_lines), Decimal("0.00"))
+            return min(total, Decimal("1.00")).quantize(Decimal("0.01"))
+        # Sin traslado: máximo (anti-doble-pago; un duplicado sin traslado queda BLOCKED aparte).
         return max(line.day_value for line in crew_lines).quantize(Decimal("0.01"))
     if primary_event_type in {FieldWorkerEventType.PRESENT, FieldWorkerEventType.LEFT_EARLY, FieldWorkerEventType.JOINED_LATE}:
         return Decimal("1.00")
     if rollcall_status == FieldRollCallLineStatus.PRESENT:
         return Decimal("1.00")
     return Decimal("0.00")
+
+
+def resolve_worker_inss(employee, *, period=None) -> bool | None:
+    """Resuelve si el trabajador cotiza INSS, para el snapshot de la consolidación.
+
+    Reemplaza el `getattr(employee, "has_inss")` —que SIEMPRE devolvía None porque
+    hr.Employee no tiene ese campo— por una resolución real:
+      1) F2-1 (afiliación/elección de régimen por período): punto único de cableado cuando aterrice.
+      2) Continuidad: la `has_inss` del último PayrollEntry conocido del empleado
+         (la última decisión del planillero), para automatizar la búsqueda manual.
+      3) None si no hay información (desconocido).
+    """
+    if employee is None:
+        return None
+    # (1) F2-1 régimen INSS aún no está en esta rama → se resolverá aquí cuando exista.
+    # (2) Continuidad desde la última planilla registrada del empleado.
+    last_has_inss = (
+        PayrollEntry.objects.filter(employee=employee)
+        .order_by("-sheet__period__year", "-sheet__period__month", "-id")
+        .values_list("has_inss", flat=True)
+        .first()
+    )
+    if last_has_inss is not None:
+        return bool(last_has_inss)
+    return None
 
 
 def consolidate_field_attendance(
@@ -994,6 +1027,7 @@ def consolidate_field_attendance(
                 primary_event_type=primary_event_type,
                 rollcall_status=rollcall_status,
                 crew_lines=crew_lines,
+                is_split_transfer="TRANSFERRED_BETWEEN_CREWS" in conflict_codes,
             )
             employee = (
                 roll_line.employee if roll_line
@@ -1018,7 +1052,7 @@ def consolidate_field_attendance(
                     "primary_event_type": primary_event_type,
                     "conflict_codes": conflict_codes,
                     "source_summary": source_summary,
-                    "has_inss_snapshot": getattr(employee, "has_inss", None),
+                    "has_inss_snapshot": resolve_worker_inss(employee, period=period),
                 },
             )
             consolidations.append(consolidation)

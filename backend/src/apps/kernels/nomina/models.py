@@ -38,6 +38,20 @@ class PeriodType(models.TextChoices):
     MONTHLY = "MONTHLY", "Mensual"
 
 
+def periods_per_year(period_type: str) -> int:
+    """Cantidad de períodos de pago por año según la frecuencia.
+
+    Catorcenal = 26 (cada 14 días); quincenal (1ra/2da) = 24; mensual = 12.
+    Driver del IR para no anualizar incorrectamente una planilla catorcenal.
+    """
+    return {
+        PeriodType.MONTHLY: 12,
+        PeriodType.FIRST_HALF: 24,
+        PeriodType.SECOND_HALF: 24,
+        PeriodType.CATORCENA: 26,
+    }.get(period_type, 24)
+
+
 class PeriodStatus(models.TextChoices):
     DRAFT = "DRAFT", "Borrador"
     IN_REVIEW = "IN_REVIEW", "En revisión"
@@ -348,11 +362,23 @@ class IRBracket(models.Model):
         return ir.quantize(Decimal("0.01"))
 
     @classmethod
-    def calculate_quincenal_ir(cls, *, config: "NominaConfig", quincenal_income: Decimal) -> Decimal:
-        """Convierte ingreso quincenal a anual, calcula IR anual y retorna la porción quincenal."""
-        annual = quincenal_income * Decimal("24")  # 24 quincenas al año
+    def calculate_period_ir(
+        cls, *, config: "NominaConfig", period_income: Decimal, periods_per_year: int = 24
+    ) -> Decimal:
+        """IR del período: anualiza por la frecuencia REAL, calcula IR anual y retorna la porción del período.
+
+        period_income × periods_per_year = ingreso anual estimado. Para una planilla catorcenal
+        periods_per_year=26 (no 24), de lo contrario el impuesto saldría incorrecto.
+        """
+        ppy = int(periods_per_year) or 24
+        annual = period_income * Decimal(ppy)
         annual_ir = cls.calculate_annual_ir(config=config, annual_income=annual)
-        return (annual_ir / Decimal("24")).quantize(Decimal("0.01"))
+        return (annual_ir / Decimal(ppy)).quantize(Decimal("0.01"))
+
+    @classmethod
+    def calculate_quincenal_ir(cls, *, config: "NominaConfig", quincenal_income: Decimal) -> Decimal:
+        """Compat: IR quincenal (×24). Preferir calculate_period_ir con la frecuencia real."""
+        return cls.calculate_period_ir(config=config, period_income=quincenal_income, periods_per_year=24)
 
 
 # ---------------------------------------------------------------------------
@@ -667,10 +693,13 @@ class PayrollEntry(models.Model):
             self.other_income
         )
 
-        # 9. IR — calculado si hay config con tabla IR, si no = 0
+        # 9. IR — calculado si hay config con tabla IR, si no = 0.
+        # Anualiza por la frecuencia REAL del pago (catorcena ×26, no ×24).
         if config and not self.ir_amount:
-            self.ir_amount = IRBracket.calculate_quincenal_ir(
-                config=config, quincenal_income=self.quincenal_salary
+            self.ir_amount = IRBracket.calculate_period_ir(
+                config=config,
+                period_income=self.quincenal_salary,
+                periods_per_year=periods_per_year(self.payment_frequency),
             )
 
         # 10. Retenciones
