@@ -11,6 +11,7 @@ from .views import (
     PayrollPeriodView,
     PayrollSheetActionView,
     PayrollSheetView,
+    PayrollSheetXlsxView,
 )
 
 urlpatterns = [
@@ -23,6 +24,8 @@ urlpatterns = [
     path("periods/", PayrollPeriodView.as_view()),
     # Planillas por período
     path("periods/<int:period_id>/sheets/", PayrollSheetView.as_view()),
+    # Export legal (xlsx) — antes de la ruta de acción para no colisionar
+    path("periods/<int:period_id>/sheets/<int:sheet_id>/planilla.xlsx", PayrollSheetXlsxView.as_view()),
     path("periods/<int:period_id>/sheets/<int:sheet_id>/<str:action>/", PayrollSheetActionView.as_view()),
     # Entradas por planilla
     path("periods/<int:period_id>/sheets/<int:sheet_id>/entries/", PayrollEntryView.as_view()),

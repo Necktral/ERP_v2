@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -23,6 +24,7 @@ from .serializers import (
     PayrollSheetCreateIn,
     PayrollSheetOut,
 )
+from .planilla_export import render_planilla_xlsx
 from .services import (
     approve_sheet,
     compute_all_entries_in_sheet,
@@ -307,3 +309,23 @@ class PayrollEntryView(APIView):
         # Calcular automáticamente al crear
         entry = compute_entry(entry=entry)
         return Response(PayrollEntryOut(entry).data, status=status.HTTP_201_CREATED)
+
+
+class PayrollSheetXlsxView(APIView):
+    """Descarga la planilla legal (norma INSS) en .xlsx con todas las casillas."""
+
+    permission_classes = [rbac_permission("nomina.sheet.read")]
+
+    def get(self, request, period_id, sheet_id):
+        company: OrgUnit = request.company
+        period = get_object_or_404(PayrollPeriod, id=period_id, company=company)
+        sheet = get_object_or_404(PayrollSheet, id=sheet_id, period=period)
+        content = render_planilla_xlsx(sheet)
+        resp = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = (
+            f'attachment; filename="planilla_{period.year}_{period.month:02d}_sheet{sheet_id}.xlsx"'
+        )
+        return resp
