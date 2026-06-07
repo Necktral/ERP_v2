@@ -63,5 +63,9 @@ def approve_period(*, request, approver, approval: ApprovalRequest) -> PayrollPe
             subject_id=str(period.id),
             metadata={"period_id": period.id},
         )
+        # Asiento del costo de planilla (rollup + outbox + link a contabilidad, best-effort).
+        from .accounting_link import post_payroll_period_to_accounting
+
+        post_payroll_period_to_accounting(request=request, actor=approver, period=period)
         mark_executed(approval=approval, actor=approver, request=request)
     return period

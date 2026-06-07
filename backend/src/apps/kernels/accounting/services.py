@@ -1758,6 +1758,31 @@ def build_rules_json_v1() -> dict[str, Any]:
                     {"account": "4205", "side": "CREDIT", "amount_from": "difference_abs", "sign": 1},
                 ],
             },
+            {
+                # Asiento del costo de planilla al aprobar el período.
+                # Débito (gastos) = Crédito (pasivos por pagar). Códigos por defecto
+                # (ajustables al CoA real del contador). En SIN INSS las líneas INSS/INATEC = 0.
+                "id": "nomina_payroll_period_approved",
+                "source_module": "NOMINA",
+                "event_type": "PayrollPeriodApproved",
+                "lines": [
+                    # DÉBITO — gastos
+                    {"account": "6201", "side": "DEBIT", "amount_from": "total_devengado", "sign": 1},
+                    {"account": "6202", "side": "DEBIT", "amount_from": "total_vacation", "sign": 1},
+                    {"account": "6203", "side": "DEBIT", "amount_from": "total_thirteenth", "sign": 1},
+                    {"account": "6204", "side": "DEBIT", "amount_from": "total_inss_patronal", "sign": 1},
+                    {"account": "6205", "side": "DEBIT", "amount_from": "total_inatec", "sign": 1},
+                    # CRÉDITO — pasivos por pagar
+                    {"account": "2301", "side": "CREDIT", "amount_from": "total_inss_laboral", "sign": 1},
+                    {"account": "2302", "side": "CREDIT", "amount_from": "total_ir", "sign": 1},
+                    {"account": "2303", "side": "CREDIT", "amount_from": "total_employee_deductions", "sign": 1},
+                    {"account": "2304", "side": "CREDIT", "amount_from": "total_net", "sign": 1},
+                    {"account": "2305", "side": "CREDIT", "amount_from": "total_vacation", "sign": 1},
+                    {"account": "2306", "side": "CREDIT", "amount_from": "total_thirteenth", "sign": 1},
+                    {"account": "2307", "side": "CREDIT", "amount_from": "total_inss_patronal", "sign": 1},
+                    {"account": "2308", "side": "CREDIT", "amount_from": "total_inatec", "sign": 1},
+                ],
+            },
         ],
     }
 
