@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "generated_at": "2026-06-07T21:42:03.176120+00:00",
+  "generated_at": "2026-06-08T17:54:54.578729+00:00",
   "coverage_report": "qa/reports/coverage.txt",
   "baseline_file": "/app/qa/contracts/coverage_by_domain_baseline.json",
   "changed_files_floor_pct": 50.0,
