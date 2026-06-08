@@ -1,5 +1,5 @@
-# RBAC (modo transición): incluye roles globales legacy (UserRole) además de RoleAssignment scoped
-RBAC_INCLUDE_GLOBAL_USERROLES = True
+# RBAC hard-cut: los permisos efectivos operativos usan RoleAssignment scoped.
+RBAC_INCLUDE_GLOBAL_USERROLES = False
 AXES_RESET_ON_SUCCESS = True
 """
 NOTA:
@@ -81,9 +81,6 @@ env = environ.Env(
     SYNC_MAX_DEVICE_CLOCK_SKEW_SECONDS=(int, 6 * 3600),
     SYNC_SEQ_TOLERANT=(bool, True),
     SYNC_ENROLL_WEB_BASE_URL=(str, "http://localhost:3000"),
-    SYNC_LEGACY_HMAC_ENABLED=(bool, False),
-    SYNC_HMAC_WRAPPER_ENABLED=(bool, False),
-    SYNC_LEGACY_HMAC_SUNSET=(str, "2026-03-31T00:00:00Z"),
     POS_EDGE_CONNECTOR_SHARED_SECRET=(str, ""),
     POS_EDGE_CHALLENGE_TTL_SEC=(int, 120),
     POS_EDGE_SESSION_TTL_SEC=(int, 3600),
@@ -214,9 +211,6 @@ SYNC_MAX_PAYLOAD_BYTES = env("SYNC_MAX_PAYLOAD_BYTES")
 SYNC_MAX_DEVICE_CLOCK_SKEW_SECONDS = env("SYNC_MAX_DEVICE_CLOCK_SKEW_SECONDS")
 SYNC_SEQ_TOLERANT = env("SYNC_SEQ_TOLERANT")
 SYNC_ENROLL_WEB_BASE_URL = env("SYNC_ENROLL_WEB_BASE_URL")
-SYNC_LEGACY_HMAC_ENABLED = env("SYNC_LEGACY_HMAC_ENABLED")
-SYNC_HMAC_WRAPPER_ENABLED = env("SYNC_HMAC_WRAPPER_ENABLED")
-SYNC_LEGACY_HMAC_SUNSET = env("SYNC_LEGACY_HMAC_SUNSET")
 POS_EDGE_CONNECTOR_SHARED_SECRET = env("POS_EDGE_CONNECTOR_SHARED_SECRET")
 POS_EDGE_CHALLENGE_TTL_SEC = env("POS_EDGE_CHALLENGE_TTL_SEC")
 POS_EDGE_SESSION_TTL_SEC = env("POS_EDGE_SESSION_TTL_SEC")
@@ -260,7 +254,6 @@ INSTALLED_APPS = [
     "apps.modulos.integration.apps.IntegrationConfig",
     "apps.modulos.dashboard.apps.DashboardConfig",
     "apps.modulos.sync_engine",
-    "apps.modulos.sync.apps.SyncConfig",
     # Módulos de dominio (raíz/modulos)
     # (Se agregan abajo con el patrón INSTALLED_APPS += [...])
 ]

@@ -106,6 +106,16 @@ def test_effective_perms_include_global_userrole():
     assert perm.code not in get_effective_permissions_for_scope(user, company=company, include_global=False)
 
 
+@pytest.mark.django_db
+def test_effective_perms_do_not_include_global_userrole_by_default():
+    _, company, _ = _mk_org()
+    user = _mk_user()
+    role, perm = _mk_role_with_perm(f"g.default_{uuid.uuid4().hex[:6]}")
+    UserRole.objects.create(user=user, role=role)
+
+    assert perm.code not in get_effective_permissions_for_scope(user, company=company)
+
+
 # ---------------------------------------------------------------------------
 # selectors: get_effective_permissions
 # ---------------------------------------------------------------------------

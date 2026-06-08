@@ -18,7 +18,8 @@ Referencias:
 ## 1) Endpoint canónico
 
 - **POST /api/sync/batch/** con `protocol_version = "2"`.
-- Endpoints legacy (`/api/sync-hmac/batch/` y rutas v1) son **wrappers** que traducen a v2 y no contienen lógica de negocio.
+- Endpoint canónico de sincronización: `/api/sync/batch/` y alias versionado `/api/v1/sync/batch/`.
+- El wrapper legacy `/api/sync-hmac/batch/` fue retirado después del sunset; no contiene lógica de negocio activa.
 
 ### 1.1) Estado de implementación (sync_engine actual)
 

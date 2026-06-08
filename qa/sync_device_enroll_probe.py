@@ -286,7 +286,7 @@ def main() -> int:
         "overall_status": "PASS" if overall_ok else "FAIL",
         "classification": {
             "canonical": "/api/sync/* -> sync_engine",
-            "legacy_parallel": "/api/sync-hmac/* -> sync (wrapper opcional)",
+            "legacy_parallel": "retired; use /api/sync/* or /api/v1/sync/*",
         },
         "context": {
             "base_url": base,

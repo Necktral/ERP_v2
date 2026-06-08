@@ -81,13 +81,13 @@ python -m mypy apps/modulos/sync_engine/views.py
 
 ## Contratos
 
-No cambia:
+No cambia en el corte P0 original:
 
 - URLs
 - serializers
 - protocolo Sync
 - eventos audit
-- legacy `/api/sync-hmac/`
+- legacy `/api/sync-hmac/` fue retirado despues del sunset en el corte de hardening posterior.
 
 Cambia:
 
@@ -102,7 +102,7 @@ P1 pendientes, fuera de este PR:
    - `REPLAY_DETECTED`
    - `TS_OUT_OF_WINDOW`
    - `DEVICE_ID_MISMATCH`
-2. Revisar coexistencia/deprecación de `/api/sync-hmac/`.
+2. Validar que clientes externos ya no consuman `/api/sync-hmac/`.
 3. Normalizar reason codes POS usados por handlers Sync contra contratos audit.
 4. Definir política para endpoints `AllowAny` cuando llega JWT/cookie accidental.
 

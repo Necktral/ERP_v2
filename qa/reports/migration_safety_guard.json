@@ -1,8 +1,8 @@
 {
   "status": "passed",
-  "generated_at": "2026-05-28T18:43:42.246829+00:00",
+  "generated_at": "2026-06-06T00:20:52.834194+00:00",
   "baseline_path": "qa/contracts/migration_safety_baseline.json",
-  "migrations_scanned": 85,
+  "migrations_scanned": 105,
   "missing_entries": [],
   "removed_entries": [],
   "issues": []

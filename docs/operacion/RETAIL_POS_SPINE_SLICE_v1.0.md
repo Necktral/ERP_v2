@@ -62,9 +62,8 @@
 
 ## Compatibilidad y seguridad
 
-- Sin retiros de API existentes.
-- Se mantiene `/api/sync-hmac/batch/`.
-- Se mantiene compatibilidad en `/api/sync/batch/` para legacy y `protocol_version="2"`.
+- `/api/sync-hmac/batch/` fue retirado despues del sunset; POS usa `/api/sync/batch/` y `/api/v1/sync/batch/`.
+- Se mantiene compatibilidad en `/api/sync/batch/` para payloads legacy y `protocol_version="2"`.
 - Se mantiene anti-replay request-level para v2.
 - Auditoría contractual extendida para eventos `POS_*`.
 

@@ -133,7 +133,24 @@ jobs:
             qa_trivy.txt
           if-no-files-found: warn
 
+      - name: Check AI review availability
+        id: ai_review_gate
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## AI Review"
+              echo ""
+              echo "Omitido: falta el secreto OPENAI_API_KEY. El workflow queda en PASS."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: AI review (comment only)
+        if: steps.ai_review_gate.outputs.enabled == 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

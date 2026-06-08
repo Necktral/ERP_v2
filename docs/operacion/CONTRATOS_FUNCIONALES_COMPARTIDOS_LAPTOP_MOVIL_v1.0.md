@@ -225,6 +225,6 @@ Este documento define un contrato funcional unico para operacion web empresarial
   - `api/backend/dashboard/*`
 - Sync/dispositivo:
   - `api/sync/*`
-  - `api/sync-hmac/*` (compatibilidad legacy)
+  - `api/v1/sync/*`
 
 Este mapeo existe para evitar drift entre diseno funcional y wiring real.

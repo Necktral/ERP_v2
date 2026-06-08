@@ -20,6 +20,7 @@ from rest_framework.test import APIClient
 from apps.modulos.accounts.cookies import clear_auth_cookies, issue_csrf_token, set_auth_cookies
 from apps.modulos.accounts.password_validators import PasswordComplexityValidator
 from apps.modulos.iam.models import OrgUnit, UserMembership
+from apps.modulos.rbac.models import Permission, Role, RolePermission, UserRole
 
 User = get_user_model()
 
@@ -174,3 +175,30 @@ def test_me_returns_user_when_authenticated():
     resp = client.get("/api/auth/me/")
     assert resp.status_code == 200
     assert resp.data.get("username") == user.username
+
+
+@pytest.mark.django_db
+def test_me_does_not_expose_legacy_global_userrole():
+    s = uuid.uuid4().hex[:6]
+    holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name=f"H_{s}")
+    company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name=f"C_{s}", parent=holding)
+    branch = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.BRANCH, name=f"B_{s}", parent=company)
+    user = _mk_user()
+    UserMembership.objects.create(user=user, org_unit=company, is_active=True)
+    UserMembership.objects.create(user=user, org_unit=branch, is_active=True)
+    role = Role.objects.create(name=f"legacy_{s}", is_active=True)
+    permission = Permission.objects.create(code=f"legacy.global_{s}", is_active=True)
+    RolePermission.objects.create(role=role, permission=permission)
+    UserRole.objects.create(user=user, role=role)
+
+    client = APIClient()
+    login = client.post("/api/auth/login/", {"username": user.username, "password": "pass12345"}, format="json")
+    assert login.status_code == 200
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data.get('access')}")
+    client.defaults["HTTP_X_COMPANY_ID"] = str(company.id)
+    client.defaults["HTTP_X_BRANCH_ID"] = str(branch.id)
+
+    resp = client.get("/api/auth/me/")
+    assert resp.status_code == 200
+    assert role.name not in set(resp.data.get("roles") or [])
+    assert permission.code not in set(resp.data.get("permissions") or [])

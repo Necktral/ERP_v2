@@ -96,7 +96,7 @@ Objetivo: ejecutar operacion real por internet sin degradar control, auditoria n
 ## Supuestos y defaults
 
 - Canal principal: internet publica con TLS y controles perimetrales.
-- `sync-hmac` y carriles legacy no definen la UX objetivo del COU.
+- `sync-hmac` fue retirado; los carriles legacy no definen la UX objetivo del COU.
 - Politica default: no-breaking, cambios aditivos y endurecimiento de trazabilidad.
 - Movil prioriza ejecucion operativa; desktop prioriza control, analitica y gobierno.
 

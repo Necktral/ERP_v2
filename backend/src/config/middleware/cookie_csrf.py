@@ -6,9 +6,13 @@ from django.http import JsonResponse
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 EXEMPT_MUTATING_PATH_PREFIXES = (
     "/api/auth/login",
+    "/api/v1/auth/login",
     "/api/auth/2fa/verify",
+    "/api/v1/auth/2fa/verify",
     "/api/sync/enroll/",
+    "/api/v1/sync/enroll/",
     "/api/sync/batch/",
+    "/api/v1/sync/batch/",
 )
 
 

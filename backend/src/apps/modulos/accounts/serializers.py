@@ -1,11 +1,9 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth import password_validation
-from django.db.models import Q
 from rest_framework import serializers
 
-from apps.modulos.rbac.models import Role
-from apps.modulos.rbac.selectors import get_effective_permissions
 from apps.modulos.iam.models import UserMembership
+from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
 
 User = get_user_model()
 
@@ -106,13 +104,20 @@ class MeSerializer(serializers.Serializer):
 
     @staticmethod
     def from_user(user):
-        # Roles:
-        # - Nuevo modelo: RoleAssignment (scoped por OrgUnit) => related_name "assignments"
-        # - Legacy/transición: UserRole (global) => reverse relation "userrole"
-        role_names = Role.objects.filter(
-            Q(assignments__user=user, assignments__is_active=True) | Q(userrole__user=user)
-        ).values_list("name", flat=True)
-        perms = get_effective_permissions(user)
+        # El hard cut RBAC usa solo RoleAssignment scoped; UserRole global queda como catálogo legacy.
+        role_ids = RoleAssignment.objects.filter(
+            user=user,
+            is_active=True,
+            role__is_active=True,
+        ).values_list("role_id", flat=True)
+        role_names = Role.objects.filter(id__in=role_ids, is_active=True).values_list("name", flat=True)
+        if user.is_superuser:
+            perms = ["*"]
+        else:
+            perm_ids = RolePermission.objects.filter(role_id__in=role_ids).values_list("permission_id", flat=True)
+            perms = sorted(
+                set(Permission.objects.filter(id__in=perm_ids, is_active=True).values_list("code", flat=True))
+            )
 
         # Setup global: depende de si el usuario tiene al menos una membership activa
         is_setup_complete = UserMembership.objects.filter(user=user, is_active=True).exists()

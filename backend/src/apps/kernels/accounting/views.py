@@ -1188,7 +1188,6 @@ class JournalDraftPostView(APIView):
             request.user,
             company=request.company,
             branch=getattr(request, "branch", None),
-            include_global=True,
         )
         return "accounting.sod.override" in perms or "*" in perms
 
@@ -1240,7 +1239,6 @@ class FiscalPeriodCloseView(APIView):
             request.user,
             company=request.company,
             branch=getattr(request, "branch", None),
-            include_global=True,
         )
         return "accounting.sod.override" in perms or "*" in perms
 
@@ -1301,7 +1299,6 @@ class JournalEntryReverseView(APIView):
             request.user,
             company=request.company,
             branch=getattr(request, "branch", None),
-            include_global=True,
         )
         return "accounting.sod.override" in perms or "*" in perms
 
@@ -1350,7 +1347,6 @@ class JournalEntryReverseBatchView(APIView):
             request.user,
             company=request.company,
             branch=getattr(request, "branch", None),
-            include_global=True,
         )
         return "accounting.sod.override" in perms or "*" in perms
 
