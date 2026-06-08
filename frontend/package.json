@@ -17,7 +17,7 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
-    "@quasar/extras": "^1.16.4",
+    "@quasar/extras": "^2.0.0",
     "axios": "^1.16.0",
     "pinia": "^3.0.1",
     "qrcode": "^1.5.4",
