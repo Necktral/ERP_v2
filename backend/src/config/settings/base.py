@@ -264,6 +264,7 @@ INSTALLED_APPS += [
     "apps.kernels.inventarios",
     "apps.kernels.facturacion",
     "apps.modulos.compras",
+    "apps.modulos.comisariato.apps.ComisariatoConfig",
 ]
 
 MIDDLEWARE = [

@@ -472,6 +472,17 @@ ALLOWED_EVENT_TYPES.update(
 )
 ALLOWED_SUBJECT_TYPES.update({"CASH_SESSION", "PAYMENT_INTENT"})
 
+# Comisariato: tienda de la empresa que vende a crédito (cuenta + venta + cobro por planilla)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "COMISARIATO_ACCOUNT_UPSERTED",
+        "COMISARIATO_CREDIT_SALE",
+        "COMISARIATO_STORE_CREDIT_DEDUCTED",
+    }
+)
+ALLOWED_REASON_CODES.update({"COMISARIATO_OK", "COMISARIATO_CREDIT_LIMIT_EXCEEDED"})
+ALLOWED_SUBJECT_TYPES.update({"COMISARIATO_ACCOUNT", "COMISARIATO_SALE"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
