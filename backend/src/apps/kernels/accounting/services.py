@@ -109,6 +109,7 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("PAYMENTS", "CashSessionClosed"),
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
+    ("NOMINA", "PayrollPeriodApproved"),
 }
 TRANSFER_PAYMENT_ACCOUNTING_EVENTS = {
     ("PAYMENTS", "PaymentCaptured"),
@@ -121,6 +122,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryMovementPosted"),
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
+    ("NOMINA", "PayrollPeriodApproved"),
 }
 ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
     ("PAYMENTS", "PaymentCaptured"),
@@ -197,6 +199,7 @@ class OperationalPostingRuntime:
     posting_mode: str
     enable_billing: bool
     enable_inventory: bool
+    enable_nomina: bool
     auto_post_on_write: bool
 
     def allows_module(self, source_module: str) -> bool:
@@ -206,6 +209,8 @@ class OperationalPostingRuntime:
             return bool(self.enable_billing)
         if source_module == "INVENTORY":
             return bool(self.enable_inventory)
+        if source_module == "NOMINA":
+            return bool(self.enable_nomina)
         return False
 
 
@@ -245,6 +250,7 @@ def resolve_operational_posting_runtime(*, company, branch=None) -> OperationalP
             posting_mode=mode,
             enable_billing=bool(row.enable_billing),
             enable_inventory=bool(row.enable_inventory),
+            enable_nomina=bool(row.enable_nomina),
             auto_post_on_write=bool(row.auto_post_on_write),
         )
 
@@ -255,6 +261,7 @@ def resolve_operational_posting_runtime(*, company, branch=None) -> OperationalP
         posting_mode=mode,
         enable_billing=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_BILLING", True)),
         enable_inventory=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_INVENTORY", True)),
+        enable_nomina=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_NOMINA", True)),
         auto_post_on_write=bool(getattr(settings, "ACCOUNTING_POSTING_AUTO_POST_ON_WRITE", False)),
     )
 
@@ -1749,6 +1756,31 @@ def build_rules_json_v1() -> dict[str, Any]:
                 "lines": [
                     {"account": "1102", "side": "DEBIT", "amount_from": "difference_abs", "sign": 1},
                     {"account": "4205", "side": "CREDIT", "amount_from": "difference_abs", "sign": 1},
+                ],
+            },
+            {
+                # Asiento del costo de planilla al aprobar el período.
+                # Débito (gastos) = Crédito (pasivos por pagar). Códigos por defecto
+                # (ajustables al CoA real del contador). En SIN INSS las líneas INSS/INATEC = 0.
+                "id": "nomina_payroll_period_approved",
+                "source_module": "NOMINA",
+                "event_type": "PayrollPeriodApproved",
+                "lines": [
+                    # DÉBITO — gastos
+                    {"account": "6201", "side": "DEBIT", "amount_from": "total_devengado", "sign": 1},
+                    {"account": "6202", "side": "DEBIT", "amount_from": "total_vacation", "sign": 1},
+                    {"account": "6203", "side": "DEBIT", "amount_from": "total_thirteenth", "sign": 1},
+                    {"account": "6204", "side": "DEBIT", "amount_from": "total_inss_patronal", "sign": 1},
+                    {"account": "6205", "side": "DEBIT", "amount_from": "total_inatec", "sign": 1},
+                    # CRÉDITO — pasivos por pagar
+                    {"account": "2301", "side": "CREDIT", "amount_from": "total_inss_laboral", "sign": 1},
+                    {"account": "2302", "side": "CREDIT", "amount_from": "total_ir", "sign": 1},
+                    {"account": "2303", "side": "CREDIT", "amount_from": "total_employee_deductions", "sign": 1},
+                    {"account": "2304", "side": "CREDIT", "amount_from": "total_net", "sign": 1},
+                    {"account": "2305", "side": "CREDIT", "amount_from": "total_vacation", "sign": 1},
+                    {"account": "2306", "side": "CREDIT", "amount_from": "total_thirteenth", "sign": 1},
+                    {"account": "2307", "side": "CREDIT", "amount_from": "total_inss_patronal", "sign": 1},
+                    {"account": "2308", "side": "CREDIT", "amount_from": "total_inatec", "sign": 1},
                 ],
             },
         ],

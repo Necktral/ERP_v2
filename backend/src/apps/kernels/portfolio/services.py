@@ -848,6 +848,51 @@ def allocate_payment_to_obligation(
     return allocation
 
 
+def apply_payroll_abono(*, obligation, amount, abono_date=None, created_by=None, reference: str = "") -> Decimal:
+    """Aplica un abono de descuento de planilla a una obligación (Credit/Receivable), sin payment intent.
+
+    Un descuento de nómina no es un pago de caja (PaymentIntent), sino un offset del salario.
+    Reduce el saldo subiendo `allocated_amount` y actualizando el estado (PARTIAL/PAID), con
+    auditoría propia. Devuelve el monto efectivamente aplicado (topado al saldo pendiente).
+    """
+    amount = Decimal(str(amount))
+    if amount <= 0:
+        raise PortfolioDomainError("INVALID_AMOUNT", f"El abono debe ser positivo: {amount}")
+    if obligation.status in (ObligationStatus.PAID, ObligationStatus.WRITTEN_OFF, ObligationStatus.CANCELLED):
+        raise PortfolioDomainError("OBLIGATION_NOT_OPEN", f"Obligación no abierta para abono: {obligation.status}")
+
+    abono_date = abono_date or timezone.localdate()
+    applied = min(amount, obligation.outstanding_amount)
+    if applied <= 0:
+        return Decimal("0.00")
+
+    with transaction.atomic():
+        obligation.allocated_amount += applied
+        obligation.last_payment_date = abono_date
+        if obligation.allocated_amount >= obligation.total_amount:
+            obligation.status = ObligationStatus.PAID
+            obligation.paid_date = abono_date
+        elif obligation.allocated_amount > 0:
+            obligation.status = ObligationStatus.PARTIAL
+        obligation.save()
+
+        _write_portfolio_audit_event(
+            actor_user=created_by,
+            company=obligation.company,
+            branch=obligation.branch,
+            event_type="PORTFOLIO_PAYROLL_ABONO_APPLIED",
+            subject_type=obligation.obligation_type,
+            subject_id=str(obligation.obligation_id),
+            after_snapshot={
+                "allocated_amount": str(obligation.allocated_amount),
+                "status": obligation.status,
+                "abono_applied": str(applied),
+            },
+            metadata={"reference": reference or "", "party_id": obligation.party_id, "source": "PAYROLL_DEDUCTION"},
+        )
+    return applied
+
+
 def _get_allocation_event_type(obligation: Obligation) -> str:
     """Retorna evento según tipo de obligación"""
     if isinstance(obligation, Receivable):

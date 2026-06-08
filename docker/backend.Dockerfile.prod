@@ -28,10 +28,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# runtime deps (curl para healthchecks, libpq para postgres)
+# runtime deps (curl healthchecks, libpq postgres, cairo/pango para WeasyPrint → PDF)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    shared-mime-info \
+    fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 # site-packages desde builder
