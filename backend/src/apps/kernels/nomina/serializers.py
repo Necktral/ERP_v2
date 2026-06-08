@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import IRBracket, NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet
+from .models import IRBracket, NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet, PeriodType
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class PayrollPeriodOut(serializers.ModelSerializer):
 class PayrollPeriodCreateIn(serializers.Serializer):
     year = serializers.IntegerField(min_value=2020, max_value=2099)
     month = serializers.IntegerField(min_value=1, max_value=12)
-    period_type = serializers.ChoiceField(choices=["FIRST_HALF", "SECOND_HALF", "MONTHLY"])
+    period_type = serializers.ChoiceField(choices=PeriodType.values)
     start_date = serializers.DateField()
     end_date = serializers.DateField()
     working_days = serializers.IntegerField(min_value=1, max_value=31, required=False, default=15)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from decimal import Decimal
 
 from django.db import transaction
@@ -21,6 +22,20 @@ from .models import (
     DEFAULT_THIRTEENTH_RATE,
     DEFAULT_VACATION_RATE,
     DEFAULT_MIN_WAGE_AGRO,
+    FieldAttendanceConsolidation,
+    FieldAttendanceConsolidationStatus,
+    FieldCrew,
+    FieldCrewReport,
+    FieldCrewReportLine,
+    FieldCrewReportStatus,
+    FieldRollCall,
+    FieldRollCallLine,
+    FieldRollCallLineStatus,
+    FieldTransfer,
+    FieldWorkDay,
+    FieldWorkDayStatus,
+    FieldWorkerEvent,
+    FieldWorkerEventType,
     IRBracket,
     NominaConfig,
     PayrollEntry,
@@ -360,3 +375,730 @@ def compute_all_entries_in_sheet(*, sheet: PayrollSheet, worker_count: int = 999
         entry.save()
         count += 1
     return count
+
+
+# ---------------------------------------------------------------------------
+# Field Attendance — foundation backend only
+# ---------------------------------------------------------------------------
+
+class FieldAttendanceError(ValueError):
+    """Error de dominio para reglas de asistencia de campo."""
+
+    def __init__(self, code: str, message: str, *, context: dict | None = None):
+        self.code = code
+        self.context = context or {}
+        super().__init__(message)
+
+
+FIELD_EVENTS_REQUIRING_DETAILS = {
+    FieldWorkerEventType.SICK,
+    FieldWorkerEventType.ACCIDENT,
+    FieldWorkerEventType.OTHER,
+}
+
+FIELD_PRESENT_EVENTS = {
+    FieldWorkerEventType.PRESENT,
+    FieldWorkerEventType.LEFT_EARLY,
+    FieldWorkerEventType.JOINED_LATE,
+}
+
+FIELD_PRIMARY_EVENT_PRIORITY = [
+    FieldWorkerEventType.ACCIDENT,
+    FieldWorkerEventType.SICK,
+    FieldWorkerEventType.PERMISSION,
+    FieldWorkerEventType.DISMISSED,
+    FieldWorkerEventType.ABSENT,
+    FieldWorkerEventType.LEFT_EARLY,
+    FieldWorkerEventType.JOINED_LATE,
+    FieldWorkerEventType.PRESENT,
+    FieldWorkerEventType.TRANSFERRED,
+    FieldWorkerEventType.OTHER,
+]
+
+
+def _field_error(code: str, message: str, *, context: dict | None = None) -> FieldAttendanceError:
+    return FieldAttendanceError(code, message, context=context)
+
+
+def _validate_branch_scope(*, company: OrgUnit, branch: OrgUnit | None) -> None:
+    if branch is None:
+        return
+    if branch.unit_type != OrgUnit.UnitType.BRANCH or branch.parent_id != company.id:
+        raise _field_error(
+            "invalid_scope",
+            "La sucursal/finca no pertenece a la empresa indicada.",
+            context={"company_id": company.id, "branch_id": branch.id},
+        )
+
+
+def _validate_period_scope(*, company: OrgUnit, payroll_period: PayrollPeriod | None, work_date) -> None:
+    if payroll_period is None:
+        return
+    if payroll_period.company_id != company.id:
+        raise _field_error(
+            "invalid_scope",
+            "El periodo de nomina no pertenece a la empresa indicada.",
+            context={"company_id": company.id, "period_id": payroll_period.id},
+        )
+    if not (payroll_period.start_date <= work_date <= payroll_period.end_date):
+        raise _field_error(
+            "invalid_period_date",
+            "La fecha de campo no cae dentro del periodo de nomina.",
+            context={
+                "work_date": str(work_date),
+                "start_date": str(payroll_period.start_date),
+                "end_date": str(payroll_period.end_date),
+            },
+        )
+
+
+def _validate_work_day_mutable(work_day: FieldWorkDay) -> None:
+    if work_day.status in {FieldWorkDayStatus.APPROVED, FieldWorkDayStatus.LOCKED}:
+        raise _field_error(
+            "invalid_state",
+            "El dia de campo aprobado o bloqueado no admite cambios directos.",
+            context={"work_day_id": work_day.id, "status": work_day.status},
+        )
+
+
+def _validate_employee_scope(*, company: OrgUnit, employee, field_name: str = "employee") -> None:
+    if not employee or not getattr(employee, "pk", None):
+        raise _field_error("missing_employee", f"{field_name} es requerido.")
+    if employee.company_id != company.id:
+        raise _field_error(
+            "employee_out_of_scope",
+            "El empleado no pertenece a la empresa del dia de campo.",
+            context={"company_id": company.id, "employee_id": employee.id},
+        )
+    if not employee.is_active:
+        raise _field_error(
+            "inactive_employee",
+            "El empleado debe estar activo para asistencia de campo.",
+            context={"employee_id": employee.id},
+        )
+
+
+def _validate_unique_employees(lines: list[dict]) -> None:
+    seen: set[int] = set()
+    for line in lines:
+        employee = line.get("employee")
+        employee_id = getattr(employee, "id", None)
+        if employee_id is None:
+            raise _field_error("missing_employee", "employee es requerido.")
+        if employee_id in seen:
+            raise _field_error(
+                "duplicate_employee",
+                "El mismo empleado aparece mas de una vez en el payload.",
+                context={"employee_id": employee_id},
+            )
+        seen.add(employee_id)
+
+
+def _coerce_rollcall_status(value: str | None) -> str:
+    status = value or FieldRollCallLineStatus.UNKNOWN
+    if status not in FieldRollCallLineStatus.values:
+        raise _field_error("invalid_rollcall_status", "Estado de lista inicial invalido.", context={"status": status})
+    return status
+
+
+def _coerce_event_type(value: str | None) -> str:
+    event_type = value or FieldWorkerEventType.PRESENT
+    if event_type not in FieldWorkerEventType.values:
+        raise _field_error("invalid_event_type", "Tipo de evento de campo invalido.", context={"event_type": event_type})
+    return event_type
+
+
+def _coerce_day_value(value, *, event_type: str) -> Decimal:
+    if value is None:
+        if event_type in {FieldWorkerEventType.PRESENT, FieldWorkerEventType.LEFT_EARLY, FieldWorkerEventType.JOINED_LATE}:
+            return Decimal("1.00")
+        return Decimal("0.00")
+    day_value = Decimal(str(value))
+    if day_value < Decimal("0.00") or day_value > Decimal("1.00"):
+        raise _field_error("invalid_day_value", "day_value debe estar entre 0.00 y 1.00.")
+    return day_value.quantize(Decimal("0.01"))
+
+
+def _require_details_if_needed(*, event_type: str, details: str) -> None:
+    if event_type in FIELD_EVENTS_REQUIRING_DETAILS and not (details or "").strip():
+        raise _field_error(
+            "missing_required_detail",
+            "El evento de campo requiere detalle obligatorio.",
+            context={"event_type": event_type},
+        )
+
+
+def _employee_label(employee) -> str:
+    return f"{employee.first_name} {employee.last_name}".strip() or employee.employee_code or str(employee.id)
+
+
+def _audit(
+    *,
+    request,
+    actor,
+    event_type: str,
+    subject_type: str,
+    subject_id,
+    metadata: dict | None = None,
+    reason_code: str = "FIELD_ATTENDANCE_OK",
+) -> None:
+    write_event(
+        request=request,
+        module="NOMINA",
+        event_type=event_type,
+        reason_code=reason_code,
+        actor_user=actor,
+        subject_type=subject_type,
+        subject_id=str(subject_id),
+        metadata=metadata or {},
+    )
+
+
+def open_field_work_day(
+    *,
+    request,
+    actor,
+    company: OrgUnit,
+    work_date,
+    branch: OrgUnit | None = None,
+    payroll_period: PayrollPeriod | None = None,
+    notes: str = "",
+) -> FieldWorkDay:
+    """Abre un dia operativo de campo para lista, cuadrillas y consolidacion."""
+    _validate_branch_scope(company=company, branch=branch)
+    _validate_period_scope(company=company, payroll_period=payroll_period, work_date=work_date)
+    lookup = {"company": company, "work_date": work_date}
+    if branch is None:
+        lookup["branch__isnull"] = True
+    else:
+        lookup["branch"] = branch
+    if FieldWorkDay.objects.filter(**lookup).exists():
+        raise _field_error("duplicate_work_day", "Ya existe un dia de campo para ese scope y fecha.")
+
+    with transaction.atomic():
+        work_day = FieldWorkDay.objects.create(
+            company=company,
+            branch=branch,
+            payroll_period=payroll_period,
+            work_date=work_date,
+            status=FieldWorkDayStatus.OPEN,
+            opened_by=actor,
+            notes=notes or "",
+        )
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_WORK_DAY_OPENED",
+            subject_type="FIELD_WORK_DAY",
+            subject_id=work_day.id,
+            metadata={
+                "company_id": company.id,
+                "branch_id": branch.id if branch else None,
+                "payroll_period_id": payroll_period.id if payroll_period else None,
+                "work_date": str(work_date),
+            },
+        )
+    return work_day
+
+
+def submit_rollcall(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+    lines: list[dict],
+    notes: str = "",
+) -> FieldRollCall:
+    """Registra la lista inicial del mandador para un dia de campo."""
+    _validate_work_day_mutable(work_day)
+    if FieldRollCall.objects.filter(work_day=work_day).exists():
+        raise _field_error("invalid_state", "La lista inicial ya fue enviada para este dia.")
+    if not lines:
+        raise _field_error("empty_rollcall", "La lista inicial requiere al menos un empleado.")
+    _validate_unique_employees(lines)
+
+    with transaction.atomic():
+        rollcall = FieldRollCall.objects.create(work_day=work_day, submitted_by=actor, notes=notes or "")
+        created_lines = []
+        for line in lines:
+            employee = line.get("employee")
+            _validate_employee_scope(company=work_day.company, employee=employee)
+            status = _coerce_rollcall_status(line.get("status"))
+            created_lines.append(FieldRollCallLine(
+                rollcall=rollcall,
+                employee=employee,
+                status=status,
+                absence_reason=line.get("absence_reason", "") or "",
+                note=line.get("note", "") or "",
+            ))
+        FieldRollCallLine.objects.bulk_create(created_lines)
+        work_day.status = (
+            FieldWorkDayStatus.CREW_REPORTS_PENDING
+            if work_day.crews.exists()
+            else FieldWorkDayStatus.ROLLCALL_SUBMITTED
+        )
+        work_day.save(update_fields=["status", "updated_at"])
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_ROLLCALL_SUBMITTED",
+            subject_type="FIELD_ROLLCALL",
+            subject_id=rollcall.id,
+            metadata={"work_day_id": work_day.id, "line_count": len(created_lines)},
+        )
+    return rollcall
+
+
+def create_field_crew(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+    name: str,
+    supervisor_employee,
+) -> FieldCrew:
+    """Crea una cuadrilla del dia con capataz/responsable HR."""
+    _validate_work_day_mutable(work_day)
+    if not (name or "").strip():
+        raise _field_error("missing_crew_name", "El nombre de la cuadrilla es requerido.")
+    _validate_employee_scope(company=work_day.company, employee=supervisor_employee, field_name="supervisor_employee")
+
+    with transaction.atomic():
+        crew = FieldCrew.objects.create(
+            work_day=work_day,
+            name=name.strip(),
+            supervisor_employee=supervisor_employee,
+        )
+        if work_day.status in {FieldWorkDayStatus.OPEN, FieldWorkDayStatus.ROLLCALL_SUBMITTED}:
+            work_day.status = FieldWorkDayStatus.CREW_REPORTS_PENDING
+            work_day.save(update_fields=["status", "updated_at"])
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_CREW_CREATED",
+            subject_type="FIELD_CREW",
+            subject_id=crew.id,
+            metadata={
+                "work_day_id": work_day.id,
+                "supervisor_employee_id": supervisor_employee.id,
+                "crew_name": crew.name,
+            },
+        )
+    return crew
+
+
+def submit_crew_report(
+    *,
+    request,
+    actor,
+    crew: FieldCrew,
+    lines: list[dict],
+    labor_code: str = "",
+    labor_name: str = "",
+    zone_label: str = "",
+    notes: str = "",
+) -> FieldCrewReport:
+    """Envio del reporte diario de cuadrilla por capataz."""
+    work_day = crew.work_day
+    _validate_work_day_mutable(work_day)
+    if not lines:
+        raise _field_error("empty_crew_report", "El reporte de cuadrilla requiere al menos un empleado.")
+    _validate_unique_employees(lines)
+
+    with transaction.atomic():
+        report, created = FieldCrewReport.objects.get_or_create(crew=crew)
+        if not created and report.status not in {
+            FieldCrewReportStatus.DRAFT,
+            FieldCrewReportStatus.RETURNED_FOR_CORRECTION,
+        }:
+            raise _field_error(
+                "invalid_state",
+                "El reporte de cuadrilla no puede reenviarse desde su estado actual.",
+                context={"report_id": report.id, "status": report.status},
+            )
+        if not created:
+            report.lines.all().delete()
+        created_lines = []
+        for line in lines:
+            employee = line.get("employee")
+            _validate_employee_scope(company=work_day.company, employee=employee)
+            event_type = _coerce_event_type(line.get("event_type"))
+            details = line.get("notes", "") or ""
+            _require_details_if_needed(event_type=event_type, details=details)
+            created_lines.append(FieldCrewReportLine(
+                report=report,
+                employee=employee,
+                event_type=event_type,
+                day_value=_coerce_day_value(line.get("day_value"), event_type=event_type),
+                notes=details,
+            ))
+        report.status = FieldCrewReportStatus.SUBMITTED
+        report.labor_code = labor_code or ""
+        report.labor_name = labor_name or ""
+        report.zone_label = zone_label or ""
+        report.submitted_by = actor
+        report.submitted_at = timezone.now()
+        report.notes = notes or ""
+        report.save(update_fields=[
+            "status", "labor_code", "labor_name", "zone_label",
+            "submitted_by", "submitted_at", "notes", "updated_at",
+        ])
+        FieldCrewReportLine.objects.bulk_create(created_lines)
+        if work_day.status != FieldWorkDayStatus.IN_REVIEW:
+            work_day.status = FieldWorkDayStatus.IN_REVIEW
+            work_day.save(update_fields=["status", "updated_at"])
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_CREW_REPORT_SUBMITTED",
+            subject_type="FIELD_CREW_REPORT",
+            subject_id=report.id,
+            metadata={
+                "work_day_id": work_day.id,
+                "crew_id": crew.id,
+                "line_count": len(created_lines),
+                "labor_code": report.labor_code,
+            },
+        )
+    return report
+
+
+def record_worker_event(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+    employee,
+    event_type: str,
+    details: str = "",
+    crew_report: FieldCrewReport | None = None,
+    occurred_at=None,
+    metadata: dict | None = None,
+) -> FieldWorkerEvent:
+    """Registra una novedad individual auditable del trabajador."""
+    _validate_work_day_mutable(work_day)
+    _validate_employee_scope(company=work_day.company, employee=employee)
+    normalized_event_type = _coerce_event_type(event_type)
+    _require_details_if_needed(event_type=normalized_event_type, details=details)
+    if crew_report is not None and crew_report.crew.work_day_id != work_day.id:
+        raise _field_error(
+            "invalid_scope",
+            "El reporte de cuadrilla no pertenece al dia de campo.",
+            context={"work_day_id": work_day.id, "crew_report_id": crew_report.id},
+        )
+
+    with transaction.atomic():
+        event = FieldWorkerEvent.objects.create(
+            work_day=work_day,
+            crew_report=crew_report,
+            employee=employee,
+            event_type=normalized_event_type,
+            occurred_at=occurred_at or timezone.now(),
+            details=details or "",
+            metadata=metadata or {},
+            created_by=actor,
+        )
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_WORKER_EVENT_RECORDED",
+            subject_type="FIELD_WORKER_EVENT",
+            subject_id=event.id,
+            metadata={
+                "work_day_id": work_day.id,
+                "employee_id": employee.id,
+                "employee": _employee_label(employee),
+                "event_type": normalized_event_type,
+                "crew_report_id": crew_report.id if crew_report else None,
+            },
+        )
+    return event
+
+
+def transfer_worker(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+    employee,
+    from_crew: FieldCrew,
+    to_crew: FieldCrew,
+    reason: str,
+    transferred_at=None,
+) -> FieldTransfer:
+    """Traslada un trabajador entre cuadrillas sin duplicar asistencia."""
+    _validate_work_day_mutable(work_day)
+    _validate_employee_scope(company=work_day.company, employee=employee)
+    if from_crew.id == to_crew.id:
+        raise _field_error("invalid_transfer", "La cuadrilla origen y destino deben ser distintas.")
+    if from_crew.work_day_id != work_day.id or to_crew.work_day_id != work_day.id:
+        raise _field_error("invalid_scope", "Ambas cuadrillas deben pertenecer al mismo dia de campo.")
+    if not (reason or "").strip():
+        raise _field_error("missing_required_detail", "El traslado requiere motivo.")
+
+    with transaction.atomic():
+        transfer = FieldTransfer.objects.create(
+            work_day=work_day,
+            employee=employee,
+            from_crew=from_crew,
+            to_crew=to_crew,
+            reason=reason.strip(),
+            transferred_at=transferred_at or timezone.now(),
+            created_by=actor,
+        )
+        FieldWorkerEvent.objects.create(
+            work_day=work_day,
+            employee=employee,
+            event_type=FieldWorkerEventType.TRANSFERRED,
+            occurred_at=transfer.transferred_at,
+            details=transfer.reason,
+            metadata={"from_crew_id": from_crew.id, "to_crew_id": to_crew.id},
+            created_by=actor,
+        )
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_WORKER_TRANSFERRED",
+            subject_type="FIELD_TRANSFER",
+            subject_id=transfer.id,
+            metadata={
+                "work_day_id": work_day.id,
+                "employee_id": employee.id,
+                "from_crew_id": from_crew.id,
+                "to_crew_id": to_crew.id,
+            },
+        )
+    return transfer
+
+
+def _has_transfer_between(crews: set[int], transfers: list[FieldTransfer]) -> bool:
+    for transfer in transfers:
+        pair = {transfer.from_crew_id, transfer.to_crew_id}
+        if pair.issubset(crews):
+            return True
+    return False
+
+
+def _primary_event(event_types: set[str], *, rollcall_status: str | None) -> str:
+    if not event_types and rollcall_status == FieldRollCallLineStatus.PRESENT:
+        return FieldWorkerEventType.PRESENT
+    if not event_types and rollcall_status == FieldRollCallLineStatus.ABSENT:
+        return FieldWorkerEventType.ABSENT
+    for event_type in FIELD_PRIMARY_EVENT_PRIORITY:
+        if event_type in event_types:
+            return event_type
+    return ""
+
+
+def _calculate_day_value(
+    *,
+    primary_event_type: str,
+    rollcall_status: str | None,
+    crew_lines: list[FieldCrewReportLine],
+) -> Decimal:
+    if crew_lines:
+        return max(line.day_value for line in crew_lines).quantize(Decimal("0.01"))
+    if primary_event_type in {FieldWorkerEventType.PRESENT, FieldWorkerEventType.LEFT_EARLY, FieldWorkerEventType.JOINED_LATE}:
+        return Decimal("1.00")
+    if rollcall_status == FieldRollCallLineStatus.PRESENT:
+        return Decimal("1.00")
+    return Decimal("0.00")
+
+
+def consolidate_field_attendance(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+    payroll_period: PayrollPeriod | None = None,
+) -> list[FieldAttendanceConsolidation]:
+    """Materializa el estado por empleado/dia desde lista, reportes, eventos y traslados."""
+    _validate_work_day_mutable(work_day)
+    period = payroll_period or work_day.payroll_period
+    _validate_period_scope(company=work_day.company, payroll_period=period, work_date=work_day.work_date)
+    if FieldAttendanceConsolidation.objects.filter(
+        work_day=work_day,
+        status__in=[
+            FieldAttendanceConsolidationStatus.APPROVED,
+            FieldAttendanceConsolidationStatus.LOCKED_FOR_PAYROLL,
+        ],
+    ).exists():
+        raise _field_error("invalid_state", "La consolidacion aprobada o bloqueada no se recalcula directamente.")
+
+    rollcall_by_employee = {
+        line.employee_id: line
+        for line in FieldRollCallLine.objects.select_related("employee", "rollcall").filter(rollcall__work_day=work_day)
+    }
+    crew_lines_by_employee: dict[int, list[FieldCrewReportLine]] = defaultdict(list)
+    for line in FieldCrewReportLine.objects.select_related("employee", "report__crew").filter(report__crew__work_day=work_day):
+        crew_lines_by_employee[line.employee_id].append(line)
+    events_by_employee: dict[int, list[FieldWorkerEvent]] = defaultdict(list)
+    for event in FieldWorkerEvent.objects.select_related("employee").filter(work_day=work_day):
+        events_by_employee[event.employee_id].append(event)
+    transfers_by_employee: dict[int, list[FieldTransfer]] = defaultdict(list)
+    for transfer in FieldTransfer.objects.select_related("employee", "from_crew", "to_crew").filter(work_day=work_day):
+        transfers_by_employee[transfer.employee_id].append(transfer)
+
+    employee_ids = (
+        set(rollcall_by_employee)
+        | set(crew_lines_by_employee)
+        | set(events_by_employee)
+        | set(transfers_by_employee)
+    )
+
+    with transaction.atomic():
+        if employee_ids:
+            FieldAttendanceConsolidation.objects.filter(work_day=work_day).exclude(employee_id__in=employee_ids).delete()
+        else:
+            FieldAttendanceConsolidation.objects.filter(work_day=work_day).delete()
+
+        consolidations: list[FieldAttendanceConsolidation] = []
+        conflict_count = 0
+        warning_count = 0
+        for employee_id in sorted(employee_ids):
+            roll_line = rollcall_by_employee.get(employee_id)
+            crew_lines = crew_lines_by_employee.get(employee_id, [])
+            worker_events = events_by_employee.get(employee_id, [])
+            transfers = transfers_by_employee.get(employee_id, [])
+            crew_ids = {line.report.crew_id for line in crew_lines}
+            event_types = {line.event_type for line in crew_lines} | {event.event_type for event in worker_events}
+            rollcall_status = roll_line.status if roll_line else None
+
+            conflict_codes: list[str] = []
+            status = FieldAttendanceConsolidationStatus.OK
+
+            if len(crew_ids) > 1:
+                if _has_transfer_between(crew_ids, transfers):
+                    conflict_codes.append("TRANSFERRED_BETWEEN_CREWS")
+                    status = FieldAttendanceConsolidationStatus.WARNING
+                else:
+                    conflict_codes.append("DUPLICATE_CREW_WITHOUT_TRANSFER")
+                    status = FieldAttendanceConsolidationStatus.BLOCKED
+
+            crew_has_presence = bool(event_types & FIELD_PRESENT_EVENTS)
+            if rollcall_status == FieldRollCallLineStatus.ABSENT and crew_has_presence:
+                conflict_codes.append("ROLLCALL_ABSENT_CREW_PRESENT")
+                if status != FieldAttendanceConsolidationStatus.BLOCKED:
+                    status = FieldAttendanceConsolidationStatus.CONFLICT
+
+            if rollcall_status == FieldRollCallLineStatus.PRESENT and not crew_lines and status == FieldAttendanceConsolidationStatus.OK:
+                conflict_codes.append("MISSING_CREW_CONFIRMATION")
+                status = FieldAttendanceConsolidationStatus.WARNING
+
+            if roll_line is None and crew_lines and status == FieldAttendanceConsolidationStatus.OK:
+                conflict_codes.append("MISSING_ROLLCALL_CONFIRMATION")
+                status = FieldAttendanceConsolidationStatus.WARNING
+
+            primary_event_type = _primary_event(event_types, rollcall_status=rollcall_status)
+            day_value = _calculate_day_value(
+                primary_event_type=primary_event_type,
+                rollcall_status=rollcall_status,
+                crew_lines=crew_lines,
+            )
+            employee = (
+                roll_line.employee if roll_line
+                else crew_lines[0].employee if crew_lines
+                else worker_events[0].employee if worker_events
+                else transfers[0].employee
+            )
+            source_summary = {
+                "rollcall_status": rollcall_status,
+                "crew_ids": sorted(crew_ids),
+                "crew_report_line_ids": [line.id for line in crew_lines],
+                "event_ids": [event.id for event in worker_events],
+                "transfer_ids": [transfer.id for transfer in transfers],
+            }
+            consolidation, _ = FieldAttendanceConsolidation.objects.update_or_create(
+                work_day=work_day,
+                employee=employee,
+                defaults={
+                    "payroll_period": period,
+                    "status": status,
+                    "day_value": day_value,
+                    "primary_event_type": primary_event_type,
+                    "conflict_codes": conflict_codes,
+                    "source_summary": source_summary,
+                    "has_inss_snapshot": getattr(employee, "has_inss", None),
+                },
+            )
+            consolidations.append(consolidation)
+            if status in {FieldAttendanceConsolidationStatus.CONFLICT, FieldAttendanceConsolidationStatus.BLOCKED}:
+                conflict_count += 1
+                _audit(
+                    request=request,
+                    actor=actor,
+                    event_type="FIELD_ATTENDANCE_CONFLICT_RAISED",
+                    subject_type="FIELD_ATTENDANCE_CONSOLIDATION",
+                    subject_id=consolidation.id,
+                    metadata={
+                        "work_day_id": work_day.id,
+                        "employee_id": employee_id,
+                        "status": status,
+                        "conflict_codes": conflict_codes,
+                    },
+                )
+            elif status == FieldAttendanceConsolidationStatus.WARNING:
+                warning_count += 1
+
+        if work_day.status != FieldWorkDayStatus.IN_REVIEW:
+            work_day.status = FieldWorkDayStatus.IN_REVIEW
+            work_day.save(update_fields=["status", "updated_at"])
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_ATTENDANCE_CONSOLIDATED",
+            subject_type="FIELD_WORK_DAY",
+            subject_id=work_day.id,
+            metadata={
+                "payroll_period_id": period.id if period else None,
+                "employee_count": len(consolidations),
+                "conflict_count": conflict_count,
+                "warning_count": warning_count,
+            },
+        )
+    return consolidations
+
+
+def approve_field_attendance(
+    *,
+    request,
+    actor,
+    work_day: FieldWorkDay,
+) -> list[FieldAttendanceConsolidation]:
+    """Aprueba la consolidacion del dia si no hay conflictos bloqueantes."""
+    if work_day.status == FieldWorkDayStatus.LOCKED:
+        raise _field_error("invalid_state", "El dia de campo bloqueado no admite aprobacion directa.")
+    blocked = FieldAttendanceConsolidation.objects.filter(
+        work_day=work_day,
+        status__in=[FieldAttendanceConsolidationStatus.CONFLICT, FieldAttendanceConsolidationStatus.BLOCKED],
+    )
+    if blocked.exists():
+        raise _field_error(
+            "blocked_conflict",
+            "No se puede aprobar asistencia de campo con conflictos o bloqueos.",
+            context={"work_day_id": work_day.id, "blocked_count": blocked.count()},
+        )
+    eligible = FieldAttendanceConsolidation.objects.filter(
+        work_day=work_day,
+        status__in=[FieldAttendanceConsolidationStatus.OK, FieldAttendanceConsolidationStatus.WARNING],
+    )
+    if not eligible.exists():
+        raise _field_error("invalid_state", "No hay consolidaciones listas para aprobar.")
+
+    now = timezone.now()
+    approved_count = eligible.count()
+    with transaction.atomic():
+        eligible.update(status=FieldAttendanceConsolidationStatus.APPROVED, approved_by=actor, approved_at=now)
+        work_day.status = FieldWorkDayStatus.APPROVED
+        work_day.approved_by = actor
+        work_day.approved_at = now
+        work_day.save(update_fields=["status", "approved_by", "approved_at", "updated_at"])
+        _audit(
+            request=request,
+            actor=actor,
+            event_type="FIELD_ATTENDANCE_APPROVED",
+            subject_type="FIELD_WORK_DAY",
+            subject_id=work_day.id,
+            metadata={"approved_count": approved_count},
+        )
+    return list(FieldAttendanceConsolidation.objects.filter(work_day=work_day).order_by("employee_id"))
