@@ -77,6 +77,8 @@ urlpatterns = [
     path("api/org/", include("apps.modulos.org.urls")),
     # HR
     path("api/hr/", include("apps.modulos.hr.urls")),
+    # Manejo de Fincas (agrícola)
+    path("api/finca/", include("apps.modulos.finca.urls")),
     # Accounting
     path("api/accounting/", include("apps.kernels.accounting.urls")),
     # Payments/Cash
