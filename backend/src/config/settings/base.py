@@ -245,6 +245,7 @@ INSTALLED_APPS = [
     "apps.modulos.org.apps.OrgConfig",  # <-- NUEVO
     "apps.modulos.parties.apps.PartiesConfig",
     "apps.modulos.hr.apps.HrConfig",  # <-- NUEVO
+    "apps.modulos.controls.apps.ControlsConfig",  # Capa 3: control plane anti-fraude
     "apps.kernels.accounting.apps.AccountingConfig",
     "apps.kernels.payments.apps.PaymentsConfig",
     "apps.kernels.portfolio.apps.PortfolioConfig",  # Financial Portfolio Kernel
