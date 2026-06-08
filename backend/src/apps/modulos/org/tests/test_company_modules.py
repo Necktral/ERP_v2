@@ -18,9 +18,12 @@ from apps.modulos.org import services_modules
 from apps.modulos.org.models import CompanyModule
 from apps.modulos.org.module_catalog import all_codes, core_codes, get_catalog, is_known
 from apps.modulos.org.permissions import require_module
+from apps.kernels.accounting.models import OperationalPostingConfig
+from apps.kernels.accounting.services import resolve_operational_posting_runtime
 from apps.modulos.org.services_modules import (
     ModuleDependencyError,
     allowed_module_codes,
+    disabled_posting_keys,
     resolve_company_modules,
 )
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
@@ -296,6 +299,56 @@ def test_put_writes_audit_event():
     assert AuditEvent.objects.filter(
         event_type="ORG_MODULES_UPDATED", subject_type="COMPANY_MODULE", subject_id=str(company.id)
     ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Sync con el GL (accounting lee el registro)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_posting_runtime_unchanged_without_explicit_disable():
+    """No-breaking: inventory está OFF por default pero SIN override no apaga GL."""
+    _, company, _ = _mk_org()
+    assert disabled_posting_keys(company) == frozenset()
+    rt = resolve_operational_posting_runtime(company=company)
+    assert rt.enable_inventory is True
+    assert rt.enable_billing is True
+
+
+@pytest.mark.django_db
+def test_posting_runtime_explicit_disable_forces_off():
+    _, company, _ = _mk_org()
+    CompanyModule.objects.create(company=company, module_code="inventory", is_enabled=False)
+    CompanyModule.objects.create(company=company, module_code="billing", is_enabled=False)
+    assert disabled_posting_keys(company) == frozenset({"enable_inventory", "enable_billing"})
+    rt = resolve_operational_posting_runtime(company=company)
+    assert rt.enable_inventory is False
+    assert rt.enable_billing is False
+
+
+@pytest.mark.django_db
+def test_posting_runtime_module_disable_overrides_config_row():
+    _, company, _ = _mk_org()
+    OperationalPostingConfig.objects.create(
+        company=company,
+        branch=None,
+        posting_mode=OperationalPostingConfig.PostingMode.HYBRID,
+        enable_billing=True,
+        enable_inventory=True,
+    )
+    assert resolve_operational_posting_runtime(company=company).enable_inventory is True
+    CompanyModule.objects.create(company=company, module_code="inventory", is_enabled=False)
+    rt = resolve_operational_posting_runtime(company=company)
+    assert rt.enable_inventory is False
+    assert rt.enable_billing is True
+
+
+@pytest.mark.django_db
+def test_posting_runtime_payroll_disable_forces_nomina_off():
+    _, company, _ = _mk_org()
+    assert resolve_operational_posting_runtime(company=company).enable_nomina is True
+    CompanyModule.objects.create(company=company, module_code="payroll", is_enabled=False)
+    assert resolve_operational_posting_runtime(company=company).enable_nomina is False
 
 
 # ---------------------------------------------------------------------------

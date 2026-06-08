@@ -49,6 +49,19 @@ def enabled_codes(company: OrgUnit) -> list[str]:
     return [spec.code for spec in get_catalog() if state.get(spec.code)]
 
 
+def disabled_posting_keys(company: OrgUnit) -> frozenset[str]:
+    """``posting_key`` cuyo módulo está EXPLÍCITAMENTE deshabilitado (override OFF).
+
+    Solo los disables explícitos propagan al GL; la ausencia de fila deja el
+    posting como esté (no-breaking: el default híbrido NO apaga posting
+    retroactivamente). Lo consume el resolver de posting de accounting.
+    """
+    disabled = set(
+        CompanyModule.objects.filter(company=company, is_enabled=False).values_list("module_code", flat=True)
+    )
+    return frozenset(spec.posting_key for spec in get_catalog() if spec.posting_key and spec.code in disabled)
+
+
 def allowed_module_codes(permissions: Iterable[str]) -> list[str]:
     """Códigos de módulo "permitidos" por RBAC, en el espacio del catálogo.
 
