@@ -178,18 +178,31 @@ class WorkOrder(models.Model):
 
 
 class InsumoApplication(models.Model):
-    """Consumo de insumo aplicado en una orden de trabajo (ref suave a inventario)."""
+    """Consumo de insumo en una orden de trabajo.
+
+    `source=MANUAL`: registro suelto (costo digitado). `source=INVENTORY`: descontado
+    de stock real vía `kernels.inventarios` (costo = promedio del movimiento), con
+    referencia al `StockMovement` — sin duplicar el movimiento de inventario.
+    """
+
+    class Source(models.TextChoices):
+        MANUAL = "MANUAL", "Manual"
+        INVENTORY = "INVENTORY", "Inventario"
 
     class Meta:
         app_label = "finca"
         indexes = [models.Index(fields=["work_order"])]
 
     work_order = models.ForeignKey(WorkOrder, on_delete=models.CASCADE, related_name="insumos")
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.MANUAL)
     item_code = models.CharField(max_length=64, blank=True, default="")
     item_name = models.CharField(max_length=160, blank=True, default="")
     quantity = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     unit = models.CharField(max_length=24, blank=True, default="")
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    inventory_item_id = models.PositiveIntegerField(null=True, blank=True)
+    warehouse_id = models.PositiveIntegerField(null=True, blank=True)
+    stock_movement_ref = models.CharField(max_length=64, blank=True, default="")
     applied_at = models.DateTimeField(default=timezone.now)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(default=timezone.now, editable=False)
