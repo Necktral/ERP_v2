@@ -128,3 +128,22 @@ class InsumoIn(serializers.Serializer):
     unit = serializers.CharField(max_length=24, required=False, allow_blank=True, default="")
     unit_cost = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IssueInsumoIn(serializers.Serializer):
+    """Consumo de insumo desde stock real (#2): descuenta inventario vía post_issue."""
+
+    warehouse_id = serializers.IntegerField()
+    item_id = serializers.IntegerField()
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2)
+    idempotency_key = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class FincaCostPostIn(serializers.Serializer):
+    """Disparo del asiento de reclasificación del costo real de una finca (#1)."""
+
+    finca_id = serializers.IntegerField()
+    season = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
+    date_from = serializers.DateField(required=False, allow_null=True)
+    date_to = serializers.DateField(required=False, allow_null=True)

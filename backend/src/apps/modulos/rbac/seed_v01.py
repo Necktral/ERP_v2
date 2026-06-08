@@ -117,6 +117,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.capture": "Registrar labores ejecutadas e insumos.",
         "finca.report.read": "Ver costeo de fincas/lotes.",
         "finca.field.read": "Ver costeo real desde asistencia de campo y reconciliación.",
+        "finca.cost.post": "Postear (reclasificar) el costo real de la finca al GL.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -340,6 +341,7 @@ def seed_rbac_v01() -> SeedResult:
             "finca.work.capture",
             "finca.report.read",
             "finca.field.read",
+            "finca.cost.post",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -878,6 +880,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.capture",
         "finca.report.read",
         "finca.field.read",
+        "finca.cost.post",
     ]
     role_to_perms["finca_capataz"] = [
         "finca.finca.read",

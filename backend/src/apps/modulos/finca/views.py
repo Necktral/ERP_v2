@@ -13,9 +13,11 @@ from apps.modulos.iam.models import OrgUnit
 
 from .models import FincaProfile, Labor, Plot, WorkOrder
 from .serializers import (
+    FincaCostPostIn,
     FincaProfileIn,
     FincaProfileOut,
     InsumoIn,
+    IssueInsumoIn,
     LaborCreateIn,
     LaborOut,
     PlotCreateIn,
@@ -25,6 +27,7 @@ from .serializers import (
     WorkOrderOut,
     WorkOrderUpdateIn,
 )
+from .accounting_link import post_finca_cost_to_accounting
 from .field_link import (
     company_real_cost_summary,
     field_labor_rollup,
@@ -32,6 +35,7 @@ from .field_link import (
     finca_real_cost_summary,
     reconcile_field_catalog,
 )
+from .inventory_link import issue_insumo_from_stock
 from .services import (
     apply_insumo,
     company_cost_summary,
@@ -261,6 +265,37 @@ class WorkOrderInsumoView(APIView):
         return Response({"id": app.id}, status=status.HTTP_201_CREATED)
 
 
+class WorkOrderIssueInsumoView(APIView):
+    """#2 — Consume un insumo desde stock real (descuenta inventario + costo promedio)."""
+
+    permission_classes = [rbac_permission("finca.work.capture")]
+    throttle_scope = "admin_writes"
+
+    def post(self, request, work_order_id: int):
+        wo = get_object_or_404(WorkOrder, id=work_order_id, finca__parent=request.company)
+        s = IssueInsumoIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        try:
+            app = issue_insumo_from_stock(
+                wo,
+                warehouse_id=v["warehouse_id"],
+                item_id=v["item_id"],
+                qty=v["quantity"],
+                request=request,
+                actor=request.user,
+                idempotency_key=v.get("idempotency_key", ""),
+                note=v.get("note", ""),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"id": app.id, "source": app.source, "unit_cost": str(app.unit_cost),
+             "stock_movement_ref": app.stock_movement_ref},
+            status=status.HTTP_201_CREATED,
+        )
+
+
 # --------------------------------------------------------------------------- #
 # Reportes / costeo
 # --------------------------------------------------------------------------- #
@@ -357,3 +392,26 @@ class CompanyRealCostReportView(APIView):
             company_real_cost_summary(request.company, season=season, **_field_filters(request)),
             status=status.HTTP_200_OK,
         )
+
+
+class FincaCostPostView(APIView):
+    """#1 — Postea (reclasifica) el costo real de una finca al GL, best-effort."""
+
+    permission_classes = [rbac_permission("finca.cost.post")]
+    throttle_scope = "admin_writes"
+
+    def post(self, request):
+        s = FincaCostPostIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        finca = _branch_of_company(request, int(v["finca_id"]))
+        filters: dict = {}
+        if v.get("date_from"):
+            filters["date_from"] = v["date_from"]
+        if v.get("date_to"):
+            filters["date_to"] = v["date_to"]
+        result = post_finca_cost_to_accounting(
+            request=request, actor=request.user, finca=finca,
+            season=(v.get("season") or None), **filters,
+        )
+        return Response(result, status=status.HTTP_200_OK)
