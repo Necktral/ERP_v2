@@ -57,6 +57,8 @@ def seed_rbac_v01() -> SeedResult:
         "org.branch.read": "Ver sucursales.",
         "org.branch.create": "Crear sucursales.",
         "org.branch.update": "Actualizar sucursales.",
+        "org.module.read": "Ver módulos habilitados de la empresa.",
+        "org.module.manage": "Habilitar/deshabilitar módulos de la empresa.",
         # IAM
         "iam.users.create": "Crear usuarios del sistema (provisionar acceso a empleados).",
         # HR
@@ -293,6 +295,8 @@ def seed_rbac_v01() -> SeedResult:
             "org.branch.read",
             "org.branch.create",
             "org.branch.update",
+            "org.module.read",
+            "org.module.manage",
             "iam.users.create",
             "hr.position.read",
             "hr.position.create",
