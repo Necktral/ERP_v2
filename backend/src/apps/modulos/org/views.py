@@ -15,11 +15,19 @@ from apps.modulos.iam.selectors import get_accessible_companies
 from apps.modulos.rbac.models import RoleAssignment
 
 from .models import BranchProfile, CompanyProfile
+from .module_catalog import get_catalog
 from .serializers import (
     BranchCreateSerializer,
     BranchUpdateSerializer,
     CompanyCreateSerializer,
     CompanyProfileUpdateSerializer,
+    ModulesUpdateIn,
+    ModuleStateOut,
+)
+from .services_modules import (
+    ModuleDependencyError,
+    resolve_company_modules,
+    set_company_modules,
 )
 
 
@@ -367,3 +375,70 @@ class CompanyProfileView(MethodThrottleScopeMixin, APIView):
             after_snapshot=after,
         )
         return Response({"ok": True}, status=status.HTTP_200_OK)
+
+
+class CompanyModulesView(MethodThrottleScopeMixin, APIView):
+    """Módulos que la empresa ocupa (habilitación self-service, advisory).
+
+    Es la decisión de negocio "¿qué módulos usa esta empresa?", independiente del
+    acceso por permisos (que sigue gobernado por RBAC). El front cruza esto con
+    ``allowed_modules`` para mostrar/ocultar.
+
+    Permisos por método:
+      - GET -> org.module.read
+      - PUT -> org.module.manage
+    """
+
+    throttle_scope_by_method = {
+        "GET": "heavy_reads",
+        "PUT": "admin_writes",
+    }
+
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [rbac_permission("org.module.manage")()]
+        return [rbac_permission("org.module.read")()]
+
+    def get(self, request):
+        company: OrgUnit = request.company
+        state = resolve_company_modules(company)
+        rows = [
+            {
+                "code": spec.code,
+                "label": spec.label,
+                "category": spec.category,
+                "core": spec.core,
+                "is_enabled": bool(state.get(spec.code, spec.default_enabled)),
+            }
+            for spec in get_catalog()
+        ]
+        return Response({"results": ModuleStateOut(rows, many=True).data}, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        company: OrgUnit = request.company
+        serializer = ModulesUpdateIn(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            after = set_company_modules(
+                company=company,
+                changes=serializer.validated_data["modules"],
+                request=request,
+                actor=request.user,
+            )
+        except ModuleDependencyError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        rows = [
+            {
+                "code": spec.code,
+                "label": spec.label,
+                "category": spec.category,
+                "core": spec.core,
+                "is_enabled": bool(after.get(spec.code, spec.default_enabled)),
+            }
+            for spec in get_catalog()
+        ]
+        return Response({"results": ModuleStateOut(rows, many=True).data}, status=status.HTTP_200_OK)
