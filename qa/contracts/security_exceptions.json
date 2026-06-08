@@ -1,49 +1,8 @@
 {
   "version": 1,
-  "generated_at": "2026-03-25T00:00:00Z",
+  "generated_at": "2026-06-06T00:00:00Z",
   "defaults": {
     "max_expiry_days": 90
   },
-  "exceptions": [
-    {
-      "id": "npm-picomatch-1115382",
-      "source": "npm",
-      "package": "picomatch",
-      "vuln_id": "1115382",
-      "severity": "high",
-      "reason": "Transitive vulnerability in frontend toolchain pending upstream release alignment.",
-      "ticket_ref": "U6-SEC-001",
-      "expires_on": "2026-05-31"
-    },
-    {
-      "id": "npm-picomatch-1115384",
-      "source": "npm",
-      "package": "picomatch",
-      "vuln_id": "1115384",
-      "severity": "high",
-      "reason": "Transitive vulnerability in frontend toolchain pending upstream release alignment.",
-      "ticket_ref": "U6-SEC-001",
-      "expires_on": "2026-05-31"
-    },
-    {
-      "id": "npm-picomatch-1115394",
-      "source": "npm",
-      "package": "picomatch",
-      "vuln_id": "1115394",
-      "severity": "high",
-      "reason": "Transitive vulnerability in frontend toolchain pending upstream release alignment.",
-      "ticket_ref": "U6-SEC-001",
-      "expires_on": "2026-05-31"
-    },
-    {
-      "id": "npm-picomatch-1115396",
-      "source": "npm",
-      "package": "picomatch",
-      "vuln_id": "1115396",
-      "severity": "high",
-      "reason": "Transitive vulnerability in frontend toolchain pending upstream release alignment.",
-      "ticket_ref": "U6-SEC-001",
-      "expires_on": "2026-05-31"
-    }
-  ]
+  "exceptions": []
 }

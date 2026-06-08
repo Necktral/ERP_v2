@@ -4,9 +4,8 @@ Tests del kernel portfolio — CxC, CxP, Créditos, allocations, devengo de inte
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
-from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
@@ -14,12 +13,9 @@ from django.utils import timezone
 from apps.kernels.portfolio.models import (
     AccountingStatus,
     AllocationStatus,
-    Credit,
     CreditStatus,
     InterestAccrual,
     ObligationStatus,
-    Payable,
-    PaymentAllocation,
     PortfolioSettings,
     Receivable,
 )

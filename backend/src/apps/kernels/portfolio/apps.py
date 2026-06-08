@@ -11,6 +11,5 @@ class PortfolioConfig(AppConfig):
 
     def ready(self):
         """Import signals and register event handlers"""
-        # Import signals when app is ready
-        # from . import signals  # TODO: when needed
+        # Signals are intentionally not registered in this kernel.
         pass
