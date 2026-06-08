@@ -250,6 +250,7 @@ INSTALLED_APPS = [
     "apps.kernels.portfolio.apps.PortfolioConfig",  # Financial Portfolio Kernel
     "apps.kernels.nomina.apps.NominaConfig",         # Nómina Kernel
     "apps.kernels.reporting.apps.ReportingConfig",
+    "apps.modulos.intercompany.apps.IntercompanyConfig",  # Orquestación intercompany (consolidación de grupo)
     "apps.modulos.cec.apps.CecConfig",
     "apps.modulos.integration.apps.IntegrationConfig",
     "apps.modulos.dashboard.apps.DashboardConfig",
