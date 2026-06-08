@@ -111,6 +111,7 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
     ("NOMINA", "PayrollPeriodApproved"),
+    ("FINCA", "FincaCostAccrued"),
 }
 TRANSFER_PAYMENT_ACCOUNTING_EVENTS = {
     ("PAYMENTS", "PaymentCaptured"),
@@ -124,6 +125,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
     ("NOMINA", "PayrollPeriodApproved"),
+    ("FINCA", "FincaCostAccrued"),
 }
 ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
     ("PAYMENTS", "PaymentCaptured"),
@@ -212,6 +214,10 @@ class OperationalPostingRuntime:
             return bool(self.enable_inventory)
         if source_module == "NOMINA":
             return bool(self.enable_nomina)
+        if source_module == "FINCA":
+            # La reclasificación de costo agrícola por finca se postea siempre que el
+            # posting no esté DISABLED (no tiene toggle propio en v1).
+            return True
         return False
 
 
@@ -1787,6 +1793,20 @@ def build_rules_json_v1() -> dict[str, Any]:
                     {"account": "2306", "side": "CREDIT", "amount_from": "total_thirteenth", "sign": 1},
                     {"account": "2307", "side": "CREDIT", "amount_from": "total_inss_patronal", "sign": 1},
                     {"account": "2308", "side": "CREDIT", "amount_from": "total_inatec", "sign": 1},
+                ],
+            },
+            {
+                # Reclasificación del costo agrícola por finca (no capitaliza a activo).
+                # DÉBITO costo-de-cultivo-por-finca = CRÉDITO costos-aplicados (contra),
+                # que neutraliza el gasto ya reconocido por nómina (mano de obra) e
+                # inventario (insumos): el total de Resultados no cambia, pero el costo
+                # queda visible por finca. Cuentas por defecto, ajustables con el contador.
+                "id": "finca_cost_reclass",
+                "source_module": "FINCA",
+                "event_type": "FincaCostAccrued",
+                "lines": [
+                    {"account": "6301", "side": "DEBIT", "amount_from": "total_cost", "sign": 1},
+                    {"account": "6309", "side": "CREDIT", "amount_from": "total_cost", "sign": 1},
                 ],
             },
         ],
