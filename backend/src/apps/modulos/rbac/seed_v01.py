@@ -261,6 +261,11 @@ def seed_rbac_v01() -> SeedResult:
             "procurement.doc.read": "Ver documentos de compra.",
             "procurement.doc.post": "Postear documentos de compra.",
             "procurement.doc.void": "Anular documentos de compra.",
+            # COMISARIATO (tienda de la empresa a crédito)
+            "comisariato.read": "Ver cuentas/saldos del comisariato.",
+            "comisariato.account.manage": "Crear/editar cuentas de crédito del comisariato (límite, segmento).",
+            "comisariato.sell": "Vender mercadería a crédito en el comisariato.",
+            "comisariato.payroll.apply": "Aplicar el crédito del comisariato a la planilla (descuento + abono).",
             # SoD (maker-checker) para anulación de documentos de facturación
             "billing.doc.void.request": "Solicitar anulación de documento (maker).",
             "billing.doc.void.approve": "Aprobar anulación de documento (checker, SoD).",
@@ -884,6 +889,24 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_auditor": retail_perms_auditor,
     }
     for role_name, codes_to_add in role_retail_matrix.items():
+        current = role_to_perms.get(role_name, [])
+        for code in codes_to_add:
+            if code not in current:
+                current.append(code)
+
+    comisariato_perms_full = [
+        "comisariato.read",
+        "comisariato.account.manage",
+        "comisariato.sell",
+        "comisariato.payroll.apply",
+    ]
+    comisariato_perms_cashier = ["comisariato.read", "comisariato.sell"]
+    role_comisariato_matrix = {
+        "company_admin": comisariato_perms_full,
+        "branch_manager": comisariato_perms_full,
+        "cashier": comisariato_perms_cashier,
+    }
+    for role_name, codes_to_add in role_comisariato_matrix.items():
         current = role_to_perms.get(role_name, [])
         for code in codes_to_add:
             if code not in current:
