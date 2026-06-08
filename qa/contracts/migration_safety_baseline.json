@@ -889,6 +889,14 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "2468230d17d57bfa2a5239cec79146ec8d1e0e121f87937c2792864359be6a0a"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0010_field_capture_models.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "expand_field_attendance_capture_foundation",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "PR17-FIELD-ATTENDANCE-CAPTURE",
+      "fingerprint": "e9f1576619fa9b78350d78316e5f591dbd1dbba24bd6d35c9695a4ac9ca47bcc"
     }
   },
   "notes": [
