@@ -48,10 +48,10 @@ def periods_per_year(period_type: str) -> int:
     Driver del IR para no anualizar incorrectamente una planilla catorcenal.
     """
     return {
-        PeriodType.MONTHLY: 12,
-        PeriodType.FIRST_HALF: 24,
-        PeriodType.SECOND_HALF: 24,
-        PeriodType.CATORCENA: 26,
+        PeriodType.MONTHLY.value: 12,
+        PeriodType.FIRST_HALF.value: 24,
+        PeriodType.SECOND_HALF.value: 24,
+        PeriodType.CATORCENA.value: 26,
     }.get(period_type, 24)
 
 
@@ -1472,9 +1472,11 @@ class Holiday(models.Model):
         combinación mes/día es inválida.
         """
         if self.date_kind == HolidayDateKind.FIXED:
+            if self.month is None or self.day is None:
+                return None
             try:
                 return date(year, self.month, self.day)
-            except (TypeError, ValueError):
+            except ValueError:
                 return None
         if self.date_kind == HolidayDateKind.EASTER:
             if self.easter_offset is None:

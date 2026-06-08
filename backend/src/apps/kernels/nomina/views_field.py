@@ -10,6 +10,8 @@ Se monta en `api/nomina/field/...` (esquema actual). Cuando Codex aterrice
 """
 from __future__ import annotations
 
+from typing import Any
+
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -80,6 +82,7 @@ def _domain_error(exc: ValueError) -> Response:
 
 def _approval_error(exc: DomainError) -> Response:
     """Mapea los errores del maker-checker SoD a su HTTP."""
+    http: int
     if isinstance(exc, (SelfApprovalError, ApproverNotAuthorizedError)):
         http = status.HTTP_403_FORBIDDEN
     elif isinstance(exc, ApprovalStateError):
@@ -105,9 +108,9 @@ def _crew(work_day: FieldWorkDay, crew_id: int) -> FieldCrew:
     return get_object_or_404(FieldCrew, id=crew_id, work_day=work_day)
 
 
-def _work_day_response(work_day: FieldWorkDay, *, created: bool = False, extra: dict | None = None):
+def _work_day_response(work_day: FieldWorkDay, *, created: bool = False, extra: dict[str, Any] | None = None):
     work_day.refresh_from_db()
-    data = FieldWorkDayOut(work_day).data
+    data: dict[str, Any] = dict(FieldWorkDayOut(work_day).data)
     if extra:
         data = {**data, **extra}
     return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

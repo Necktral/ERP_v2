@@ -188,8 +188,8 @@ class PayrollEntryCreateIn(serializers.Serializer):
     days_subsidy = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0.00"))
     overtime_hours = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, default=Decimal("0.00"))
     sunday_worked_days = serializers.IntegerField(min_value=0, required=False, default=0)
-    seventh_day_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default="0.00")
-    holiday_worked_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default="0.00")
+    seventh_day_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0.00"))
+    holiday_worked_days = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=Decimal("0.00"))
 
     # Descuentos adicionales manuales
     loan_payment = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))

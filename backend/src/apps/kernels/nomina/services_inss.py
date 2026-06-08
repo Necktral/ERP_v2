@@ -173,7 +173,10 @@ def classify_entries_by_inss(*, request, actor, period: PayrollPeriod) -> dict:
             .filter(sheet__period=period, employee__isnull=False)
         )
         for entry in entries:
-            elected = elections.get(entry.employee_id)
+            employee_id = entry.employee_id
+            if employee_id is None:
+                continue
+            elected = elections.get(employee_id)
             if elected is None:
                 continue
             changed = False
