@@ -26,6 +26,7 @@ from config.throttling import AuthLoginRateThrottle
 from apps.modulos.iam.models import AdminGrant, OrgUnit, UserMembership
 from apps.modulos.iam.selectors import build_acl_snapshot
 from apps.modulos.org.models import BranchProfile, CompanyProfile
+from apps.modulos.org.services_modules import allowed_module_codes, enabled_codes
 from apps.modulos.rbac.models import Role, RoleAssignment
 from apps.modulos.rbac.seed_v01 import seed_rbac_v01
 
@@ -172,6 +173,7 @@ def _normalized_acl_snapshot(user) -> dict[str, Any]:
                 "company_name": company.get("company_name"),
                 "branches": normalized_branches,
                 "permissions": list(company.get("permissions") or []),
+                "enabled_modules": _enabled_modules_for_company_id(company.get("company_id")),
             }
         )
 
@@ -240,6 +242,16 @@ def _allowed_modules_for_permissions(permissions: set[str]) -> list[str]:
         if any(any(permission.startswith(prefix) for prefix in prefixes) for permission in permissions):
             allowed.append(module_key)
     return allowed
+
+
+def _enabled_modules_for_company_id(company_id) -> list[str]:
+    """Módulos habilitados (espacio del catálogo) de una empresa por id."""
+    if company_id in (None, ""):
+        return []
+    company = OrgUnit.objects.filter(id=company_id, unit_type=OrgUnit.UnitType.COMPANY).first()
+    if company is None:
+        return []
+    return enabled_codes(company)
 
 
 def _require_secure_cookie_transport(request, *, transport: str) -> Response | None:
@@ -1097,7 +1109,10 @@ class MeACLView(APIView):
     throttle_scope = "me_acl_read"
 
     def get(self, request):
-        return Response(build_acl_snapshot(request.user), status=status.HTTP_200_OK)
+        snapshot = build_acl_snapshot(request.user)
+        for company in snapshot.get("companies") or []:
+            company["enabled_modules"] = _enabled_modules_for_company_id(company.get("company_id"))
+        return Response(snapshot, status=status.HTTP_200_OK)
 
 
 class BootstrapSessionView(APIView):
@@ -1108,6 +1123,14 @@ class BootstrapSessionView(APIView):
         user_payload = MeSerializer.from_user(request.user)
         acl_snapshot = _normalized_acl_snapshot(request.user)
         effective_context, selected_permissions = _resolve_effective_context(request, acl_snapshot)
+
+        selected_company_id = effective_context.get("company_id") or effective_context.get("recommended_company_id")
+        if not selected_company_id and acl_snapshot.get("companies"):
+            selected_company_id = acl_snapshot["companies"][0].get("company_id")
+        selected_enabled_modules = _enabled_modules_for_company_id(selected_company_id)
+        selected_effective_modules = sorted(
+            set(allowed_module_codes(selected_permissions)) & set(selected_enabled_modules)
+        )
 
         device_class = _request_device_class(request)
         source_device = _request_source_device(request)
@@ -1133,6 +1156,8 @@ class BootstrapSessionView(APIView):
                 "acl_snapshot": acl_snapshot,
             },
             "allowed_modules": _allowed_modules_for_permissions(selected_permissions),
+            "enabled_modules": selected_enabled_modules,
+            "effective_modules": selected_effective_modules,
             "feature_flags": {
                 "desktop_shell_enabled": True,
                 "mobile_shell_enabled": True,
