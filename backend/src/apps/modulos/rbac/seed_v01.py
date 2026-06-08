@@ -29,6 +29,7 @@ def seed_rbac_v01() -> SeedResult:
         "hr_manager": "Gestión completa de RRHH.",
         "hr_clerk": "Operación RRHH (altas/bajas/edición), sin RBAC.",
         "auditor": "Lectura de auditoría y reportes.",
+        "controls_officer": "Oficial de control interno: reglas SoD y hallazgos anti-fraude.",
         "warehouse_manager": "Gestión de inventario (placeholder).",
         "warehouse_operator": "Operación inventario (placeholder).",
         "sales_manager": "Gestión comercial (placeholder).",
@@ -103,6 +104,11 @@ def seed_rbac_v01() -> SeedResult:
         # Auditoría
         "audit.read": "Leer auditoría.",
         "audit.export": "Exportar auditoría.",
+        # Controls (Capa 3: anti-fraude / SoD)
+        "controls.sod.read": "Ver matriz SoD y violaciones por concesión.",
+        "controls.sod.manage": "Gestionar reglas de segregación de funciones.",
+        "controls.findings.read": "Ver hallazgos de control.",
+        "controls.findings.manage": "Correr detectores y resolver hallazgos.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -316,6 +322,10 @@ def seed_rbac_v01() -> SeedResult:
             "rbac.assignments.update",
             "audit.read",
             "audit.export",
+            "controls.sod.read",
+            "controls.sod.manage",
+            "controls.findings.read",
+            "controls.findings.manage",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -578,6 +588,16 @@ def seed_rbac_v01() -> SeedResult:
             "report.dataset.read",
             "report.run.read",
             "report.dashboard.read",
+            # Controls (lectura)
+            "controls.sod.read",
+            "controls.findings.read",
+        ],
+        "controls_officer": [
+            "controls.sod.read",
+            "controls.sod.manage",
+            "controls.findings.read",
+            "controls.findings.manage",
+            "audit.read",
         ],
         "warehouse_manager": [
             "inventory.item.read",
