@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-06-07T00:48:06.492546+00:00",
+  "generated_at": "2026-06-08T02:11:11.036723+00:00",
   "ratchet_edges": [
     "kernels.accounting->kernels.facturacion",
     "kernels.accounting->kernels.reporting",
@@ -27,9 +27,13 @@
     "kernels.inventarios->modulos.common",
     "kernels.inventarios->modulos.iam",
     "kernels.inventarios->modulos.integration",
+    "kernels.nomina->kernels.accounting",
+    "kernels.nomina->kernels.portfolio",
     "kernels.nomina->modulos.audit",
     "kernels.nomina->modulos.common",
+    "kernels.nomina->modulos.hr",
     "kernels.nomina->modulos.iam",
+    "kernels.nomina->modulos.integration",
     "kernels.payments->modulos.audit",
     "kernels.payments->modulos.common",
     "kernels.payments->modulos.iam",
