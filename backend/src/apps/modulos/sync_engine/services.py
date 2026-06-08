@@ -43,6 +43,8 @@ from . import handlers_inventory as _handlers_inventory  # noqa: F401
 from . import handlers_pos as _handlers_pos  # noqa: F401
 # Import por side-effect: registra handlers billing offline en el registry.
 from . import handlers_billing as _handlers_billing  # noqa: F401
+# Import por side-effect: registra handlers finca (captura de campo offline).
+from . import handlers_finca as _handlers_finca  # noqa: F401
 from .signing import (
     build_command_signing_message,
     canon_json,

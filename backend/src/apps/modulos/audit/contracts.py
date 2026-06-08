@@ -486,6 +486,8 @@ ALLOWED_EVENT_TYPES.update(
     }
 )
 ALLOWED_SUBJECT_TYPES.update({"FINCA", "FINCA_PLOT", "FINCA_LABOR", "FINCA_WORKORDER"})
+# Reject reason codes para los handlers de sync offline de finca (sync_engine).
+ALLOWED_REASON_CODES.update({"FINCA_SCHEMA_INVALID", "FINCA_INVALID_SCOPE", "FINCA_NOT_FOUND"})
 
 
 def validate_event_type(event_type: str) -> None:
