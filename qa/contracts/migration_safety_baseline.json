@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-06-07T17:30:43.358406+00:00",
+  "generated_at": "2026-06-08T02:15:21.232130+00:00",
   "migrations": {
     "backend/src/apps/kernels/accounting/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
@@ -786,6 +786,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "2afbd66d441952a954ac71675cb8259dc03f7b8a663ff8e4472cbbef3a5e12fc"
     },
+    "backend/src/apps/kernels/nomina/migrations/0004_alter_payrollentry_payment_frequency_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "expand_field_attendance_foundation_and_catorcena_choices",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "PR16-FIELD-ATTENDANCE",
+      "fingerprint": "95f51250c98b88bfcc5222b4d89baf38b8215a53c981d06f3113216ce902cc97"
+    },
     "backend/src/apps/kernels/payments/migrations/0005_alter_paymentintent_payment_method.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -833,6 +841,54 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "73e46583cea68343e4fe7aa95b20d37d80e91c374913a7da855f8d9ba26189a2"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0013_operationalpostingconfig_enable_nomina.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "012c2ddc32cf378de108f1ac55ba04efcc8ccf49c0ea55f7a6bce4e6d8861589"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0005_employeeinssenrollment_payrollinsselection.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3a4fa70e9d59e3221f8c58228efd973fdb3972e82767389628d56e31440212a3"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0006_nominaconfig_holiday_worked_rate_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ea12a8cb16ade083ac2ae6995a6fc404da6568db58f2c6d0e82cabd98533281a"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0007_holiday.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "db7a61776653ba826eb79fb92f4859e140bb981e2320bc0e0b87f124400a76b5"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0008_seed_nicaragua_holidays.py": {
+      "risk_class": "metadata_only",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "8c294e44c10cef81de6109ffb25d5d294b0867e4ae9333ddef9edbfd1c479ab7"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0009_alter_attendancereport_source_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "2468230d17d57bfa2a5239cec79146ec8d1e0e121f87937c2792864359be6a0a"
     }
   },
   "notes": [

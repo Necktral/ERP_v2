@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -23,6 +24,8 @@ from .serializers import (
     PayrollSheetCreateIn,
     PayrollSheetOut,
 )
+from .planilla_export import render_planilla_xlsx
+from .planilla_pdf import render_planilla_pdf
 from .services import (
     approve_sheet,
     compute_all_entries_in_sheet,
@@ -292,6 +295,8 @@ class PayrollEntryView(APIView):
             days_subsidy=v.get("days_subsidy", Decimal("0.00")),
             overtime_hours=v.get("overtime_hours", Decimal("0.00")),
             sunday_worked_days=v.get("sunday_worked_days", 0),
+            seventh_day_days=v.get("seventh_day_days", Decimal("0.00")),
+            holiday_worked_days=v.get("holiday_worked_days", Decimal("0.00")),
             loan_payment=v.get("loan_payment", Decimal("0.00")),
             food_deduction=v.get("food_deduction", Decimal("0.00")),
             advance_deduction=v.get("advance_deduction", Decimal("0.00")),
@@ -305,3 +310,40 @@ class PayrollEntryView(APIView):
         # Calcular automáticamente al crear
         entry = compute_entry(entry=entry)
         return Response(PayrollEntryOut(entry).data, status=status.HTTP_201_CREATED)
+
+
+class PayrollSheetXlsxView(APIView):
+    """Descarga la planilla legal (norma INSS) en .xlsx con todas las casillas."""
+
+    permission_classes = [rbac_permission("nomina.sheet.read")]
+
+    def get(self, request, period_id, sheet_id):
+        company: OrgUnit = request.company
+        period = get_object_or_404(PayrollPeriod, id=period_id, company=company)
+        sheet = get_object_or_404(PayrollSheet, id=sheet_id, period=period)
+        content = render_planilla_xlsx(sheet)
+        resp = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        resp["Content-Disposition"] = (
+            f'attachment; filename="planilla_{period.year}_{period.month:02d}_sheet{sheet_id}.xlsx"'
+        )
+        return resp
+
+
+class PayrollSheetPdfView(APIView):
+    """Descarga la planilla legal en PDF (WeasyPrint), mismas casillas que el .xlsx."""
+
+    permission_classes = [rbac_permission("nomina.sheet.read")]
+
+    def get(self, request, period_id, sheet_id):
+        company: OrgUnit = request.company
+        period = get_object_or_404(PayrollPeriod, id=period_id, company=company)
+        sheet = get_object_or_404(PayrollSheet, id=sheet_id, period=period)
+        content = render_planilla_pdf(sheet)
+        resp = HttpResponse(content, content_type="application/pdf")
+        resp["Content-Disposition"] = (
+            f'attachment; filename="planilla_{period.year}_{period.month:02d}_sheet{sheet_id}.pdf"'
+        )
+        return resp
