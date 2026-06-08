@@ -483,6 +483,8 @@ def _validate_unique_employees(lines: list[dict]) -> None:
     for line in lines:
         employee = line.get("employee")
         employee_id = getattr(employee, "id", None)
+        if employee_id is None:
+            raise _field_error("missing_employee", "employee es requerido.")
         if employee_id in seen:
             raise _field_error(
                 "duplicate_employee",
