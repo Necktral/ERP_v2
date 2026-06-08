@@ -19,6 +19,7 @@ from apps.modulos.org.models import CompanyModule
 from apps.modulos.org.module_catalog import all_codes, core_codes, get_catalog, is_known
 from apps.modulos.org.services_modules import (
     ModuleDependencyError,
+    allowed_module_codes,
     resolve_company_modules,
 )
 from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermission
@@ -73,6 +74,41 @@ def test_catalog_dependencies_resolvable():
     for spec in get_catalog():
         for dep in spec.depends_on:
             assert is_known(dep), f"'{spec.code}' depende de '{dep}' desconocido"
+
+
+def test_allowed_modules_legacy_contract_preserved():
+    """DRY: allowed_modules deriva del catálogo SIN cambiar el contrato del front."""
+    from apps.modulos.accounts.views import _allowed_modules_for_permissions
+
+    perms = {
+        "org.company.read",
+        "hr.employee.read",
+        "audit.read",
+        "fuel.shift.read",
+        "retail.pos.ticket.read",
+        "report.dashboard.read",
+        "sync.device.enroll",
+        "inventory.item.read",
+        "billing.customer.read",
+        "nomina.config.read",  # nómina NO participa del contrato legacy
+    }
+    allowed = set(_allowed_modules_for_permissions(perms))
+    assert allowed == {
+        "dashboard",
+        "organization",
+        "human_resources",
+        "audit",
+        "fuel",
+        "retail_pos",
+        "analytics",
+        "reporting",
+        "synchronization",
+        "inventory",
+        "billing",
+    }
+    # nómina sí existe en el catálogo (espacio completo), solo no en allowed_modules
+    assert "payroll" not in allowed
+    assert "payroll" in allowed_module_codes(perms)
 
 
 # ---------------------------------------------------------------------------

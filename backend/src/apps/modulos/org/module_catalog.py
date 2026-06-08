@@ -39,8 +39,11 @@ class ModuleSpec:
     core: bool = False
     #: Estado por defecto cuando la empresa no tiene un override explícito.
     default_enabled: bool = False
-    #: Prefijos de permiso que "encienden" el módulo en allowed_modules (DRY futuro).
+    #: Prefijos de permiso que "encienden" el módulo (fuente única del mapeo).
     permission_prefixes: tuple[str, ...] = ()
+    #: Participa del contrato legacy ``allowed_modules`` (gating de rutas del front).
+    #: Transitorio: el front migrará a ``effective_modules`` y este flag desaparece.
+    legacy_acl: bool = False
     #: Campo correspondiente en OperationalPostingConfig (sync GL = follow-up).
     posting_key: str | None = None
     #: Códigos de módulo que este requiere para poder habilitarse.
@@ -55,23 +58,23 @@ class ModuleSpec:
 # Orden estable = orden de presentación en el catálogo del front.
 _SPECS: tuple[ModuleSpec, ...] = (
     # --- CORE (always-on, no desactivables) ---
-    ModuleSpec("organization", "Organización", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("org.",)),
-    ModuleSpec("human_resources", "Recursos Humanos", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("hr.",)),
+    ModuleSpec("organization", "Organización", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("org.",), legacy_acl=True),
+    ModuleSpec("human_resources", "Recursos Humanos", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("hr.",), legacy_acl=True),
     ModuleSpec("accounting", "Contabilidad", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("accounting.",)),
-    ModuleSpec("audit", "Auditoría", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("audit.",)),
-    ModuleSpec("synchronization", "Sincronización", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("sync.",)),
+    ModuleSpec("audit", "Auditoría", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("audit.",), legacy_acl=True),
+    ModuleSpec("synchronization", "Sincronización", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("sync.",), legacy_acl=True),
     # --- OPERATIONS (set base ON por defecto) ---
     ModuleSpec("payroll", "Nómina", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("nomina.",), posting_key="enable_nomina"),
-    ModuleSpec("billing", "Facturación", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("billing.",), posting_key="enable_billing"),
-    ModuleSpec("reporting", "Reportes", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.",)),
-    ModuleSpec("analytics", "Analítica / Dashboard", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.dashboard.",)),
+    ModuleSpec("billing", "Facturación", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("billing.",), legacy_acl=True, posting_key="enable_billing"),
+    ModuleSpec("reporting", "Reportes", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.",), legacy_acl=True),
+    ModuleSpec("analytics", "Analítica / Dashboard", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.dashboard.",), legacy_acl=True),
     # --- FINANCE / VERTICALES (OFF hasta activar) ---
-    ModuleSpec("inventory", "Inventario", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("inventory.",), posting_key="enable_inventory"),
+    ModuleSpec("inventory", "Inventario", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("inventory.",), legacy_acl=True, posting_key="enable_inventory"),
     ModuleSpec("procurement", "Compras", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("procurement.",)),
     ModuleSpec("portfolio", "Cartera (CxC / CxP)", ModuleCategory.FINANCE, default_enabled=False, permission_prefixes=("portfolio.",)),
     ModuleSpec("payments", "Pagos / Caja", ModuleCategory.FINANCE, default_enabled=False, permission_prefixes=("payments.", "payment.")),
-    ModuleSpec("retail_pos", "Punto de Venta", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("retail.pos.",)),
-    ModuleSpec("fuel", "Estación de Servicio", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("fuel.",)),
+    ModuleSpec("retail_pos", "Punto de Venta", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("retail.pos.",), legacy_acl=True),
+    ModuleSpec("fuel", "Estación de Servicio", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("fuel.",), legacy_acl=True),
     ModuleSpec("cec", "CEC", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("cec.",)),
 )
 
@@ -100,6 +103,11 @@ def all_codes() -> tuple[str, ...]:
 def core_codes() -> frozenset[str]:
     """Códigos de módulos core (siempre habilitados, no togglables)."""
     return frozenset(spec.code for spec in _SPECS if spec.core)
+
+
+def legacy_acl_codes() -> frozenset[str]:
+    """Códigos que participan del contrato legacy ``allowed_modules`` del front."""
+    return frozenset(spec.code for spec in _SPECS if spec.legacy_acl)
 
 
 def default_state() -> dict[str, bool]:

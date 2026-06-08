@@ -26,6 +26,7 @@ from config.throttling import AuthLoginRateThrottle
 from apps.modulos.iam.models import AdminGrant, OrgUnit, UserMembership
 from apps.modulos.iam.selectors import build_acl_snapshot
 from apps.modulos.org.models import BranchProfile, CompanyProfile
+from apps.modulos.org.module_catalog import legacy_acl_codes
 from apps.modulos.org.services_modules import allowed_module_codes, enabled_codes
 from apps.modulos.rbac.models import Role, RoleAssignment
 from apps.modulos.rbac.seed_v01 import seed_rbac_v01
@@ -45,19 +46,6 @@ from .serializers import (
 User = get_user_model()
 
 _MOBILE_UA_RE = re.compile(r"(android|iphone|ipad|ipod|mobile)", re.IGNORECASE)
-
-_MODULE_PERMISSION_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("organization", ("org.",)),
-    ("human_resources", ("hr.",)),
-    ("audit", ("audit.",)),
-    ("fuel", ("fuel.",)),
-    ("retail_pos", ("retail.pos.",)),
-    ("analytics", ("report.dashboard.",)),
-    ("reporting", ("report.",)),
-    ("synchronization", ("sync.",)),
-    ("inventory", ("inventory.",)),
-    ("billing", ("billing.",)),
-)
 
 
 def _token_jti(token: RefreshToken) -> str:
@@ -236,12 +224,20 @@ def _resolve_effective_context(
     return context_payload, selected_permissions
 
 
+#: Clave sintética del landing del front; no es un módulo de negocio del catálogo.
+_DASHBOARD_LEGACY_KEY = "dashboard"
+
+
 def _allowed_modules_for_permissions(permissions: set[str]) -> list[str]:
-    allowed: list[str] = ["dashboard"]
-    for module_key, prefixes in _MODULE_PERMISSION_PREFIXES:
-        if any(any(permission.startswith(prefix) for prefix in prefixes) for permission in permissions):
-            allowed.append(module_key)
-    return allowed
+    """Contrato legacy ``allowed_modules`` (gating de rutas del front).
+
+    Derivado de ``MODULE_CATALOG`` (única fuente del mapeo módulo↔prefijo): toma
+    los códigos permitidos por RBAC y filtra a los marcados ``legacy_acl``,
+    anteponiendo el landing sintético ``dashboard``. Reusa ``allowed_module_codes``.
+    """
+    legacy = legacy_acl_codes()
+    catalog_allowed = [code for code in allowed_module_codes(permissions) if code in legacy]
+    return [_DASHBOARD_LEGACY_KEY, *catalog_allowed]
 
 
 def _enabled_modules_for_company_id(company_id) -> list[str]:
