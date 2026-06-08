@@ -47,6 +47,9 @@ def seed_rbac_v01() -> SeedResult:
 
         # NOMINA / Asistencia de campo
         "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+        # FINCA / Manejo de fincas (agrícola)
+        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
+        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
     }
 
     permissions = {
@@ -103,6 +106,16 @@ def seed_rbac_v01() -> SeedResult:
         # Auditoría
         "audit.read": "Leer auditoría.",
         "audit.export": "Exportar auditoría.",
+        # Finca (manejo de fincas)
+        "finca.finca.read": "Ver fincas y su geografía.",
+        "finca.finca.manage": "Gestionar perfil/geografía de fincas.",
+        "finca.plot.read": "Ver lotes.",
+        "finca.plot.manage": "Crear/actualizar lotes.",
+        "finca.labor.read": "Ver catálogo de labores.",
+        "finca.labor.manage": "Gestionar catálogo de labores.",
+        "finca.work.read": "Ver órdenes de trabajo / bitácora.",
+        "finca.work.capture": "Registrar labores ejecutadas e insumos.",
+        "finca.report.read": "Ver costeo de fincas/lotes.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -316,6 +329,15 @@ def seed_rbac_v01() -> SeedResult:
             "rbac.assignments.update",
             "audit.read",
             "audit.export",
+            "finca.finca.read",
+            "finca.finca.manage",
+            "finca.plot.read",
+            "finca.plot.manage",
+            "finca.labor.read",
+            "finca.labor.manage",
+            "finca.work.read",
+            "finca.work.capture",
+            "finca.report.read",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -842,6 +864,24 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.attendance.approve",
         "nomina.period.read",
         "nomina.period.approve",
+    ]
+    role_to_perms["finca_mandador"] = [
+        "finca.finca.read",
+        "finca.finca.manage",
+        "finca.plot.read",
+        "finca.plot.manage",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.work.capture",
+        "finca.report.read",
+    ]
+    role_to_perms["finca_capataz"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.work.read",
+        "finca.work.capture",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):

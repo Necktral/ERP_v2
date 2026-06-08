@@ -472,6 +472,19 @@ ALLOWED_EVENT_TYPES.update(
 )
 ALLOWED_SUBJECT_TYPES.update({"CASH_SESSION", "PAYMENT_INTENT"})
 
+# FINCA (Capa 6: manejo de fincas)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "FINCA_PROFILE_UPSERTED",
+        "FINCA_PLOT_CREATED",
+        "FINCA_PLOT_UPDATED",
+        "FINCA_LABOR_CREATED",
+        "FINCA_WORKORDER_LOGGED",
+        "FINCA_INSUMO_APPLIED",
+    }
+)
+ALLOWED_SUBJECT_TYPES.update({"FINCA", "FINCA_PLOT", "FINCA_LABOR", "FINCA_WORKORDER"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
