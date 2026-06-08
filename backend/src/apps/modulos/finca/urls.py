@@ -2,8 +2,12 @@ from django.urls import path
 
 from .views import (
     CompanyCostReportView,
+    CompanyRealCostReportView,
+    FieldLaborCostReportView,
+    FieldReconciliationReportView,
     FincaListView,
     FincaProfileView,
+    FincaRealCostReportView,
     LaborListCreateView,
     PlotCostReportView,
     PlotDetailView,
@@ -24,4 +28,8 @@ urlpatterns = [
     path("work-orders/<int:work_order_id>/insumos/", WorkOrderInsumoView.as_view(), name="finca-work-order-insumos"),
     path("reports/plot-cost/", PlotCostReportView.as_view(), name="finca-report-plot-cost"),
     path("reports/company-cost/", CompanyCostReportView.as_view(), name="finca-report-company-cost"),
+    path("reports/field-labor-cost/", FieldLaborCostReportView.as_view(), name="finca-report-field-labor-cost"),
+    path("reports/field-reconciliation/", FieldReconciliationReportView.as_view(), name="finca-report-field-reconciliation"),
+    path("reports/finca-cost/", FincaRealCostReportView.as_view(), name="finca-report-finca-cost"),
+    path("reports/company-real-cost/", CompanyRealCostReportView.as_view(), name="finca-report-company-real-cost"),
 ]

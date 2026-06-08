@@ -116,6 +116,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.read": "Ver órdenes de trabajo / bitácora.",
         "finca.work.capture": "Registrar labores ejecutadas e insumos.",
         "finca.report.read": "Ver costeo de fincas/lotes.",
+        "finca.field.read": "Ver costeo real desde asistencia de campo y reconciliación.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -338,6 +339,7 @@ def seed_rbac_v01() -> SeedResult:
             "finca.work.read",
             "finca.work.capture",
             "finca.report.read",
+            "finca.field.read",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -875,6 +877,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.read",
         "finca.work.capture",
         "finca.report.read",
+        "finca.field.read",
     ]
     role_to_perms["finca_capataz"] = [
         "finca.finca.read",
@@ -882,6 +885,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.labor.read",
         "finca.work.read",
         "finca.work.capture",
+        "finca.field.read",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):

@@ -25,6 +25,13 @@ from .serializers import (
     WorkOrderOut,
     WorkOrderUpdateIn,
 )
+from .field_link import (
+    company_real_cost_summary,
+    field_labor_rollup,
+    field_zone_rollup,
+    finca_real_cost_summary,
+    reconcile_field_catalog,
+)
 from .services import (
     apply_insumo,
     company_cost_summary,
@@ -42,6 +49,18 @@ UT = OrgUnit.UnitType
 
 def _branch_of_company(request, branch_id: int) -> OrgUnit:
     return get_object_or_404(OrgUnit, id=branch_id, parent=request.company, unit_type=UT.BRANCH)
+
+
+def _field_filters(request) -> dict:
+    """Filtros opcionales del puente de asistencia: rango de fechas / período."""
+    f: dict = {}
+    if (df := request.query_params.get("date_from")):
+        f["date_from"] = df
+    if (dt := request.query_params.get("date_to")):
+        f["date_to"] = dt
+    if (pp := request.query_params.get("payroll_period_id")):
+        f["payroll_period_id"] = pp
+    return f
 
 
 # --------------------------------------------------------------------------- #
@@ -266,3 +285,75 @@ class CompanyCostReportView(APIView):
     def get(self, request):
         season = request.query_params.get("season") or None
         return Response(company_cost_summary(request.company, season=season), status=status.HTTP_200_OK)
+
+
+# --------------------------------------------------------------------------- #
+# Puente Asistencia de campo (nómina) → Labores → costeo real (Fase 2)
+# --------------------------------------------------------------------------- #
+
+class FieldLaborCostReportView(APIView):
+    """Jornales reales por labor (y por zona) leídos de la captura de campo."""
+
+    permission_classes = [rbac_permission("finca.field.read")]
+    throttle_scope = "heavy_reads"
+
+    def get(self, request):
+        finca_id = request.query_params.get("finca_id")
+        if not finca_id:
+            return Response({"finca_id": "Requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        finca = _branch_of_company(request, int(finca_id))
+        filters = _field_filters(request)
+        return Response(
+            {
+                "finca_id": finca.id,
+                "by_labor": field_labor_rollup(finca, **filters),
+                "by_zone": field_zone_rollup(finca, **filters),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class FieldReconciliationReportView(APIView):
+    """Reconciliación de `labor_code`/`zone_label` del campo contra el catálogo."""
+
+    permission_classes = [rbac_permission("finca.field.read")]
+    throttle_scope = "heavy_reads"
+
+    def get(self, request):
+        finca_id = request.query_params.get("finca_id")
+        if not finca_id:
+            return Response({"finca_id": "Requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        finca = _branch_of_company(request, int(finca_id))
+        return Response(reconcile_field_catalog(finca, **_field_filters(request)), status=status.HTTP_200_OK)
+
+
+class FincaRealCostReportView(APIView):
+    """Costeo REAL de una finca: mano de obra desde asistencia + insumos."""
+
+    permission_classes = [rbac_permission("finca.field.read")]
+    throttle_scope = "heavy_reads"
+
+    def get(self, request):
+        finca_id = request.query_params.get("finca_id")
+        if not finca_id:
+            return Response({"finca_id": "Requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        finca = _branch_of_company(request, int(finca_id))
+        season = request.query_params.get("season") or None
+        return Response(
+            finca_real_cost_summary(finca, season=season, **_field_filters(request)),
+            status=status.HTTP_200_OK,
+        )
+
+
+class CompanyRealCostReportView(APIView):
+    """Costeo REAL consolidado de la empresa (por finca y por zona)."""
+
+    permission_classes = [rbac_permission("finca.field.read")]
+    throttle_scope = "heavy_reads"
+
+    def get(self, request):
+        season = request.query_params.get("season") or None
+        return Response(
+            company_real_cost_summary(request.company, season=season, **_field_filters(request)),
+            status=status.HTTP_200_OK,
+        )
