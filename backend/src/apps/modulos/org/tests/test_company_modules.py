@@ -17,6 +17,7 @@ from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.org import services_modules
 from apps.modulos.org.models import CompanyModule
 from apps.modulos.org.module_catalog import all_codes, core_codes, get_catalog, is_known
+from apps.modulos.org.permissions import require_module
 from apps.modulos.org.services_modules import (
     ModuleDependencyError,
     allowed_module_codes,
@@ -236,6 +237,46 @@ def test_dependency_validation_raises(monkeypatch):
         services_modules._validate_dependency_integrity({"a": True, "b": False})
     # ambos coherentes -> ok
     services_modules._validate_dependency_integrity({"a": True, "b": True})
+
+
+# ---------------------------------------------------------------------------
+# Enforcement: require_module
+# ---------------------------------------------------------------------------
+
+class _Req:
+    def __init__(self, company):
+        self.company = company
+
+
+def test_require_module_factory_rejects_unknown_code():
+    with pytest.raises(ValueError):
+        require_module("nope")
+
+
+@pytest.mark.django_db
+def test_require_module_respects_default_state():
+    _, company, _ = _mk_org()
+    req = _Req(company)
+    # base ON
+    assert require_module("payroll")().has_permission(req, None) is True
+    # core siempre ON
+    assert require_module("organization")().has_permission(req, None) is True
+    # vertical OFF por defecto
+    assert require_module("fuel")().has_permission(req, None) is False
+
+
+@pytest.mark.django_db
+def test_require_module_reflects_company_override():
+    _, company, _ = _mk_org()
+    req = _Req(company)
+    CompanyModule.objects.create(company=company, module_code="fuel", is_enabled=True)
+    CompanyModule.objects.create(company=company, module_code="payroll", is_enabled=False)
+    assert require_module("fuel")().has_permission(req, None) is True
+    assert require_module("payroll")().has_permission(req, None) is False
+
+
+def test_require_module_without_company_denies():
+    assert require_module("payroll")().has_permission(_Req(None), None) is False
 
 
 # ---------------------------------------------------------------------------
