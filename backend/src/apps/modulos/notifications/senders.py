@@ -82,7 +82,8 @@ def _fcm_access_token() -> str:
         _GOOGLE_TOKEN_URI, data=body, method="POST",
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    with urllib.request.urlopen(req, timeout=getattr(settings, "NOTIFICATIONS_FCM_TIMEOUT", 10)) as resp:  # noqa: S310  # nosec B310 (endpoint HTTPS fijo de Google; esquema no controlable por el usuario)
+    # FCM: endpoint HTTPS fijo de Google; esquema no controlable por el usuario.
+    with urllib.request.urlopen(req, timeout=getattr(settings, "NOTIFICATIONS_FCM_TIMEOUT", 10)) as resp:  # noqa: S310  # nosec B310
         tok = json.loads(resp.read().decode("utf-8"))
     access_token = tok.get("access_token", "")
     _fcm_token_cache["access_token"] = access_token
@@ -140,7 +141,8 @@ def _fcm_post(*, token: str, title: str, body: str, data: dict) -> tuple[int, st
         headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310 (endpoint FCM HTTPS de settings; esquema no controlable por el usuario)
+        # FCM: endpoint HTTPS de settings; esquema no controlable por el usuario.
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosec B310
             return resp.status, resp.read().decode("utf-8", errors="ignore")
     except urllib.error.HTTPError as e:
         return e.code, (e.read() or b"").decode("utf-8", errors="ignore")
