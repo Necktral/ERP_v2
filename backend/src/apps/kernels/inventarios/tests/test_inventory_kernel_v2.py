@@ -209,6 +209,86 @@ def test_lot_create_and_receive():
 
 
 @pytest.mark.django_db
+def test_issue_decrements_lot_balance_and_records_lot():
+    """INV-01: la salida con lote decrementa el LotBalance y registra el lote en el movimiento."""
+    from apps.kernels.inventarios.models import MovementType, StockMovement
+
+    company, branch = _mk_scope()
+    c = _client(company, branch)
+
+    wh = c.post("/api/inventory/warehouses/", {"name": "Bodega", "code": "BL"}, format="json")
+    wh_id = wh.data["id"]
+    item = c.post("/api/inventory/items/", {
+        "sku": f"LOT-{uuid.uuid4().hex[:5]}", "name": "Con lote",
+        "track_lots": True, "track_expiry": True, "shelf_life_days": 365,
+    }, format="json")
+    item_id = item.data["id"]
+    lot = c.post("/api/inventory/lots/create/", {
+        "item_id": item_id, "lot_number": "L-001",
+        "production_date": "2026-01-15", "expiry_date": "2027-01-15",
+    }, format="json")
+    lot_id = lot.data["id"]
+
+    c.post("/api/inventory/movements/receive/", {
+        "warehouse_id": wh_id, "item_id": item_id, "qty": "50.0000", "unit_cost": "25.000000",
+        "lot_id": lot_id, "idempotency_key": f"recv-{uuid.uuid4().hex}",
+    }, format="json")
+
+    r = c.post("/api/inventory/movements/issue/", {
+        "warehouse_id": wh_id, "item_id": item_id, "qty": "20.0000",
+        "lot_id": lot_id, "idempotency_key": f"iss-{uuid.uuid4().hex}",
+    }, format="json")
+    assert r.status_code == 201
+    assert Decimal(r.data["qty_on_hand"]) == Decimal("30.0000")  # balance agregado
+
+    # El balance POR LOTE bajó a 30 (antes del fix quedaba en 50).
+    r = c.get(f"/api/inventory/stock/lots/?item_id={item_id}")
+    assert r.status_code == 200
+    assert Decimal(r.data["results"][0]["qty_on_hand"]) == Decimal("30.0000")
+
+    # El movimiento de salida quedó ligado al lote (trazabilidad).
+    mov = StockMovement.objects.filter(item_id=item_id, movement_type=MovementType.ISSUE).latest("id")
+    assert mov.lot_id == lot_id
+
+
+@pytest.mark.django_db
+def test_issue_without_lot_picks_fefo_and_decrements():
+    """INV-01: sin lote explícito, la salida elige FEFO (menor vencimiento) y lo decrementa."""
+    from apps.kernels.inventarios.models import LotBalance
+
+    company, branch = _mk_scope()
+    c = _client(company, branch)
+    wh = c.post("/api/inventory/warehouses/", {"name": "Bodega", "code": "BF"}, format="json")
+    wh_id = wh.data["id"]
+    item = c.post("/api/inventory/items/", {
+        "sku": f"FEFO-{uuid.uuid4().hex[:5]}", "name": "FEFO",
+        "track_lots": True, "track_expiry": True, "shelf_life_days": 365,
+    }, format="json")
+    item_id = item.data["id"]
+    soon = c.post("/api/inventory/lots/create/", {
+        "item_id": item_id, "lot_number": "SOON", "expiry_date": "2026-07-01"}, format="json")
+    far = c.post("/api/inventory/lots/create/", {
+        "item_id": item_id, "lot_number": "FAR", "expiry_date": "2027-07-01"}, format="json")
+    for lid in (soon.data["id"], far.data["id"]):
+        c.post("/api/inventory/movements/receive/", {
+            "warehouse_id": wh_id, "item_id": item_id, "qty": "10.0000", "unit_cost": "5.000000",
+            "lot_id": lid, "idempotency_key": f"r-{uuid.uuid4().hex}",
+        }, format="json")
+
+    # Despachar 6 SIN lot_id → debe consumir del lote que vence primero (SOON).
+    r = c.post("/api/inventory/movements/issue/", {
+        "warehouse_id": wh_id, "item_id": item_id, "qty": "6.0000",
+        "idempotency_key": f"i-{uuid.uuid4().hex}",
+    }, format="json")
+    assert r.status_code == 201
+
+    soon_bal = LotBalance.objects.get(item_id=item_id, lot__lot_number="SOON")
+    far_bal = LotBalance.objects.get(item_id=item_id, lot__lot_number="FAR")
+    assert soon_bal.qty_on_hand == Decimal("4.0000")   # 10 - 6
+    assert far_bal.qty_on_hand == Decimal("10.0000")   # intacto
+
+
+@pytest.mark.django_db
 def test_item_without_lots_rejects_lot_on_receive():
     company, branch = _mk_scope()
     c = _client(company, branch)

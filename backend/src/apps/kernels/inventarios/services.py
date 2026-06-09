@@ -776,6 +776,34 @@ def post_issue(
         if not allow_negative and bal.qty_on_hand < qty:
             raise ValueError("stock insuficiente")
 
+        # --- Lote a consumir (INV-01) ---
+        # La salida debe registrar el lote y decrementar su balance: antes `lot_id`
+        # se ignoraba, así que los LotBalance solo crecían (FEFO/trazabilidad rotas).
+        # Lote explícito si se da; si no y el ítem trackea lotes, se elige por el
+        # orden de consumo de la clase (FEFO por vencimiento / FIFO por antigüedad).
+        lot: ItemLot | None = None
+        if item.track_lots:
+            if lot_id:
+                lot = ItemLot.objects.filter(id=lot_id, company=company, item=item).first()
+                if lot is None:
+                    raise ValueError("Lote inválido para este ítem.")
+            else:
+                from .classification import lot_consumption_ordering
+
+                ordering = lot_consumption_ordering(item, prefix="lot__") or ("lot__id",)
+                picked = (
+                    LotBalance.objects.select_for_update()
+                    .filter(
+                        company=company, branch=branch, warehouse=warehouse,
+                        item=item, qty_on_hand__gt=0, lot__status="ACTIVE",
+                    )
+                    .order_by(*ordering)
+                    .first()
+                )
+                lot = picked.lot if picked else None
+        elif lot_id:
+            raise ValueError("El ítem no tiene habilitado tracking de lotes.")
+
         unit_cost = bal.avg_cost
         total_cost = _q_cost(qty * unit_cost)
         new_qty = _q_qty(bal.qty_on_hand - qty)
@@ -791,6 +819,8 @@ def post_issue(
             qty_delta=_q_qty(Decimal("0") - qty),
             unit_cost=unit_cost,
             total_cost=_q_cost(Decimal("0") - total_cost),
+            lot=lot,
+            expiry_date=lot.expiry_date if lot else None,
             source_module=source_module or "",
             source_type=source_type or "",
             source_id=source_id or "",
@@ -803,6 +833,16 @@ def post_issue(
         bal.avg_cost = new_avg
         bal.updated_at = timezone.now()
         bal.save(update_fields=["qty_on_hand", "avg_cost", "updated_at"])
+
+        # Decremento del balance por lote (INV-01): cierra la fuga de trazabilidad.
+        if lot is not None:
+            lot_bal = _get_or_create_lot_balance_locked(
+                company=company, branch=branch, warehouse=warehouse, item=item, lot=lot
+            )
+            if not allow_negative and lot_bal.qty_on_hand < qty:
+                raise ValueError("stock insuficiente en el lote")
+            lot_bal.qty_on_hand = _q_qty(lot_bal.qty_on_hand - qty)
+            lot_bal.save(update_fields=["qty_on_hand", "updated_at"])
 
         write_event(
             request=request,
