@@ -3,6 +3,35 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+# IAM-03: lista única de rutas exentas de contexto organizacional. Antes
+# `JWTAuthWithOrgContext` (authentication.py) y `OrgContextMiddleware`
+# (context_middleware.py) mantenían listas divergentes (auth eximía /2fa/verify/
+# y /password/, el middleware no) → riesgo de drift de seguridad. Ambos importan
+# de aquí. Es la UNIÓN (superset) de ambas: las rutas de auth/2fa/password/docs
+# no requieren X-Company-Id.
+EXEMPT_PATH_PREFIXES: tuple[str, ...] = (
+    "/admin/",
+    "/api/auth/login/",
+    "/api/v1/auth/login/",
+    "/api/auth/refresh/",
+    "/api/v1/auth/refresh/",
+    "/api/auth/logout/",
+    "/api/v1/auth/logout/",
+    "/api/auth/2fa/verify/",
+    "/api/v1/auth/2fa/verify/",
+    "/api/auth/me/",
+    "/api/v1/auth/me/",
+    "/api/auth/me/acl/",
+    "/api/v1/auth/me/acl/",
+    "/api/auth/bootstrap/",
+    "/api/v1/auth/bootstrap/",
+    "/api/auth/password/",
+    "/api/v1/auth/password/",
+    "/api/schema/",
+    "/api/v1/schema/",
+    "/api/docs/",
+)
+
 
 @dataclass(frozen=True)
 class RequestContext:
