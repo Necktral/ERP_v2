@@ -39,3 +39,8 @@ def test_api_v1_mounts_nomina_field_attendance_routes() -> None:
 def test_api_v1_mounts_sync_v2_batch_route() -> None:
     match = resolve("/api/v1/sync/batch/")
     assert getattr(match.func, "view_class").__name__ == "SyncBatchView"
+
+
+def test_api_v1_mounts_org_company_modules_route() -> None:
+    match = resolve("/api/v1/org/modules/")
+    assert getattr(match.func, "view_class").__name__ == "CompanyModulesView"

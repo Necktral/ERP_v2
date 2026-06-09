@@ -10,6 +10,7 @@
     "kernels.accounting->modulos.estacion_servicios",
     "kernels.accounting->modulos.iam",
     "kernels.accounting->modulos.integration",
+    "kernels.accounting->modulos.org",
     "kernels.accounting->modulos.rbac",
     "kernels.facturacion->kernels.accounting",
     "kernels.facturacion->kernels.inventarios",

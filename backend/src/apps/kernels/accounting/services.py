@@ -19,6 +19,7 @@ from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.cec.models import CECException, CloseRun
 from apps.modulos.cec.services import advance_close_run_state
 from apps.modulos.iam.models import OrgUnit
+from apps.modulos.org.services_modules import disabled_posting_keys
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
 from apps.modulos.integration.services import (
     DispatchSummary,
@@ -242,15 +243,20 @@ def resolve_operational_posting_runtime(*, company, branch=None) -> OperationalP
             .first()
         )
 
+    # El registro de módulos (org.CompanyModule) gobierna el GL: un módulo
+    # EXPLÍCITAMENTE deshabilitado fuerza off su posting (no-breaking: la
+    # ausencia de override deja el flag de OperationalPostingConfig como esté).
+    disabled_pk = disabled_posting_keys(company) if company is not None else frozenset()
+
     if row is not None:
         mode = str(row.posting_mode or OperationalPostingConfig.PostingMode.HYBRID).upper()
         if mode not in OperationalPostingConfig.PostingMode.values:
             mode = OperationalPostingConfig.PostingMode.HYBRID
         return OperationalPostingRuntime(
             posting_mode=mode,
-            enable_billing=bool(row.enable_billing),
-            enable_inventory=bool(row.enable_inventory),
-            enable_nomina=bool(row.enable_nomina),
+            enable_billing=bool(row.enable_billing) and "enable_billing" not in disabled_pk,
+            enable_inventory=bool(row.enable_inventory) and "enable_inventory" not in disabled_pk,
+            enable_nomina=bool(row.enable_nomina) and "enable_nomina" not in disabled_pk,
             auto_post_on_write=bool(row.auto_post_on_write),
         )
 
@@ -259,9 +265,9 @@ def resolve_operational_posting_runtime(*, company, branch=None) -> OperationalP
         mode = OperationalPostingConfig.PostingMode.HYBRID
     return OperationalPostingRuntime(
         posting_mode=mode,
-        enable_billing=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_BILLING", True)),
-        enable_inventory=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_INVENTORY", True)),
-        enable_nomina=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_NOMINA", True)),
+        enable_billing=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_BILLING", True)) and "enable_billing" not in disabled_pk,
+        enable_inventory=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_INVENTORY", True)) and "enable_inventory" not in disabled_pk,
+        enable_nomina=bool(getattr(settings, "ACCOUNTING_POSTING_ENABLE_NOMINA", True)) and "enable_nomina" not in disabled_pk,
         auto_post_on_write=bool(getattr(settings, "ACCOUNTING_POSTING_AUTO_POST_ON_WRITE", False)),
     )
 

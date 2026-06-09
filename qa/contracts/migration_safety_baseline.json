@@ -578,6 +578,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "fb0edce75dec517b8c1ebf75794946eff1ee846379abebd7812a933f035616c6"
     },
+    "backend/src/apps/modulos/org/migrations/0006_companymodule.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "create_company_module_registry_table",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "ORG-COMPANY-MODULES",
+      "fingerprint": "01fe533b7113197374f3ed1102abbb5fbc2d6f8f472eb05ae6b207aac4a73a5c"
+    },
     "backend/src/apps/modulos/parties/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "create_parties_tables_and_indexes",

@@ -7,6 +7,8 @@ from django.utils import timezone
 from apps.modulos.iam.models import OrgUnit
 from django.conf import settings
 
+from .module_catalog import core_codes, is_known
+
 
 class CompanyProfile(models.Model):
     class Meta:
@@ -105,3 +107,43 @@ class UserFuelUoMPreference(models.Model):
     def clean(self):
         if self.branch.unit_type != OrgUnit.UnitType.BRANCH:
             raise ValidationError("UserFuelUoMPreference.branch debe ser OrgUnit de tipo BRANCH.")
+
+
+class CompanyModule(models.Model):
+    """Override de habilitación de un módulo para una empresa.
+
+    Ausencia de fila = se usa el ``default_enabled`` del catálogo
+    (ver ``apps.modulos.org.module_catalog``). Los módulos *core* nunca se
+    persisten aquí: son siempre activos y no togglables.
+    """
+
+    class Meta:
+        app_label = "org"
+        constraints = [
+            models.UniqueConstraint(fields=["company", "module_code"], name="uq_company_module"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "is_enabled"]),
+        ]
+
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="company_modules")
+    module_code = models.CharField(max_length=64)
+    is_enabled = models.BooleanField(default=True)
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="company_module_updates",
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        if self.company.unit_type != OrgUnit.UnitType.COMPANY:
+            raise ValidationError("CompanyModule.company debe ser OrgUnit de tipo COMPANY.")
+        if not is_known(self.module_code):
+            raise ValidationError(f"Módulo desconocido: {self.module_code}")
+        if self.module_code in core_codes():
+            raise ValidationError(f"El módulo core '{self.module_code}' no es configurable.")

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from rest_framework import serializers
 
 
@@ -36,3 +38,24 @@ class CompanyProfileUpdateSerializer(serializers.Serializer):
     address = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField(required=False, allow_blank=True)
+
+
+class ModuleStateOut(serializers.Serializer):
+    code = serializers.CharField()
+    category = serializers.CharField()
+    core = serializers.BooleanField()
+    is_enabled = serializers.BooleanField()
+
+    def to_representation(self, instance: Any) -> dict[str, Any]:
+        data = super().to_representation(instance)
+        data["label"] = instance.get("label", "") if isinstance(instance, dict) else getattr(instance, "label", "")
+        return data
+
+
+class _ModuleChangeIn(serializers.Serializer):
+    code = serializers.CharField()
+    is_enabled = serializers.BooleanField()
+
+
+class ModulesUpdateIn(serializers.Serializer):
+    modules = _ModuleChangeIn(many=True)
