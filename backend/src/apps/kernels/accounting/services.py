@@ -13,7 +13,6 @@ from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
-from apps.modulos.audit.writer import write_event
 from apps.modulos.common.domain_errors import DomainError, IntegrationError
 from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.cec.models import CECException, CloseRun
@@ -29,6 +28,7 @@ from apps.modulos.integration.services import (
 )
 from apps.kernels.facturacion.models import BillingDocument
 
+from .audit_helpers import write_accounting_audit_event as _write_accounting_audit_event
 from .models import (
     DraftValidationResult,
     EconomicEvent,
@@ -47,52 +47,6 @@ PROJECTOR_CONSUMER = "accounting.projector"
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
 
 
-class _AccountingAuditRequest:
-    """Request sintético para encadenar auditoría por company sin HTTP.
-
-    El kernel accounting opera con `actor_user` (no recibe `request`); este shim
-    aporta el scope que `audit.writer.write_event` usa para particionar la cadena.
-    """
-
-    def __init__(self, *, company, branch=None) -> None:
-        self.company = company
-        self.branch = branch
-        self.META: dict[str, Any] = {}
-        self.path = ""
-        self.method = ""
-        self.request_id = ""
-
-
-def _write_accounting_audit_event(
-    *,
-    actor_user,
-    company,
-    branch,
-    event_type: str,
-    subject_type: str,
-    subject_id: str,
-    before_snapshot: dict[str, Any] | None = None,
-    after_snapshot: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-) -> None:
-    """Auditoría de servicio del kernel accounting (cierra el hueco `audit=0`, invariante #4)."""
-    meta: dict[str, Any] = {"company_id": str(getattr(company, "id", "") or "")}
-    if branch is not None:
-        meta["branch_id"] = str(getattr(branch, "id", "") or "")
-    if metadata:
-        meta.update(metadata)
-    write_event(
-        request=_AccountingAuditRequest(company=company, branch=branch),
-        module="ACCOUNTING",
-        event_type=event_type,
-        reason_code="ACCOUNTING_OK",
-        actor_user=actor_user,
-        subject_type=subject_type,
-        subject_id=str(subject_id),
-        before_snapshot=before_snapshot,
-        after_snapshot=after_snapshot,
-        metadata=meta,
-    )
 SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
