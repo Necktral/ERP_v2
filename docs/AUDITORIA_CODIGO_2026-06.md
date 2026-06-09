@@ -155,11 +155,84 @@ Lectura de cada `.py` (services/models/views/serializers/urls/handlers/alerts) b
 
 ---
 
+## Matriz resumen (batch 3: plataforma/soporte)
+
+| Módulo | CRÍTICO | ALTO | MEDIO | BAJO | Nota |
+|---|:---:|:---:|:---:|:---:|---|
+| iam | 0 | 0 | 3 | 0 | semántica de scope (branch-only, data-company, doble camino) |
+| rbac | 0 | 0 | 1 | 1 | `permission.is_active` no filtrado en la ruta scoped |
+| audit | 0 | 0 | 0 | 1 | hash-chain HMAC fail-closed; lock del head serializa |
+| integration | 0 | 0 | 0 | 0 | outbox retry/backoff + inbox idempotente |
+| sync_engine | 0 | 0 | 0 | 0 | firma Ed25519 default-on + dedup `AppliedCommand` |
+| compras | 0 | 0 | 0 | 0 | idempotente + best-effort **logueado**; CEC reconcilia |
+| estacion_servicios | 0 | 0 | 0 | 0 | conversión US-gallon consistente/documentada |
+| retail_pos | 0 | 0 | 0 | 0 | once-publishers + compensación/retry |
+| cec | 0 | 0 | 0 | 0 | **aporta los controles de reconciliación** (red de seguridad) |
+| accounts/hr | 0 | 0 | 0 | 1 | `temp_password` en claro en el result |
+| org/parties/dashboard/activity/common | 0 | 0 | 0 | 0 | scoped por company; sin hallazgos |
+
+> **Hallazgo arquitectónico positivo:** la capa **CEC** (`_collect_procurement_supplier_payment_mismatch_issues`, `_collect_billing_cash_mismatch_issues`, `_collect_cash_difference_issues`, `_collect_negative_stock_issues`, gaps de numeración) es la **red de seguridad** de los enlaces best-effort: detecta en el cierre la deriva que dejan los puentes que "nunca bloquean" (NM-06, F-02, compras→CxP). Esto **modera** —no elimina— esos hallazgos: el dinero descuadrado se *detecta*, aunque la corrección siga siendo manual.
+
+---
+
+## iam (`apps/modulos/iam`)
+
+> **Nota positiva:** `approvals.py` (SoD/maker-checker) es sólido — `select_for_update` en decide/approve/reject/cancel/mark_executed, guarda de estado PENDING, anti-autoaprobación (`approver != requested_by`), permiso validado en scope, auditoría completa.
+
+| ID | Sev | Ubicación | Tipo | Descripción | Fix sugerido |
+|---|---|---|---|---|---|
+| IAM-01 | MEDIO | `authentication.py:105-110`, `context_middleware.py:80-90` | hueco/scope | Un miembro **solo de sucursal** (sin membresía a la empresa) pasa el gate de empresa vía `has_branch_under_company`; si **omite** `X-Branch-Id`, opera con `request.company` y `branch=None` → **scope de empresa completo** (todas las sucursales). El sistema asume que el usuario branch-only siempre manda su header de sucursal, pero nada lo obliga. | Si no hay `has_company_membership` y no se envía branch, forzar la(s) sucursal(es) de su membresía (no caer a scope empresa). |
+| IAM-02 | MEDIO | `authentication.py:147-185` + `common/permissions.py:96-123` | hueco/scope | `X-Data-Company-Id` abre lectura **intercompany** a otra empresa: la capa de auth fija `request.data_company` **sin** verificar membresía/grant ahí; el grant se valida **solo dentro de `rbac_permission`** (opt-in por vista, modo READ). Cualquier endpoint que no use `rbac_permission`, o un selector que filtre por `data_company` sin pasar por él, **omite el grant** → fuga cross-tenant. Es defensa-en-profundidad delegada a disciplina por vista. | Guard centralizado de data-scope (middleware/base view) que exija el grant antes de exponer `data_company`. |
+| IAM-03 | MEDIO | `authentication.py` vs `context_middleware.py` | inconsistencia | **Dos caminos** casi duplicados de inyección de contexto org. Listas `EXEMPT` **divergentes** (auth exime `/2fa/verify/` y `/password/`; el middleware no) y **capacidades distintas** (el data-scope intercompany solo existe en el camino JWT). Mantener ambos invita a drift de seguridad. | Unificar en una sola capa (o derivar la lista EXEMPT de una constante compartida). |
+
+---
+
+## rbac (`apps/modulos/rbac`)
+
+| ID | Sev | Ubicación | Tipo | Descripción | Fix sugerido |
+|---|---|---|---|---|---|
+| RBAC-01 | MEDIO | `selectors.py:52-57` | bug | `get_effective_permissions_for_scope` (la ruta de enforcement **principal**, usada por `rbac_permission` y `approvals`) **no filtra `permission__is_active`**; `get_effective_permissions` (línea 69) **sí**. Un permiso **desactivado** globalmente **sigue concediendo acceso** en la ruta scoped. | Añadir `permission__is_active=True` al filtro de `RolePermission`. |
+| RBAC-02 | BAJO | `selectors.py:60-70` vs `11-57` | inconsistencia | Semántica de **superusuario divergente**: `get_effective_permissions` devuelve `["*"]`, pero `get_effective_permissions_for_scope` **ignora** `is_superuser` (un superuser sin `RoleAssignment` queda sin permisos en la ruta scoped). Puede ser intencional (aislamiento por tenant), pero conviene documentarlo. | Documentar la decisión o unificar la semántica. |
+
+---
+
+## audit (`apps/modulos/audit`)
+
+> **Nota positiva:** `writer.py` es una **cadena de hash a prueba de manipulación** (payload canónico → SHA256 `event_hash` → HMAC `signature` con keyring → encadenado por `prev_event_hash` y partición por tenant, con `select_for_update` en el head). `contracts.py` es **fail-closed**: `validate_event_type`/`validate_subject` **lanzan** ante catálogos no registrados → un evento no contratado **bloquea** la operación (ratchet de contrato).
+
+| ID | Sev | Ubicación | Tipo | Descripción | Fix sugerido |
+|---|---|---|---|---|---|
+| AUD-01 | BAJO | `writer.py:145-207` | performance | El `AuditChainHeadV2` se bloquea con `select_for_update` durante **toda la transacción de negocio externa** (no solo el write de auditoría) → **todas** las operaciones auditadas de una empresa se **serializan** en esa fila; bajo carga, contención y posible deadlock (orden de locks recurso↔head). Aceptable a la escala actual (finca de un dueño). | Si crece la concurrencia, acortar la sección crítica del head o particionar la cadena más fino. |
+
+---
+
+## integration / sync_engine / compras / estacion_servicios / retail_pos / cec
+
+> **Sin hallazgos de corrección.** Capa de mensajería e idempotencia madura:
+> - **integration**: outbox con `retry`/backoff exponencial/`FAILED` tras N intentos, `select_for_update` en dispatch; inbox idempotente por `(event_id, consumer)` con `ignore_conflicts`. El `except Exception` del dispatcher es correcto (aísla el fallo por evento y reintenta).
+> - **sync_engine**: firma **Ed25519 obligatoria por defecto** (`enforce_command_signature=True`), dedup `AppliedCommand` por `command_id` con `select_for_update`, y rechazo por payload-hash distinto al mismo `command_id`.
+> - **compras**: `post_purchase_document` idempotente (`already_posted`) + lock; el enlace best-effort a CxP **sí se loguea** con `logger.exception` (el patrón correcto que a finca le faltaba — ver F-06).
+> - **estacion_servicios**: las conversiones de combustible son consistentes (`GALLON_TO_LITER = GALLON_US_TO_LITER`; `PER_GALLON`/`PER_GALLON_US` son el **mismo** galón US por contrato documentado, no un bug).
+> - **retail_pos**: once-publishers (`_publish_pos_outbox_event_once`), claves de idempotencia por venta/pago/movimiento de caja, y compensación con reintento.
+> - **cec**: el motor de cierre con `select_for_update` + `fingerprint` de excepciones; aporta los **controles de reconciliación** descritos arriba.
+
+---
+
+## accounts / hr / parties / org / dashboard / activity / common
+
+| ID | Sev | Ubicación | Tipo | Descripción | Fix sugerido |
+|---|---|---|---|---|---|
+| SUP-01 | BAJO | `hr/services.py:427,431-456` | seguridad | `provision_user_for_employee`/`reset_temp_password_for_employee` devuelven el `temp_password` **en claro** en el dict resultado (patrón "mostrar una vez" al admin). Verificar que la capa de `redaction` lo excluya de **audit/logs** y que no termine en un `OutboxEvent`/metadata. | Confirmar redaction de `*password*`; nunca persistir el valor. |
+
+> **Resto sin hallazgos.** `accounts` usa `password_validation` de Django + `set_password` (hash) + `must_change_password`; los servicios de `hr`/`parties`/`org` están scopeados por company con helpers `_request_company`/`_same_company` y auditoría; los `except Exception` de `common/pagination.py` y `dashboard` son parseos defensivos de parámetros/observabilidad.
+
+---
+
 ## Tracker de progreso
 
 - [x] **Batch 1 — Módulos frescos**: finca, comisariato, fleet, notifications, intercompany. *(arriba)*
 - [x] **Batch 2 — Kernels económicos**: nomina, portfolio, accounting, facturacion, inventarios, payments, reporting. *(arriba)*
-- [ ] Batch 3 — Plataforma/soporte: iam, rbac, audit, integration, sync_engine, sync, common, org, accounts, parties, hr, cec, compras, dashboard, estacion_servicios, retail_pos, activity.
+- [x] **Batch 3 — Plataforma/soporte**: iam, rbac, audit, integration, sync_engine, sync *(retirado/vacío)*, common, org, accounts, parties, hr, cec, compras, dashboard, estacion_servicios, retail_pos, activity. *(arriba)*
 - [ ] Barridos cross-cutting: cobertura de contratos (audit/RBAC/edges) declarada vs real; dinero=Decimal en todo $; fronteras de transacción; revisar los ~116 `except Exception`.
 - [ ] Frontend (Vue/Quasar) — evaluación aparte.
 
