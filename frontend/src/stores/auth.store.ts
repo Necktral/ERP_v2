@@ -6,29 +6,45 @@ import { useAclStore } from 'src/stores/acl.store';
 import { useContextStore } from 'src/stores/context.store';
 import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
 
+interface AuthUser {
+  id: number;
+  username: string;
+  must_change_password: boolean;
+  is_setup_complete: boolean;
+}
+
+interface AuthState {
+  hydrated: boolean;
+  status: 'anonymous' | 'authenticated' | 'refreshing' | 'two_factor';
+  user: AuthUser | null;
+  twoFactor: {
+    required: boolean;
+    challenge: string | null;
+  };
+  bootstrapState: {
+    is_fresh: boolean;
+    setup_required: boolean;
+  };
+  bootstrapChecked: boolean;
+  // lock interno para refresh concurrente
+  refreshInFlight: Promise<void> | null;
+}
+
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    hydrated: false as boolean,
-    status: 'anonymous' as 'anonymous' | 'authenticated' | 'refreshing' | 'two_factor',
-    user: null as null | {
-      id: number;
-      username: string;
-      must_change_password: boolean;
-      is_setup_complete: boolean;
-    },
+  state: (): AuthState => ({
+    hydrated: false,
+    status: 'anonymous',
+    user: null,
     twoFactor: {
       required: false,
-      challenge: null as string | null,
+      challenge: null,
     },
     bootstrapState: {
       is_fresh: false,
       setup_required: false,
     },
-
-    bootstrapChecked: false as boolean,
-
-    // lock interno para refresh concurrente
-    refreshInFlight: null as Promise<void> | null,
+    bootstrapChecked: false,
+    refreshInFlight: null,
   }),
 
   getters: {

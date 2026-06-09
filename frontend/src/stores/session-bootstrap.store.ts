@@ -58,11 +58,17 @@ function hasContextInAcl(snapshot: AclSnapshot, companyId: string): boolean {
   return snapshot.companies.some((company) => String(company.company_id) === String(companyId));
 }
 
+interface SessionBootstrapState {
+  loaded: boolean;
+  loading: boolean;
+  payload: BootstrapSessionResponse | null;
+}
+
 export const useSessionBootstrapStore = defineStore('sessionBootstrap', {
-  state: () => ({
-    loaded: false as boolean,
-    loading: false as boolean,
-    payload: null as BootstrapSessionResponse | null,
+  state: (): SessionBootstrapState => ({
+    loaded: false,
+    loading: false,
+    payload: null,
   }),
 
   getters: {
