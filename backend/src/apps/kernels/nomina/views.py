@@ -304,6 +304,8 @@ class PayrollEntryView(APIView):
             other_deductions=v.get("other_deductions", Decimal("0.00")),
             other_income=v.get("other_income", Decimal("0.00")),
             ir_amount=v.get("ir_amount", Decimal("0.00")),
+            # Un IR provisto (>0) por el cliente es un override manual: compute_all lo respeta.
+            ir_manual=bool(v.get("ir_amount")),
             notes=v.get("notes", ""),
         )
 

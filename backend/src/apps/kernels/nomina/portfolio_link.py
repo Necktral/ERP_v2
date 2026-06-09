@@ -6,6 +6,7 @@ bloquea la nómina). El abono usa `portfolio.apply_payroll_abono` (sin payment i
 """
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
 from django.db import transaction
@@ -14,6 +15,8 @@ from django.utils import timezone
 from apps.modulos.audit.writer import write_event
 
 from .models import PayrollLoanDeduction
+
+logger = logging.getLogger(__name__)
 
 
 def _apply_to_portfolio(*, deduction: PayrollLoanDeduction, amount: Decimal, actor, abono_date):
@@ -77,4 +80,22 @@ def register_payroll_loan_deduction(
     applied = _apply_to_portfolio(
         deduction=deduction, amount=amount, actor=actor, abono_date=abono_date or timezone.localdate()
     )
+
+    # NM-06: registrar lo realmente abonado. Si falla (applied None) o queda corto, la
+    # deducción queda con `abono_applied` < `amount_deducted` → abono pendiente, visible
+    # para conciliación (antes el trabajador quedaba descontado sin abonar el crédito y
+    # el desfase era silencioso).
+    deduction.abono_applied = applied if applied is not None else Decimal("0.00")
+    deduction.save(update_fields=["abono_applied"])
+    if deduction.abono_applied < amount:
+        logger.warning(
+            "payroll_loan_abono_pending",
+            extra={
+                "deduction_id": deduction.id,
+                "credit_id": int(credit_id),
+                "credit_type": deduction.credit_type,
+                "amount_deducted": str(amount),
+                "abono_applied": str(deduction.abono_applied),
+            },
+        )
     return deduction, applied

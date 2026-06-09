@@ -77,8 +77,14 @@ urlpatterns = [
     path("api/org/", include("apps.modulos.org.urls")),
     # HR
     path("api/hr/", include("apps.modulos.hr.urls")),
+    # Controls (Capa 3: anti-fraude / SoD / hallazgos)
+    path("api/controls/", include("apps.modulos.controls.urls")),
+    # Manejo de Fincas (agrícola)
+    path("api/finca/", include("apps.modulos.finca.urls")),
     # Accounting
     path("api/accounting/", include("apps.kernels.accounting.urls")),
+    # Intercompany (operaciones entre empresas del grupo + posición consolidada)
+    path("api/intercompany/", include("apps.modulos.intercompany.urls")),
     # Payments/Cash
     path("api/payments/", include("apps.kernels.payments.urls")),
     # Portfolio (CxC, CxP, Credits)
@@ -104,4 +110,7 @@ urlpatterns += [
     path("api/nomina/", include("apps.kernels.nomina.urls")),
     path("api/legacy/billing/", include("apps.kernels.facturacion.urls_legacy")),
     path("api/procurement/", include("apps.modulos.compras.urls")),
+    path("api/comisariato/", include("apps.modulos.comisariato.urls")),
+    path("api/fleet/", include("apps.modulos.fleet.urls")),
+    path("api/notifications/", include("apps.modulos.notifications.urls")),
 ]

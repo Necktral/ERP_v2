@@ -22,6 +22,7 @@ from apps.kernels.portfolio.models import (
 from apps.kernels.portfolio.services import (
     PortfolioDomainError,
     accrue_interest_for_credit,
+    adjust_receivable,
     allocate_payment_to_obligation,
     auto_allocate_payment,
     create_credit,
@@ -29,6 +30,7 @@ from apps.kernels.portfolio.services import (
     create_receivable,
     disburse_credit,
     update_aging_for_obligations,
+    write_off_receivable,
 )
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.parties.models import Party
@@ -537,6 +539,57 @@ def test_accrue_interest_simple():
     assert accrual.days_in_period == 30
     credit.refresh_from_db()
     assert credit.interest_amount == accrual.accrued_interest
+
+
+@pytest.mark.django_db
+def test_accrue_interest_compound_exceeds_simple():
+    """P-02: COMPOUND devenga más que SIMPLE para los mismos parámetros (no idéntico)."""
+    from django.contrib.auth import get_user_model
+    actor = get_user_model().objects.create_user(username=f"u_{uuid.uuid4().hex[:8]}", password="x")
+    company, _ = _mk_scope()
+
+    def _mk(method):
+        cr = create_credit(
+            company=company, credit_type="TERM_LOAN",
+            lender_party=_mk_party(company, f"L_{uuid.uuid4().hex[:5]}"),
+            borrower_party=_mk_party(company, f"B_{uuid.uuid4().hex[:5]}"),
+            approved_amount=Decimal("100000.00"), currency="NIO",
+            interest_rate=Decimal("36.00"), term_months=12, maturity_date=_due(365),
+            interest_calculation_method=method,
+        )
+        disburse_credit(credit=cr, disbursed_amount=Decimal("100000.00"), disbursement_date=_today(), disbursed_by=actor)
+        return cr
+
+    simple = _mk("SIMPLE")
+    compound = _mk("COMPOUND")
+    start, end = _today(), _today() + timedelta(days=89)  # 90 días
+    a_s = accrue_interest_for_credit(credit=simple, accrual_date=end, period_start=start, period_end=end)
+    a_c = accrue_interest_for_credit(credit=compound, accrual_date=end, period_start=start, period_end=end)
+    assert a_c.accrued_interest > a_s.accrued_interest
+
+
+@pytest.mark.django_db
+def test_write_off_and_adjust_emit_audit_events():
+    """P-05: castigo y ajuste de CxC dejan evento de auditoría de servicio."""
+    from apps.modulos.audit.models import AuditEvent
+    from django.contrib.auth import get_user_model
+    actor = get_user_model().objects.create_user(username=f"u_{uuid.uuid4().hex[:8]}", password="x")
+    company, _ = _mk_scope()
+    party = _mk_party(company, "Moroso")
+
+    rec = create_receivable(
+        company=company, party=party, reference_type="TEST", reference_id=1,
+        principal_amount=Decimal("500.00"), currency="NIO", issue_date=_today(), due_date=_due(30),
+    )
+    adjust_receivable(rec, Decimal("100.00"), reason="recargo", adjusted_by=actor)
+    write_off_receivable(rec, reason="incobrable", approved_by=actor)
+
+    assert AuditEvent.objects.filter(
+        event_type="PORTFOLIO_RECEIVABLE_ADJUSTED", subject_id=str(rec.obligation_id)
+    ).exists()
+    assert AuditEvent.objects.filter(
+        event_type="PORTFOLIO_RECEIVABLE_WRITTEN_OFF", subject_id=str(rec.obligation_id)
+    ).exists()
 
 
 @pytest.mark.django_db

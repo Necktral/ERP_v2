@@ -29,6 +29,7 @@ def seed_rbac_v01() -> SeedResult:
         "hr_manager": "Gestión completa de RRHH.",
         "hr_clerk": "Operación RRHH (altas/bajas/edición), sin RBAC.",
         "auditor": "Lectura de auditoría y reportes.",
+        "controls_officer": "Oficial de control interno: reglas SoD y hallazgos anti-fraude.",
         "warehouse_manager": "Gestión de inventario (placeholder).",
         "warehouse_operator": "Operación inventario (placeholder).",
         "sales_manager": "Gestión comercial (placeholder).",
@@ -47,6 +48,17 @@ def seed_rbac_v01() -> SeedResult:
 
         # NOMINA / Asistencia de campo
         "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+
+        # FLEET / Mantenimiento
+        "fleet_driver": "Conductor: checklists y reportes de campo (app).",
+        "fleet_mechanic": "Mecánico: ejecuta mantenimiento y atiende defectos.",
+        "fleet_supervisor": "Supervisor de flota: recibe alertas, gestiona planes y documentos.",
+        "fleet_manager": "Gerente de flota: configuración y análisis.",
+        "fleet_clerk": "Bodega/registro de flota.",
+
+        # FINCA / Manejo de fincas (agrícola)
+        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
+        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
     }
 
     permissions = {
@@ -103,6 +115,23 @@ def seed_rbac_v01() -> SeedResult:
         # Auditoría
         "audit.read": "Leer auditoría.",
         "audit.export": "Exportar auditoría.",
+        # Controls (Capa 3: anti-fraude / SoD)
+        "controls.sod.read": "Ver matriz SoD y violaciones por concesión.",
+        "controls.sod.manage": "Gestionar reglas de segregación de funciones.",
+        "controls.findings.read": "Ver hallazgos de control.",
+        "controls.findings.manage": "Correr detectores y resolver hallazgos.",
+        # Finca (manejo de fincas)
+        "finca.finca.read": "Ver fincas y su geografía.",
+        "finca.finca.manage": "Gestionar perfil/geografía de fincas.",
+        "finca.plot.read": "Ver lotes.",
+        "finca.plot.manage": "Crear/actualizar lotes.",
+        "finca.labor.read": "Ver catálogo de labores.",
+        "finca.labor.manage": "Gestionar catálogo de labores.",
+        "finca.work.read": "Ver órdenes de trabajo / bitácora.",
+        "finca.work.capture": "Registrar labores ejecutadas e insumos.",
+        "finca.report.read": "Ver costeo de fincas/lotes.",
+        "finca.field.read": "Ver costeo real desde asistencia de campo y reconciliación.",
+        "finca.cost.post": "Postear (reclasificar) el costo real de la finca al GL.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -111,8 +140,12 @@ def seed_rbac_v01() -> SeedResult:
         "inventory.item.read": "Ver items del inventario.",
         "inventory.item.create": "Crear items del inventario.",
         "inventory.item.update": "Actualizar items del inventario.",
+        "inventory.warehouse.read": "Ver almacenes/bodegas.",
         "inventory.warehouse.create": "Crear almacenes/bodegas.",
+        "inventory.lot.read": "Ver lotes de inventario.",
+        "inventory.lot.create": "Crear lotes de inventario.",
         "inventory.balance.read": "Ver existencias y costo promedio.",
+        "inventory.movement.read": "Ver movimientos de inventario.",
         "inventory.movement.receive": "Registrar entradas/recepciones de inventario.",
         "inventory.movement.issue": "Registrar salidas/consumos de inventario.",
         "inventory.movement.adjust": "Registrar ajustes de inventario.",
@@ -166,6 +199,7 @@ def seed_rbac_v01() -> SeedResult:
         "accounting.journal_entry.reverse_batch": "Ejecutar reversa contable masiva.",
         "accounting.period.read": "Ver periodos fiscales contables.",
         "accounting.period.close": "Cerrar periodo fiscal contable.",
+        "accounting.period.reopen": "Reabrir periodo fiscal contable cerrado (CLOSED -> OPEN).",
         "accounting.sod.override": "Override excepcional de segregación de funciones en contabilidad.",
         "accounting.coa.read": "Ver catálogo contable (Chart of Accounts).",
         "accounting.coa.update": "Actualizar catálogo contable y configuración GL por compañía.",
@@ -239,6 +273,17 @@ def seed_rbac_v01() -> SeedResult:
         "retail.pos.ticket.void": "Anular ticket POS.",
         "retail.pos.peripherals.read": "Ver estado de periféricos POS.",
         "retail.pos.peripherals.manage": "Registrar/actualizar estado de periféricos POS.",
+        # FLEET / Mantenimiento
+        "fleet.asset.read": "Ver activos de flota.",
+        "fleet.asset.manage": "Crear/editar activos de flota.",
+        "fleet.driver.read": "Ver conductores.",
+        "fleet.driver.manage": "Crear/editar conductores y asignaciones.",
+        "fleet.document.read": "Ver documentos de flota.",
+        "fleet.document.manage": "Registrar/editar documentos de flota.",
+        "fleet.maintenance.read": "Ver catálogo y planes de mantenimiento.",
+        "fleet.maintenance.manage": "Configurar tipos/planes/reglas y correr alertas.",
+        "fleet.meter.record": "Registrar lecturas de odómetro/horómetro.",
+        "notifications.device.register": "Registrar token de dispositivo para notificaciones.",
     }
 
     permissions.update(
@@ -261,6 +306,11 @@ def seed_rbac_v01() -> SeedResult:
             "procurement.doc.read": "Ver documentos de compra.",
             "procurement.doc.post": "Postear documentos de compra.",
             "procurement.doc.void": "Anular documentos de compra.",
+            # COMISARIATO (tienda de la empresa a crédito)
+            "comisariato.read": "Ver cuentas/saldos del comisariato.",
+            "comisariato.account.manage": "Crear/editar cuentas de crédito del comisariato (límite, segmento).",
+            "comisariato.sell": "Vender mercadería a crédito en el comisariato.",
+            "comisariato.payroll.apply": "Aplicar el crédito del comisariato a la planilla (descuento + abono).",
             # SoD (maker-checker) para anulación de documentos de facturación
             "billing.doc.void.request": "Solicitar anulación de documento (maker).",
             "billing.doc.void.approve": "Aprobar anulación de documento (checker, SoD).",
@@ -316,6 +366,21 @@ def seed_rbac_v01() -> SeedResult:
             "rbac.assignments.update",
             "audit.read",
             "audit.export",
+            "controls.sod.read",
+            "controls.sod.manage",
+            "controls.findings.read",
+            "controls.findings.manage",
+            "finca.finca.read",
+            "finca.finca.manage",
+            "finca.plot.read",
+            "finca.plot.manage",
+            "finca.labor.read",
+            "finca.labor.manage",
+            "finca.work.read",
+            "finca.work.capture",
+            "finca.report.read",
+            "finca.field.read",
+            "finca.cost.post",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -323,8 +388,12 @@ def seed_rbac_v01() -> SeedResult:
             "inventory.item.read",
             "inventory.item.create",
             "inventory.item.update",
+            "inventory.warehouse.read",
             "inventory.warehouse.create",
+            "inventory.lot.read",
+            "inventory.lot.create",
             "inventory.balance.read",
+            "inventory.movement.read",
             "inventory.movement.receive",
             "inventory.movement.issue",
             "inventory.movement.adjust",
@@ -377,6 +446,7 @@ def seed_rbac_v01() -> SeedResult:
             "accounting.journal_entry.reverse_batch",
             "accounting.period.read",
             "accounting.period.close",
+            "accounting.period.reopen",
             "accounting.sod.override",
             "accounting.coa.read",
             "accounting.coa.update",
@@ -450,8 +520,12 @@ def seed_rbac_v01() -> SeedResult:
             "inventory.item.read",
             "inventory.item.create",
             "inventory.item.update",
+            "inventory.warehouse.read",
             "inventory.warehouse.create",
+            "inventory.lot.read",
+            "inventory.lot.create",
             "inventory.balance.read",
+            "inventory.movement.read",
             "inventory.movement.receive",
             "inventory.movement.issue",
             "inventory.movement.adjust",
@@ -578,11 +652,25 @@ def seed_rbac_v01() -> SeedResult:
             "report.dataset.read",
             "report.run.read",
             "report.dashboard.read",
+            # Controls (lectura)
+            "controls.sod.read",
+            "controls.findings.read",
+        ],
+        "controls_officer": [
+            "controls.sod.read",
+            "controls.sod.manage",
+            "controls.findings.read",
+            "controls.findings.manage",
+            "audit.read",
         ],
         "warehouse_manager": [
             "inventory.item.read",
             "inventory.item.create",
             "inventory.item.update",
+            "inventory.warehouse.read",
+            "inventory.lot.read",
+            "inventory.lot.create",
+            "inventory.movement.read",
             "inventory.movement.post",
             "inventory.adjustment.create",
             # Compat
@@ -591,6 +679,9 @@ def seed_rbac_v01() -> SeedResult:
         ],
         "warehouse_operator": [
             "inventory.item.read",
+            "inventory.warehouse.read",
+            "inventory.lot.read",
+            "inventory.movement.read",
             "inventory.movement.post",
             # Compat
             "inventory.read",
@@ -717,7 +808,11 @@ def seed_rbac_v01() -> SeedResult:
         {
             "warehouse_manager": [
                 "inventory.item.create",
+                "inventory.warehouse.read",
                 "inventory.warehouse.create",
+                "inventory.lot.read",
+                "inventory.lot.create",
+                "inventory.movement.read",
                 "inventory.movement.receive",
                 "inventory.movement.issue",
                 "inventory.movement.adjust",
@@ -843,6 +938,27 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.period.read",
         "nomina.period.approve",
     ]
+    role_to_perms["finca_mandador"] = [
+        "finca.finca.read",
+        "finca.finca.manage",
+        "finca.plot.read",
+        "finca.plot.manage",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.work.capture",
+        "finca.report.read",
+        "finca.field.read",
+        "finca.cost.post",
+    ]
+    role_to_perms["finca_capataz"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.work.read",
+        "finca.work.capture",
+        "finca.field.read",
+    ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):
         if code not in _admin_codes:
@@ -885,6 +1001,56 @@ def seed_rbac_v01() -> SeedResult:
     }
     for role_name, codes_to_add in role_retail_matrix.items():
         current = role_to_perms.get(role_name, [])
+        for code in codes_to_add:
+            if code not in current:
+                current.append(code)
+
+    comisariato_perms_full = [
+        "comisariato.read",
+        "comisariato.account.manage",
+        "comisariato.sell",
+        "comisariato.payroll.apply",
+    ]
+    comisariato_perms_cashier = ["comisariato.read", "comisariato.sell"]
+    role_comisariato_matrix = {
+        "company_admin": comisariato_perms_full,
+        "branch_manager": comisariato_perms_full,
+        "cashier": comisariato_perms_cashier,
+    }
+    for role_name, codes_to_add in role_comisariato_matrix.items():
+        current = role_to_perms.setdefault(role_name, [])
+        for code in codes_to_add:
+            if code not in current:
+                current.append(code)
+
+    fleet_perms_full = [
+        "fleet.asset.read", "fleet.asset.manage", "fleet.driver.read", "fleet.driver.manage",
+        "fleet.document.read", "fleet.document.manage", "fleet.maintenance.read",
+        "fleet.maintenance.manage", "fleet.meter.record", "notifications.device.register",
+    ]
+    fleet_perms_supervisor = [
+        "fleet.asset.read", "fleet.driver.read", "fleet.driver.manage", "fleet.document.read",
+        "fleet.document.manage", "fleet.maintenance.read", "fleet.maintenance.manage",
+        "fleet.meter.record", "notifications.device.register",
+    ]
+    fleet_perms_mechanic = [
+        "fleet.asset.read", "fleet.maintenance.read", "fleet.document.read", "notifications.device.register",
+    ]
+    fleet_perms_driver = ["fleet.asset.read", "fleet.meter.record", "notifications.device.register"]
+    fleet_perms_clerk = [
+        "fleet.asset.read", "fleet.document.read", "fleet.document.manage", "notifications.device.register",
+    ]
+    role_fleet_matrix = {
+        "company_admin": fleet_perms_full,
+        "branch_manager": fleet_perms_full,
+        "fleet_manager": fleet_perms_full,
+        "fleet_supervisor": fleet_perms_supervisor,
+        "fleet_mechanic": fleet_perms_mechanic,
+        "fleet_driver": fleet_perms_driver,
+        "fleet_clerk": fleet_perms_clerk,
+    }
+    for role_name, codes_to_add in role_fleet_matrix.items():
+        current = role_to_perms.setdefault(role_name, [])
         for code in codes_to_add:
             if code not in current:
                 current.append(code)

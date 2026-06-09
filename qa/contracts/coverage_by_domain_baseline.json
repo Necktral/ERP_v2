@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generated_at": "2026-06-07T21:41:56.171226+00:00",
+  "generated_at": "2026-06-09T16:20:02.112315+00:00",
   "changed_files_floor_pct": 50.0,
   "domains": {
     "apps.kernels.accounting": {
-      "baseline_pct": 86.46,
+      "baseline_pct": 86.22,
       "floor_pct": 1.0
     },
     "apps.kernels.nomina": {
@@ -40,7 +40,7 @@
       "floor_pct": 1.0
     },
     "apps.modulos.sync_engine": {
-      "baseline_pct": 94.99,
+      "baseline_pct": 93.85,
       "floor_pct": 1.0
     }
   }

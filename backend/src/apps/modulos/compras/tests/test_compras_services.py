@@ -41,10 +41,11 @@ def _actor():
 
 
 def _request(company, branch, actor):
-    # publish_outbox_event lee company/branch/user/request_id/headers del request.
+    # publish_outbox_event + write_event leen company/branch/user/request_id/headers
+    # y META/path/method del request (un DRF request real los trae).
     return SimpleNamespace(
         company=company, branch=branch, user=actor,
-        request_id="", headers={},
+        request_id="", headers={}, META={}, path="", method="POST",
     )
 
 
@@ -200,3 +201,32 @@ def test_post_voided_document_raises():
     # Postear un documento anulado debe fallar
     with pytest.raises(ProcurementError, match="voided"):
         post_purchase_document(request=req, actor=actor, doc_id=r.doc_id)
+
+
+# ---------------------------------------------------------------------------
+# Auditoría (quién/qué/cuándo/en qué) — cierra audit=0 en procurement
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_procurement_lifecycle_emits_audit():
+    from apps.modulos.audit.models import AuditEvent
+
+    company, branch = _mk_scope()
+    actor = _actor()
+    r = _mk_draft(company, branch, actor)
+    req = _request(company, branch, actor)
+    post_purchase_document(request=req, actor=actor, doc_id=r.doc_id)
+    void_purchase_document(request=req, actor=actor, doc_id=r.doc_id, reason="x")
+
+    for et, after_status in (
+        ("PROCUREMENT_DOC_DRAFTED", PurchaseDocStatus.DRAFT),
+        ("PROCUREMENT_DOC_POSTED", PurchaseDocStatus.POSTED),
+        ("PROCUREMENT_DOC_VOIDED", PurchaseDocStatus.VOIDED),
+    ):
+        ev = AuditEvent.objects.filter(
+            event_type=et, subject_type="PROCUREMENT_DOC", subject_id=str(r.doc_id)
+        ).first()
+        assert ev is not None, f"falta auditoría {et}"
+        assert ev.actor_user_id == actor.id  # quién
+        assert ev.module == "PROCUREMENT"  # qué
+        assert ev.after_snapshot.get("status") == after_status  # en qué

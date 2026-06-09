@@ -1,3 +1,17 @@
+# Simulación ERP — del auth-load al spine económico completo
+
+Este paquete tiene **dos capas**:
+
+1. **Spine económico (carga + funcional)** — simula **todo el ciclo de negocio**
+   (org/RBAC → parties/HR → inventario → facturación → portfolio → nómina con
+   aprobación SoD → contabilidad). Ver **[docs/operacion/SIMULACION_SPINE.md](../docs/operacion/SIMULACION_SPINE.md)**.
+   - Funcional: `python manage.py run_business_simulation --tag demo --report /tmp/sim.json`
+   - Carga + orquestación: `./simulacion/spine/run_spine_simulation.sh demo 10 30s`
+   - Dashboard: `simulacion/dashboards/economic-spine.json`
+2. **Auth-load** (abajo) — el load-test del flujo de autenticación (cookies/2FA/refresh/logout/ataques).
+
+---
+
 # Simulacion de carga de autenticacion
 
 Este paquete ejecuta una simulacion realista del flujo de autenticacion en modo cookies (HttpOnly + CSRF), incluyendo 2FA TOTP, refresh, logout idempotente y escenarios de ataque.

@@ -13,6 +13,24 @@ from apps.modulos.rbac.selectors import get_effective_permissions_for_scope
 from .models import AdminGrant, CompanyLink, LinkGrant, OrgUnit, UserMembership
 
 
+def has_active_company_link(*, from_company: OrgUnit, to_company: OrgUnit) -> bool:
+    """IAM-02: existe ALGÚN CompanyLink activo from_company→to_company.
+
+    Gate grueso (fail-closed) para exponer un data-scope intercompany en la capa de
+    auth: si no hay enlace alguno entre las empresas, no tiene sentido fijar
+    `request.data_company`. El permiso fino (por código/modo) lo sigue validando
+    `rbac_permission` vía `has_intercompany_grant`.
+    """
+    if from_company.id == to_company.id:
+        return True
+    return CompanyLink.objects.filter(
+        from_company=from_company,
+        to_company=to_company,
+        is_active=True,
+        status=CompanyLink.Status.ACTIVE,
+    ).exists()
+
+
 def has_intercompany_grant(
     *,
     from_company: OrgUnit,

@@ -96,6 +96,18 @@ def test_effective_perms_inactive_assignment_excluded():
 
 
 @pytest.mark.django_db
+def test_effective_perms_inactive_permission_excluded():
+    """RBAC-01: un permiso desactivado NO concede acceso en la ruta scoped."""
+    _, company, _ = _mk_org()
+    user = _mk_user()
+    role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
+    code = f"z.read_{uuid.uuid4().hex[:6]}"
+    RolePermission.objects.create(role=role, permission=Permission.objects.create(code=code, is_active=False))
+    RoleAssignment.objects.create(user=user, role=role, org_unit=company, is_active=True)
+    assert get_effective_permissions_for_scope(user, company=company, include_global=False) == set()
+
+
+@pytest.mark.django_db
 def test_effective_perms_include_global_userrole():
     _, company, _ = _mk_org()
     user = _mk_user()
@@ -183,6 +195,36 @@ def test_seed_rbac_is_idempotent_and_maps_known_role():
     sync_admin = Role.objects.get(name="sync_admin")
     codes = set(RolePermission.objects.filter(role=sync_admin).values_list("permission__code", flat=True))
     assert codes == {"sync.device.enroll", "sync.device.revoke"}
+
+
+@pytest.mark.django_db
+def test_seed_rbac_includes_inventory_read_and_lot_perms():
+    # Cierra un gap de cableado: 4 endpoints de inventario (warehouse/lot/movement
+    # list, lot create) exigían permisos que el seed no creaba -> inalcanzables para
+    # cualquier rol no-superusuario. El catálogo debe incluirlos y los roles de bodega
+    # deben poder recibir las lecturas.
+    seed_rbac_v01()
+    required = {
+        "inventory.warehouse.read",
+        "inventory.lot.read",
+        "inventory.lot.create",
+        "inventory.movement.read",
+    }
+    seeded = set(Permission.objects.filter(code__in=required).values_list("code", flat=True))
+    assert seeded == required, f"faltan en el catálogo: {required - seeded}"
+
+    reads = {"inventory.warehouse.read", "inventory.lot.read", "inventory.movement.read"}
+    for role_name in ("company_admin", "branch_manager", "warehouse_manager", "warehouse_operator"):
+        codes = set(
+            RolePermission.objects.filter(role__name=role_name).values_list("permission__code", flat=True)
+        )
+        assert reads <= codes, f"{role_name} sin lecturas de inventario: faltan {reads - codes}"
+
+    # lot.create sólo en roles de gestión, no en el operador.
+    mgr = set(RolePermission.objects.filter(role__name="warehouse_manager").values_list("permission__code", flat=True))
+    op = set(RolePermission.objects.filter(role__name="warehouse_operator").values_list("permission__code", flat=True))
+    assert "inventory.lot.create" in mgr
+    assert "inventory.lot.create" not in op
 
 
 # ---------------------------------------------------------------------------

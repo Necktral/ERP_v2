@@ -49,8 +49,10 @@ def get_effective_permissions_for_scope(
     if not role_ids:
         return set()
 
+    # RBAC-01: respetar el flag de activación del permiso (igual que get_effective_permissions);
+    # un permiso desactivado globalmente NO debe seguir concediendo acceso en la ruta scoped.
     perm_codes = (
-        RolePermission.objects.filter(role_id__in=list(role_ids))
+        RolePermission.objects.filter(role_id__in=list(role_ids), permission__is_active=True)
         .select_related("permission")
         .values_list("permission__code", flat=True)
     )

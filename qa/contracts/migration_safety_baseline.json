@@ -90,6 +90,30 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "1f72bfd0483c2c69a60baa84c65f66b713452ffb498e9e78cd58e911b9b9ca0e"
     },
+    "backend/src/apps/kernels/accounting/migrations/0012_journaldraft_generated_by.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "5be5675618e2700f92405ace31342f8951434939c95238501c00384553e9363a"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0013_operationalpostingconfig_enable_nomina.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "012c2ddc32cf378de108f1ac55ba04efcc8ccf49c0ea55f7a6bce4e6d8861589"
+    },
+    "backend/src/apps/kernels/accounting/migrations/0014_fiscalperiod_reopen.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3875b7c07bd28cf46fb1d4bbc1f95fcb4e871bba78a9442e43137396ebf354f9"
+    },
     "backend/src/apps/kernels/facturacion/migrations/0001_initial.py": {
       "risk_class": "expand",
       "rollout_strategy": "baseline_existing_migration",
@@ -146,6 +170,22 @@
       "ticket_ref": "COMMERCIAL-6-2-BILLING-CUSTOMER-PARTY",
       "fingerprint": "af52f3d5f056936e043e08f065274c1d587d9d2da62e84c85b5879b5b268b1b5"
     },
+    "backend/src/apps/kernels/facturacion/migrations/0008_billingpayment_creditapprovalrequest_salesorder_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "e755c12b5e2c25bc065b83d0b2ddeffa26e717a57a95721ac6979048f892f834"
+    },
+    "backend/src/apps/kernels/facturacion/migrations/0009_billingdocument_credited_total_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "5584ff12126ffb5e2986536b9d9e6ef38d183fca87c2747d1603a80533a9dc2c"
+    },
     "backend/src/apps/kernels/inventarios/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -169,6 +209,150 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "c0794a7cece31270b1b7a4523126be4a05c6680547e45517f91e7d2274f08e53"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0004_itemlot_lotbalance_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "8f74992d0cb2de3243959af68f5de645dfb83387681b71c76e75a228080c1991"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0005_stockmovement_reversal_of_stockmovement_reversed_at.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "2d4eee50331027276cef1b07c67e282f122eb07cece20a02b30b43149b3064a1"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0006_remision_remisionline_remisionphoto_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "fd3760b760e88b5e165ba8910053f2dbbf53cc90cf491852645cdb6c857a7ed0"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0007_inventorycostpolicy.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "089c24a830dd2e451fded05e4f144d9c869f6b4131f88dd5a495767551eee0ed"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0008_stockmovement_cost_policy_version.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "faa28de22cd08562cc2d8cf2689dd8121bce69289915781537fabb70479c67a7"
+    },
+    "backend/src/apps/kernels/inventarios/migrations/0009_inventoryitem_inventory_class.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "918a2950aa89ab2e8ea47fd003a6e5f47c5deccfefe336dc1f69795084754cbb"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "db53da455356e21913ed17e5892db8a3f194ced4312d7f8b1f0d324eefeed6ce"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0002_remove_payrollsheet_ix_nom_sheet_p_a_and_more.py": {
+      "risk_class": "destructive",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "18add4f01ac5d37768e7ee4a38b4afedffc6d0311b0f01bb8464c9d79b5b3fc0"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0003_nominaconfig_irbracket_nominaconfig_ix_nomcfg_c_y_a_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "2afbd66d441952a954ac71675cb8259dc03f7b8a663ff8e4472cbbef3a5e12fc"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0004_alter_payrollentry_payment_frequency_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "expand_field_attendance_foundation_and_catorcena_choices",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "PR16-FIELD-ATTENDANCE",
+      "fingerprint": "95f51250c98b88bfcc5222b4d89baf38b8215a53c981d06f3113216ce902cc97"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0005_employeeinssenrollment_payrollinsselection.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "3a4fa70e9d59e3221f8c58228efd973fdb3972e82767389628d56e31440212a3"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0006_nominaconfig_holiday_worked_rate_and_more.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "ea12a8cb16ade083ac2ae6995a6fc404da6568db58f2c6d0e82cabd98533281a"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0007_holiday.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "db7a61776653ba826eb79fb92f4859e140bb981e2320bc0e0b87f124400a76b5"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0008_seed_nicaragua_holidays.py": {
+      "risk_class": "metadata_only",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "8c294e44c10cef81de6109ffb25d5d294b0867e4ae9333ddef9edbfd1c479ab7"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0009_alter_attendancereport_source_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "2468230d17d57bfa2a5239cec79146ec8d1e0e121f87937c2792864359be6a0a"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0010_field_capture_models.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "expand_field_attendance_capture_foundation",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "PR17-FIELD-ATTENDANCE-CAPTURE",
+      "fingerprint": "e9f1576619fa9b78350d78316e5f591dbd1dbba24bd6d35c9695a4ac9ca47bcc"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0011_payrollentry_ir_manual.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "2941764db0ad380d35de927f19e8ce38cfbc6f311ddc4d209201f11ea824c0e9"
+    },
+    "backend/src/apps/kernels/nomina/migrations/0012_payrollloandeduction_abono_applied.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "700903f16e854c3b33e4035e5968234c63d92eb9d71a22a3ea5f4339b8a1ee77"
     },
     "backend/src/apps/kernels/payments/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
@@ -201,6 +385,30 @@
       "owner": "db-architecture",
       "ticket_ref": "CAP-04-TENDER-SPINE-V1",
       "fingerprint": "55eb0d93e61642e08ec84efa3ab6caacc0d2ea03fa502caa866ce3d746e22938"
+    },
+    "backend/src/apps/kernels/payments/migrations/0005_alter_paymentintent_payment_method.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "0c72de4b972ada8bb9c8071933bcf2bbdac5de36bb441a72adbd6a14cb6fb86a"
+    },
+    "backend/src/apps/kernels/payments/migrations/0006_cashdenomination_paymentrefund_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "36d7751a0de771b7150a353029233d428d532c820da4f12edcffb2225cca9a4d"
+    },
+    "backend/src/apps/kernels/portfolio/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "bee16ea39ce14de7acdf96ac8dd9f952cba2a061c07689ffacd6b918e18df194"
     },
     "backend/src/apps/kernels/reporting/migrations/0001_initial.py": {
       "risk_class": "expand",
@@ -282,6 +490,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "774e1d41c217a0c302af967ff46f990222c50862a779b23f3c69c700720f9c77"
     },
+    "backend/src/apps/modulos/activity/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "331f259115a72e54d295dab05f67b210dade55862063bacb0f8714c92a8abb60"
+    },
     "backend/src/apps/modulos/audit/migrations/0001_initial.py": {
       "risk_class": "expand",
       "rollout_strategy": "baseline_existing_migration",
@@ -322,6 +538,22 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "28aa811261b2aa849cabee0e9a067baa642794c7ff334a8d6305f8091f447c52"
     },
+    "backend/src/apps/modulos/comisariato/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "a8e8ea5d39d3aa5720bea946ae15bcf6c8df3f28b84e6814e294dda25e082ac2"
+    },
+    "backend/src/apps/modulos/comisariato/migrations/0002_alter_customercreditaccount_credit_limit.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "982bb1e84c99cb410cd45f51a38c1cbca29129217b585403def32152c791c0ed"
+    },
     "backend/src/apps/modulos/compras/migrations/0001_initial.py": {
       "risk_class": "expand",
       "rollout_strategy": "baseline_existing_migration",
@@ -337,6 +569,30 @@
       "owner": "db-architecture",
       "ticket_ref": "C3-PROCUREMENT-PARTY-LINK",
       "fingerprint": "33729299e14a5b367b75649a6d4e7b952373d526840dd86f203eb6393f6b47f8"
+    },
+    "backend/src/apps/modulos/compras/migrations/0003_remove_purchasedocument_uniq_proc_number_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "7894eb8910ad189dc7d0f9ab38ad046fc3354f42e3bf076d35d6ffe527a266a9"
+    },
+    "backend/src/apps/modulos/controls/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "9e2b66b4c17f8cb80ce6bb59d3f68852c0f9e240d660d0eea22a5e7b2fc79e35"
+    },
+    "backend/src/apps/modulos/controls/migrations/0002_seed_segregation_rules.py": {
+      "risk_class": "metadata_only",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "18a96aed800ae5089dbfba06882dba2e881b38c04cd77e6854a8cf8e32549973"
     },
     "backend/src/apps/modulos/dashboard/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
@@ -442,6 +698,38 @@
       "ticket_ref": "COMMERCIAL-6-3A-FUEL-CUSTOMER-PARTY",
       "fingerprint": "861715620f5316a60b8a693dd4cb6a26bcc81147b0a749fbd0995334198a2fa6"
     },
+    "backend/src/apps/modulos/finca/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "14d5ce702dbf875e39c4489521176f4740249344d8324524ce3636de07a17411"
+    },
+    "backend/src/apps/modulos/finca/migrations/0002_seed_labors.py": {
+      "risk_class": "metadata_only",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "957539da741940bd02412ba8d5eb05436b4803c57f8e8a4787bf711d503d8891"
+    },
+    "backend/src/apps/modulos/finca/migrations/0003_insumo_inventory_link.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "8bc63ad1aaa560f4d6a3ea1049b1e9baa253002a6f455e45829142f86415136f"
+    },
+    "backend/src/apps/modulos/fleet/migrations/0001_initial.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "4ca81d1ed5c86d1d3b50240258bff5a565e497d836168c604dfba1579d6f8afc"
+    },
     "backend/src/apps/modulos/hr/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -514,6 +802,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "3a2c4557c70732c4200ab9fb7c25ca55f94aa9c377b7efd688eef4b47d09fce9"
     },
+    "backend/src/apps/modulos/iam/migrations/0005_approvalrequest.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "73e46583cea68343e4fe7aa95b20d37d80e91c374913a7da855f8d9ba26189a2"
+    },
     "backend/src/apps/modulos/integration/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -537,6 +833,14 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "addbf5e091f37b91beccd7b8adb7efeda9dddfaeae198bc1d7adb88bf060f5a4"
+    },
+    "backend/src/apps/modulos/notifications/migrations/0001_initial.py": {
+      "risk_class": "expand",
+      "rollout_strategy": "baseline_existing_migration",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "U5-BASELINE",
+      "fingerprint": "9c9e2d368371591a77b6f0b9d0306a8c4e40a0fe00102b7e9ffe08db35974ace"
     },
     "backend/src/apps/modulos/org/migrations/0001_initial.py": {
       "risk_class": "expand",
@@ -634,6 +938,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "21372373343788705ff4e93b6cbd44eb3989351c70c1d7024a15d3eca4aaa23c"
     },
+    "backend/src/apps/modulos/rbac/migrations/0006_materialize_global_userroles.py": {
+      "risk_class": "metadata_only",
+      "rollout_strategy": "materialize_global_userroles_to_scoped_roleassignments",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "RBAC-GLOBAL-ROLE-HARD-CUT",
+      "fingerprint": "6097e0f11c823d5f4d5c338e3245a7d8748672a7509f4a4e4e58bcc418bf2e67"
+    },
     "backend/src/apps/modulos/retail_pos/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -697,222 +1009,6 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "934f3523e156880a33e401b494d387b0748d69c6d24b0172061437faafe67f3a"
-    },
-    "backend/src/apps/kernels/accounting/migrations/0012_journaldraft_generated_by.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "5be5675618e2700f92405ace31342f8951434939c95238501c00384553e9363a"
-    },
-    "backend/src/apps/kernels/facturacion/migrations/0008_billingpayment_creditapprovalrequest_salesorder_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "e755c12b5e2c25bc065b83d0b2ddeffa26e717a57a95721ac6979048f892f834"
-    },
-    "backend/src/apps/kernels/facturacion/migrations/0009_billingdocument_credited_total_and_more.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "5584ff12126ffb5e2986536b9d9e6ef38d183fca87c2747d1603a80533a9dc2c"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0004_itemlot_lotbalance_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "8f74992d0cb2de3243959af68f5de645dfb83387681b71c76e75a228080c1991"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0005_stockmovement_reversal_of_stockmovement_reversed_at.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "2d4eee50331027276cef1b07c67e282f122eb07cece20a02b30b43149b3064a1"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0006_remision_remisionline_remisionphoto_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "fd3760b760e88b5e165ba8910053f2dbbf53cc90cf491852645cdb6c857a7ed0"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0007_inventorycostpolicy.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "089c24a830dd2e451fded05e4f144d9c869f6b4131f88dd5a495767551eee0ed"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0008_stockmovement_cost_policy_version.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "faa28de22cd08562cc2d8cf2689dd8121bce69289915781537fabb70479c67a7"
-    },
-    "backend/src/apps/kernels/inventarios/migrations/0009_inventoryitem_inventory_class.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "918a2950aa89ab2e8ea47fd003a6e5f47c5deccfefe336dc1f69795084754cbb"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0001_initial.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "db53da455356e21913ed17e5892db8a3f194ced4312d7f8b1f0d324eefeed6ce"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0002_remove_payrollsheet_ix_nom_sheet_p_a_and_more.py": {
-      "risk_class": "destructive",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "18add4f01ac5d37768e7ee4a38b4afedffc6d0311b0f01bb8464c9d79b5b3fc0"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0003_nominaconfig_irbracket_nominaconfig_ix_nomcfg_c_y_a_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "2afbd66d441952a954ac71675cb8259dc03f7b8a663ff8e4472cbbef3a5e12fc"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0004_alter_payrollentry_payment_frequency_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "expand_field_attendance_foundation_and_catorcena_choices",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "PR16-FIELD-ATTENDANCE",
-      "fingerprint": "95f51250c98b88bfcc5222b4d89baf38b8215a53c981d06f3113216ce902cc97"
-    },
-    "backend/src/apps/kernels/payments/migrations/0005_alter_paymentintent_payment_method.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "0c72de4b972ada8bb9c8071933bcf2bbdac5de36bb441a72adbd6a14cb6fb86a"
-    },
-    "backend/src/apps/kernels/payments/migrations/0006_cashdenomination_paymentrefund_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "36d7751a0de771b7150a353029233d428d532c820da4f12edcffb2225cca9a4d"
-    },
-    "backend/src/apps/kernels/portfolio/migrations/0001_initial.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "bee16ea39ce14de7acdf96ac8dd9f952cba2a061c07689ffacd6b918e18df194"
-    },
-    "backend/src/apps/modulos/activity/migrations/0001_initial.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "331f259115a72e54d295dab05f67b210dade55862063bacb0f8714c92a8abb60"
-    },
-    "backend/src/apps/modulos/compras/migrations/0003_remove_purchasedocument_uniq_proc_number_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "7894eb8910ad189dc7d0f9ab38ad046fc3354f42e3bf076d35d6ffe527a266a9"
-    },
-    "backend/src/apps/modulos/iam/migrations/0005_approvalrequest.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "73e46583cea68343e4fe7aa95b20d37d80e91c374913a7da855f8d9ba26189a2"
-    },
-    "backend/src/apps/kernels/accounting/migrations/0013_operationalpostingconfig_enable_nomina.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "012c2ddc32cf378de108f1ac55ba04efcc8ccf49c0ea55f7a6bce4e6d8861589"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0005_employeeinssenrollment_payrollinsselection.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "3a4fa70e9d59e3221f8c58228efd973fdb3972e82767389628d56e31440212a3"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0006_nominaconfig_holiday_worked_rate_and_more.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "ea12a8cb16ade083ac2ae6995a6fc404da6568db58f2c6d0e82cabd98533281a"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0007_holiday.py": {
-      "risk_class": "expand",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "db7a61776653ba826eb79fb92f4859e140bb981e2320bc0e0b87f124400a76b5"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0008_seed_nicaragua_holidays.py": {
-      "risk_class": "metadata_only",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "8c294e44c10cef81de6109ffb25d5d294b0867e4ae9333ddef9edbfd1c479ab7"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0009_alter_attendancereport_source_and_more.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "baseline_existing_migration",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "U5-BASELINE",
-      "fingerprint": "2468230d17d57bfa2a5239cec79146ec8d1e0e121f87937c2792864359be6a0a"
-    },
-    "backend/src/apps/kernels/nomina/migrations/0010_field_capture_models.py": {
-      "risk_class": "high_lock_risk",
-      "rollout_strategy": "expand_field_attendance_capture_foundation",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "PR17-FIELD-ATTENDANCE-CAPTURE",
-      "fingerprint": "e9f1576619fa9b78350d78316e5f591dbd1dbba24bd6d35c9695a4ac9ca47bcc"
-    },
-    "backend/src/apps/modulos/rbac/migrations/0006_materialize_global_userroles.py": {
-      "risk_class": "metadata_only",
-      "rollout_strategy": "materialize_global_userroles_to_scoped_roleassignments",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "db-architecture",
-      "ticket_ref": "RBAC-GLOBAL-ROLE-HARD-CUT",
-      "fingerprint": "6097e0f11c823d5f4d5c338e3245a7d8748672a7509f4a4e4e58bcc418bf2e67"
     }
   },
   "notes": [

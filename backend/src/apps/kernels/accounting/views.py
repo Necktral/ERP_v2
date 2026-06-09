@@ -60,6 +60,7 @@ from .serializers import (
     FxRateUpsertIn,
     FxRevaluationRunIn,
     FiscalPeriodCloseIn,
+    FiscalPeriodReopenIn,
     GeneralLedgerRangeIn,
     IntercompanyCloseIn,
     IntercompanyConfirmIn,
@@ -81,6 +82,7 @@ from .services import (
     close_fiscal_period,
     post_journal_drafts,
     reconcile_operational_vs_accounting,
+    reopen_fiscal_period,
     reverse_journal_entries_batch,
     reverse_journal_entry,
 )
@@ -1286,6 +1288,60 @@ class FiscalPeriodCloseView(APIView):
             "was_already_closed": bool(result.was_already_closed),
             "force_applied": bool(result.force_applied),
             "gate_summary": result.gate_summary,
+        }
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class FiscalPeriodReopenView(APIView):
+    permission_classes = [rbac_permission("accounting.period.reopen")]
+
+    @staticmethod
+    def _can_override_sod(request) -> bool:
+        perms = get_effective_permissions_for_scope(
+            request.user,
+            company=request.company,
+            branch=getattr(request, "branch", None),
+        )
+        return "accounting.sod.override" in perms or "*" in perms
+
+    def post(self, request):
+        s = FiscalPeriodReopenIn(data=request.data)
+        s.is_valid(raise_exception=True)
+        v = s.validated_data
+        allow_same_closer = bool(v.get("allow_same_closer", False))
+        force = bool(v.get("force", False))
+        # Tanto el override SoD como el force cronológico exigen el permiso de override.
+        if (allow_same_closer or force) and not self._can_override_sod(request):
+            return Response(
+                {"detail": "Permiso requerido: accounting.sod.override"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            result = reopen_fiscal_period(
+                company_id=request.company.id,
+                year=int(v["year"]),
+                month=int(v["month"]),
+                reason=str(v["reason"]),
+                force=force,
+                allow_same_closer=allow_same_closer,
+                actor_user=request.user,
+            )
+        except AccountingConflictError as exc:
+            raise ConflictError(str(exc)) from exc
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        payload = {
+            "company_id": int(result.company_id),
+            "year": int(result.year),
+            "month": int(result.month),
+            "status": result.status,
+            "period_id": int(result.period_id),
+            "was_already_open": bool(result.was_already_open),
+            "reopened_at": result.reopened_at,
+            "reason": result.reason,
+            "force_applied": bool(result.force_applied),
         }
         return Response(payload, status=status.HTTP_200_OK)
 

@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from apps.modulos.audit.service_audit import emit_service_event
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.services import publish_outbox_event
 from apps.modulos.parties.models import Party, PartyRole
@@ -160,6 +161,19 @@ def create_purchase_draft(
             company=company,
             branch=branch,
         )
+        emit_service_event(
+            company=company,
+            branch=branch,
+            request=request,
+            module="PROCUREMENT",
+            event_type="PROCUREMENT_DOC_DRAFTED",
+            reason_code="PROCUREMENT_OK",
+            actor_user=actor,
+            subject_type="PROCUREMENT_DOC",
+            subject_id=str(doc.id),
+            after_snapshot={"status": doc.status, "doc_type": doc.doc_type, "total": str(doc.total)},
+            metadata={"series": doc.series, "currency": doc.currency, "supplier_ref": doc.supplier_ref},
+        )
         return PurchaseCreateResult(doc_id=int(doc.id))
 
 
@@ -224,6 +238,20 @@ def post_purchase_document(*, request, actor, doc_id: int) -> dict:
                 },
             )
 
+        emit_service_event(
+            company=company,
+            branch=branch,
+            request=request,
+            module="PROCUREMENT",
+            event_type="PROCUREMENT_DOC_POSTED",
+            reason_code="PROCUREMENT_OK",
+            actor_user=actor,
+            subject_type="PROCUREMENT_DOC",
+            subject_id=str(doc.id),
+            before_snapshot={"status": PurchaseDocStatus.DRAFT},
+            after_snapshot={"status": doc.status, "number": int(doc.number), "total": str(doc.total)},
+            metadata={"series": doc.series, "currency": doc.currency},
+        )
         return {
             "ok": True,
             "doc_id": int(doc.id),
@@ -274,6 +302,20 @@ def void_purchase_document(*, request, actor, doc_id: int, reason: str = "VOID")
             actor_user=actor,
             company=company,
             branch=branch,
+        )
+        emit_service_event(
+            company=company,
+            branch=branch,
+            request=request,
+            module="PROCUREMENT",
+            event_type="PROCUREMENT_DOC_VOIDED",
+            reason_code="PROCUREMENT_OK",
+            actor_user=actor,
+            subject_type="PROCUREMENT_DOC",
+            subject_id=str(doc.id),
+            before_snapshot={"status": PurchaseDocStatus.POSTED},
+            after_snapshot={"status": doc.status, "reason": doc.void_reason},
+            metadata={"series": doc.series, "number": int(doc.number)},
         )
 
         return {"ok": True, "doc_id": int(doc.id), "status": doc.status}

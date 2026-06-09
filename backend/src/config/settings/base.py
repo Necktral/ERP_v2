@@ -245,11 +245,14 @@ INSTALLED_APPS = [
     "apps.modulos.org.apps.OrgConfig",  # <-- NUEVO
     "apps.modulos.parties.apps.PartiesConfig",
     "apps.modulos.hr.apps.HrConfig",  # <-- NUEVO
+    "apps.modulos.controls.apps.ControlsConfig",  # Capa 3: control plane anti-fraude
+    "apps.modulos.finca.apps.FincaConfig",  # Capa 6: manejo de fincas (agrícola)
     "apps.kernels.accounting.apps.AccountingConfig",
     "apps.kernels.payments.apps.PaymentsConfig",
     "apps.kernels.portfolio.apps.PortfolioConfig",  # Financial Portfolio Kernel
     "apps.kernels.nomina.apps.NominaConfig",         # Nómina Kernel
     "apps.kernels.reporting.apps.ReportingConfig",
+    "apps.modulos.intercompany.apps.IntercompanyConfig",  # Orquestación intercompany (consolidación de grupo)
     "apps.modulos.cec.apps.CecConfig",
     "apps.modulos.integration.apps.IntegrationConfig",
     "apps.modulos.dashboard.apps.DashboardConfig",
@@ -264,7 +267,16 @@ INSTALLED_APPS += [
     "apps.kernels.inventarios",
     "apps.kernels.facturacion",
     "apps.modulos.compras",
+    "apps.modulos.comisariato.apps.ComisariatoConfig",
+    "apps.modulos.notifications.apps.NotificationsConfig",
+    "apps.modulos.fleet.apps.FleetConfig",
 ]
+
+# Notifications / FCM (Fase B): push gateado; default OFF (Fase A entrega in-app por RecordSender).
+NOTIFICATIONS_FCM_ENABLED = env.bool("NOTIFICATIONS_FCM_ENABLED", default=False)
+NOTIFICATIONS_FCM_ENDPOINT = env("NOTIFICATIONS_FCM_ENDPOINT", default="https://fcm.googleapis.com/fcm/send")
+NOTIFICATIONS_FCM_SERVER_KEY = env("NOTIFICATIONS_FCM_SERVER_KEY", default="")
+NOTIFICATIONS_FCM_TIMEOUT = env.int("NOTIFICATIONS_FCM_TIMEOUT", default=10)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

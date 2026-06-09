@@ -50,7 +50,10 @@ def _user_with_perms(*, company, branch, perms):
 
 
 def _request(user, company, branch):
-    return SimpleNamespace(user=user, company=company, branch=branch)
+    # write_event lee META/path/method (un DRF request real los trae).
+    return SimpleNamespace(
+        user=user, company=company, branch=branch, META={}, path="", method="POST",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -177,3 +180,28 @@ def test_redeem_empty_token_raises():
 def test_redeem_garbage_token_raises_auth():
     with pytest.raises(DashboardAuthError):
         redeem_embed_token(token_str="not-a-real-jwt")
+
+
+# ---------------------------------------------------------------------------
+# Auditoría (quién/qué/cuándo/en qué) — mint + redeem de embed token
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_embed_token_mint_and_redeem_emit_audit():
+    from apps.modulos.audit.models import AuditEvent
+
+    company, branch = _mk_scope()
+    user = _user_with_perms(company=company, branch=branch, perms=_EXEC_PERMS)
+    raw, grant = _issue_token(user, company, branch)
+    redeem_embed_token(token_str=raw)
+
+    minted = AuditEvent.objects.filter(
+        event_type="DASHBOARD_EMBED_TOKEN_MINTED", subject_type="DASHBOARD_EMBED", subject_id=str(grant.id)
+    ).first()
+    assert minted is not None and minted.actor_user_id == user.id and minted.module == "DASHBOARD"
+
+    redeemed = AuditEvent.objects.filter(
+        event_type="DASHBOARD_EMBED_TOKEN_REDEEMED", subject_type="DASHBOARD_EMBED", subject_id=str(grant.id)
+    ).first()
+    assert redeemed is not None and redeemed.actor_user_id == user.id
+    assert redeemed.after_snapshot.get("status") == DashboardEmbedGrant.Status.REDEEMED

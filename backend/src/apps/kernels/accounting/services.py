@@ -13,7 +13,6 @@ from django.db import IntegrityError, transaction
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
-from apps.modulos.audit.writer import write_event
 from apps.modulos.common.domain_errors import DomainError, IntegrationError
 from apps.modulos.common.tender import TenderPaymentMethod
 from apps.modulos.cec.models import CECException, CloseRun
@@ -29,6 +28,7 @@ from apps.modulos.integration.services import (
 )
 from apps.kernels.facturacion.models import BillingDocument
 
+from .audit_helpers import write_accounting_audit_event as _write_accounting_audit_event
 from .models import (
     DraftValidationResult,
     EconomicEvent,
@@ -47,52 +47,6 @@ PROJECTOR_CONSUMER = "accounting.projector"
 OPEN_EXCEPTION_STATUSES = (CECException.Status.OPEN, CECException.Status.IN_PROGRESS)
 
 
-class _AccountingAuditRequest:
-    """Request sintético para encadenar auditoría por company sin HTTP.
-
-    El kernel accounting opera con `actor_user` (no recibe `request`); este shim
-    aporta el scope que `audit.writer.write_event` usa para particionar la cadena.
-    """
-
-    def __init__(self, *, company, branch=None) -> None:
-        self.company = company
-        self.branch = branch
-        self.META: dict[str, Any] = {}
-        self.path = ""
-        self.method = ""
-        self.request_id = ""
-
-
-def _write_accounting_audit_event(
-    *,
-    actor_user,
-    company,
-    branch,
-    event_type: str,
-    subject_type: str,
-    subject_id: str,
-    before_snapshot: dict[str, Any] | None = None,
-    after_snapshot: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-) -> None:
-    """Auditoría de servicio del kernel accounting (cierra el hueco `audit=0`, invariante #4)."""
-    meta: dict[str, Any] = {"company_id": str(getattr(company, "id", "") or "")}
-    if branch is not None:
-        meta["branch_id"] = str(getattr(branch, "id", "") or "")
-    if metadata:
-        meta.update(metadata)
-    write_event(
-        request=_AccountingAuditRequest(company=company, branch=branch),
-        module="ACCOUNTING",
-        event_type=event_type,
-        reason_code="ACCOUNTING_OK",
-        actor_user=actor_user,
-        subject_type=subject_type,
-        subject_id=str(subject_id),
-        before_snapshot=before_snapshot,
-        after_snapshot=after_snapshot,
-        metadata=meta,
-    )
 SCORE_WEIGHTS: dict[str, int] = {
     CECException.Severity.CRITICAL: 40,
     CECException.Severity.HIGH: 20,
@@ -111,6 +65,7 @@ SUPPORTED_ECONOMIC_EVENTS = {
     ("PROCUREMENT", "ProcurementDocumentPosted"),
     ("PROCUREMENT", "ProcurementDocumentVoided"),
     ("NOMINA", "PayrollPeriodApproved"),
+    ("FINCA", "FincaCostAccrued"),
 }
 TRANSFER_PAYMENT_ACCOUNTING_EVENTS = {
     ("PAYMENTS", "PaymentCaptured"),
@@ -124,6 +79,7 @@ OPERATIONAL_ACCOUNTING_EVENTS = {
     ("INVENTORY", "InventoryAdjusted"),
     ("INVENTORY", "InventoryTransferCompleted"),
     ("NOMINA", "PayrollPeriodApproved"),
+    ("FINCA", "FincaCostAccrued"),
 }
 ACCOUNTING_READINESS_EVENTS = OPERATIONAL_ACCOUNTING_EVENTS | {
     ("PAYMENTS", "PaymentCaptured"),
@@ -212,6 +168,10 @@ class OperationalPostingRuntime:
             return bool(self.enable_inventory)
         if source_module == "NOMINA":
             return bool(self.enable_nomina)
+        if source_module == "FINCA":
+            # La reclasificación de costo agrícola por finca se postea siempre que el
+            # posting no esté DISABLED (no tiene toggle propio en v1).
+            return True
         return False
 
 
@@ -1789,6 +1749,20 @@ def build_rules_json_v1() -> dict[str, Any]:
                     {"account": "2308", "side": "CREDIT", "amount_from": "total_inatec", "sign": 1},
                 ],
             },
+            {
+                # Reclasificación del costo agrícola por finca (no capitaliza a activo).
+                # DÉBITO costo-de-cultivo-por-finca = CRÉDITO costos-aplicados (contra),
+                # que neutraliza el gasto ya reconocido por nómina (mano de obra) e
+                # inventario (insumos): el total de Resultados no cambia, pero el costo
+                # queda visible por finca. Cuentas por defecto, ajustables con el contador.
+                "id": "finca_cost_reclass",
+                "source_module": "FINCA",
+                "event_type": "FincaCostAccrued",
+                "lines": [
+                    {"account": "6301", "side": "DEBIT", "amount_from": "total_cost", "sign": 1},
+                    {"account": "6309", "side": "CREDIT", "amount_from": "total_cost", "sign": 1},
+                ],
+            },
         ],
     }
 
@@ -1875,6 +1849,19 @@ class PeriodCloseResult:
     period_id: int
     was_already_closed: bool
     gate_summary: dict[str, Any]
+    force_applied: bool
+
+
+@dataclass(frozen=True)
+class PeriodReopenResult:
+    company_id: int
+    year: int
+    month: int
+    status: str
+    period_id: int
+    was_already_open: bool
+    reopened_at: str | None
+    reason: str
     force_applied: bool
 
 
@@ -2638,6 +2625,158 @@ def close_fiscal_period(
         )
         setattr(exc, "gate_summary", gate_block_summary)
         raise exc
+
+
+def reopen_fiscal_period(
+    *,
+    company_id: int,
+    year: int,
+    month: int,
+    reason: str,
+    force: bool = False,
+    allow_same_closer: bool = False,
+    actor_user=None,
+) -> PeriodReopenResult:
+    """Reabre (CLOSED -> OPEN) un periodo fiscal con control de invariantes.
+
+    Endurecimiento Unit #4 — cierra el contrato `ACCOUNTING_PERIOD_REOPENED`
+    (declarado pero antes sin implementar). Garantías:
+      * idempotente: reabrir un periodo OPEN no falla ni reaudita.
+      * integridad cronológica: no se reabre un periodo si un periodo POSTERIOR
+        sigue cerrado (hay que reabrir de lo más nuevo a lo más viejo), salvo `force`.
+      * SoD maker-checker sobre el cierre: quien cerró el periodo no puede reabrirlo
+        unilateralmente (requiere otro actor o `allow_same_closer`).
+      * auditoría #4 (actor/tiempo/razón/causación) + outbox `PeriodReopened`.
+    """
+    reason_clean = str(reason or "").strip()
+    if not reason_clean:
+        raise ValueError("reason es requerido para reabrir un periodo fiscal.")
+
+    company = OrgUnit.objects.filter(
+        id=int(company_id),
+        unit_type=OrgUnit.UnitType.COMPANY,
+        is_active=True,
+    ).first()
+    if company is None:
+        raise ValueError(f"company inválida o inactiva: {company_id}")
+    if month < 1 or month > 12:
+        raise ValueError("month debe estar en rango 1..12.")
+
+    with transaction.atomic():
+        period = (
+            FiscalPeriod.objects.select_for_update()
+            .filter(company=company, year=int(year), month=int(month))
+            .first()
+        )
+        if period is None:
+            raise ValueError(f"FiscalPeriod {year}-{month:02d} no existe en company={company_id}.")
+
+        if period.status == FiscalPeriod.Status.OPEN:
+            # Idempotente: ya está abierto, no hay transición ni auditoría.
+            return PeriodReopenResult(
+                company_id=int(company.id),
+                year=int(year),
+                month=int(month),
+                status=period.status,
+                period_id=int(period.id),
+                was_already_open=True,
+                reopened_at=period.reopened_at.isoformat() if period.reopened_at else None,
+                reason=reason_clean,
+                force_applied=bool(force),
+            )
+
+        # Integridad cronológica: bloquea si un periodo POSTERIOR sigue cerrado.
+        if not force:
+            later_closed = (
+                FiscalPeriod.objects.filter(company=company, status=FiscalPeriod.Status.CLOSED)
+                .filter(Q(year__gt=int(year)) | Q(year=int(year), month__gt=int(month)))
+                .order_by("year", "month")
+                .first()
+            )
+            if later_closed is not None:
+                raise AccountingConflictError(
+                    f"No se puede reabrir {year}-{month:02d}: el periodo posterior "
+                    f"{later_closed.year}-{later_closed.month:02d} está cerrado. "
+                    f"Reabra primero los periodos posteriores o use force."
+                )
+
+        # SoD maker-checker: quien cerró no puede reabrir su propio cierre.
+        if (
+            actor_user is not None
+            and not bool(allow_same_closer)
+            and period.closed_by_id is not None
+            and int(period.closed_by_id) == int(getattr(actor_user, "id", 0) or 0)
+        ):
+            raise AccountingConflictError(
+                f"SoD: usuario {actor_user.id} cerró el periodo {year}-{month:02d}; "
+                f"otro usuario debe autorizar la reapertura."
+            )
+
+        reopen_manifest = {
+            "company_id": int(company.id),
+            "year": int(year),
+            "month": int(month),
+            "reason": reason_clean,
+            "forced": bool(force),
+            "previous_closed_by": int(period.closed_by_id) if period.closed_by_id else None,
+            "previous_closed_at": period.closed_at.isoformat() if period.closed_at else None,
+        }
+        reopen_manifest_hash = _json_hash(reopen_manifest)
+
+        before_snapshot = {
+            "status": period.status,
+            "closed_by": int(period.closed_by_id) if period.closed_by_id else None,
+            "closed_at": period.closed_at.isoformat() if period.closed_at else None,
+        }
+        now = timezone.now()
+        period.status = FiscalPeriod.Status.OPEN
+        period.reopened_at = now
+        period.reopened_by = actor_user
+        period.reopen_reason = reason_clean
+        period.save(update_fields=["status", "reopened_at", "reopened_by", "reopen_reason"])
+
+        publish_outbox_event(
+            source_module="ACCOUNTING",
+            event_type="PeriodReopened",
+            payload={
+                "company_id": int(company.id),
+                "year": int(year),
+                "month": int(month),
+                "reason": reason_clean,
+                "forced": bool(force),
+                "reopen_manifest_hash": reopen_manifest_hash,
+            },
+            company=company,
+            actor_user=actor_user,
+        )
+        _write_accounting_audit_event(
+            actor_user=actor_user,
+            company=company,
+            branch=None,
+            event_type="ACCOUNTING_PERIOD_REOPENED",
+            subject_type="FISCAL_PERIOD",
+            subject_id=str(period.id),
+            before_snapshot=before_snapshot,
+            after_snapshot={"status": period.status, "reopened_at": now.isoformat()},
+            metadata={
+                "period": f"{year}-{month:02d}",
+                "reason": reason_clean,
+                "forced": bool(force),
+                "reopen_manifest_hash": reopen_manifest_hash,
+            },
+        )
+
+        return PeriodReopenResult(
+            company_id=int(company.id),
+            year=int(year),
+            month=int(month),
+            status=period.status,
+            period_id=int(period.id),
+            was_already_open=False,
+            reopened_at=now.isoformat(),
+            reason=reason_clean,
+            force_applied=bool(force),
+        )
 
 
 def reverse_journal_entry(

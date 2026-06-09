@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.db.models import Sum
 
 from apps.modulos.audit.writer import write_event
+from apps.modulos.integration.models import OutboxEvent
 from apps.modulos.integration.services import publish_outbox_event
 
 from .models import PayrollEntry, PayrollPeriod
@@ -22,6 +23,26 @@ def _d(value) -> Decimal:
 
 def post_payroll_period_to_accounting(*, request, actor, period: PayrollPeriod) -> dict:
     """Consolida totales del período, emite el outbox y enlaza a contabilidad (best-effort)."""
+    # NM-04: idempotencia por período. El kernel de contabilidad dedupe por
+    # `source_outbox_event_id`, así que el doble-posteo solo puede venir de emitir
+    # un SEGUNDO outbox `PayrollPeriodApproved` para el mismo período → aquí se evita.
+    already = (
+        OutboxEvent.objects.filter(
+            source_module="NOMINA",
+            event_type="PayrollPeriodApproved",
+            company=period.company,
+            payload__data__period_id=period.id,
+        )
+        .order_by("id")
+        .first()
+    )
+    if already is not None:
+        return {
+            "outbox_event_id": str(already.event_id),
+            "journal_draft_id": None,
+            "link_status": "ALREADY_POSTED",
+        }
+
     agg = PayrollEntry.objects.filter(sheet__period=period).aggregate(
         devengado=Sum("total_devengado"),
         income=Sum("total_income"),

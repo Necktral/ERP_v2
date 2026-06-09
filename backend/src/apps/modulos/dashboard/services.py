@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
+from apps.modulos.audit.service_audit import emit_service_event
 from apps.modulos.iam.models import OrgUnit, UserMembership
 from apps.modulos.rbac.selectors import get_effective_permissions_for_scope
 
@@ -209,6 +210,20 @@ def create_embed_token_for_request(
         expires_at=exp_at,
     )
 
+    emit_service_event(
+        company=company,
+        branch=branch,
+        request=request,
+        module="DASHBOARD",
+        event_type="DASHBOARD_EMBED_TOKEN_MINTED",
+        reason_code="DASHBOARD_OK",
+        actor_user=user,
+        subject_type="DASHBOARD_EMBED",
+        subject_id=str(grant.id),
+        after_snapshot={"status": grant.status, "workspace_key": spec.key},
+        metadata={"jti": jti, "expires_at": exp_at.isoformat()},
+    )
+
     raw_token = str(token)
     bootstrap_url = f"/analytics/bootstrap?token={quote(raw_token, safe='')}"
     return {
@@ -275,6 +290,20 @@ def redeem_embed_token(*, token_str: str) -> dict[str, Any]:
     grant.status = DashboardEmbedGrant.Status.REDEEMED
     grant.redeemed_at = now
     grant.save(update_fields=["status", "redeemed_at", "updated_at"])
+
+    emit_service_event(
+        company=grant.company,
+        branch=grant.branch,
+        module="DASHBOARD",
+        event_type="DASHBOARD_EMBED_TOKEN_REDEEMED",
+        reason_code="DASHBOARD_OK",
+        actor_user=grant.user,
+        subject_type="DASHBOARD_EMBED",
+        subject_id=str(grant.id),
+        before_snapshot={"status": DashboardEmbedGrant.Status.ISSUED},
+        after_snapshot={"status": grant.status},
+        metadata={"jti": jti, "workspace_key": str(grant.workspace_key)},
+    )
 
     spec = _get_workspace_or_raise(grant.workspace_key)
     return {

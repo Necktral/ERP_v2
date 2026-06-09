@@ -26,6 +26,17 @@ def test_intercompany_without_grant_denies_even_if_user_has_local_permission():
     RolePermission.objects.create(role=role, permission=perm)
     RoleAssignment.objects.create(user=user, role=role, org_unit=company_b, is_active=True)
 
+    # IAM-02: existe enlace A->B (pasa el gate grueso de la capa de auth), pero SIN LinkGrant.
+    # Así la denegación ocurre en la verificación FINA del grant (has_intercompany_grant=False),
+    # que es justo lo que este caso prueba: permiso local no basta sin grant intercompany.
+    CompanyLink.objects.create(
+        from_company=company_a,
+        to_company=company_b,
+        link_type=CompanyLink.LinkType.ALLIANCE,
+        status=CompanyLink.Status.ACTIVE,
+        is_active=True,
+    )
+
     client = APIClient()
     login = client.post("/api/auth/login/", {"username": "u_b", "password": "pass12345"}, format="json")
     assert login.status_code == 200

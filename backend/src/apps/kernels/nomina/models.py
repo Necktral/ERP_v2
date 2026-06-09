@@ -571,6 +571,10 @@ class PayrollEntry(models.Model):
     # --- RETENCIONES ---
     inss_laboral = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     ir_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+    ir_manual = models.BooleanField(
+        default=False,
+        help_text="IR fijado manualmente (override): si True, compute_all NO recalcula el IR.",
+    )
     loan_payment = models.DecimalField(
         max_digits=18, decimal_places=2, default=Decimal("0.00"),
         help_text="Abono a préstamos (del kernel portfolio)"
@@ -657,6 +661,7 @@ class PayrollEntry(models.Model):
             seventh_rate = config.seventh_day_rate
             holiday_rate = config.holiday_worked_rate
             subsidy_inss_rate = config.subsidy_inss_rate
+            subsidy_employer_days = int(config.subsidy_employer_days or 0)
         else:
             inss_laboral_rate = DEFAULT_INSS_LABORAL
             inss_patronal_rate = DEFAULT_INSS_PATRONAL_LARGE
@@ -668,6 +673,7 @@ class PayrollEntry(models.Model):
             seventh_rate = DEFAULT_SEVENTH_DAY_RATE
             holiday_rate = DEFAULT_HOLIDAY_WORKED_RATE
             subsidy_inss_rate = DEFAULT_SUBSIDY_INSS_RATE
+            subsidy_employer_days = int(DEFAULT_SUBSIDY_EMPLOYER_DAYS or 0)
 
         # 1. Salario base mensual en NIO
         if self.base_salary_usd and self.exchange_rate:
@@ -690,12 +696,20 @@ class PayrollEntry(models.Model):
         else:
             self.quincenal_salary = _r2(self.daily_rate_nio * worked) if worked < period_days else quincenal_base
 
-        # 4. Subsidio INSS (empresa paga 100% días 1-N, INSS paga 60% desde día N+1)
+        # 4. Subsidio INSS (NM-02): la empresa paga el 100% los primeros
+        #    `subsidy_employer_days` días y, desde el día N+1, se reconoce la tasa
+        #    de subsidio INSS (60%). Antes se aplicaba 60% a todos los días, lo que
+        #    subestimaba el subsidio de los primeros días (el tramo patronal no se usaba).
         subsidy_days = Decimal(str(self.days_subsidy))
         if subsidy_days > 0:
             if not self.subsidy_daily_rate or self.subsidy_daily_rate == 0:
                 self.subsidy_daily_rate = self.daily_rate_nio
-            self.subsidy_amount = _r2(self.subsidy_daily_rate * subsidy_days * subsidy_inss_rate)
+            employer_days = min(subsidy_days, Decimal(subsidy_employer_days))
+            inss_days = subsidy_days - employer_days
+            self.subsidy_amount = _r2(
+                self.subsidy_daily_rate * employer_days
+                + self.subsidy_daily_rate * inss_days * subsidy_inss_rate
+            )
         else:
             self.subsidy_amount = Decimal("0.00")
 
@@ -730,9 +744,13 @@ class PayrollEntry(models.Model):
             self.other_income
         )
 
-        # 9. IR — calculado si hay config con tabla IR, si no = 0.
-        # Anualiza por la frecuencia REAL del pago (catorcena ×26, no ×24).
-        if config and not self.ir_amount:
+        # 9. IR — recalculado SIEMPRE que haya config con tabla IR (salvo override manual).
+        # Antes el guard era `not self.ir_amount`, que confundía "ya calculado" con
+        # "fijado a mano": en cualquier recompute (asistencia, reclasificación CON/SIN
+        # INSS, cambio de días/salario) el IR quedaba obsoleto. Ahora solo se respeta un
+        # override explícito (`ir_manual`); si no, se anualiza por la frecuencia REAL
+        # del pago (catorcena ×26, no ×24) y se recalcula contra la base gravable vigente.
+        if config and not self.ir_manual:
             self.ir_amount = IRBracket.calculate_period_ir(
                 config=config,
                 period_income=basic_earned,
@@ -751,10 +769,13 @@ class PayrollEntry(models.Model):
             self.store_credit_deduction + self.other_deductions
         )
 
-        # 11. Neto
+        # 11. Neto — el devengado en efectivo incluye `other_income` (NM-03): antes
+        #     entraba a total_income pero NO al devengado/neto, así que un ingreso en
+        #     efectivo (bono/viático) no se le pagaba al trabajador.
         self.total_devengado = _r2(
             self.quincenal_salary + self.seventh_day_amount + self.holiday_amount +
-            self.subsidy_amount + self.overtime_amount + self.sunday_bonus_amount
+            self.subsidy_amount + self.overtime_amount + self.sunday_bonus_amount +
+            self.other_income
         )
         self.net_to_pay = _r2(self.total_devengado - self.total_deductions)
 
@@ -772,7 +793,10 @@ class PayrollEntry(models.Model):
             self.inss_patronal + self.inatec +
             self.vacation_cost + self.thirteenth_month_cost
         )
-        self.total_payroll_cost = _r2(self.net_to_pay + self.total_employer_cost)
+        # NM-07: el costo total parte del DEVENGADO bruto (no del neto). Las retenciones
+        # de ley (INSS laboral / IR) que la empresa remite a terceros son parte del costo;
+        # usar el neto las omitía y subestimaba el costo patronal real.
+        self.total_payroll_cost = _r2(self.total_devengado + self.total_employer_cost)
 
 
 # ---------------------------------------------------------------------------
@@ -1208,6 +1232,10 @@ class PayrollLoanDeduction(models.Model):
     )
 
     amount_deducted = models.DecimalField(max_digits=18, decimal_places=2)
+    # NM-06: monto realmente abonado al crédito en portfolio. El abono es best-effort
+    # (fuera de la txn): si falla, `abono_applied` < `amount_deducted` marca la deducción
+    # como "abono pendiente" → reconciliable (la conciliación deja de ser silenciosa).
+    abono_applied = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     notes = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(default=timezone.now, editable=False)
 
