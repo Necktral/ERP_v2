@@ -1,0 +1,59 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "schemaVersion": 27,
+  "title": "Economic Spine — k6 Load",
+  "tags": ["k6", "spine", "erp"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "p95 latencia por endpoint del spine (ms)",
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "measurement": "http_req_duration",
+          "policy": "default",
+          "resultFormat": "time_series",
+          "groupBy": [
+            { "type": "time", "params": ["10s"] },
+            { "type": "tag", "params": ["name"] }
+          ],
+          "select": [[{ "type": "field", "params": ["value"] }, { "type": "percentile", "params": ["95"] }]],
+          "tags": [{ "key": "name", "operator": "=~", "value": "/inv_|billing_docs|nomina_periods|spine_login/" }]
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tasa de error (http_req_failed)",
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "measurement": "http_req_failed",
+          "resultFormat": "time_series",
+          "groupBy": [{ "type": "time", "params": ["10s"] }],
+          "select": [[{ "type": "field", "params": ["value"] }, { "type": "mean", "params": [] }]]
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "VUs activos",
+      "datasource": "InfluxDB",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "measurement": "vus",
+          "resultFormat": "time_series",
+          "groupBy": [{ "type": "time", "params": ["10s"] }],
+          "select": [[{ "type": "field", "params": ["value"] }, { "type": "max", "params": [] }]]
+        }
+      ]
+    }
+  ]
+}
