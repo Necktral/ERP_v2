@@ -81,6 +81,8 @@ urlpatterns = [
     path("api/controls/", include("apps.modulos.controls.urls")),
     # Accounting
     path("api/accounting/", include("apps.kernels.accounting.urls")),
+    # Intercompany (operaciones entre empresas del grupo + posición consolidada)
+    path("api/intercompany/", include("apps.modulos.intercompany.urls")),
     # Payments/Cash
     path("api/payments/", include("apps.kernels.payments.urls")),
     # Portfolio (CxC, CxP, Credits)
