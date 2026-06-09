@@ -472,6 +472,19 @@ ALLOWED_EVENT_TYPES.update(
 )
 ALLOWED_SUBJECT_TYPES.update({"CASH_SESSION", "PAYMENT_INTENT"})
 
+# Fleet / Mantenimiento (Fase A): activos, conductores, documentos, medidor
+ALLOWED_EVENT_TYPES.update(
+    {
+        "FLEET_ASSET_UPSERTED",
+        "FLEET_DRIVER_UPSERTED",
+        "FLEET_DRIVER_ASSIGNED",
+        "FLEET_DOCUMENT_REGISTERED",
+        "FLEET_METER_RECORDED",
+    }
+)
+ALLOWED_REASON_CODES.update({"FLEET_OK"})
+ALLOWED_SUBJECT_TYPES.update({"FLEET_ASSET", "FLEET_DRIVER", "FLEET_DOCUMENT"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:

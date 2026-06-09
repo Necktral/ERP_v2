@@ -47,6 +47,13 @@ def seed_rbac_v01() -> SeedResult:
 
         # NOMINA / Asistencia de campo
         "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+
+        # FLEET / Mantenimiento
+        "fleet_driver": "Conductor: checklists y reportes de campo (app).",
+        "fleet_mechanic": "Mecánico: ejecuta mantenimiento y atiende defectos.",
+        "fleet_supervisor": "Supervisor de flota: recibe alertas, gestiona planes y documentos.",
+        "fleet_manager": "Gerente de flota: configuración y análisis.",
+        "fleet_clerk": "Bodega/registro de flota.",
     }
 
     permissions = {
@@ -239,6 +246,17 @@ def seed_rbac_v01() -> SeedResult:
         "retail.pos.ticket.void": "Anular ticket POS.",
         "retail.pos.peripherals.read": "Ver estado de periféricos POS.",
         "retail.pos.peripherals.manage": "Registrar/actualizar estado de periféricos POS.",
+        # FLEET / Mantenimiento
+        "fleet.asset.read": "Ver activos de flota.",
+        "fleet.asset.manage": "Crear/editar activos de flota.",
+        "fleet.driver.read": "Ver conductores.",
+        "fleet.driver.manage": "Crear/editar conductores y asignaciones.",
+        "fleet.document.read": "Ver documentos de flota.",
+        "fleet.document.manage": "Registrar/editar documentos de flota.",
+        "fleet.maintenance.read": "Ver catálogo y planes de mantenimiento.",
+        "fleet.maintenance.manage": "Configurar tipos/planes/reglas y correr alertas.",
+        "fleet.meter.record": "Registrar lecturas de odómetro/horómetro.",
+        "notifications.device.register": "Registrar token de dispositivo para notificaciones.",
     }
 
     permissions.update(
@@ -885,6 +903,38 @@ def seed_rbac_v01() -> SeedResult:
     }
     for role_name, codes_to_add in role_retail_matrix.items():
         current = role_to_perms.get(role_name, [])
+        for code in codes_to_add:
+            if code not in current:
+                current.append(code)
+
+    fleet_perms_full = [
+        "fleet.asset.read", "fleet.asset.manage", "fleet.driver.read", "fleet.driver.manage",
+        "fleet.document.read", "fleet.document.manage", "fleet.maintenance.read",
+        "fleet.maintenance.manage", "fleet.meter.record", "notifications.device.register",
+    ]
+    fleet_perms_supervisor = [
+        "fleet.asset.read", "fleet.driver.read", "fleet.driver.manage", "fleet.document.read",
+        "fleet.document.manage", "fleet.maintenance.read", "fleet.maintenance.manage",
+        "fleet.meter.record", "notifications.device.register",
+    ]
+    fleet_perms_mechanic = [
+        "fleet.asset.read", "fleet.maintenance.read", "fleet.document.read", "notifications.device.register",
+    ]
+    fleet_perms_driver = ["fleet.asset.read", "fleet.meter.record", "notifications.device.register"]
+    fleet_perms_clerk = [
+        "fleet.asset.read", "fleet.document.read", "fleet.document.manage", "notifications.device.register",
+    ]
+    role_fleet_matrix = {
+        "company_admin": fleet_perms_full,
+        "branch_manager": fleet_perms_full,
+        "fleet_manager": fleet_perms_full,
+        "fleet_supervisor": fleet_perms_supervisor,
+        "fleet_mechanic": fleet_perms_mechanic,
+        "fleet_driver": fleet_perms_driver,
+        "fleet_clerk": fleet_perms_clerk,
+    }
+    for role_name, codes_to_add in role_fleet_matrix.items():
+        current = role_to_perms.setdefault(role_name, [])
         for code in codes_to_add:
             if code not in current:
                 current.append(code)
