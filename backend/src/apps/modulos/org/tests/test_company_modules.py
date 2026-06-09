@@ -30,6 +30,8 @@ from apps.modulos.rbac.models import Permission, Role, RoleAssignment, RolePermi
 
 User = get_user_model()
 UT = OrgUnit.UnitType
+ORG_MODULES_URL = "/api/org/modules/"
+ORG_MODULES_V1_URL = "/api/v1/org/modules/"
 
 
 def _mk_org():
@@ -143,7 +145,20 @@ def test_resolve_defaults_hybrid():
 def test_get_modules_lists_catalog_with_state():
     _, company, branch = _mk_org()
     client = _client_with_perms(company=company, branch=branch, perm_codes=["org.module.read"])
-    resp = client.get("/api/org/modules/")
+    resp = client.get(ORG_MODULES_URL)
+    assert resp.status_code == 200, resp.data
+    rows = {r["code"]: r for r in resp.data["results"]}
+    assert set(rows) == set(all_codes())
+    assert rows["payroll"]["is_enabled"] is True
+    assert rows["inventory"]["is_enabled"] is False
+    assert rows["organization"]["core"] is True
+
+
+@pytest.mark.django_db
+def test_api_v1_get_modules_lists_catalog_with_state():
+    _, company, branch = _mk_org()
+    client = _client_with_perms(company=company, branch=branch, perm_codes=["org.module.read"])
+    resp = client.get(ORG_MODULES_V1_URL)
     assert resp.status_code == 200, resp.data
     rows = {r["code"]: r for r in resp.data["results"]}
     assert set(rows) == set(all_codes())
@@ -156,7 +171,7 @@ def test_get_modules_lists_catalog_with_state():
 def test_get_modules_forbidden_without_read():
     _, company, branch = _mk_org()
     client = _client_with_perms(company=company, branch=branch, perm_codes=["org.company.read"])
-    resp = client.get("/api/org/modules/")
+    resp = client.get(ORG_MODULES_URL)
     assert resp.status_code == 403
 
 
@@ -168,7 +183,7 @@ def test_put_enable_disable_persists_and_idempotent():
     )
     # activar inventario, desactivar nómina
     resp = client.put(
-        "/api/org/modules/",
+        ORG_MODULES_URL,
         {"modules": [{"code": "inventory", "is_enabled": True}, {"code": "payroll", "is_enabled": False}]},
         format="json",
     )
@@ -182,10 +197,29 @@ def test_put_enable_disable_persists_and_idempotent():
 
     # idempotente: repetir no duplica filas
     again = client.put(
-        "/api/org/modules/", {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
+        ORG_MODULES_URL, {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
     )
     assert again.status_code == 200
     assert CompanyModule.objects.filter(company=company, module_code="inventory").count() == 1
+
+
+@pytest.mark.django_db
+def test_api_v1_put_enable_disable_persists():
+    _, company, branch = _mk_org()
+    client = _client_with_perms(
+        company=company, branch=branch, perm_codes=["org.module.read", "org.module.manage"]
+    )
+    resp = client.put(
+        ORG_MODULES_V1_URL,
+        {"modules": [{"code": "inventory", "is_enabled": True}, {"code": "payroll", "is_enabled": False}]},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.data
+    rows = {r["code"]: r for r in resp.data["results"]}
+    assert rows["inventory"]["is_enabled"] is True
+    assert rows["payroll"]["is_enabled"] is False
+    assert CompanyModule.objects.filter(company=company, module_code="inventory", is_enabled=True).exists()
+    assert CompanyModule.objects.filter(company=company, module_code="payroll", is_enabled=False).exists()
 
 
 @pytest.mark.django_db
@@ -195,7 +229,7 @@ def test_put_unknown_code_400():
         company=company, branch=branch, perm_codes=["org.module.read", "org.module.manage"]
     )
     resp = client.put(
-        "/api/org/modules/", {"modules": [{"code": "nope", "is_enabled": True}]}, format="json"
+        ORG_MODULES_URL, {"modules": [{"code": "nope", "is_enabled": True}]}, format="json"
     )
     assert resp.status_code == 400
 
@@ -207,7 +241,7 @@ def test_put_core_module_rejected_400():
         company=company, branch=branch, perm_codes=["org.module.read", "org.module.manage"]
     )
     resp = client.put(
-        "/api/org/modules/", {"modules": [{"code": "organization", "is_enabled": False}]}, format="json"
+        ORG_MODULES_URL, {"modules": [{"code": "organization", "is_enabled": False}]}, format="json"
     )
     assert resp.status_code == 400
 
@@ -217,7 +251,7 @@ def test_put_forbidden_without_manage():
     _, company, branch = _mk_org()
     client = _client_with_perms(company=company, branch=branch, perm_codes=["org.module.read"])
     resp = client.put(
-        "/api/org/modules/", {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
+        ORG_MODULES_URL, {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
     )
     assert resp.status_code == 403
 
@@ -293,7 +327,7 @@ def test_put_writes_audit_event():
         company=company, branch=branch, perm_codes=["org.module.read", "org.module.manage"]
     )
     resp = client.put(
-        "/api/org/modules/", {"modules": [{"code": "fuel", "is_enabled": True}]}, format="json"
+        ORG_MODULES_URL, {"modules": [{"code": "fuel", "is_enabled": True}]}, format="json"
     )
     assert resp.status_code == 200
     assert AuditEvent.objects.filter(

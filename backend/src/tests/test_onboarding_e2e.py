@@ -19,27 +19,27 @@ def test_onboarding_e2e_self_service():
     api = APIClient()
 
     # 1) Sistema fresco
-    r = api.get("/api/auth/bootstrap/status/")
+    r = api.get("/api/v1/auth/bootstrap/status/")
     assert r.status_code == 200, r.data
     assert r.data["is_fresh"] is True
     assert r.data["setup_required"] is True
 
     # 2) Primer admin (superuser)
     r = api.post(
-        "/api/auth/bootstrap/init/",
+        "/api/v1/auth/bootstrap/init/",
         {"username": "owner", "password": OWNER_PASS, "email": "owner@acme.test"},
         format="json",
     )
     assert r.status_code == 201, r.data
 
     # 3) Login
-    r = api.post("/api/auth/login/", {"username": "owner", "password": OWNER_PASS}, format="json")
+    r = api.post("/api/v1/auth/login/", {"username": "owner", "password": OWNER_PASS}, format="json")
     assert r.status_code == 200, r.data
     api.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
 
     # 4) Estructura inicial: holding → empresa → sucursal (+ RBAC + company_admin)
     r = api.post(
-        "/api/auth/bootstrap/org/",
+        "/api/v1/auth/bootstrap/org/",
         {
             "holding_name": "ACME Holding",
             "company_name": "ACME S.A.",
@@ -56,18 +56,18 @@ def test_onboarding_e2e_self_service():
     api.defaults["HTTP_X_BRANCH_ID"] = str(branch_id)
 
     # 5) Otra sucursal (finca)
-    r = api.post("/api/org/branches/", {"name": "Finca Santa Isabel", "code": "FSI"}, format="json")
+    r = api.post("/api/v1/org/branches/", {"name": "Finca Santa Isabel", "code": "FSI"}, format="json")
     assert r.status_code == 201, r.data
     finca_id = r.data["id"]
 
     # 6) Cargo
-    r = api.post("/api/hr/positions/", {"name": "Cortador", "code": "COR"}, format="json")
+    r = api.post("/api/v1/hr/positions/", {"name": "Cortador", "code": "COR"}, format="json")
     assert r.status_code == 201, r.data
     position_id = r.data["id"]
 
     # 7) Empleado
     r = api.post(
-        "/api/hr/employees/",
+        "/api/v1/hr/employees/",
         {"first_name": "Juan", "last_name": "Pérez", "employee_code": "E001"},
         format="json",
     )
@@ -76,7 +76,7 @@ def test_onboarding_e2e_self_service():
 
     # 8) Asignación: empleado → cargo → finca
     r = api.post(
-        f"/api/hr/employees/{employee_id}/assignments/",
+        f"/api/v1/hr/employees/{employee_id}/assignments/",
         {"position_id": position_id, "branch_id": finca_id},
         format="json",
     )
@@ -84,30 +84,30 @@ def test_onboarding_e2e_self_service():
 
     # 9) Provisionar acceso (login al empleado) — exige asignación activa
     r = api.post(
-        f"/api/hr/employees/{employee_id}/provision-user/",
+        f"/api/v1/hr/employees/{employee_id}/provision-user/",
         {"username": "jperez", "email": "jperez@acme.test"},
         format="json",
     )
     assert r.status_code == 201, r.data
 
     # 10) Configurar nómina
-    r = api.post("/api/nomina/config/", {"fiscal_year": 2026}, format="json")
+    r = api.post("/api/v1/nomina/config/", {"fiscal_year": 2026}, format="json")
     assert r.status_code == 201, r.data
 
     # 11) Escoger módulos: activar Inventario (lo va a ocupar); Estación queda OFF
-    r = api.get("/api/org/modules/")
+    r = api.get("/api/v1/org/modules/")
     assert r.status_code == 200, r.data
     by_code = {row["code"]: row for row in r.data["results"]}
     assert by_code["payroll"]["is_enabled"] is True
     assert by_code["inventory"]["is_enabled"] is False
 
     r = api.put(
-        "/api/org/modules/", {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
+        "/api/v1/org/modules/", {"modules": [{"code": "inventory", "is_enabled": True}]}, format="json"
     )
     assert r.status_code == 200, r.data
 
     # 12) La sesión refleja los módulos efectivos de la empresa construida
-    r = api.get("/api/auth/bootstrap/session/")
+    r = api.get("/api/v1/auth/bootstrap/session/")
     assert r.status_code == 200, r.data
     enabled = r.data["enabled_modules"]
     assert "payroll" in enabled

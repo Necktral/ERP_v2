@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from rest_framework import serializers
 
 
@@ -40,10 +42,14 @@ class CompanyProfileUpdateSerializer(serializers.Serializer):
 
 class ModuleStateOut(serializers.Serializer):
     code = serializers.CharField()
-    label = serializers.CharField()
     category = serializers.CharField()
     core = serializers.BooleanField()
     is_enabled = serializers.BooleanField()
+
+    def to_representation(self, instance: Any) -> dict[str, Any]:
+        data = super().to_representation(instance)
+        data["label"] = instance.get("label", "") if isinstance(instance, dict) else getattr(instance, "label", "")
+        return data
 
 
 class _ModuleChangeIn(serializers.Serializer):
