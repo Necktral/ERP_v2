@@ -112,3 +112,21 @@ def test_device_token_register_http():
                  {"platform": "ANDROID", "token": "tok-abc"}, format="json")
     assert r.status_code == 200, r.data
     assert r.data["platform"] == "ANDROID" and r.data["is_active"] is True
+
+
+@pytest.mark.django_db
+def test_register_device_token_emits_audit():
+    from apps.modulos.audit.models import AuditEvent
+    from apps.modulos.notifications.models import DevicePlatform
+    from apps.modulos.notifications.services import register_device_token
+
+    company, _ = _scope()
+    user = _user()
+    tok = register_device_token(user=user, company=company, platform=DevicePlatform.ANDROID, token="tok-xyz")
+
+    ev = AuditEvent.objects.filter(
+        event_type="NOTIF_DEVICE_REGISTERED", subject_type="NOTIF_DEVICE", subject_id=str(tok.id)
+    ).first()
+    assert ev is not None
+    assert ev.actor_user_id == user.id  # quién
+    assert ev.module == "NOTIFICATIONS"  # qué

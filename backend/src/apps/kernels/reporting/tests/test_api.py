@@ -861,3 +861,56 @@ def test_reporting_saved_views_visibility_owner_shared_and_scope_isolation():
     assert other_list.status_code == 200
     other_ids = {row["view_id"] for row in other_list.data["results"]}
     assert shared_view.data["view_id"] not in other_ids
+
+
+@pytest.mark.django_db
+def test_reporting_export_and_snapshot_emit_audit():
+    # Cierra audit=0 en egress/materialización: quién exportó/generó qué.
+    from apps.modulos.audit.models import AuditEvent
+
+    company, branch = _mk_org()
+    _seed_accounting_posted_entries(company=company, branch=branch)
+    call_command("seed_reporting_catalog")
+    client = _client_with_perms(
+        company=company,
+        branch=branch,
+        perm_codes=[
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
+            "report.snapshot.generate",
+            "accounting.report.read",
+        ],
+    )
+    run = client.post(
+        "/api/reporting/datasets/accounting.trial_balance.period/run/",
+        {"filters": {"year": 2026, "month": 3}},
+        format="json",
+    )
+    assert run.status_code == 200, run.data
+    run_id = run.data["run_id"]
+
+    exported = client.post(f"/api/reporting/runs/{run_id}/export/", {"format": "json"}, format="json")
+    assert exported.status_code == 200, exported.data
+    ev_exp = AuditEvent.objects.filter(
+        event_type="REPORTING_EXPORT_CREATED",
+        subject_type="REPORT_EXPORT",
+        subject_id=str(exported.data["export_id"]),
+    ).first()
+    assert ev_exp is not None
+    assert ev_exp.actor_user_id is not None  # quién
+    assert ev_exp.metadata.get("format") == "json"
+
+    generated = client.post(
+        "/api/reporting/snapshots/generate/",
+        {"dataset_key": "accounting.trial_balance.period", "filters": {"year": 2026, "month": 3}, "force_refresh": True},
+        format="json",
+    )
+    assert generated.status_code == 200, generated.data
+    ev_snap = AuditEvent.objects.filter(
+        event_type="REPORTING_SNAPSHOT_GENERATED",
+        subject_type="REPORT_SNAPSHOT",
+        subject_id=str(generated.data["snapshot_id"]),
+    ).first()
+    assert ev_snap is not None
+    assert ev_snap.actor_user_id is not None

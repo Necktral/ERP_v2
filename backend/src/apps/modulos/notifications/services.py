@@ -13,6 +13,7 @@ from django.db import transaction
 from django.db.models import Subquery
 from django.utils import timezone
 
+from apps.modulos.audit.service_audit import emit_service_event
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
 from apps.modulos.rbac.models import RoleAssignment
 
@@ -24,9 +25,20 @@ CONSUMER = "notifications"
 
 
 def register_device_token(*, user, company, platform: str, token: str) -> DeviceToken:
-    obj, _ = DeviceToken.objects.update_or_create(
+    obj, created = DeviceToken.objects.update_or_create(
         user=user, token=token,
         defaults={"company": company, "platform": platform, "is_active": True, "last_seen": timezone.now()},
+    )
+    emit_service_event(
+        company=company,
+        module="NOTIFICATIONS",
+        event_type="NOTIF_DEVICE_REGISTERED",
+        reason_code="NOTIF_OK",
+        actor_user=user,
+        subject_type="NOTIF_DEVICE",
+        subject_id=str(obj.id),
+        after_snapshot={"platform": obj.platform, "is_active": obj.is_active},
+        metadata={"created": bool(created)},
     )
     return obj
 

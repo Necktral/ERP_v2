@@ -123,6 +123,21 @@ def create_run_export_from_request(*, request, run_id, export_format: str) -> di
         requested_by=getattr(request, "user", None),
         export_format=export_format,
     )
+    # Auditoría de egress: quién exportó qué run/dataset y en qué formato.
+    write_event(
+        request=request,
+        module="REPORTING",
+        event_type="REPORTING_EXPORT_CREATED",
+        reason_code="OK",
+        actor_user=getattr(request, "user", None),
+        subject_type="REPORT_EXPORT",
+        subject_id=str(getattr(export, "export_id", "") or getattr(export, "id", "")),
+        metadata={
+            "run_id": str(getattr(run, "run_id", run_id)),
+            "dataset_key": str(getattr(run, "dataset_key", "")),
+            "format": str(export_format),
+        },
+    )
     return export_to_dict(export)
 
 
@@ -277,6 +292,22 @@ def generate_snapshot_from_request(
     snapshot = ReportSnapshot.objects.filter(pk=snapshot_id).first()
     if snapshot is None:
         raise ReportingValidationError("Snapshot no encontrado luego de la generación.")
+    # Auditoría de materialización: quién generó qué snapshot y de qué dataset.
+    write_event(
+        request=request,
+        module="REPORTING",
+        event_type="REPORTING_SNAPSHOT_GENERATED",
+        reason_code="OK",
+        actor_user=getattr(request, "user", None),
+        subject_type="REPORT_SNAPSHOT",
+        subject_id=str(snapshot.id),
+        metadata={
+            "dataset_key": spec.dataset_key,
+            "run_id": str(run.run_id),
+            "force_refresh": bool(force_refresh),
+            "filter_keys": sorted((filters or {}).keys()),
+        },
+    )
     return {
         "dataset_key": spec.dataset_key,
         "run_id": str(run.run_id),

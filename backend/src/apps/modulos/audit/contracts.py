@@ -526,6 +526,27 @@ ALLOWED_SUBJECT_TYPES.update({"FINCA", "FINCA_PLOT", "FINCA_LABOR", "FINCA_WORKO
 # Reject reason codes para los handlers de sync offline de finca (sync_engine).
 ALLOWED_REASON_CODES.update({"FINCA_SCHEMA_INVALID", "FINCA_INVALID_SCOPE", "FINCA_NOT_FOUND"})
 
+# Procurement (compras): ciclo del documento de compra (CxP / pasivo)
+ALLOWED_EVENT_TYPES.update(
+    {"PROCUREMENT_DOC_DRAFTED", "PROCUREMENT_DOC_POSTED", "PROCUREMENT_DOC_VOIDED"}
+)
+ALLOWED_REASON_CODES.update({"PROCUREMENT_OK"})
+ALLOWED_SUBJECT_TYPES.update({"PROCUREMENT_DOC"})
+
+# Reporting: egress (export) y materialización (snapshot) de datos
+ALLOWED_EVENT_TYPES.update({"REPORTING_EXPORT_CREATED", "REPORTING_SNAPSHOT_GENERATED"})
+ALLOWED_SUBJECT_TYPES.update({"REPORT_EXPORT", "REPORT_SNAPSHOT"})
+
+# Dashboard: acuñación / canje de embed tokens (credencial de acceso)
+ALLOWED_EVENT_TYPES.update({"DASHBOARD_EMBED_TOKEN_MINTED", "DASHBOARD_EMBED_TOKEN_REDEEMED"})
+ALLOWED_REASON_CODES.update({"DASHBOARD_OK"})
+ALLOWED_SUBJECT_TYPES.update({"DASHBOARD_EMBED"})
+
+# Notifications: registro de device token (push)
+ALLOWED_EVENT_TYPES.update({"NOTIF_DEVICE_REGISTERED"})
+ALLOWED_REASON_CODES.update({"NOTIF_OK"})
+ALLOWED_SUBJECT_TYPES.update({"NOTIF_DEVICE"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
