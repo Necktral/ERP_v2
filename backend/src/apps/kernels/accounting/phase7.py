@@ -17,6 +17,7 @@ from apps.modulos.cec.models import CECException
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.services import publish_outbox_event
 
+from .audit_helpers import write_accounting_audit_event
 from .models import (
     ChartOfAccount,
     CompanyAccountingConfig,
@@ -841,6 +842,22 @@ def run_fx_revaluation(
                 company=company,
                 actor_user=actor_user,
             )
+            write_accounting_audit_event(
+                actor_user=actor_user,
+                company=company,
+                branch=None,
+                event_type="ACCOUNTING_FX_REVALUATION_BLOCKED",
+                subject_type="REVALUATION_RUN",
+                subject_id=str(run.run_id),
+                before_snapshot={"status": RevaluationRun.Status.RUNNING},
+                after_snapshot={"status": run.status},
+                metadata={
+                    "period": f"{year}-{month:02d}",
+                    "issues_count": len(issues),
+                    "issue_codes": [str(i.get("code")) for i in issues],
+                },
+                reason_code="ACCOUNTING_REVALUATION_BLOCKED",
+            )
             return RevaluationExecutionResult(
                 run_id=str(run.run_id),
                 status=run.status,
@@ -1028,6 +1045,22 @@ def run_fx_revaluation(
             },
             company=company,
             actor_user=actor_user,
+        )
+        write_accounting_audit_event(
+            actor_user=actor_user,
+            company=company,
+            branch=None,
+            event_type="ACCOUNTING_FX_REVALUATION_EXECUTED",
+            subject_type="REVALUATION_RUN",
+            subject_id=str(run.run_id),
+            before_snapshot={"status": RevaluationRun.Status.RUNNING},
+            after_snapshot={"status": run.status},
+            metadata={
+                "period": f"{year}-{month:02d}",
+                "entries_created": int(entries_created),
+                "issues_count": int(len(issues)),
+                "scope_hash": scope_hash,
+            },
         )
         return RevaluationExecutionResult(
             run_id=str(run.run_id),

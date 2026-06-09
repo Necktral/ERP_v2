@@ -32,6 +32,17 @@ class FiscalPeriod(models.Model):
         related_name="acc_periods_closed",
     )
 
+    # Reapertura controlada (CLOSED -> OPEN): evidencia de actor/tiempo/razón (invariante #4).
+    reopened_at = models.DateTimeField(null=True, blank=True)
+    reopened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="acc_periods_reopened",
+    )
+    reopen_reason = models.CharField(max_length=255, blank=True, default="")
+
     class Meta:
         app_label = "accounting"
         constraints = [
