@@ -289,6 +289,30 @@ def test_issue_without_lot_picks_fefo_and_decrements():
 
 
 @pytest.mark.django_db
+def test_negative_stock_receipt_resets_avg_cost():
+    """INV-02: tras stock negativo, el ingreso reinicia el promedio (no mezcla sobre base negativa)."""
+    company, branch = _mk_scope()
+    c = _client(company, branch)
+    wh = c.post("/api/inventory/warehouses/", {"name": "B", "code": "BN"}, format="json").data["id"]
+    item = c.post("/api/inventory/items/", {"sku": f"NEG-{uuid.uuid4().hex[:5]}", "name": "Neg"}, format="json").data["id"]
+
+    c.post("/api/inventory/movements/receive/", {
+        "warehouse_id": wh, "item_id": item, "qty": "10.0000", "unit_cost": "10.000000",
+        "idempotency_key": f"r1-{uuid.uuid4().hex}"}, format="json")
+    # Despacho 15 con allow_negative → qty -5 (avg se mantiene en 10).
+    c.post("/api/inventory/movements/issue/", {
+        "warehouse_id": wh, "item_id": item, "qty": "15.0000", "allow_negative": True,
+        "idempotency_key": f"i1-{uuid.uuid4().hex}"}, format="json")
+    # Ingreso 20 @ 12 sobre saldo negativo → avg = 12 (no la mezcla distorsionada).
+    r = c.post("/api/inventory/movements/receive/", {
+        "warehouse_id": wh, "item_id": item, "qty": "20.0000", "unit_cost": "12.000000",
+        "idempotency_key": f"r2-{uuid.uuid4().hex}"}, format="json")
+    assert r.status_code == 201
+    assert Decimal(r.data["qty_on_hand"]) == Decimal("15.0000")   # -5 + 20
+    assert Decimal(r.data["avg_cost"]) == Decimal("12.000000")
+
+
+@pytest.mark.django_db
 def test_item_without_lots_rejects_lot_on_receive():
     company, branch = _mk_scope()
     c = _client(company, branch)

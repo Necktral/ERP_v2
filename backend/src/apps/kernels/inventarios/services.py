@@ -631,6 +631,11 @@ def post_receive(
         new_qty = _q_qty(bal.qty_on_hand + qty_base)
         if new_qty == 0:
             new_avg = Decimal("0.000000")
+        elif bal.qty_on_hand <= 0:
+            # INV-02: si el saldo previo venía en cero/negativo (stock negativo permitido),
+            # el promedio se reinicia al costo del ingreso en lugar de mezclar sobre una
+            # base negativa, que distorsiona el costo al volver a positivo.
+            new_avg = _q_cost(unit_cost)
         else:
             new_avg = _q_cost(((bal.qty_on_hand * bal.avg_cost) + total_cost) / new_qty)
 
