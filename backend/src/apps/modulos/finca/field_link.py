@@ -135,7 +135,7 @@ def field_zone_rollup(finca: OrgUnit, **filters) -> list[dict[str, Any]]:
 def reconcile_field_catalog(finca: OrgUnit, **filters) -> dict[str, Any]:
     """Calidad de dato: ¿qué `labor_code`/`zone_label` del campo existen en el catálogo?
 
-    Cuenta TODOS los reportes (incluye DRAFT) para medir cobertura real del catálogo.
+    Cuenta todos los reportes (incluye DRAFT) para medir cobertura real del catálogo.
     """
     index = _labor_index(finca)
     all_qs = _reports_qs(finca, statuses=None, **{k: v for k, v in filters.items() if k != "statuses"})
