@@ -28,7 +28,10 @@ class CustomerCreditAccount(models.Model):
 
     El saldo NO se guarda aquí: vive en portfolio (CxC del party). El crédito
     disponible se calcula como ``credit_limit − Σ CxC abierta`` del party en la
-    empresa del comisariato. ``credit_limit == 0`` significa "sin tope explícito".
+    empresa del comisariato. Semántica de ``credit_limit`` (C-01): ``NULL`` = sin
+    tope (ilimitado, debe fijarse EXPLÍCITAMENTE); ``0`` = sin crédito (default
+    seguro); ``>0`` = tope. Antes ``0`` se interpretaba como "ilimitado", lo que
+    daba crédito sin tope por defecto (riesgo con público general).
     """
 
     company = models.ForeignKey(
@@ -41,8 +44,8 @@ class CustomerCreditAccount(models.Model):
     )
     segment = models.CharField(max_length=16, choices=CustomerSegment.choices)
     credit_limit = models.DecimalField(
-        max_digits=18, decimal_places=2, default=Decimal("0.00"),
-        help_text="Límite de crédito; 0 = sin tope explícito.",
+        max_digits=18, decimal_places=2, null=True, blank=True, default=Decimal("0.00"),
+        help_text="NULL = sin tope (ilimitado, explícito); 0 = sin crédito; >0 = tope.",
     )
     collecting_company = models.ForeignKey(
         OrgUnit, on_delete=models.PROTECT, null=True, blank=True,
@@ -73,7 +76,7 @@ class CustomerCreditAccount(models.Model):
             raise ValidationError({"company": "company debe ser OrgUnit de tipo COMPANY."})
         if self.party_id and self.company_id and self.party.company_id != self.company_id:
             raise ValidationError({"party": "party debe pertenecer a la empresa del comisariato."})
-        if self.credit_limit < 0:
+        if self.credit_limit is not None and self.credit_limit < 0:
             raise ValidationError({"credit_limit": "credit_limit no puede ser negativo."})
 
     def __str__(self) -> str:

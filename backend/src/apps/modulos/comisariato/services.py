@@ -57,7 +57,8 @@ def get_or_create_account(
     """Crea o actualiza la cuenta de crédito (límite + segmento) de un cliente."""
     if segment not in CustomerSegment.values:
         raise ComisariatoError("COMISARIATO_INVALID_SEGMENT")
-    credit_limit = _q2(credit_limit)
+    # C-01: None = sin tope (ilimitado, explícito); un valor numérico se normaliza a 2 dec.
+    credit_limit = None if credit_limit is None else _q2(credit_limit)
 
     with transaction.atomic():
         account, created = CustomerCreditAccount.objects.select_for_update().get_or_create(
@@ -88,17 +89,28 @@ def get_or_create_account(
     return account
 
 
-def outstanding_balance(*, company: OrgUnit, party: Party) -> Decimal:
-    """Σ saldo vivo de las CxC del cliente en la empresa del comisariato."""
-    rows = Receivable.objects.filter(company=company, party=party).exclude(status__in=TERMINAL_STATUSES)
+def outstanding_balance(*, company: OrgUnit, party: Party, currency: str = "NIO") -> Decimal:
+    """Σ saldo vivo de las CxC del cliente en la empresa, en UNA moneda.
+
+    C-02: filtra por `currency` para no mezclar NIO+USD (antes sumaba todas las
+    monedas y el saldo contra el límite quedaba mal si había CxC en distinta moneda).
+    """
+    rows = (
+        Receivable.objects.filter(company=company, party=party, currency=currency)
+        .exclude(status__in=TERMINAL_STATUSES)
+    )
     return _q2(sum((r.outstanding_amount for r in rows), Decimal("0.00")))
 
 
-def available_credit(account: CustomerCreditAccount) -> Optional[Decimal]:
-    """Crédito disponible = límite − saldo vivo. None si la cuenta no tiene tope (límite 0)."""
-    if account.credit_limit <= 0:
+def available_credit(account: CustomerCreditAccount, *, currency: str = "NIO") -> Optional[Decimal]:
+    """Crédito disponible = límite − saldo vivo (misma moneda).
+
+    C-01: ``None`` solo si la cuenta NO tiene tope (``credit_limit`` NULL). Con
+    ``credit_limit == 0`` el disponible es ``−saldo`` (≤ 0) → sin crédito.
+    """
+    if account.credit_limit is None:
         return None
-    bal = outstanding_balance(company=account.company, party=account.party)
+    bal = outstanding_balance(company=account.company, party=account.party, currency=currency)
     return _q2(account.credit_limit - bal)
 
 
@@ -114,7 +126,7 @@ def _receivable_for_doc(*, company: OrgUnit, doc_id: int) -> Optional[Receivable
 
 def _bundle(*, account: CustomerCreditAccount, doc: BillingDocument, duplicate: bool) -> dict[str, Any]:
     rec = _receivable_for_doc(company=doc.company, doc_id=doc.id)
-    avail = available_credit(account)
+    avail = available_credit(account, currency=doc.currency)
     return {
         "doc_id": doc.id,
         "number": doc.number,
@@ -177,7 +189,7 @@ def sell_on_credit(
             return _bundle(account=account, doc=doc, duplicate=True)
 
         total = _q2(doc.total)
-        avail = available_credit(account)
+        avail = available_credit(account, currency=currency)
         if avail is not None and total > avail:
             # Rollback total: el documento borrador recién creado se descarta.
             raise ComisariatoError("COMISARIATO_CREDIT_LIMIT_EXCEEDED")

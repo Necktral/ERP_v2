@@ -146,6 +146,48 @@ def test_credit_limit_exceeded_rolls_back_everything():
 
 
 @pytest.mark.django_db
+def test_none_limit_is_unlimited_credit():
+    """C-01: credit_limit=None = sin tope (ilimitado) → la venta grande pasa."""
+    _h, comis, comis_br = _scope()
+    actor = _user()
+    req = _req(comis, comis_br, actor)
+    wh, item = _seed_item_stock(req, comis, comis_br, actor, qty="100", unit_cost="30")
+    party = _party(comis, national_id="001-NONE")
+    account = get_or_create_account(
+        request=req, actor=actor, company=comis, party=party,
+        segment=CustomerSegment.EMPLOYEE, credit_limit=None,
+    )
+    assert account.credit_limit is None
+    res = sell_on_credit(
+        request=req, actor=actor, account=account, warehouse_id=wh.id,
+        lines=[{"description": "Mucho", "quantity": "50", "unit_price": "50", "inventory_item_id": item.id}],
+        reference_code="VTA-NONE",
+    )
+    assert res["status"] == DocStatus.ISSUED
+    assert res["available_after"] is None  # sin tope
+
+
+@pytest.mark.django_db
+def test_zero_limit_means_no_credit():
+    """C-01: credit_limit=0 = sin crédito → cualquier venta a crédito se rechaza."""
+    _h, comis, comis_br = _scope()
+    actor = _user()
+    req = _req(comis, comis_br, actor)
+    wh, item = _seed_item_stock(req, comis, comis_br, actor, qty="10", unit_cost="30")
+    party = _party(comis, national_id="001-ZERO")
+    account = get_or_create_account(
+        request=req, actor=actor, company=comis, party=party,
+        segment=CustomerSegment.PUBLIC, credit_limit=Decimal("0.00"),
+    )
+    with pytest.raises(ComisariatoError, match="COMISARIATO_CREDIT_LIMIT_EXCEEDED"):
+        sell_on_credit(
+            request=req, actor=actor, account=account, warehouse_id=wh.id,
+            lines=[{"description": "Algo", "quantity": "1", "unit_price": "50", "inventory_item_id": item.id}],
+            reference_code="VTA-ZERO",
+        )
+
+
+@pytest.mark.django_db
 def test_sale_is_idempotent_by_reference_code():
     _h, comis, comis_br = _scope()
     actor = _user()
