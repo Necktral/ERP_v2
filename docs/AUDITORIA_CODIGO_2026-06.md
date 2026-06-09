@@ -16,6 +16,24 @@ Lectura de cada `.py` (services/models/views/serializers/urls/handlers/alerts) b
 
 ---
 
+## ✅ Estado de corrección (2026-06-09) — TODOS RESUELTOS
+
+Los 23 hallazgos fueron **corregidos con tests, verde, en commits atómicos**, cada uno en la rama de su módulo (pusheadas a `erp_v2`):
+
+| Rama | Hallazgos resueltos |
+|---|---|
+| `fix/auditoria-mainline` (off master; **suite completo verde**) | **NM-01** (IR recalcula con flag `ir_manual`+migración), NM-02 (subsidio por tramos), NM-03 (other_income al neto), NM-04 (idempotencia posteo/aprobación), NM-05 (tope de pago), NM-06 (`abono_applied`+migración), NM-07 (costo desde devengado), **INV-01** (lote en salida + FEFO), INV-02 (avg en stock negativo), P-01 (lock obligación), P-02 (COMPOUND real), P-03 (base de interés), P-04 (comentario waterfall), P-05 (auditoría write-off/adjust), IAM-01/02/03 (scope multiempresa), RBAC-01 (`permission.is_active`). SUP-01 verificado (redaction ya cubre `*password*`). |
+| `feat/finca-sync` | **F-01** (idempotency_key requerido), F-02 (idempotente por finca/season), F-03 (`_company_of`), F-04 (doc real_labor_cost), F-05 (FINCA_OK), F-06 (logging). F-07 nota perf. |
+| `feat/comisariato-credito` | **C-01** (credit_limit NULL/0/>0 +migración), C-02 (saldo por moneda). |
+| `feat/fleet-fase-b` | FL-01 (lectura decreciente), FL-02 (horómetro+umbrales), FL-03 (no resetea is_due), **N-01** (FCM HTTP v1 + OAuth2 SA), N-02 (cursor). |
+| `feat/intercompany-ops` | I-01 (documentado posteo POSTED directo, decisión deliberada). |
+
+**Observacionales documentados (decisión, no bug):** AC-01 (auto-post operacional con SoD en la capa de origen, espejado por I-01), RBAC-02 (superuser sin auto-grant en la ruta scoped, por aislamiento por tenant), AUD-01 (contención del head de cadena, aceptable a la escala actual).
+
+Verificación: cada rama corre verde su suite (mainline = **suite completo**; batch-1 = full-suite de las 4 ramas, 100%). Las correcciones añadieron tests que reproducen cada bug.
+
+---
+
 ## Matriz resumen (parcial — batch 1: módulos frescos)
 
 | Módulo | CRÍTICO | ALTO | MEDIO | BAJO |
