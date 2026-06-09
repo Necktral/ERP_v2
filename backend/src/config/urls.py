@@ -77,6 +77,8 @@ urlpatterns = [
     path("api/org/", include("apps.modulos.org.urls")),
     # HR
     path("api/hr/", include("apps.modulos.hr.urls")),
+    # Controls (Capa 3: anti-fraude / SoD / hallazgos)
+    path("api/controls/", include("apps.modulos.controls.urls")),
     # Accounting
     path("api/accounting/", include("apps.kernels.accounting.urls")),
     # Payments/Cash
