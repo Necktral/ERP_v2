@@ -1879,6 +1879,19 @@ class PeriodCloseResult:
 
 
 @dataclass(frozen=True)
+class PeriodReopenResult:
+    company_id: int
+    year: int
+    month: int
+    status: str
+    period_id: int
+    was_already_open: bool
+    reopened_at: str | None
+    reason: str
+    force_applied: bool
+
+
+@dataclass(frozen=True)
 class PeriodCloseGateEvaluation:
     pending_drafts_count: int
     failed_outbox_count: int
@@ -2638,6 +2651,158 @@ def close_fiscal_period(
         )
         setattr(exc, "gate_summary", gate_block_summary)
         raise exc
+
+
+def reopen_fiscal_period(
+    *,
+    company_id: int,
+    year: int,
+    month: int,
+    reason: str,
+    force: bool = False,
+    allow_same_closer: bool = False,
+    actor_user=None,
+) -> PeriodReopenResult:
+    """Reabre (CLOSED -> OPEN) un periodo fiscal con control de invariantes.
+
+    Endurecimiento Unit #4 — cierra el contrato `ACCOUNTING_PERIOD_REOPENED`
+    (declarado pero antes sin implementar). Garantías:
+      * idempotente: reabrir un periodo OPEN no falla ni reaudita.
+      * integridad cronológica: no se reabre un periodo si un periodo POSTERIOR
+        sigue cerrado (hay que reabrir de lo más nuevo a lo más viejo), salvo `force`.
+      * SoD maker-checker sobre el cierre: quien cerró el periodo no puede reabrirlo
+        unilateralmente (requiere otro actor o `allow_same_closer`).
+      * auditoría #4 (actor/tiempo/razón/causación) + outbox `PeriodReopened`.
+    """
+    reason_clean = str(reason or "").strip()
+    if not reason_clean:
+        raise ValueError("reason es requerido para reabrir un periodo fiscal.")
+
+    company = OrgUnit.objects.filter(
+        id=int(company_id),
+        unit_type=OrgUnit.UnitType.COMPANY,
+        is_active=True,
+    ).first()
+    if company is None:
+        raise ValueError(f"company inválida o inactiva: {company_id}")
+    if month < 1 or month > 12:
+        raise ValueError("month debe estar en rango 1..12.")
+
+    with transaction.atomic():
+        period = (
+            FiscalPeriod.objects.select_for_update()
+            .filter(company=company, year=int(year), month=int(month))
+            .first()
+        )
+        if period is None:
+            raise ValueError(f"FiscalPeriod {year}-{month:02d} no existe en company={company_id}.")
+
+        if period.status == FiscalPeriod.Status.OPEN:
+            # Idempotente: ya está abierto, no hay transición ni auditoría.
+            return PeriodReopenResult(
+                company_id=int(company.id),
+                year=int(year),
+                month=int(month),
+                status=period.status,
+                period_id=int(period.id),
+                was_already_open=True,
+                reopened_at=period.reopened_at.isoformat() if period.reopened_at else None,
+                reason=reason_clean,
+                force_applied=bool(force),
+            )
+
+        # Integridad cronológica: bloquea si un periodo POSTERIOR sigue cerrado.
+        if not force:
+            later_closed = (
+                FiscalPeriod.objects.filter(company=company, status=FiscalPeriod.Status.CLOSED)
+                .filter(Q(year__gt=int(year)) | Q(year=int(year), month__gt=int(month)))
+                .order_by("year", "month")
+                .first()
+            )
+            if later_closed is not None:
+                raise AccountingConflictError(
+                    f"No se puede reabrir {year}-{month:02d}: el periodo posterior "
+                    f"{later_closed.year}-{later_closed.month:02d} está cerrado. "
+                    f"Reabra primero los periodos posteriores o use force."
+                )
+
+        # SoD maker-checker: quien cerró no puede reabrir su propio cierre.
+        if (
+            actor_user is not None
+            and not bool(allow_same_closer)
+            and period.closed_by_id is not None
+            and int(period.closed_by_id) == int(getattr(actor_user, "id", 0) or 0)
+        ):
+            raise AccountingConflictError(
+                f"SoD: usuario {actor_user.id} cerró el periodo {year}-{month:02d}; "
+                f"otro usuario debe autorizar la reapertura."
+            )
+
+        reopen_manifest = {
+            "company_id": int(company.id),
+            "year": int(year),
+            "month": int(month),
+            "reason": reason_clean,
+            "forced": bool(force),
+            "previous_closed_by": int(period.closed_by_id) if period.closed_by_id else None,
+            "previous_closed_at": period.closed_at.isoformat() if period.closed_at else None,
+        }
+        reopen_manifest_hash = _json_hash(reopen_manifest)
+
+        before_snapshot = {
+            "status": period.status,
+            "closed_by": int(period.closed_by_id) if period.closed_by_id else None,
+            "closed_at": period.closed_at.isoformat() if period.closed_at else None,
+        }
+        now = timezone.now()
+        period.status = FiscalPeriod.Status.OPEN
+        period.reopened_at = now
+        period.reopened_by = actor_user
+        period.reopen_reason = reason_clean
+        period.save(update_fields=["status", "reopened_at", "reopened_by", "reopen_reason"])
+
+        publish_outbox_event(
+            source_module="ACCOUNTING",
+            event_type="PeriodReopened",
+            payload={
+                "company_id": int(company.id),
+                "year": int(year),
+                "month": int(month),
+                "reason": reason_clean,
+                "forced": bool(force),
+                "reopen_manifest_hash": reopen_manifest_hash,
+            },
+            company=company,
+            actor_user=actor_user,
+        )
+        _write_accounting_audit_event(
+            actor_user=actor_user,
+            company=company,
+            branch=None,
+            event_type="ACCOUNTING_PERIOD_REOPENED",
+            subject_type="FISCAL_PERIOD",
+            subject_id=str(period.id),
+            before_snapshot=before_snapshot,
+            after_snapshot={"status": period.status, "reopened_at": now.isoformat()},
+            metadata={
+                "period": f"{year}-{month:02d}",
+                "reason": reason_clean,
+                "forced": bool(force),
+                "reopen_manifest_hash": reopen_manifest_hash,
+            },
+        )
+
+        return PeriodReopenResult(
+            company_id=int(company.id),
+            year=int(year),
+            month=int(month),
+            status=period.status,
+            period_id=int(period.id),
+            was_already_open=False,
+            reopened_at=now.isoformat(),
+            reason=reason_clean,
+            force_applied=bool(force),
+        )
 
 
 def reverse_journal_entry(

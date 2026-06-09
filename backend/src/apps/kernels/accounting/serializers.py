@@ -26,6 +26,14 @@ class FiscalPeriodCloseIn(serializers.Serializer):
     allow_same_poster = serializers.BooleanField(required=False, default=False)
 
 
+class FiscalPeriodReopenIn(serializers.Serializer):
+    year = serializers.IntegerField(min_value=2000, max_value=2100)
+    month = serializers.IntegerField(min_value=1, max_value=12)
+    reason = serializers.CharField(max_length=255)
+    force = serializers.BooleanField(required=False, default=False)
+    allow_same_closer = serializers.BooleanField(required=False, default=False)
+
+
 class JournalEntryReverseIn(serializers.Serializer):
     reason = serializers.CharField(max_length=255)
     reversal_date = serializers.DateField(required=False)
