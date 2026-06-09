@@ -80,3 +80,25 @@ def test_record_meter_invalid_scope_rejected():
     with pytest.raises(SyncRejectError) as ei:
         handle_fleet_record_meter(ctx, {"asset_id": asset.id, "odometer_km": "10"})
     assert ei.value.reason_code == "FLEET_INVALID_SCOPE"
+
+
+@pytest.mark.django_db
+def test_record_meter_missing_and_invalid_asset_id():
+    company, branch = _scope()
+    with pytest.raises(SyncRejectError) as e1:
+        handle_fleet_record_meter(_ctx(company, branch), {"odometer_km": "10"})  # sin asset_id
+    assert e1.value.reason_code == "FLEET_SCHEMA_INVALID"
+    with pytest.raises(SyncRejectError) as e2:
+        handle_fleet_record_meter(_ctx(company, branch), {"asset_id": "abc", "odometer_km": "10"})
+    assert e2.value.reason_code == "FLEET_SCHEMA_INVALID"
+
+
+@pytest.mark.django_db
+def test_record_meter_unknown_branch_rejected():
+    company, branch = _scope()
+    asset = _asset(company)
+    ctx = _ctx(company, branch)
+    ctx["branch_id"] = 999999  # sucursal inexistente bajo la empresa
+    with pytest.raises(SyncRejectError) as ei:
+        handle_fleet_record_meter(ctx, {"asset_id": asset.id, "odometer_km": "10"})
+    assert ei.value.reason_code == "FLEET_INVALID_SCOPE"

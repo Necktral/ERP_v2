@@ -140,3 +140,114 @@ def test_apply_insumo_and_update_workorder_handlers():
     wo.refresh_from_db()
     assert wo.status == "DONE"
     assert wo.jornales == Decimal("3.00")
+
+
+# --------------------------------------------------------------------------- #
+# Rechazos controlados (rutas de error) — cobertura de los reject paths
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.django_db
+def test_log_work_rejects_unknown_company():
+    company = _company()
+    finca = _finca(company)
+    ctx = _ctx(company, finca, _user())
+    ctx["company_id"] = 999999  # empresa inexistente
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_log_work(ctx, {"plot_id": 1, "labor_id": 1})
+    assert str(exc.value) == "FINCA_INVALID_SCOPE"
+
+
+@pytest.mark.django_db
+def test_log_work_rejects_unknown_branch():
+    company = _company()
+    finca = _finca(company)
+    ctx = _ctx(company, finca, _user())
+    ctx["branch_id"] = 999999  # finca inexistente bajo la empresa
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_log_work(ctx, {"plot_id": 1, "labor_id": 1})
+    assert str(exc.value) == "FINCA_INVALID_SCOPE"
+
+
+@pytest.mark.django_db
+def test_log_work_rejects_missing_and_invalid_plot_id():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    with pytest.raises(SyncRejectError) as e1:
+        handle_finca_log_work(_ctx(company, finca, user), {"labor_id": 1})  # sin plot_id
+    assert str(e1.value) == "FINCA_SCHEMA_INVALID"
+    with pytest.raises(SyncRejectError) as e2:
+        handle_finca_log_work(_ctx(company, finca, user), {"plot_id": "abc", "labor_id": 1})
+    assert str(e2.value) == "FINCA_SCHEMA_INVALID"
+
+
+@pytest.mark.django_db
+def test_log_work_rejects_unknown_labor():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    plot = Plot.objects.create(finca=finca, code="L1", area_manzanas=Decimal("10.00"))
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_log_work(_ctx(company, finca, user), {"plot_id": plot.id, "labor_id": 999999})
+    assert str(exc.value) == "FINCA_NOT_FOUND"
+
+
+@pytest.mark.django_db
+def test_log_work_rejects_invalid_status():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    labor = _labor(company)
+    plot = Plot.objects.create(finca=finca, code="L1", area_manzanas=Decimal("10.00"))
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_log_work(
+            _ctx(company, finca, user),
+            {"plot_id": plot.id, "labor_id": labor.id, "status": "NOT_A_STATUS"},
+        )
+    assert str(exc.value) == "FINCA_SCHEMA_INVALID"  # full_clean → ValidationError
+
+
+@pytest.mark.django_db
+def test_update_workorder_rejects_unknown_and_invalid():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    labor = _labor(company)
+    plot = Plot.objects.create(finca=finca, code="L1", area_manzanas=Decimal("10.00"))
+    ctx = _ctx(company, finca, user, command_type="FINCA_UPDATE_WORKORDER")
+    with pytest.raises(SyncRejectError) as e1:
+        handle_finca_update_workorder(ctx, {"work_order_id": 999999, "status": "DONE"})
+    assert str(e1.value) == "FINCA_NOT_FOUND"
+    wo = WorkOrder.objects.create(finca=finca, plot=plot, labor=labor, status=WorkOrder.Status.PLANNED)
+    with pytest.raises(SyncRejectError) as e2:
+        handle_finca_update_workorder(ctx, {"work_order_id": wo.id, "status": "NOPE"})
+    assert str(e2.value) == "FINCA_SCHEMA_INVALID"
+
+
+@pytest.mark.django_db
+def test_apply_insumo_rejects_unknown_workorder():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_apply_insumo(
+            _ctx(company, finca, user, command_type="FINCA_APPLY_INSUMO"),
+            {"work_order_id": 999999, "item_name": "Urea"},
+        )
+    assert str(exc.value) == "FINCA_NOT_FOUND"
+
+
+@pytest.mark.django_db
+def test_apply_insumo_rejects_invalid_unit_cost():
+    company = _company()
+    finca = _finca(company)
+    user = _user()
+    labor = _labor(company)
+    plot = Plot.objects.create(finca=finca, code="L1", area_manzanas=Decimal("10.00"))
+    wo = WorkOrder.objects.create(finca=finca, plot=plot, labor=labor, status=WorkOrder.Status.PLANNED)
+    with pytest.raises(SyncRejectError) as exc:
+        handle_finca_apply_insumo(
+            _ctx(company, finca, user, command_type="FINCA_APPLY_INSUMO"),
+            {"work_order_id": wo.id, "item_name": "Urea", "quantity": "1.00", "unit_cost": "abc"},
+        )
+    assert str(exc.value) == "FINCA_SCHEMA_INVALID"  # DecimalField.to_python → ValidationError

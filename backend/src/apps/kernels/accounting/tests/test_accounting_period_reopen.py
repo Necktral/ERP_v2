@@ -149,3 +149,48 @@ def test_close_reopen_close_cycle():
     res = close_fiscal_period(company_id=company.id, year=2026, month=8, actor_user=a)
     assert res.status == FiscalPeriod.Status.CLOSED
     assert res.was_already_closed is False
+
+
+# --------------------------------------------------------------------------- #
+# Management command `reopen_fiscal_period`
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.django_db
+def test_reopen_fiscal_period_management_command():
+    import json
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    company = _mk_company()
+    closer = _actor()
+    FiscalPeriod.objects.create(company=company, year=2026, month=3, status=FiscalPeriod.Status.OPEN)
+    close_fiscal_period(company_id=company.id, year=2026, month=3, actor_user=closer)
+
+    out = StringIO()
+    call_command(
+        "reopen_fiscal_period",
+        "--company-id", str(company.id), "--year", "2026", "--month", "3",
+        "--reason", "reproceso CLI", stdout=out,
+    )
+    payload = json.loads(out.getvalue().strip())
+    assert payload["status"] == FiscalPeriod.Status.OPEN
+    assert payload["was_already_open"] is False
+    assert payload["reason"] == "reproceso CLI"
+    assert payload["company_id"] == company.id
+    period = FiscalPeriod.objects.get(company=company, year=2026, month=3)
+    assert period.status == FiscalPeriod.Status.OPEN
+
+
+@pytest.mark.django_db
+def test_reopen_fiscal_period_command_wraps_errors():
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    company = _mk_company()
+    # Periodo inexistente → el servicio lanza ValueError, el comando lo envuelve en CommandError.
+    with pytest.raises(CommandError):
+        call_command(
+            "reopen_fiscal_period",
+            "--company-id", str(company.id), "--year", "2099", "--month", "1", "--reason", "x",
+        )
