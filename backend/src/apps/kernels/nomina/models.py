@@ -571,6 +571,10 @@ class PayrollEntry(models.Model):
     # --- RETENCIONES ---
     inss_laboral = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     ir_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
+    ir_manual = models.BooleanField(
+        default=False,
+        help_text="IR fijado manualmente (override): si True, compute_all NO recalcula el IR.",
+    )
     loan_payment = models.DecimalField(
         max_digits=18, decimal_places=2, default=Decimal("0.00"),
         help_text="Abono a préstamos (del kernel portfolio)"
@@ -730,9 +734,13 @@ class PayrollEntry(models.Model):
             self.other_income
         )
 
-        # 9. IR — calculado si hay config con tabla IR, si no = 0.
-        # Anualiza por la frecuencia REAL del pago (catorcena ×26, no ×24).
-        if config and not self.ir_amount:
+        # 9. IR — recalculado SIEMPRE que haya config con tabla IR (salvo override manual).
+        # Antes el guard era `not self.ir_amount`, que confundía "ya calculado" con
+        # "fijado a mano": en cualquier recompute (asistencia, reclasificación CON/SIN
+        # INSS, cambio de días/salario) el IR quedaba obsoleto. Ahora solo se respeta un
+        # override explícito (`ir_manual`); si no, se anualiza por la frecuencia REAL
+        # del pago (catorcena ×26, no ×24) y se recalcula contra la base gravable vigente.
+        if config and not self.ir_manual:
             self.ir_amount = IRBracket.calculate_period_ir(
                 config=config,
                 period_income=basic_earned,

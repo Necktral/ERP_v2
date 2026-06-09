@@ -314,6 +314,50 @@ def test_compute_entry_total_payroll_cost_consistent():
 
 
 # ---------------------------------------------------------------------------
+# NM-01 — el IR se recalcula en cada compute_all (salvo override manual)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_ir_recomputed_on_recompute_when_not_manual():
+    """NM-01: el IR NO queda obsoleto — recalcula contra la base gravable vigente."""
+    company, _ = _mk_scope()
+    actor = _actor()
+    _mk_config(company, actor)
+    period = _mk_period(company, actor)
+    sheet = _mk_sheet(period, actor)
+    # Salario alto → IR > 0 a período completo.
+    entry = _mk_entry(sheet, base_salary_nio="18000.00", days_worked="15")
+    compute_entry(entry=entry)
+    ir_full = entry.ir_amount
+    assert ir_full > Decimal("0.00")
+    assert entry.ir_manual is False
+
+    # Recompute con menos días → base gravable menor → el IR DEBE bajar.
+    # (Antes del fix quedaba == ir_full porque el guard era `not self.ir_amount`.)
+    entry.days_worked = Decimal("7")
+    entry.save(update_fields=["days_worked"])
+    compute_entry(entry=entry)
+    assert entry.ir_amount < ir_full
+
+
+@pytest.mark.django_db
+def test_ir_manual_override_preserved_on_recompute():
+    """NM-01: un IR fijado manualmente (ir_manual=True) no se recalcula."""
+    company, _ = _mk_scope()
+    actor = _actor()
+    _mk_config(company, actor)
+    period = _mk_period(company, actor)
+    sheet = _mk_sheet(period, actor)
+    entry = _mk_entry(sheet, base_salary_nio="18000.00", days_worked="15")
+    entry.ir_amount = Decimal("123.45")
+    entry.ir_manual = True
+    entry.save(update_fields=["ir_amount", "ir_manual"])
+
+    compute_entry(entry=entry)
+    assert entry.ir_amount == Decimal("123.45")
+
+
+# ---------------------------------------------------------------------------
 # compute_all_entries_in_sheet
 # ---------------------------------------------------------------------------
 
