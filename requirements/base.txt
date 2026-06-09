@@ -2,7 +2,7 @@
 cryptography==46.0.5
 # Framework + API
 Django==5.2.12
-djangorestframework==3.16.1
+djangorestframework==3.17.1
 
 # Auth JWT (login para PWA)
 djangorestframework-simplejwt==5.5.1
