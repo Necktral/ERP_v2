@@ -33,6 +33,11 @@ def issue_insumo_from_stock(
     note: str = "",
 ) -> InsumoApplication:
     """Descuenta `qty` del item en la bodega y registra el insumo con el costo real."""
+    # F-01: exigir idempotency_key. Sin él, post_issue no es idempotente y un reintento
+    # vuelve a descontar stock + duplica la InsumoApplication. La clave la provee el
+    # cliente/offline (command_id) o el serializer del endpoint (requerido).
+    if not (idempotency_key or "").strip():
+        raise ValueError("idempotency_key es requerido para aplicar insumo (idempotencia).")
     company = request.company
     item = InventoryItem.objects.filter(id=item_id, company=company).first()
     if item is None:
@@ -74,7 +79,7 @@ def issue_insumo_from_stock(
         request=request,
         module="FINCA",
         event_type="FINCA_INSUMO_ISSUED",
-        reason_code="OK",
+        reason_code="FINCA_OK",
         actor_user=actor,
         subject_type="FINCA_WORKORDER",
         subject_id=str(work_order.id),

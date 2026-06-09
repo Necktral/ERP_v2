@@ -191,6 +191,43 @@ def test_post_finca_cost_zero_is_skipped():
     assert not OutboxEvent.objects.filter(source_module="FINCA").exists()
 
 
+@pytest.mark.django_db
+def test_issue_insumo_requires_idempotency_key():
+    """F-01: sin idempotency_key se rechaza (evita doble descuento de stock)."""
+    company = _mk_company()
+    finca = _mk_finca(company)
+    user = _mk_user()
+    wh, item = _stock(company, finca, user)
+    wo = _wo(finca, company, _labor(company))
+    with pytest.raises(ValueError, match="idempotency_key"):
+        issue_insumo_from_stock(
+            wo, warehouse_id=wh.id, item_id=item.id, qty=Decimal("4"),
+            request=_req(company, finca, user), actor=user, idempotency_key="",
+        )
+
+
+@pytest.mark.django_db
+def test_post_finca_cost_is_idempotent():
+    """F-02: re-postear la misma finca/temporada no duplica el outbox/asiento."""
+    company = _mk_company()
+    finca = _mk_finca(company, "Idem")
+    user = _mk_user()
+    upsert_finca_profile(finca, data={"zona": "N", "area_manzanas": "10.00"})
+    labor = _labor(company, rate="100.00")
+    wo = _wo(finca, company, labor)
+    _field_jornales(finca, company, labor_code="chapia_t", day_values=["1.00"])
+    wh, item = _stock(company, finca, user, qty="10", unit_cost="50")
+    issue_insumo_from_stock(wo, warehouse_id=wh.id, item_id=item.id, qty=Decimal("2"),
+                            request=_req(company, finca, user), actor=user, idempotency_key="iss-idem")
+
+    r1 = post_finca_cost_to_accounting(request=_req(company, finca, user), actor=user, finca=finca)
+    r2 = post_finca_cost_to_accounting(request=_req(company, finca, user), actor=user, finca=finca)
+
+    assert OutboxEvent.objects.filter(source_module="FINCA", event_type="FincaCostAccrued").count() == 1
+    assert r2["link_status"] == "ALREADY_POSTED"
+    assert r2["outbox_event_id"] == r1["outbox_event_id"]
+
+
 # --------------------------------------------------------------------------- #
 # HTTP + RBAC
 # --------------------------------------------------------------------------- #

@@ -175,6 +175,7 @@ ALLOWED_REASON_CODES: set[str] = {
     "FUEL_OK",
     "AUDIT_OK",
     "REPORTS_OK",
+    "FINCA_OK",
 
     # OK por módulo (futuros kernels)
 

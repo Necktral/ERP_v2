@@ -178,7 +178,14 @@ def _insumo_cost(finca: OrgUnit, *, season: str | None = None) -> Decimal:
 
 
 def finca_real_cost_summary(finca: OrgUnit, *, season: str | None = None, **filters) -> dict[str, Any]:
-    """Costeo REAL de una finca: mano de obra desde asistencia de campo + insumos."""
+    """Costeo de una finca: mano de obra desde asistencia de campo + insumos.
+
+    F-04: ``real_labor_cost`` es la **asistencia REAL** (jornales efectivamente
+    capturados en campo) valuada a la **tarifa estándar del catálogo de labores**
+    (``Labor.default_rate``), NO al salario real de planilla. Es un costo de gestión
+    por finca a tarifa estándar, no el costo nominal exacto; el cruce con el salario
+    real de nómina queda como evolución futura.
+    """
     labors = field_labor_rollup(finca, **filters)
     real_labor_cost = _money(sum(
         (Decimal(r["labor_cost"]) for r in labors if r["labor_cost"] is not None), ZERO

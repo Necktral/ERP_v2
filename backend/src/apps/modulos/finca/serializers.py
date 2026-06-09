@@ -136,7 +136,8 @@ class IssueInsumoIn(serializers.Serializer):
     warehouse_id = serializers.IntegerField()
     item_id = serializers.IntegerField()
     quantity = serializers.DecimalField(max_digits=12, decimal_places=2)
-    idempotency_key = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
+    # F-01: requerido para idempotencia del descuento de stock (anti doble-aplicación).
+    idempotency_key = serializers.CharField(max_length=128, required=True, allow_blank=False)
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
