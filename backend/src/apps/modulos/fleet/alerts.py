@@ -35,9 +35,12 @@ def evaluate_documents(*, company, horizon_days: int = 30, actor=None) -> list[d
         .select_related("asset", "driver")
     )
     for doc in qs:
-        if doc.expiry_date < today:
+        expiry = doc.expiry_date
+        if expiry is None:  # el queryset ya excluye nulls; guarda defensiva para el tipado
+            continue
+        if expiry < today:
             new_status = DocumentStatus.EXPIRED
-        elif doc.expiry_date <= horizon:
+        elif expiry <= horizon:
             new_status = DocumentStatus.EXPIRING
         else:
             new_status = DocumentStatus.VALID
@@ -46,15 +49,17 @@ def evaluate_documents(*, company, horizon_days: int = 30, actor=None) -> list[d
         doc.status = new_status
         doc.save(update_fields=["status", "updated_at"])
         if new_status in (DocumentStatus.EXPIRING, DocumentStatus.EXPIRED):
+            asset = doc.asset if doc.asset_id else None
+            driver = doc.driver if doc.driver_id else None
             data = {
-                "doc_id": doc.id, "doc_type": doc.doc_type, "expiry_date": doc.expiry_date.isoformat(),
-                "asset_code": doc.asset.code if doc.asset_id else None,
-                "driver_name": doc.driver.full_name if doc.driver_id else None,
+                "doc_id": doc.id, "doc_type": doc.doc_type, "expiry_date": expiry.isoformat(),
+                "asset_code": asset.code if asset else None,
+                "driver_name": driver.full_name if driver else None,
             }
             event = "DocumentExpired" if new_status == DocumentStatus.EXPIRED else "DocumentExpiring"
             publish_outbox_event(
                 source_module="FLEET", event_type=event, payload=data, company=company,
-                branch=doc.asset.branch if doc.asset_id else None, actor_user=actor,
+                branch=asset.branch if asset else None, actor_user=actor,
             )
             flagged.append({"doc_id": doc.id, "status": new_status, "event": event})
     return flagged

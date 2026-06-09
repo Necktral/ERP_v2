@@ -821,7 +821,7 @@ def allocate_payment_to_obligation(
 
         # P-01: bloquear la obligación antes de mutar el saldo (evita lost-update /
         # over-allocation cuando la aplicación automática y la manual concurren).
-        obligation = type(obligation).objects.select_for_update().get(pk=obligation.pk)
+        obligation = type(obligation)._default_manager.select_for_update().get(pk=obligation.pk)
 
         # Actualizar obligation
         obligation.allocated_amount += allocated_amount
@@ -896,7 +896,7 @@ def apply_payroll_abono(*, obligation, amount, abono_date=None, created_by=None,
 
     with transaction.atomic():
         # P-01: lock antes de leer el saldo y mutar (evita over-allocation concurrente).
-        obligation = type(obligation).objects.select_for_update().get(pk=obligation.pk)
+        obligation = type(obligation)._default_manager.select_for_update().get(pk=obligation.pk)
         applied = min(amount, obligation.outstanding_amount)
         if applied <= 0:
             return Decimal("0.00")

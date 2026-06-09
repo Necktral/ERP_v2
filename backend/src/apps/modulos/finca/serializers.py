@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import FincaProfile, Labor, Plot, WorkOrder
@@ -45,7 +47,7 @@ class PlotOut(serializers.ModelSerializer):
 class PlotCreateIn(serializers.Serializer):
     code = serializers.CharField(max_length=64)
     name = serializers.CharField(max_length=160, required=False, allow_blank=True, default="")
-    area_manzanas = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0)
+    area_manzanas = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=Decimal("0"))
     crop = serializers.CharField(max_length=40, required=False, default="CAFE")
     variety = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
     planting_year = serializers.IntegerField(required=False, allow_null=True)
@@ -77,8 +79,8 @@ class LaborOut(serializers.ModelSerializer):
 class LaborCreateIn(serializers.Serializer):
     code = serializers.CharField(max_length=64)
     name = serializers.CharField(max_length=160)
-    category = serializers.ChoiceField(choices=[c[0] for c in Labor._meta.get_field("category").choices])
-    unit = serializers.ChoiceField(choices=[c[0] for c in Labor._meta.get_field("unit").choices])
+    category = serializers.ChoiceField(choices=[c[0] for c in (Labor._meta.get_field("category").choices or [])])
+    unit = serializers.ChoiceField(choices=[c[0] for c in (Labor._meta.get_field("unit").choices or [])])
     is_piecework = serializers.BooleanField(required=False, default=False)
     expected_yield = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     default_rate = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
@@ -106,7 +108,7 @@ class WorkOrderCreateIn(serializers.Serializer):
     )
     target_quantity = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     actual_quantity = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-    jornales = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0)
+    jornales = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=Decimal("0"))
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     external_ref = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
 

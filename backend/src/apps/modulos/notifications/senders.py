@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import Any
 
 from django.conf import settings
 from django.utils import timezone
@@ -32,7 +33,7 @@ _INVALID_TOKEN_MARKERS = ("UNREGISTERED", "NOTREGISTERED", "INVALID_ARGUMENT", "
 # acuñado desde la service account (JWT RS256 → token endpoint). Cache del token en módulo.
 _FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
 _GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token"
-_fcm_token_cache: dict[str, object] = {"access_token": "", "exp": 0.0}
+_fcm_token_cache: dict[str, Any] = {"access_token": "", "exp": 0.0}
 
 
 def _fcm_service_account() -> dict:
