@@ -10,6 +10,7 @@ from datetime import date, timedelta
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.db.models import F, Sum
 from django.utils import timezone
 
 from apps.modulos.audit.writer import write_event
@@ -291,6 +292,18 @@ def adjust_receivable(
         }
     )
 
+    # P-05: auditoría de servicio (invariante #4), igual que create/allocate.
+    _write_portfolio_audit_event(
+        actor_user=adjusted_by,
+        company=receivable.company,
+        branch=receivable.branch,
+        event_type="PORTFOLIO_RECEIVABLE_ADJUSTED",
+        subject_type="RECEIVABLE",
+        subject_id=str(receivable.obligation_id),
+        after_snapshot={"principal_amount": str(new_amount), "status": receivable.status},
+        metadata={"adjustment_amount": str(adjustment_amount), "reason": reason or ""},
+    )
+
     return receivable
 
 
@@ -337,6 +350,18 @@ def write_off_receivable(
             "written_off_amount": str(receivable.outstanding_amount),
             "reason": reason,
         }
+    )
+
+    # P-05: el castigo (incobrable) es sensible → auditoría de servicio explícita.
+    _write_portfolio_audit_event(
+        actor_user=approved_by,
+        company=receivable.company,
+        branch=receivable.branch,
+        event_type="PORTFOLIO_RECEIVABLE_WRITTEN_OFF",
+        subject_type="RECEIVABLE",
+        subject_id=str(receivable.obligation_id),
+        after_snapshot={"status": receivable.status, "written_off_amount": str(receivable.outstanding_amount)},
+        metadata={"reason": reason or ""},
     )
 
     return receivable
@@ -755,7 +780,9 @@ def allocate_payment_to_obligation(
         fee_applied = allocation_breakdown.get("fee", Decimal("0.00"))
         penalty_applied = allocation_breakdown.get("penalty", Decimal("0.00"))
     else:
-        # Default: aplicar a principal primero, luego interés, luego fees, luego penalties
+        # P-04: orden de cascada contable estándar — penalty → interés → fees → principal
+        # (el principal se salda al final). El comentario anterior decía "principal primero",
+        # contradiciendo el código; el código es el correcto.
         remaining = allocated_amount
         # Component-level applied balances are not persisted yet; cap by configured penalty amount.
         penalty_applied = min(remaining, obligation.penalty_amount - Decimal("0.00"))
@@ -791,6 +818,10 @@ def allocate_payment_to_obligation(
 
     with transaction.atomic():
         allocation.save()
+
+        # P-01: bloquear la obligación antes de mutar el saldo (evita lost-update /
+        # over-allocation cuando la aplicación automática y la manual concurren).
+        obligation = type(obligation).objects.select_for_update().get(pk=obligation.pk)
 
         # Actualizar obligation
         obligation.allocated_amount += allocated_amount
@@ -862,11 +893,13 @@ def apply_payroll_abono(*, obligation, amount, abono_date=None, created_by=None,
         raise PortfolioDomainError("OBLIGATION_NOT_OPEN", f"Obligación no abierta para abono: {obligation.status}")
 
     abono_date = abono_date or timezone.localdate()
-    applied = min(amount, obligation.outstanding_amount)
-    if applied <= 0:
-        return Decimal("0.00")
 
     with transaction.atomic():
+        # P-01: lock antes de leer el saldo y mutar (evita over-allocation concurrente).
+        obligation = type(obligation).objects.select_for_update().get(pk=obligation.pk)
+        applied = min(amount, obligation.outstanding_amount)
+        if applied <= 0:
+            return Decimal("0.00")
         obligation.allocated_amount += applied
         obligation.last_payment_date = abono_date
         if obligation.allocated_amount >= obligation.total_amount:
@@ -983,8 +1016,19 @@ def accrue_interest_for_credit(
     if existing:
         return existing
 
-    # Calcular interés
-    principal_balance = credit.disbursed_amount - credit.allocated_amount
+    # P-03: la base del interés es el PRINCIPAL pendiente. `allocated_amount` incluye
+    # lo aplicado a interés/fees/penalty, así que `disbursed − allocated` lo subestimaba.
+    # Se re-suma la porción NO-principal aplicada en allocations (los abonos de planilla
+    # son 100% principal, así que no se re-suman → quedan correctos).
+    non_principal_paid = (
+        PaymentAllocation.objects.filter(
+            obligation_content_type=ContentType.objects.get_for_model(credit),
+            obligation_object_id=credit.pk,
+            status=AllocationStatus.APPLIED,
+        ).aggregate(s=Sum(F("interest_applied") + F("fee_applied") + F("penalty_applied")))["s"]
+        or Decimal("0.00")
+    )
+    principal_balance = credit.disbursed_amount - credit.allocated_amount + non_principal_paid
     if principal_balance <= 0:
         return None
 
@@ -996,10 +1040,10 @@ def accrue_interest_for_credit(
         daily_rate = annual_rate / Decimal("365.00")
         accrued = (principal_balance * daily_rate * Decimal(str(days_in_period))).quantize(Decimal("0.01"))
     elif credit.interest_calculation_method == "COMPOUND":
-        # Interés compuesto: P * ((1 + r)^t - 1)
-        # Simplificado para períodos cortos
+        # P-02: interés compuesto REAL P * ((1 + r_diario)^t − 1) (antes calculaba simple).
         daily_rate = annual_rate / Decimal("365.00")
-        accrued = (principal_balance * daily_rate * Decimal(str(days_in_period))).quantize(Decimal("0.01"))
+        factor = (Decimal("1") + daily_rate) ** int(days_in_period) - Decimal("1")
+        accrued = (principal_balance * factor).quantize(Decimal("0.01"))
     else:
         # Flat rate
         accrued = (principal_balance * annual_rate / Decimal("12.00")).quantize(Decimal("0.01"))

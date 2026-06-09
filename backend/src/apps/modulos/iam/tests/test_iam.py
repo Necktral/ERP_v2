@@ -28,6 +28,7 @@ from apps.modulos.iam.selectors import (
     get_accessible_branches,
     get_accessible_companies,
     get_admin_caps_snapshot,
+    has_active_company_link,
     has_intercompany_grant,
 )
 from apps.modulos.rbac.models import Permission
@@ -123,6 +124,17 @@ def test_linkgrant_clean_scope_branch():
 def test_has_intercompany_grant_same_company_is_true():
     _, c1, _ = _mk_org()
     assert has_intercompany_grant(from_company=c1, to_company=c1, permission_code="anything") is True
+
+
+@pytest.mark.django_db
+def test_has_active_company_link_coarse_gate():
+    """IAM-02: gate grueso — requiere un CompanyLink activo entre las empresas."""
+    _, c1, _ = _mk_org()
+    _, c2, _ = _mk_org()
+    assert has_active_company_link(from_company=c1, to_company=c1) is True  # misma empresa
+    assert has_active_company_link(from_company=c1, to_company=c2) is False  # sin enlace
+    CompanyLink.objects.create(from_company=c1, to_company=c2)
+    assert has_active_company_link(from_company=c1, to_company=c2) is True
 
 
 @pytest.mark.django_db

@@ -120,6 +120,26 @@ def test_approve_period_generates_balanced_payroll_journal_draft():
 
 
 @pytest.mark.django_db
+def test_payroll_posting_is_idempotent_per_period():
+    """NM-04: postear dos veces el mismo período NO duplica el outbox/asiento."""
+    from apps.kernels.nomina.accounting_link import post_payroll_period_to_accounting
+
+    company, branch = _mk_scope()
+    actor = _actor()
+    _posting_config(company)
+    period = _period_with_entries(company, branch, actor, has_inss=True)
+
+    r1 = post_payroll_period_to_accounting(request=_req(actor, company=company), actor=actor, period=period)
+    r2 = post_payroll_period_to_accounting(request=_req(actor, company=company), actor=actor, period=period)
+
+    assert OutboxEvent.objects.filter(
+        source_module="NOMINA", event_type="PayrollPeriodApproved", company=company
+    ).count() == 1
+    assert r2["link_status"] == "ALREADY_POSTED"
+    assert r2["outbox_event_id"] == r1["outbox_event_id"]
+
+
+@pytest.mark.django_db
 def test_sin_inss_period_posts_zero_inss_lines():
     company, branch = _mk_scope()
     actor = _actor()

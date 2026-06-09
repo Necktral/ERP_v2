@@ -88,6 +88,32 @@ def test_register_payment_creates_record_and_audits():
 
 
 @pytest.mark.django_db
+def test_payment_cannot_exceed_remaining_net():
+    """NM-05: el pago no puede exceder el neto restante (anti-sobrepago)."""
+    company, branch = _scope()
+    actor = _actor()
+    period, entries = _approved_period(company, branch, actor, n=1)
+    entry = entries[0]
+
+    # Pago completo OK.
+    _pay(actor, company, entry, entry.net_to_pay)
+    # Un segundo pago (cualquier monto) excede el neto restante (0) → rechazado.
+    with pytest.raises(PayrollPaymentError, match="excede el neto restante"):
+        _pay(actor, company, entry, Decimal("0.01"))
+
+
+@pytest.mark.django_db
+def test_payment_over_net_in_single_shot_rejected():
+    """NM-05: un único pago mayor al neto se rechaza."""
+    company, branch = _scope()
+    actor = _actor()
+    period, entries = _approved_period(company, branch, actor, n=1)
+    entry = entries[0]
+    with pytest.raises(PayrollPaymentError, match="excede el neto restante"):
+        _pay(actor, company, entry, entry.net_to_pay + Decimal("1000.00"))
+
+
+@pytest.mark.django_db
 def test_period_marks_paid_when_all_entries_covered():
     company, branch = _scope()
     actor = _actor()

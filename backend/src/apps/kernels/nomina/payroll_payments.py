@@ -44,6 +44,14 @@ def register_payroll_payment(
     if amount <= 0:
         raise PayrollPaymentError("El monto del pago debe ser > 0.")
 
+    # NM-05: no permitir pagar más que el neto restante (evita sobrepago / pago duplicado).
+    already_paid = entry.payments.aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
+    remaining = (entry.net_to_pay or Decimal("0.00")) - already_paid
+    if amount > remaining:
+        raise PayrollPaymentError(
+            f"El pago ({amount}) excede el neto restante ({remaining})."
+        )
+
     with transaction.atomic():
         payment = PayrollPayment.objects.create(
             entry=entry,

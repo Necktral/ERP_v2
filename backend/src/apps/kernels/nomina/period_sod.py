@@ -47,8 +47,13 @@ def request_period_approval(
 def approve_period(*, request, approver, approval: ApprovalRequest) -> PayrollPeriod:
     """Checker: aprueba (valida SoD + permiso) y marca el período APPROVED."""
     approval = _approve_request(approval=approval, approver=approver, request=request)
-    period = PayrollPeriod.objects.get(id=int((approval.payload or {})["period_id"]))
     with transaction.atomic():
+        period = PayrollPeriod.objects.select_for_update().get(id=int((approval.payload or {})["period_id"]))
+        # NM-04: re-validar el estado (una 2ª ApprovalRequest del mismo período no debe
+        # re-aprobar ni re-postear el asiento de planilla). El posting es idempotente,
+        # pero esta guarda corta el doble flujo en la raíz.
+        if period.status not in _APPROVABLE_STATES:
+            raise ValueError(f"El período ya no es aprobable (estado: {period.status}).")
         period.status = PeriodStatus.APPROVED
         period.approved_by = approver
         period.approved_at = timezone.now()

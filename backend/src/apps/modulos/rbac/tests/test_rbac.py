@@ -96,6 +96,18 @@ def test_effective_perms_inactive_assignment_excluded():
 
 
 @pytest.mark.django_db
+def test_effective_perms_inactive_permission_excluded():
+    """RBAC-01: un permiso desactivado NO concede acceso en la ruta scoped."""
+    _, company, _ = _mk_org()
+    user = _mk_user()
+    role = Role.objects.create(name=f"r_{uuid.uuid4().hex[:8]}", is_active=True)
+    code = f"z.read_{uuid.uuid4().hex[:6]}"
+    RolePermission.objects.create(role=role, permission=Permission.objects.create(code=code, is_active=False))
+    RoleAssignment.objects.create(user=user, role=role, org_unit=company, is_active=True)
+    assert get_effective_permissions_for_scope(user, company=company, include_global=False) == set()
+
+
+@pytest.mark.django_db
 def test_effective_perms_include_global_userrole():
     _, company, _ = _mk_org()
     user = _mk_user()

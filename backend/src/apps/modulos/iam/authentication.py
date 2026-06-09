@@ -17,7 +17,7 @@ from django.conf import settings
 from rest_framework.exceptions import NotFound, ParseError, PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from apps.modulos.iam.context import attach_request_context
+from apps.modulos.iam.context import EXEMPT_PATH_PREFIXES, attach_request_context
 from apps.modulos.iam.models import OrgUnit, UserMembership
 
 
@@ -30,28 +30,8 @@ class JWTAuthWithOrgContext(JWTAuthentication):
       - Inyecta request.company y request.branch en DRF Request y HttpRequest
     """
 
-    EXEMPT_PATH_PREFIXES = (
-        "/admin/",
-        "/api/auth/login/",
-        "/api/v1/auth/login/",
-        "/api/auth/refresh/",
-        "/api/v1/auth/refresh/",
-        "/api/auth/logout/",
-        "/api/v1/auth/logout/",
-        "/api/auth/2fa/verify/",
-        "/api/v1/auth/2fa/verify/",
-        "/api/auth/me/",
-        "/api/v1/auth/me/",
-        "/api/auth/me/acl/",
-        "/api/v1/auth/me/acl/",
-        "/api/auth/bootstrap/",
-        "/api/v1/auth/bootstrap/",
-        "/api/auth/password/",
-        "/api/v1/auth/password/",
-        "/api/schema/",
-        "/api/v1/schema/",
-        "/api/docs/",
-    )
+    # IAM-03: lista compartida (ver apps.modulos.iam.context.EXEMPT_PATH_PREFIXES).
+    EXEMPT_PATH_PREFIXES = EXEMPT_PATH_PREFIXES
 
     def authenticate(self, request):
         auth_result = super().authenticate(request)
@@ -106,6 +86,12 @@ class JWTAuthWithOrgContext(JWTAuthentication):
             # deja rastro de scope requerido para auditoría
             self._set_required_scope(request, company_id=company.id, branch_id=None)
             raise PermissionDenied("Sin acceso a esta empresa.")
+
+        # IAM-01: un miembro SOLO de sucursal (sin membresía a la empresa) no puede
+        # operar a scope de empresa omitiendo X-Branch-Id (sería ver todas las sucursales).
+        if not has_company_membership and not branch_id:
+            self._set_required_scope(request, company_id=company.id, branch_id=None)
+            raise PermissionDenied("Debe especificar X-Branch-Id (membresía limitada a sucursal).")
 
         branch = None
         if branch_id:
@@ -163,6 +149,16 @@ class JWTAuthWithOrgContext(JWTAuthentication):
             ).first()
             if not dc:
                 raise NotFound("Data company no encontrada o inactiva.")
+
+            # IAM-02: gate grueso fail-closed. Exponer datos de OTRA empresa exige al
+            # menos un CompanyLink activo entre ambas; sin él no se fija el data-scope
+            # (el permiso fino lo valida rbac_permission vía has_intercompany_grant).
+            if dc.id != company.id:
+                from apps.modulos.iam.selectors import has_active_company_link
+
+                if not has_active_company_link(from_company=dc, to_company=company):
+                    self._set_required_scope(request, company_id=dc.id, branch_id=None)
+                    raise PermissionDenied("Sin enlace intercompany para acceder a esos datos.")
 
             data_company = dc
             data_branch = None  # si cambia la data-company, la branch se re-resuelve

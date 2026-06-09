@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from django.http import JsonResponse
 
-from apps.modulos.iam.context import attach_request_context
+from apps.modulos.iam.context import EXEMPT_PATH_PREFIXES, attach_request_context
 from apps.modulos.iam.models import OrgUnit, UserMembership
 
 
@@ -25,24 +25,8 @@ class OrgContextMiddleware:
     En endpoints operativos exige X-Company-Id.
     """
 
-    EXEMPT_PATH_PREFIXES = (
-        "/admin/",
-        "/api/auth/login/",
-        "/api/v1/auth/login/",
-        "/api/auth/refresh/",
-        "/api/v1/auth/refresh/",
-        "/api/auth/logout/",
-        "/api/v1/auth/logout/",
-        "/api/auth/me/",
-        "/api/v1/auth/me/",
-        "/api/auth/me/acl/",
-        "/api/v1/auth/me/acl/",
-        "/api/auth/bootstrap/",
-        "/api/v1/auth/bootstrap/",
-        "/api/schema/",
-        "/api/v1/schema/",
-        "/api/docs/",
-    )
+    # IAM-03: lista compartida (ver apps.modulos.iam.context.EXEMPT_PATH_PREFIXES).
+    EXEMPT_PATH_PREFIXES = EXEMPT_PATH_PREFIXES
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -88,6 +72,13 @@ class OrgContextMiddleware:
             # marcar scope requerido para auditoría (lo leerá AuditAccessDeniedMiddleware)
             setattr(request, "required_scope", {"company_id": company.id, "branch_id": None})
             return JsonResponse({"detail": "Sin acceso a esta empresa."}, status=403)
+
+        # IAM-01: un miembro SOLO de sucursal debe especificar X-Branch-Id (no scope empresa).
+        if not has_company_membership and not branch_id:
+            setattr(request, "required_scope", {"company_id": company.id, "branch_id": None})
+            return JsonResponse(
+                {"detail": "Debe especificar X-Branch-Id (membresía limitada a sucursal)."}, status=403
+            )
 
         branch = None
         if branch_id:
