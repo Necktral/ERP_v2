@@ -268,6 +268,12 @@ INSTALLED_APPS += [
     "apps.modulos.fleet.apps.FleetConfig",
 ]
 
+# Notifications / FCM (Fase B): push gateado; default OFF (Fase A entrega in-app por RecordSender).
+NOTIFICATIONS_FCM_ENABLED = env.bool("NOTIFICATIONS_FCM_ENABLED", default=False)
+NOTIFICATIONS_FCM_ENDPOINT = env("NOTIFICATIONS_FCM_ENDPOINT", default="https://fcm.googleapis.com/fcm/send")
+NOTIFICATIONS_FCM_SERVER_KEY = env("NOTIFICATIONS_FCM_SERVER_KEY", default="")
+NOTIFICATIONS_FCM_TIMEOUT = env.int("NOTIFICATIONS_FCM_TIMEOUT", default=10)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "csp.middleware.CSPMiddleware",
