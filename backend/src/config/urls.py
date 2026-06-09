@@ -106,4 +106,5 @@ urlpatterns += [
     path("api/nomina/", include("apps.kernels.nomina.urls")),
     path("api/legacy/billing/", include("apps.kernels.facturacion.urls_legacy")),
     path("api/procurement/", include("apps.modulos.compras.urls")),
+    path("api/comisariato/", include("apps.modulos.comisariato.urls")),
 ]
