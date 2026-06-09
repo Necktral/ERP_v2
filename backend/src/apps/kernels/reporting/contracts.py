@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -58,7 +58,7 @@ def build_dataset_envelope(
         "description": description,
         "schema_version": schema_version,
         "semantic_version": semantic_version,
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         "freshness_mode": freshness_mode,
         "scope": scope,
         "filters": filters,

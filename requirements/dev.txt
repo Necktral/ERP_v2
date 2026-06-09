@@ -8,8 +8,8 @@ factory-boy==3.3.3
 freezegun==1.5.5
 Faker==39.0.0
 
-ruff==0.14.10
-bandit==1.8.6
+ruff==0.15.16
+bandit==1.9.4
 
 # Server (para load/QA en dev)
 gunicorn==26.0.0
