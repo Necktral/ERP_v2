@@ -9,6 +9,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -97,20 +98,35 @@ def assign_driver(*, request, actor, asset: FleetAsset, driver: Driver) -> Drive
 def record_meter_reading(
     *, request, actor, asset: FleetAsset, odometer_km=None, hourmeter=None
 ) -> dict[str, Any]:
-    """Actualiza el medidor. Salto de odómetro >500 km (respecto al actual) NO avanza el oficial."""
+    """Actualiza el medidor. Un salto grande o una lectura DECRECIENTE no avanza el
+    medidor oficial y marca la lectura como no verificada (no dispara reglas).
+
+    FL-01: una lectura decreciente antes se descartaba en silencio con verified=True.
+    FL-02: el horómetro ahora también tiene guarda de salto; los umbrales son
+    configurables (settings FLEET_ODOMETER_JUMP_KM / FLEET_HOURMETER_JUMP_HOURS).
+    """
+    odo_jump = Decimal(str(getattr(settings, "FLEET_ODOMETER_JUMP_KM", 500)))
+    hour_jump = Decimal(str(getattr(settings, "FLEET_HOURMETER_JUMP_HOURS", 100)))
     verified = True
     update_fields: list[str] = []
     if odometer_km is not None:
         odometer_km = _q2(odometer_km)
         prev = asset.current_odometer_km
-        if prev and prev > 0 and (odometer_km - prev) > Decimal("500"):
-            verified = False  # lectura sospechosa: no dispara reglas
-        elif odometer_km >= prev:
+        if prev and prev > 0 and (odometer_km - prev) > odo_jump:
+            verified = False  # salto sospechoso: no dispara reglas
+        elif odometer_km < prev:
+            verified = False  # FL-01: lectura decreciente sospechosa (no retrocede el oficial)
+        else:
             asset.current_odometer_km = odometer_km
             update_fields.append("current_odometer_km")
     if hourmeter is not None:
         hourmeter = _q2(hourmeter)
-        if hourmeter >= asset.current_hourmeter:
+        prevh = asset.current_hourmeter
+        if prevh and prevh > 0 and (hourmeter - prevh) > hour_jump:
+            verified = False  # FL-02: salto de horómetro sospechoso
+        elif hourmeter < prevh:
+            verified = False  # FL-01: horómetro decreciente sospechoso
+        else:
             asset.current_hourmeter = hourmeter
             update_fields.append("current_hourmeter")
     if update_fields:
@@ -176,9 +192,13 @@ def apply_plan_to_asset(*, asset: FleetAsset, plan: MaintenancePlan) -> list[Ass
     with transaction.atomic():
         for rule in plan.rules.filter(is_active=True):
             due = _next_due_for_rule(asset, rule)
+            # FL-03: al re-aplicar el plan solo se refrescan los umbrales de vencimiento;
+            # NO se resetea `is_due`/`last_flagged_at` (antes ocultaba un mantenimiento ya
+            # marcado como vencido). El estado inicial se fija solo al CREAR.
             state, _ = AssetMaintenanceState.objects.update_or_create(
                 asset=asset, rule=rule,
-                defaults={**due, "is_due": False, "last_flagged_at": None},
+                defaults={**due},
+                create_defaults={**due, "is_due": False, "last_flagged_at": None},
             )
             states.append(state)
     return states

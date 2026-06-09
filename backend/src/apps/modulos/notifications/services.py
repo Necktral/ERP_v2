@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from django.db import transaction
+from django.db.models import Subquery
 from django.utils import timezone
 
 from apps.modulos.integration.models import InboxEvent, OutboxEvent
@@ -69,10 +70,21 @@ def notify_roles(
     return out
 
 
-def dispatch_fleet_notifications() -> dict[str, int]:
-    """Consume OutboxEvents FLEET pendientes → rutea → emite. Idempotente por InboxEvent + dedupe_key."""
+def dispatch_fleet_notifications(*, limit: int = 500) -> dict[str, int]:
+    """Consume OutboxEvents FLEET pendientes → rutea → emite. Idempotente por InboxEvent + dedupe_key.
+
+    N-02: solo recorre los eventos AÚN no procesados por este consumidor (excluye los que
+    ya tienen InboxEvent PROCESSED) y acota por `limit` → deja de ser O(total) por corrida.
+    """
     processed = emitted = 0
-    qs = OutboxEvent.objects.filter(source_module="FLEET").order_by("id")
+    done = InboxEvent.objects.filter(
+        consumer=CONSUMER, status=InboxEvent.Status.PROCESSED
+    ).values("event_id")
+    qs = (
+        OutboxEvent.objects.filter(source_module="FLEET")
+        .exclude(event_id__in=Subquery(done))
+        .order_by("id")[: int(limit)]
+    )
     for ob in qs.iterator():
         with transaction.atomic():
             inbox, created = InboxEvent.objects.get_or_create(

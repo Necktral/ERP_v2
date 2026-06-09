@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from django.conf import settings
@@ -24,6 +26,67 @@ from .models import DeviceToken, NotificationRecord, NotificationStatus
 logger = logging.getLogger(__name__)
 
 _INVALID_TOKEN_MARKERS = ("UNREGISTERED", "NOTREGISTERED", "INVALID_ARGUMENT", "INVALIDREGISTRATION")
+
+# N-01: la API legacy de FCM (/fcm/send, "Authorization: key=") fue descontinuada por
+# Google. Se usa FCM HTTP v1 (/v1/projects/{id}/messages:send) con un bearer OAuth2
+# acuñado desde la service account (JWT RS256 → token endpoint). Cache del token en módulo.
+_FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
+_GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token"
+_fcm_token_cache: dict[str, object] = {"access_token": "", "exp": 0.0}
+
+
+def _fcm_service_account() -> dict:
+    """Service account FCM desde settings (dict o ruta JSON)."""
+    sa = getattr(settings, "NOTIFICATIONS_FCM_SERVICE_ACCOUNT", None)
+    if isinstance(sa, dict):
+        return sa
+    if isinstance(sa, str) and sa:
+        with open(sa, encoding="utf-8") as fh:
+            return json.load(fh)
+    return {}
+
+
+def _fcm_access_token() -> str:
+    """Bearer OAuth2 para FCM v1 (cacheado hasta ~5 min antes de expirar)."""
+    now = time.time()
+    cached = _fcm_token_cache
+    if cached["access_token"] and float(cached["exp"]) - 300 > now:
+        return str(cached["access_token"])
+
+    import jwt  # PyJWT (RS256 con cryptography); disponibles en el backend.
+
+    sa = _fcm_service_account()
+    client_email = sa.get("client_email", "")
+    private_key = sa.get("private_key", "")
+    if not client_email or not private_key:
+        raise RuntimeError("NOTIFICATIONS_FCM_SERVICE_ACCOUNT incompleta (client_email/private_key).")
+
+    iat = int(now)
+    assertion = jwt.encode(
+        {
+            "iss": client_email,
+            "scope": _FCM_SCOPE,
+            "aud": _GOOGLE_TOKEN_URI,
+            "iat": iat,
+            "exp": iat + 3600,
+        },
+        private_key,
+        algorithm="RS256",
+    )
+    body = urllib.parse.urlencode({
+        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "assertion": assertion,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        _GOOGLE_TOKEN_URI, data=body, method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    with urllib.request.urlopen(req, timeout=getattr(settings, "NOTIFICATIONS_FCM_TIMEOUT", 10)) as resp:  # noqa: S310
+        tok = json.loads(resp.read().decode("utf-8"))
+    access_token = tok.get("access_token", "")
+    _fcm_token_cache["access_token"] = access_token
+    _fcm_token_cache["exp"] = now + float(tok.get("expires_in", 3600))
+    return access_token
 
 
 def _mark_sent(record: NotificationRecord) -> None:
@@ -56,18 +119,24 @@ class FcmSender:
 
 
 def _fcm_post(*, token: str, title: str, body: str, data: dict) -> tuple[int, str]:
-    """POST a FCM. Devuelve (status_code, body_text). Aislado para test (mockeable)."""
-    endpoint = getattr(settings, "NOTIFICATIONS_FCM_ENDPOINT", "")
-    server_key = getattr(settings, "NOTIFICATIONS_FCM_SERVER_KEY", "")
+    """POST a FCM HTTP v1. Devuelve (status_code, body_text). Aislado para test (mockeable)."""
+    project_id = getattr(settings, "NOTIFICATIONS_FCM_PROJECT_ID", "") or _fcm_service_account().get("project_id", "")
     timeout = getattr(settings, "NOTIFICATIONS_FCM_TIMEOUT", 10)
+    endpoint = (
+        getattr(settings, "NOTIFICATIONS_FCM_ENDPOINT", "")
+        or f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
+    )
+    access_token = _fcm_access_token()
     payload = json.dumps({
-        "to": token,
-        "notification": {"title": title, "body": body},
-        "data": {k: str(v) for k, v in (data or {}).items()},
+        "message": {
+            "token": token,
+            "notification": {"title": title, "body": body},
+            "data": {k: str(v) for k, v in (data or {}).items()},
+        }
     }).encode("utf-8")
     req = urllib.request.Request(
         endpoint, data=payload, method="POST",
-        headers={"Authorization": f"key={server_key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — endpoint de settings

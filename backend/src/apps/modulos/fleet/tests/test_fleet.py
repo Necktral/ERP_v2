@@ -15,6 +15,7 @@ from rest_framework.test import APIClient
 
 from apps.modulos.fleet.alerts import run_fleet_alerts
 from apps.modulos.fleet.models import (
+    AssetMaintenanceState,
     AssetStatus,
     AssetType,
     DocumentType,
@@ -193,6 +194,44 @@ def test_meter_jump_over_500_does_not_advance_or_trigger():
     asset.refresh_from_db()
     assert asset.status == AssetStatus.ACTIVE  # no se marcó vencido
     assert NotificationRecord.objects.filter(event_type="MaintenanceDue").count() == 0
+
+
+@pytest.mark.django_db
+def test_meter_decreasing_reading_is_unverified():
+    """FL-01: una lectura decreciente no retrocede el oficial y queda no verificada."""
+    _h, company, branch = _scope()
+    req = _req(company, branch, _user())
+    asset = _asset(req, company, code="LC6")
+    record_meter_reading(request=req, actor=req.user, asset=asset, odometer_km="1000")
+    asset.refresh_from_db()
+
+    res = record_meter_reading(request=req, actor=req.user, asset=asset, odometer_km="800")  # decreciente
+    assert res["verified"] is False
+    asset.refresh_from_db()
+    assert asset.current_odometer_km == Decimal("1000.00")  # no retrocedió
+
+
+@pytest.mark.django_db
+def test_apply_plan_does_not_reset_due_flag():
+    """FL-03: re-aplicar el plan no oculta un mantenimiento ya marcado vencido."""
+    _h, company, branch = _scope()
+    req = _req(company, branch, _user())
+    asset = _asset(req, company, code="LC7")
+    record_meter_reading(request=req, actor=req.user, asset=asset, odometer_km="200")
+    asset.refresh_from_db()
+    plan = _plan_with_km_rule(company, interval_km="300")
+    apply_plan_to_asset(asset=asset, plan=plan)
+
+    # Cruza el umbral → queda vencido.
+    record_meter_reading(request=req, actor=req.user, asset=asset, odometer_km="500")
+    run_fleet_alerts(company=company)
+    state = AssetMaintenanceState.objects.get(asset=asset)
+    assert state.is_due is True
+
+    # Re-aplicar el plan NO debe resetear is_due.
+    apply_plan_to_asset(asset=asset, plan=plan)
+    state.refresh_from_db()
+    assert state.is_due is True
 
 
 # ---------------------------------------------------------------------------
