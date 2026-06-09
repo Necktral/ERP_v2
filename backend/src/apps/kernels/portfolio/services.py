@@ -821,7 +821,17 @@ def allocate_payment_to_obligation(
 
         # P-01: bloquear la obligación antes de mutar el saldo (evita lost-update /
         # over-allocation cuando la aplicación automática y la manual concurren).
-        obligation = type(obligation).objects.select_for_update().get(pk=obligation.pk)
+        if isinstance(obligation, Receivable):
+            obligation = Receivable.objects.select_for_update().get(pk=obligation.pk)
+        elif isinstance(obligation, Payable):
+            obligation = Payable.objects.select_for_update().get(pk=obligation.pk)
+        elif isinstance(obligation, Credit):
+            obligation = Credit.objects.select_for_update().get(pk=obligation.pk)
+        else:
+            raise PortfolioDomainError(
+                "UNSUPPORTED_OBLIGATION_TYPE",
+                f"Unsupported obligation type for allocation: {type(obligation).__name__}",
+            )
 
         # Actualizar obligation
         obligation.allocated_amount += allocated_amount
