@@ -83,6 +83,24 @@ def test_loan_deduction_applies_partial_abono_and_audits():
 
 
 @pytest.mark.django_db
+def test_deduction_records_abono_applied():
+    """NM-06: la deducción registra lo realmente abonado (reconciliación no silenciosa)."""
+    company, branch = _scope()
+    actor = _actor()
+    credit = _credit(company, actor, "1000.00")
+    entry = _entry(company, branch)
+
+    deduction, applied = register_payroll_loan_deduction(
+        request=_req(actor, company=company), actor=actor, entry=entry, credit_id=credit.id, amount=Decimal("300.00")
+    )
+    deduction.refresh_from_db()
+    assert applied == Decimal("300.00")
+    assert deduction.abono_applied == Decimal("300.00")
+    # Caso aplicado completo: no queda pendiente.
+    assert deduction.abono_applied == deduction.amount_deducted
+
+
+@pytest.mark.django_db
 def test_full_abono_marks_credit_paid():
     company, branch = _scope()
     actor = _actor()

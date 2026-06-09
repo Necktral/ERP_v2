@@ -1232,6 +1232,10 @@ class PayrollLoanDeduction(models.Model):
     )
 
     amount_deducted = models.DecimalField(max_digits=18, decimal_places=2)
+    # NM-06: monto realmente abonado al crédito en portfolio. El abono es best-effort
+    # (fuera de la txn): si falla, `abono_applied` < `amount_deducted` marca la deducción
+    # como "abono pendiente" → reconciliable (la conciliación deja de ser silenciosa).
+    abono_applied = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"))
     notes = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(default=timezone.now, editable=False)
 
