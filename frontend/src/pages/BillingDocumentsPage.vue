@@ -547,8 +547,10 @@ const createDialog = ref(false);
 const creating = ref(false);
 const createError = ref<string | null>(null);
 
+const initialDocType: BillingDocType = 'INVOICE';
+
 const createForm = reactive({
-  doc_type: 'INVOICE' as BillingDocType,
+  doc_type: initialDocType,
   series: 'A',
   currency: 'NIO',
   customer_name: '',

@@ -351,7 +351,7 @@ export async function drainPosOfflineQueue(options: PosOfflineDrainOptions): Pro
           cmd.id === row.id
             ? {
                 ...cmd,
-                status: (canRetry ? 'PENDING' : 'FAILED') as PosOfflineCommandStatus,
+                status: canRetry ? 'PENDING' : 'FAILED',
                 attempts: nextAttempts,
                 updated_at: nowIso(),
                 last_attempt_at: nowIso(),

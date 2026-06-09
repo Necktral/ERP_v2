@@ -1,11 +1,17 @@
 import { defineStore } from 'pinia';
 import { clearContext, readContext, writeContext } from 'src/core/storage/context';
 
+interface ContextState {
+  hydrated: boolean;
+  activeCompanyId: string | null;
+  activeBranchId: string | null;
+}
+
 export const useContextStore = defineStore('context', {
-  state: () => ({
-    hydrated: false as boolean,
-    activeCompanyId: null as string | null,
-    activeBranchId: null as string | null,
+  state: (): ContextState => ({
+    hydrated: false,
+    activeCompanyId: null,
+    activeBranchId: null,
   }),
 
   getters: {

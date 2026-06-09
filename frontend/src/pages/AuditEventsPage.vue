@@ -244,6 +244,8 @@ const offlineOptions = [
   { label: 'Solo online', value: 'false' },
 ];
 
+const initialOfflineMode: OfflineModeFilter = 'any';
+
 const filters = reactive({
   event_type: '',
   reason_code: '',
@@ -255,7 +257,7 @@ const filters = reactive({
   device_id: '',
   ip: '',
   path_contains: '',
-  offline_mode: 'any' as OfflineModeFilter,
+  offline_mode: initialOfflineMode,
   after: '',
   before: '',
   include_integrity: false,

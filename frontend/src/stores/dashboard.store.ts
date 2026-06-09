@@ -22,14 +22,23 @@ type EmbedTokenResponse = {
   workspace: WorkspaceInfo;
 };
 
+interface DashboardState {
+  loading: boolean;
+  workspaces: WorkspaceInfo[];
+  activeWorkspace: string;
+  iframeUrl: string;
+  embedExpiresAt: string;
+  lastError: string;
+}
+
 export const useDashboardStore = defineStore('dashboard', {
-  state: () => ({
-    loading: false as boolean,
-    workspaces: [] as WorkspaceInfo[],
-    activeWorkspace: 'executive' as string,
-    iframeUrl: '' as string,
-    embedExpiresAt: '' as string,
-    lastError: '' as string,
+  state: (): DashboardState => ({
+    loading: false,
+    workspaces: [],
+    activeWorkspace: 'executive',
+    iframeUrl: '',
+    embedExpiresAt: '',
+    lastError: '',
   }),
 
   getters: {

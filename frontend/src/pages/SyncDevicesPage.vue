@@ -116,9 +116,9 @@ const limit = ref(25);
 const offset = ref(0);
 const revokingId = ref('');
 
-const filters = reactive({
+const filters = reactive<{ q: string; status: '' | 'ACTIVE' | 'REVOKED' | 'QUARANTINED' }>({
   q: '',
-  status: '' as '' | 'ACTIVE' | 'REVOKED' | 'QUARANTINED',
+  status: '',
 });
 
 const statusOptions = [

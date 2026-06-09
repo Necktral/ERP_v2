@@ -31,10 +31,16 @@ function buildPermIndex(companies: AclCompany[]) {
   return m;
 }
 
+interface AclState {
+  loaded: boolean;
+  snapshot: AclSnapshot | null;
+  permissionsByCompany: Map<string, Set<string>>;
+}
+
 export const useAclStore = defineStore('acl', {
-  state: () => ({
-    loaded: false as boolean,
-    snapshot: null as AclSnapshot | null,
+  state: (): AclState => ({
+    loaded: false,
+    snapshot: null,
     permissionsByCompany: new Map<string, Set<string>>(),
   }),
 

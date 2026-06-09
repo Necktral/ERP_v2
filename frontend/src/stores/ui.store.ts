@@ -6,11 +6,17 @@ import {
   type UiThemeMode,
 } from 'src/core/storage/ui';
 
+interface UiState {
+  hydrated: boolean;
+  theme: UiThemeMode;
+  density: UiDensityMode;
+}
+
 export const useUiStore = defineStore('ui', {
-  state: () => ({
-    hydrated: false as boolean,
-    theme: 'light' as UiThemeMode,
-    density: 'comfortable' as UiDensityMode,
+  state: (): UiState => ({
+    hydrated: false,
+    theme: 'light',
+    density: 'comfortable',
   }),
 
   actions: {
