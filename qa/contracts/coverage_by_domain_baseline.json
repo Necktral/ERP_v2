@@ -4,7 +4,7 @@
   "changed_files_floor_pct": 50.0,
   "domains": {
     "apps.kernels.accounting": {
-      "baseline_pct": 86.22,
+      "baseline_pct": 86.46,
       "floor_pct": 1.0
     },
     "apps.kernels.nomina": {
@@ -40,7 +40,7 @@
       "floor_pct": 1.0
     },
     "apps.modulos.sync_engine": {
-      "baseline_pct": 93.85,
+      "baseline_pct": 94.99,
       "floor_pct": 1.0
     }
   }
