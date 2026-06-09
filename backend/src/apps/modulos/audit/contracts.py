@@ -178,6 +178,7 @@ ALLOWED_REASON_CODES: set[str] = {
     "FUEL_OK",
     "AUDIT_OK",
     "REPORTS_OK",
+    "FINCA_OK",
 
     # OK por módulo (futuros kernels)
 
@@ -476,6 +477,7 @@ ALLOWED_EVENT_TYPES.update(
 )
 ALLOWED_SUBJECT_TYPES.update({"CASH_SESSION", "PAYMENT_INTENT"})
 
+<<<<<<< HEAD
 # CONTROLS (Capa 3: anti-fraude / SoD)
 ALLOWED_EVENT_TYPES.update(
     {"CONTROL_FINDING_RAISED", "CONTROL_FINDING_RESOLVED", "SEGREGATION_RULES_SEEDED"}
@@ -507,6 +509,23 @@ ALLOWED_REASON_CODES.update(
     {"FLEET_OK", "FLEET_SCHEMA_INVALID", "FLEET_INVALID_SCOPE", "FLEET_NOT_FOUND"}
 )
 ALLOWED_SUBJECT_TYPES.update({"FLEET_ASSET", "FLEET_DRIVER", "FLEET_DOCUMENT"})
+
+# FINCA (Capa 6: manejo de fincas)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "FINCA_PROFILE_UPSERTED",
+        "FINCA_PLOT_CREATED",
+        "FINCA_PLOT_UPDATED",
+        "FINCA_LABOR_CREATED",
+        "FINCA_WORKORDER_LOGGED",
+        "FINCA_INSUMO_APPLIED",
+        "FINCA_INSUMO_ISSUED",
+        "FINCA_COST_POSTED",
+    }
+)
+ALLOWED_SUBJECT_TYPES.update({"FINCA", "FINCA_PLOT", "FINCA_LABOR", "FINCA_WORKORDER"})
+# Reject reason codes para los handlers de sync offline de finca (sync_engine).
+ALLOWED_REASON_CODES.update({"FINCA_SCHEMA_INVALID", "FINCA_INVALID_SCOPE", "FINCA_NOT_FOUND"})
 
 
 def validate_event_type(event_type: str) -> None:

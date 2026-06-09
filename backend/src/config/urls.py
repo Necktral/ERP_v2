@@ -79,6 +79,8 @@ urlpatterns = [
     path("api/hr/", include("apps.modulos.hr.urls")),
     # Controls (Capa 3: anti-fraude / SoD / hallazgos)
     path("api/controls/", include("apps.modulos.controls.urls")),
+    # Manejo de Fincas (agrícola)
+    path("api/finca/", include("apps.modulos.finca.urls")),
     # Accounting
     path("api/accounting/", include("apps.kernels.accounting.urls")),
     # Intercompany (operaciones entre empresas del grupo + posición consolidada)

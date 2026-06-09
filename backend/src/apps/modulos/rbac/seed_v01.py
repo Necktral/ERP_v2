@@ -55,6 +55,10 @@ def seed_rbac_v01() -> SeedResult:
         "fleet_supervisor": "Supervisor de flota: recibe alertas, gestiona planes y documentos.",
         "fleet_manager": "Gerente de flota: configuración y análisis.",
         "fleet_clerk": "Bodega/registro de flota.",
+
+        # FINCA / Manejo de fincas (agrícola)
+        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
+        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
     }
 
     permissions = {
@@ -116,6 +120,18 @@ def seed_rbac_v01() -> SeedResult:
         "controls.sod.manage": "Gestionar reglas de segregación de funciones.",
         "controls.findings.read": "Ver hallazgos de control.",
         "controls.findings.manage": "Correr detectores y resolver hallazgos.",
+        # Finca (manejo de fincas)
+        "finca.finca.read": "Ver fincas y su geografía.",
+        "finca.finca.manage": "Gestionar perfil/geografía de fincas.",
+        "finca.plot.read": "Ver lotes.",
+        "finca.plot.manage": "Crear/actualizar lotes.",
+        "finca.labor.read": "Ver catálogo de labores.",
+        "finca.labor.manage": "Gestionar catálogo de labores.",
+        "finca.work.read": "Ver órdenes de trabajo / bitácora.",
+        "finca.work.capture": "Registrar labores ejecutadas e insumos.",
+        "finca.report.read": "Ver costeo de fincas/lotes.",
+        "finca.field.read": "Ver costeo real desde asistencia de campo y reconciliación.",
+        "finca.cost.post": "Postear (reclasificar) el costo real de la finca al GL.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -350,6 +366,17 @@ def seed_rbac_v01() -> SeedResult:
             "controls.sod.manage",
             "controls.findings.read",
             "controls.findings.manage",
+            "finca.finca.read",
+            "finca.finca.manage",
+            "finca.plot.read",
+            "finca.plot.manage",
+            "finca.labor.read",
+            "finca.labor.manage",
+            "finca.work.read",
+            "finca.work.capture",
+            "finca.report.read",
+            "finca.field.read",
+            "finca.cost.post",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -887,6 +914,27 @@ def seed_rbac_v01() -> SeedResult:
         "nomina.attendance.approve",
         "nomina.period.read",
         "nomina.period.approve",
+    ]
+    role_to_perms["finca_mandador"] = [
+        "finca.finca.read",
+        "finca.finca.manage",
+        "finca.plot.read",
+        "finca.plot.manage",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.work.capture",
+        "finca.report.read",
+        "finca.field.read",
+        "finca.cost.post",
+    ]
+    role_to_perms["finca_capataz"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.work.read",
+        "finca.work.capture",
+        "finca.field.read",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):
