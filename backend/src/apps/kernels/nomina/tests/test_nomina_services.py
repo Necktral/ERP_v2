@@ -348,7 +348,7 @@ def test_subsidy_employer_days_paid_at_full_rate():
     daily = Decimal("6000.00") / Decimal("30")  # 200
     expected = (daily * Decimal("3") + daily * Decimal("2") * Decimal("0.60")).quantize(Decimal("0.01"))
     assert entry.subsidy_amount == expected
-    # Mayor que la fórmula vieja (60% de TODOS los días).
+    # Mayor que la fórmula vieja (60% de cada día).
     assert entry.subsidy_amount > (daily * Decimal("5") * Decimal("0.60")).quantize(Decimal("0.01"))
 
 

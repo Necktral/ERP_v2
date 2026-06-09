@@ -698,7 +698,7 @@ class PayrollEntry(models.Model):
 
         # 4. Subsidio INSS (NM-02): la empresa paga el 100% los primeros
         #    `subsidy_employer_days` días y, desde el día N+1, se reconoce la tasa
-        #    de subsidio INSS (60%). Antes se aplicaba 60% a TODOS los días, lo que
+        #    de subsidio INSS (60%). Antes se aplicaba 60% a cada día, lo que
         #    subestimaba el subsidio de los primeros días (el tramo patronal no se usaba).
         subsidy_days = Decimal(str(self.days_subsidy))
         if subsidy_days > 0:
