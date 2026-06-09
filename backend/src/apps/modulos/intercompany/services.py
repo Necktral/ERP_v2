@@ -116,6 +116,15 @@ def _post_balanced_entry(*, company, branch, when: datetime, lines, description,
 
     `lines`: lista de (account_code, side DEBIT|CREDIT, amount). Mismo patrón probado en
     `tests/test_phase7b_intercompany_consolidation.py::_post_entry`.
+
+    I-01 (decisión de diseño, deliberada): este asiento de eliminación/cruce
+    intercompany se crea **directo en estado POSTED**, sin pasar por el maker-checker
+    del GL (`approve_journal_drafts`/`post_journal_drafts`). Es un asiento **generado
+    por el sistema** (no un asiento manual de un usuario): siempre balanceado, derivado
+    de un cruce ya autorizado en la capa operativa. Es coherente con el auto-post de
+    `link_operational_event_to_accounting` (ver AC-01): el control SoD vive en la
+    operación que origina el cruce, no en el posteo derivado. NO exponer este camino
+    como endpoint de posteo manual.
     """
     debit = _q(sum((a for _, s, a in lines if s == "DEBIT"), Decimal("0")))
     credit = _q(sum((a for _, s, a in lines if s == "CREDIT"), Decimal("0")))
