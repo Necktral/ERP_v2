@@ -493,6 +493,21 @@ ALLOWED_EVENT_TYPES.update(
 ALLOWED_REASON_CODES.update({"COMISARIATO_OK", "COMISARIATO_CREDIT_LIMIT_EXCEEDED"})
 ALLOWED_SUBJECT_TYPES.update({"COMISARIATO_ACCOUNT", "COMISARIATO_SALE"})
 
+# Fleet / Mantenimiento (Fase A): activos, conductores, documentos, medidor
+ALLOWED_EVENT_TYPES.update(
+    {
+        "FLEET_ASSET_UPSERTED",
+        "FLEET_DRIVER_UPSERTED",
+        "FLEET_DRIVER_ASSIGNED",
+        "FLEET_DOCUMENT_REGISTERED",
+        "FLEET_METER_RECORDED",
+    }
+)
+ALLOWED_REASON_CODES.update(
+    {"FLEET_OK", "FLEET_SCHEMA_INVALID", "FLEET_INVALID_SCOPE", "FLEET_NOT_FOUND"}
+)
+ALLOWED_SUBJECT_TYPES.update({"FLEET_ASSET", "FLEET_DRIVER", "FLEET_DOCUMENT"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
