@@ -5,7 +5,7 @@
 Documento: `NECKTRAL_MASTER_ROADMAP.md`
 Proyecto: Necktral ERP/CRM/POS multiempresa
 Estado: Roadmap Operating System vivo
-Ultima actualizacion: 2026-05-27
+Ultima actualizacion: 2026-06-08
 Uso: direccion de plataforma, programas maestros, cortes ejecutables y gates de madurez
 Regla superior: este roadmap no autoriza implementacion por si solo. Todo corte requiere Controller -> Auditor Agent -> Fixer Agent -> Reviewer Agent.
 
@@ -1124,3 +1124,36 @@ Temas reconocidos pero no listos para ejecucion:
 Este roadmap es direccion. No crea modelos, APIs, migraciones ni permisos. Cada programa debe convertirse en cortes ejecutables pequenos, revisables y probados.
 
 Siguiente documento rector recomendado: `docs/project/NECKTRAL_DECISION_LOG.md`.
+
+## 30. Estado de avance y decisiones (snapshot 2026-06-08)
+
+Nota: este snapshot registra avance ejecutado y decisiones de arquitectura. El cuerpo estrategico (programas 1-12) sigue siendo la direccion rectora; esto no lo sustituye.
+
+### 30.1 Avance ejecutado
+
+Ramas en el remoto `erp_v2` (sin merge; Codex abre los PRs). Cadena de PRs de Finca: `feat/finca-basico` -> `feat/finca-field-link` -> `feat/finca-gl-inventory`.
+
+- Programa 10 (Verticales productivos / Hacienda-Fincas) - corte 10.1 shell del vertical: modulo `apps.modulos.finca` (`/api/finca/`). Estructura empresa(COMPANY) -> N fincas(BRANCH) en zonas -> lotes. Master-data `FincaProfile` (geografia/zona por finca), `Plot` (lote), `Labor` (catalogo, seed ~19 labores cafetaleras NI editables), `WorkOrder` (bitacora idempotente por external_ref), `InsumoApplication`. Costeo por lote y consolidado multi-finca/zona. RBAC `finca.*` + roles `finca_mandador`/`finca_capataz`. Rama `feat/finca-basico`.
+- Programa 7/8 (Asistencia / Work Planning) - puente sin redundancia: Finca LEE la captura de campo de `kernels.nomina` (`FieldCrewReport.labor_code/zone_label` + `FieldCrewReportLine.day_value`) para producir jornales reales por labor/zona, reconciliacion de los codigos del campo contra el catalogo, y costeo real. Edge `modulos.finca->kernels.nomina` (solo lectura; no recaptura asistencia). Rama `feat/finca-field-link`.
+- Programa 6 / Cost Backbone - costo real al GL sin doble conteo:
+  - #2 insumos contra inventario: el consumo descuenta stock real via `kernels.inventarios.post_issue` (costo promedio) y postea inventario->GL por su via; Finca guarda solo la referencia al `StockMovement`.
+  - #1 costo de finca -> GL como RECLASIFICACION por finca (decision del owner): DEBE costo-cultivo-por-finca / HABER costos-agricolas-aplicados (contra). El contra neutraliza el gasto ya reconocido por nomina (mano de obra) e inventario (insumos): el total de Resultados no cambia, el costo queda visible por finca, sin doble conteo. Evento economico `(FINCA, FincaCostAccrued)` + regla en el motor de posting; cuentas por defecto, ajustables con el contador. Rama `feat/finca-gl-inventory`.
+
+### 30.2 Decision de arquitectura - Sync / Offline (Programa 12.2)
+
+Contexto: se evaluo la propuesta "base de datos + sincronizacion = kernel dedicado".
+
+Decision:
+
+- NO crear "kernel de base de datos". La persistencia es infraestructura, no un dominio; cada app es duena de sus tablas. Solo se centralizan adaptadores (store local + backup/restore Google Drive).
+- Sync NO es kernel economico. Es capacidad transversal de plataforma (como IAM/Audit/Integration) y permanece en `modulos`. Ademas `apps.modulos.sync_engine` DEPENDE de los kernels (los integra via handlers; el baseline ya registra `sync_engine->{facturacion,inventarios,payments}`), por lo que es un integrador de ALTO nivel, no un kernel base; llamarlo "kernel" invertiria el layering.
+- Canonico: `apps.modulos.sync_engine` (`/api/sync/`): `Device`, `SyncReceipt`, `process_batch`/`process_command`, registro de handlers + firma de dispositivo. Existe duplicado `apps.modulos.sync` (`/api/sync-hmac/`, v1 HMAC) = deuda a consolidar/retirar.
+- `apps.modulos.integration` (outbox) es un plano DISTINTO (propagacion server-side), no confundir con sync de dispositivos.
+
+Cortes propuestos (orden):
+
+1. Consolidar sync v1 en `sync_engine`; retirar `/api/sync-hmac/`.
+2. Contrato "syncable": un modulo es offline-ready cuando registra handlers en `sync_engine.registry`, sus mutaciones son idempotentes por clave y emite sus cambios. Primer caso nuevo: Finca (`handlers_finca.py`: FINCA_LOG_WORK, FINCA_ISSUE_INSUMO, ...), sin crear kernel. Esto cierra el corte #3 de Finca Fase 2.
+3. Agente de borde/cliente (DB local + cola offline + backup Drive + replay al reconectar) como servicio cliente, no kernel Django.
+
+Efecto en Parking lot (seccion 28): "Sync economico offline completo" pasa de reconocido a tener direccion definida (consolidacion + contrato syncable + agente de borde).
