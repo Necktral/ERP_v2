@@ -1042,6 +1042,14 @@
       "ticket_ref": "DIAG-B5",
       "fingerprint": "6d336eed728c977b528b30c1026a5e78d2ea4087678a55f390ce5090fb8d88fa"
     },
+    "backend/src/apps/modulos/diagnostics/migrations/0005_codeunitevidence.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_codeunitevidence_table_coverage",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-CODEUNIT",
+      "fingerprint": "bc1ad297170e2156ef95c016e943585b70170a9fa8a0d556c11fb94b07c11ea6"
+    },
     "backend/src/apps/modulos/documents/migrations/0001_initial.py": {
       "risk_class": "online_safe",
       "rollout_strategy": "create_scanneddocument_table_idp_f1",

@@ -12,7 +12,7 @@ from typing import Any
 
 from django.db.models import Q
 
-from .models import DiagnosticRun, ErrorEvent, SecurityFinding
+from .models import CodeUnitEvidence, DiagnosticRun, ErrorEvent, SecurityFinding
 
 _RELATED_LIMIT = 10
 _HIGH_OCCURRENCE = 5
@@ -62,6 +62,17 @@ def build_evidence_bundle(error: ErrorEvent) -> dict[str, Any]:
     if not related_errors and not related_findings:
         signals.append("aislado")
 
+    # ¿La línea que falló está testeada? (CodeUnitEvidence, si fue ingerida)
+    coverage: dict[str, Any] | None = None
+    if error.file_path and error.line_number:
+        cue = CodeUnitEvidence.objects.filter(
+            path=error.file_path, line_start=error.line_number
+        ).first()
+        if cue is not None:
+            coverage = {"state": cue.coverage_state}
+            if cue.coverage_state == "uncovered":
+                signals.append("linea_sin_test")
+
     return {
         "error": {
             "error_id": str(error.error_id),
@@ -83,6 +94,7 @@ def build_evidence_bundle(error: ErrorEvent) -> dict[str, Any]:
         },
         "related_errors": related_errors,
         "related_findings": related_findings,
+        "coverage": coverage,
         "signals": signals,
     }
 
@@ -106,11 +118,19 @@ def summarize(error: ErrorEvent, bundle: dict[str, Any]) -> str:
         if error.file_path
         else "ubicación desconocida"
     )
+    coverage = bundle.get("coverage")
+    cov_note = ""
+    if coverage:
+        state = coverage.get("state")
+        if state == "uncovered":
+            cov_note = "La línea que falló NO está cubierta por tests (causa probable). "
+        elif state == "covered":
+            cov_note = "La línea que falló está cubierta por tests. "
     return (
         f"Fallo {error.exception_type} en dominio {error.domain or 'desconocido'} "
         f"(riesgo {error.risk_class}). {timeline['occurrence_count']} ocurrencia(s). "
         f"Ubicación: {loc}. Blast radius: {error.method or '—'} {error.endpoint or '—'}. "
-        f"{n_rel} fallo(s) relacionado(s). Señales: {sig}. "
+        f"{n_rel} fallo(s) relacionado(s). {cov_note}Señales: {sig}. "
         f"Causa raíz: PENDIENTE (revisión humana; IA advisory solo con kill switch encendido)."
     )
 

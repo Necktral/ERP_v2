@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     AIControlView,
     AIDiagnoseView,
+    CodeUnitEvidenceListView,
     DiagnoseErrorView,
     DiagnosticRunDetailView,
     DiagnosticRunListView,
@@ -37,6 +38,12 @@ urlpatterns = [
         "diagnoses/<uuid:run_id>/ai-analyze/",
         AIDiagnoseView.as_view(),
         name="diagnostics-diagnosis-ai-analyze",
+    ),
+    # ¿La línea que falló está testeada? Evidencia de cobertura por línea.
+    path(
+        "code-evidence/",
+        CodeUnitEvidenceListView.as_view(),
+        name="diagnostics-code-evidence-list",
     ),
     path("findings/", SecurityFindingListView.as_view(), name="diagnostics-finding-list"),
     path(
