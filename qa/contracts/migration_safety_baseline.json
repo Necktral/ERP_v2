@@ -1026,6 +1026,14 @@
       "ticket_ref": "DIAG-B2",
       "fingerprint": "8a5348daf697875b9aacb6d82638f166fb387735f3f4256cbc813a44f81e5bde"
     },
+    "backend/src/apps/modulos/diagnostics/migrations/0003_diagnosticrun.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_diagnosticrun_table_root_cause",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B3",
+      "fingerprint": "9e9739fb412bbc3d978054418eae2147fe5f2056dcf67659fccf5bdbe716663c"
+    },
     "backend/src/apps/modulos/documents/migrations/0001_initial.py": {
       "risk_class": "online_safe",
       "rollout_strategy": "create_scanneddocument_table_idp_f1",
