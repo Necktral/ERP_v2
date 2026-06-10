@@ -20,7 +20,7 @@ from apps.modulos.hr.seed_positions_v01 import (
 )
 from apps.modulos.hr.services import reconcile_employee_roles
 from apps.modulos.iam.models import OrgUnit
-from apps.modulos.rbac.models import Role, RoleAssignment
+from apps.modulos.rbac.models import Role, RoleAssignment, RolePermission
 from apps.modulos.rbac.seed_v01 import seed_rbac_v01
 
 UT = OrgUnit.UnitType
@@ -46,10 +46,10 @@ def test_seed_creates_full_catalog_with_maps():
     seed_rbac_v01()
     company, _ = _mk_company()
     result = seed_hr_positions_v01(company)
-    assert result.created == len(POSITION_CATALOG) == 12
-    assert JobPosition.objects.filter(company=company).count() == 12
-    # 7 puestos del catálogo tienen rol => 7 maps.
-    assert result.maps_created == 7
+    assert result.created == len(POSITION_CATALOG) == 13
+    assert JobPosition.objects.filter(company=company).count() == 13
+    # 8 puestos del catálogo tienen rol => 8 maps.
+    assert result.maps_created == 8
     assert all(p.is_active for p in JobPosition.objects.filter(company=company))
 
 
@@ -70,9 +70,27 @@ def test_position_role_mappings_are_correct():
     assert ("finca_mandador", C) in _maps("FNC-N1-010")  # Gerente Agrícola
     assert ("finca_mandador", B) in _maps("FNC-N2-010")  # Administrador de Finca
     assert ("finca_mandador", B) in _maps("FNC-N2-020")  # Mandador
+    assert ("finca_capataz", B) in _maps("FNC-N2-025")  # Capataz en Jefe
     assert ("finca_capataz", B) in _maps("FNC-N2-030")  # Capataz
-    assert ("finca_capataz", B) in _maps("FNC-N3-010")  # Técnico Agrónomo
+    assert ("finca_tecnico", B) in _maps("FNC-N3-010")  # Ingeniero Agrónomo (NO capataz)
     assert ("warehouse_operator", B) in _maps("FNC-N3-020")  # Encargado de Insumos
+    # El Agrónomo NO comparte rol con el capataz.
+    assert ("finca_capataz", B) not in _maps("FNC-N3-010")
+
+
+@pytest.mark.django_db
+def test_finca_tecnico_role_is_advisor_not_capataz_nor_mandador():
+    """El rol del Agrónomo: define el plan de labores pero NO ejecuta ni postea costos (SoD)."""
+    seed_rbac_v01()
+    role = Role.objects.get(name="finca_tecnico")
+    perms = set(
+        RolePermission.objects.filter(role=role).values_list("permission__code", flat=True)
+    )
+    assert {"finca.labor.manage", "finca.report.read", "finca.work.read"} <= perms
+    # NO captura la ejecución diaria (eso es del capataz) ni postea costos (del mandador).
+    assert "finca.work.capture" not in perms
+    assert "finca.cost.post" not in perms
+    assert "finca.finca.manage" not in perms
 
 
 @pytest.mark.django_db
@@ -109,7 +127,7 @@ def test_seed_does_not_touch_custom_positions():
     seed_hr_positions_v01(company)
     custom.refresh_from_db()
     assert custom.is_active is True  # intacto
-    assert JobPosition.objects.filter(company=company).count() == 12 + 1
+    assert JobPosition.objects.filter(company=company).count() == 13 + 1
 
 
 # --- Habilitar / deshabilitar ---------------------------------------------------
@@ -152,7 +170,7 @@ def test_only_restricts_scope():
     company, _ = _mk_company()
     result = seed_hr_positions_v01(company, only_codes=["FNC-N2-020"])  # solo Mandador
     assert result.created == 1
-    assert result.skipped == 11
+    assert result.skipped == 12
     assert JobPosition.objects.filter(company=company).count() == 1
     assert _pos(company, "FNC-N2-020").name == "Mandador"
 
@@ -220,7 +238,7 @@ def test_command_seeds_by_company_code():
     seed_rbac_v01()
     company, _ = _mk_company()
     call_command("seed_hr_positions_v01", "--company-code", company.code)
-    assert JobPosition.objects.filter(company=company).count() == 12
+    assert JobPosition.objects.filter(company=company).count() == 13
     call_command("seed_hr_positions_v01", "--company-code", company.code, "--json")  # no debe lanzar
 
 

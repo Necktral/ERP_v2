@@ -59,6 +59,7 @@ def seed_rbac_v01() -> SeedResult:
         # FINCA / Manejo de fincas (agrícola)
         "finca_mandador": "Mandador / Administrador de Finca: coordina finca, personal, labores, insumos y bitácora agrícola.",
         "finca_capataz": "Capataz: supervisa cuadrillas, registra labores ejecutadas, asistencia e insumos en campo.",
+        "finca_tecnico": "Ingeniero/Técnico Agrónomo: asesor técnico — ve todo y define el plan de labores (fertilización/plagas); NO captura ejecución diaria ni postea costos.",
     }
 
     permissions = {
@@ -987,6 +988,18 @@ def seed_rbac_v01() -> SeedResult:
         "finca.labor.read",
         "finca.work.read",
         "finca.work.capture",
+        "finca.field.read",
+    ]
+    # Agrónomo (asesor técnico): ve todo y DEFINE el plan de labores (finca.labor.manage),
+    # pero NO captura la ejecución diaria (work.capture, eso es del capataz) ni postea costos
+    # (cost.post, eso es del mandador). SoD: distinto de capataz y de mandador.
+    role_to_perms["finca_tecnico"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.report.read",
         "finca.field.read",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])

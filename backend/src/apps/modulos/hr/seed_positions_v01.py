@@ -42,8 +42,11 @@ POSITION_CATALOG: tuple[PositionSpec, ...] = (
     PositionSpec("FNC-N1-010", "Gerente Agrícola", "finca_mandador", _COMPANY),
     PositionSpec("FNC-N2-010", "Administrador de Finca", "finca_mandador", _BRANCH),
     PositionSpec("FNC-N2-020", "Mandador", "finca_mandador", _BRANCH),
+    # Jerarquía operativa: mandador > capataz en jefe (capataz mayor) > capataces.
+    PositionSpec("FNC-N2-025", "Capataz en Jefe", "finca_capataz", _BRANCH),
     PositionSpec("FNC-N2-030", "Capataz", "finca_capataz", _BRANCH),
-    PositionSpec("FNC-N3-010", "Técnico Agrónomo", "finca_capataz", _BRANCH),
+    # El Agrónomo es un rol técnico/asesor, FUERA de la línea operativa de capataces.
+    PositionSpec("FNC-N3-010", "Ingeniero Agrónomo", "finca_tecnico", _BRANCH),
     PositionSpec("FNC-N3-020", "Encargado de Insumos Agrícolas", "warehouse_operator", _BRANCH),
     PositionSpec("FNC-N4-010", "Operador de Maquinaria Agrícola", "fleet_driver", _BRANCH),
     PositionSpec("FNC-N4-020", "Aplicador de Agroquímicos"),
