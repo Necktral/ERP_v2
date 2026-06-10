@@ -293,6 +293,7 @@ def seed_rbac_v01() -> SeedResult:
         "diagnostics.ai_control.manage": "Encender/apagar la IA (kill switch runtime).",
         "diagnostics.diagnose.read": "Ver diagnósticos de causa raíz de fallos.",
         "diagnostics.diagnose.run": "Disparar el diagnóstico de causa raíz de un fallo.",
+        "diagnostics.ai_diagnose.run": "Disparar el diagnóstico IA advisory (requiere kill switch ON).",
     }
 
     permissions.update(
@@ -366,6 +367,7 @@ def seed_rbac_v01() -> SeedResult:
             "diagnostics.ai_control.manage",
             "diagnostics.diagnose.read",
             "diagnostics.diagnose.run",
+            "diagnostics.ai_diagnose.run",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
