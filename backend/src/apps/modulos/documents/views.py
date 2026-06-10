@@ -22,8 +22,10 @@ _COMPANY_REQUIRED = Response(
 
 
 class HealthView(APIView):
-    authentication_classes: list = []
-    permission_classes: list = []
+    # Endpoint público de salud. Forma plana (sin anotación) para que el guard de
+    # contratos de seguridad detecte el permission_classes declarado.
+    authentication_classes = []
+    permission_classes = []
 
     def get(self, request):
         return Response({"ok": True, "module": "documents"}, status=status.HTTP_200_OK)
