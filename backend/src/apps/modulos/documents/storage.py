@@ -11,13 +11,17 @@ import base64
 from .models import ScannedDocument
 
 
+class UnsupportedStorageBackendError(RuntimeError):
+    """El backend de almacenamiento configurado aún no está soportado (p. ej. object storage)."""
+
+
 def store_image(doc: ScannedDocument, raw_bytes: bytes, content_type: str = "") -> None:
     doc.content_type = content_type or doc.content_type
     doc.byte_size = len(raw_bytes)
     if doc.storage_backend == "db":
         doc.image_data = base64.b64encode(raw_bytes).decode("ascii")
         return
-    raise NotImplementedError(  # pragma: no cover - object storage en fase posterior
+    raise UnsupportedStorageBackendError(  # pragma: no cover - object storage en fase posterior
         f"storage_backend no soportado aún: {doc.storage_backend}"
     )
 
@@ -27,6 +31,6 @@ def load_image_bytes(doc: ScannedDocument) -> bytes:
         if not doc.image_data:
             return b""
         return base64.b64decode(doc.image_data.encode("ascii"))
-    raise NotImplementedError(  # pragma: no cover - object storage en fase posterior
+    raise UnsupportedStorageBackendError(  # pragma: no cover - object storage en fase posterior
         f"storage_backend no soportado aún: {doc.storage_backend}"
     )
