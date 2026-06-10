@@ -90,3 +90,21 @@ Detalle completo en `backend/src/apps/modulos/documents/README.md`. Lo que el fr
   → marca `REVIEWED`. Es el *human-in-the-loop* del pipeline (el OCR nunca es 100%).
 
 Usar contexto de empresa (`X-Company-Id`) como el resto; permisos vía el ACL (ya sembrados en `company_admin`).
+
+## 5. Destino post-bootstrap → onboarding, NO `/dashboard`
+
+**Problema:** `BootstrapWizardPage.createOrg()` hace `router.push('/dashboard')` al terminar el alta de la
+organización. Eso es incorrecto para una empresa recién creada (vacía):
+- `/dashboard` **no es público**: su API exige `report.dashboard.read`. (El menú lo mostraba porque el ACL del
+  superuser devuelve `["*"]`, pero el backend gateaba con permiso scopeado → daba **403**.)
+- El destino correcto tras crear la empresa es el **onboarding** que el propio flujo describe:
+  **Puestos → Trabajadores → Asignar → Provisionar** (RR.HH.), no un dashboard sin datos.
+
+**Backend (ya resuelto):** `company_admin` (rol que el bootstrap asigna al dueño) ahora incluye los permisos
+de reporting/dashboard (`report.dashboard.read`, `report.dataset.read`, …) — así, si el dueño navega a
+`/dashboard` más tarde, **no recibe 403**. Confirmado por `test_company_admin_role_grants_reporting_dashboard_access`.
+
+**Frontend (a cambiar):** en `BootstrapWizardPage.vue`, reemplazar el `router.push('/dashboard')` final por el
+**inicio del onboarding** — la ruta de RR.HH. → Puestos (`UI_ROUTE_PATHS.humanResourcesPositions`), o un "home de
+onboarding" con los 4 pasos. El dueño ya tiene `hr.*`/`org.*`/`iam.users.create`, así que esa ruta no da 403.
+Opcional: usar `is_fresh`/`setup_required` del bootstrap para decidir onboarding vs. dashboard en logins futuros.

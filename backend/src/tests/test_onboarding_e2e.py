@@ -120,3 +120,22 @@ def test_onboarding_e2e_self_service():
     assert "fuel" not in enabled  # no lo ocupa
     # contexto resuelto a la empresa construida
     assert r.data["effective_context"]["company_id"] == str(company_id)
+
+
+@pytest.mark.django_db
+def test_company_admin_role_grants_reporting_dashboard_access():
+    """El rol del dueño (company_admin) incluye report.dashboard.read.
+
+    /dashboard exige report.dashboard.read; sin él, el admin recién creado por el
+    bootstrap caía en 403 (el destino post-onboarding no debe ser un callejón).
+    """
+    from apps.modulos.rbac.models import Role, RolePermission
+    from apps.modulos.rbac.seed_v01 import seed_rbac_v01
+
+    seed_rbac_v01()
+    role = Role.objects.get(name="company_admin")
+    codes = set(
+        RolePermission.objects.filter(role=role).values_list("permission__code", flat=True)
+    )
+    assert "report.dashboard.read" in codes
+    assert "report.dataset.read" in codes
