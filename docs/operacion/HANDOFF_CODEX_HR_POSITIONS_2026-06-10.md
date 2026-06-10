@@ -7,7 +7,7 @@
 ## Qué es
 Deja sembrado el **catálogo de puestos agrícolas por empresa**, "concatenado" con el seed RBAC pero
 **sin mezclar dominios**: RBAC es global (roles/permisos); los puestos (`JobPosition`) son por empresa.
-`seed_hr_positions_v01(company)` crea 13 puestos canónicos y los mapea (`PositionRoleMap`) a roles RBAC.
+`seed_hr_positions_v01(company)` crea 14 puestos canónicos y los mapea (`PositionRoleMap`) a roles RBAC.
 Agrega **1 rol nuevo** `finca_tecnico` (asesor agrónomo) que **reusa permisos `finca.*` ya existentes**:
 **no agrega permisos nuevos, NO agrega migración**, no crea empleados ni nómina.
 
@@ -26,21 +26,27 @@ Agrega **1 rol nuevo** `finca_tecnico` (asesor agrónomo) que **reusa permisos `
 1. **Multi-cargo:** un empleado puede tener **más de un cargo**. **Ya funciona** sin cambios de esquema:
    `reconcile_employee_roles` ([hr/services.py](../../backend/src/apps/modulos/hr/services.py)) hace la
    **unión** de los roles de **todas** las `EmploymentAssignment` activas. Se agregó un test que lo fija.
-2. **Habilitar/deshabilitar:** los 13 puestos nacen **activos**; flags CLI `--disable`/`--enable`/`--only`
+2. **Habilitar/deshabilitar:** los 14 puestos nacen **activos**; flags CLI `--disable`/`--enable`/`--only`
    (códigos CSV). En re-corridas el seed **NO pisa** el `is_active` de un puesto que no esté nombrado por
    un flag (respeta el toggle manual del operador).
-3. **Ingeniero/Técnico Agrónomo → rol NUEVO `finca_tecnico`** (asesor técnico, distinto del capataz):
+3. **Cúpula:** el **Gerente Agrícola** es el jefe de TODOS los negocios (el "superusuario", primer usuario)
+   → `company_admin`; el **Asistente de Gerencia** es su delegado con los **mismos permisos** → también
+   `company_admin`. El **Administrador de Fincas** es jefe de **todas** las fincas (manda a los Mandadores)
+   → `finca_mandador` a nivel **COMPANY**; el **Mandador** es encargado de **UNA** finca → `finca_mandador`
+   **BRANCH**. (Cualquiera asignado a Gerente/Asistente se vuelve admin total: usar solo para dueño/delegado.)
+4. **Ingeniero/Técnico Agrónomo → rol NUEVO `finca_tecnico`** (asesor técnico, distinto del capataz):
    ve todo y **define el plan de labores** (`finca.labor.manage`); **NO** captura ejecución diaria
    (`work.capture`, eso es del capataz) ni postea costos (`cost.post`, del mandador). SoD.
-4. **Jerarquía de capataces:** se separan **`Capataz en Jefe`** (capataz mayor) y **`Capataz`** — ambos
+5. **Jerarquía de capataces:** se separan **`Capataz en Jefe`** (capataz mayor) y **`Capataz`** — ambos
    con permisos `finca_capataz`; la diferencia es de puesto/jerarquía (mandador > capataz en jefe > capataces).
-5. **Solo comando standalone** — NO se tocó `bootstrap_company`.
+6. **Solo comando standalone** — NO se tocó `bootstrap_company`.
 
-## Catálogo (13) — `code | name | rol RBAC | scope`
+## Catálogo (14) — `code | name | rol RBAC | scope`
 ```
-FNC-N1-010 Gerente Agrícola                -> finca_mandador     COMPANY
-FNC-N2-010 Administrador de Finca          -> finca_mandador     BRANCH
-FNC-N2-020 Mandador                        -> finca_mandador     BRANCH
+FNC-N1-010 Gerente Agrícola                -> company_admin      COMPANY  (superusuario / jefe de todo)
+FNC-N1-020 Asistente de Gerencia           -> company_admin      COMPANY  (delegado, mismos permisos)
+FNC-N2-010 Administrador de Fincas         -> finca_mandador     COMPANY  (jefe de TODAS las fincas)
+FNC-N2-020 Mandador                        -> finca_mandador     BRANCH   (encargado de UNA finca)
 FNC-N2-025 Capataz en Jefe                 -> finca_capataz      BRANCH
 FNC-N2-030 Capataz                         -> finca_capataz      BRANCH
 FNC-N3-010 Ingeniero Agrónomo              -> finca_tecnico      BRANCH   (rol NUEVO, asesor)

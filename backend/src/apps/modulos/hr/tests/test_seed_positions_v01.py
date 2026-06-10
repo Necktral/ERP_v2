@@ -46,10 +46,10 @@ def test_seed_creates_full_catalog_with_maps():
     seed_rbac_v01()
     company, _ = _mk_company()
     result = seed_hr_positions_v01(company)
-    assert result.created == len(POSITION_CATALOG) == 13
-    assert JobPosition.objects.filter(company=company).count() == 13
-    # 8 puestos del catálogo tienen rol => 8 maps.
-    assert result.maps_created == 8
+    assert result.created == len(POSITION_CATALOG) == 14
+    assert JobPosition.objects.filter(company=company).count() == 14
+    # 9 puestos del catálogo tienen rol => 9 maps.
+    assert result.maps_created == 9
     assert all(p.is_active for p in JobPosition.objects.filter(company=company))
 
 
@@ -67,15 +67,18 @@ def test_position_role_mappings_are_correct():
             for m in PositionRoleMap.objects.filter(position=_pos(company, code), is_active=True)
         }
 
-    assert ("finca_mandador", C) in _maps("FNC-N1-010")  # Gerente Agrícola
-    assert ("finca_mandador", B) in _maps("FNC-N2-010")  # Administrador de Finca
-    assert ("finca_mandador", B) in _maps("FNC-N2-020")  # Mandador
+    assert ("company_admin", C) in _maps("FNC-N1-010")  # Gerente Agrícola = superusuario
+    assert ("company_admin", C) in _maps("FNC-N1-020")  # Asistente de Gerencia (mismos permisos)
+    assert ("finca_mandador", C) in _maps("FNC-N2-010")  # Administrador de Fincas (todas => COMPANY)
+    assert ("finca_mandador", B) in _maps("FNC-N2-020")  # Mandador (una finca => BRANCH)
     assert ("finca_capataz", B) in _maps("FNC-N2-025")  # Capataz en Jefe
     assert ("finca_capataz", B) in _maps("FNC-N2-030")  # Capataz
     assert ("finca_tecnico", B) in _maps("FNC-N3-010")  # Ingeniero Agrónomo (NO capataz)
     assert ("warehouse_operator", B) in _maps("FNC-N3-020")  # Encargado de Insumos
     # El Agrónomo NO comparte rol con el capataz.
     assert ("finca_capataz", B) not in _maps("FNC-N3-010")
+    # El Administrador de Fincas manda TODAS las fincas (COMPANY), por encima del Mandador (BRANCH).
+    assert ("finca_mandador", B) not in _maps("FNC-N2-010")
 
 
 @pytest.mark.django_db
@@ -127,7 +130,7 @@ def test_seed_does_not_touch_custom_positions():
     seed_hr_positions_v01(company)
     custom.refresh_from_db()
     assert custom.is_active is True  # intacto
-    assert JobPosition.objects.filter(company=company).count() == 13 + 1
+    assert JobPosition.objects.filter(company=company).count() == 14 + 1
 
 
 # --- Habilitar / deshabilitar ---------------------------------------------------
@@ -170,7 +173,7 @@ def test_only_restricts_scope():
     company, _ = _mk_company()
     result = seed_hr_positions_v01(company, only_codes=["FNC-N2-020"])  # solo Mandador
     assert result.created == 1
-    assert result.skipped == 12
+    assert result.skipped == 13
     assert JobPosition.objects.filter(company=company).count() == 1
     assert _pos(company, "FNC-N2-020").name == "Mandador"
 
@@ -238,7 +241,7 @@ def test_command_seeds_by_company_code():
     seed_rbac_v01()
     company, _ = _mk_company()
     call_command("seed_hr_positions_v01", "--company-code", company.code)
-    assert JobPosition.objects.filter(company=company).count() == 13
+    assert JobPosition.objects.filter(company=company).count() == 14
     call_command("seed_hr_positions_v01", "--company-code", company.code, "--json")  # no debe lanzar
 
 

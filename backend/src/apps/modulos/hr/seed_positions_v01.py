@@ -39,9 +39,13 @@ class PositionSpec:
 # Catálogo CONGELADO de puestos agrícolas v0.1. Nombres canónicos (tilde en display); códigos
 # ASCII estables. Cambiar esta lista es una decisión de diseño, no un parámetro de runtime.
 POSITION_CATALOG: tuple[PositionSpec, ...] = (
-    PositionSpec("FNC-N1-010", "Gerente Agrícola", "finca_mandador", _COMPANY),
-    PositionSpec("FNC-N2-010", "Administrador de Finca", "finca_mandador", _BRANCH),
-    PositionSpec("FNC-N2-020", "Mandador", "finca_mandador", _BRANCH),
+    # Cúpula: el Gerente Agrícola es el jefe de TODOS los negocios (el "superusuario", primer
+    # usuario); el Asistente de Gerencia es su delegado con los MISMOS permisos. Ambos = company_admin.
+    PositionSpec("FNC-N1-010", "Gerente Agrícola", "company_admin", _COMPANY),
+    PositionSpec("FNC-N1-020", "Asistente de Gerencia", "company_admin", _COMPANY),
+    # Administrador de Fincas: jefe de TODAS las fincas (manda a los Mandadores) => scope COMPANY.
+    PositionSpec("FNC-N2-010", "Administrador de Fincas", "finca_mandador", _COMPANY),
+    PositionSpec("FNC-N2-020", "Mandador", "finca_mandador", _BRANCH),  # encargado de UNA finca
     # Jerarquía operativa: mandador > capataz en jefe (capataz mayor) > capataces.
     PositionSpec("FNC-N2-025", "Capataz en Jefe", "finca_capataz", _BRANCH),
     PositionSpec("FNC-N2-030", "Capataz", "finca_capataz", _BRANCH),
