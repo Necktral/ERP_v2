@@ -287,6 +287,7 @@ def seed_rbac_v01() -> SeedResult:
         "documents.scan.create": "Subir/capturar documentos para procesamiento (IDP).",
         "documents.scan.read": "Ver documentos escaneados y su texto/campos extraídos.",
         "documents.scan.review": "Revisar y confirmar el resultado de OCR/extracción.",
+        "diagnostics.error.read": "Ver el ledger de errores de runtime (observabilidad/diagnóstico).",
     }
 
     permissions.update(
@@ -354,6 +355,7 @@ def seed_rbac_v01() -> SeedResult:
             "documents.scan.create",
             "documents.scan.read",
             "documents.scan.review",
+            "diagnostics.error.read",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
