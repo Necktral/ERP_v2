@@ -7,6 +7,7 @@ from .views import (
     DiagnosticRunListView,
     ErrorEventDetailView,
     ErrorEventListView,
+    ReleaseReadinessView,
     SecurityFindingDetailView,
     SecurityFindingListView,
 )
@@ -35,6 +36,12 @@ urlpatterns = [
         "findings/<uuid:finding_id>/",
         SecurityFindingDetailView.as_view(),
         name="diagnostics-finding-detail",
+    ),
+    # Gate de release: verdicto de bloqueo por C1 abierto.
+    path(
+        "release-readiness/",
+        ReleaseReadinessView.as_view(),
+        name="diagnostics-release-readiness",
     ),
     # Botón de apagado de la IA (kill switch runtime).
     path("ai-control/", AIControlView.as_view(), name="diagnostics-ai-control"),

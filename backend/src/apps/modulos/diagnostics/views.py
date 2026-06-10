@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from apps.modulos.common.permissions import rbac_permission
 
 from .diagnose import create_diagnostic_run
+from .gates import evaluate_release_gates
 from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
 from .serializers import (
     AIControlSerializer,
@@ -119,3 +120,12 @@ class DiagnosticRunDetailView(APIView):
     def get(self, request, run_id):
         obj = get_object_or_404(DiagnosticRun, run_id=run_id)
         return Response(DiagnosticRunSerializer(obj).data, status=status.HTTP_200_OK)
+
+
+class ReleaseReadinessView(APIView):
+    """Verdicto de gate de release: un C1 abierto (error o hallazgo) bloquea."""
+
+    permission_classes = [rbac_permission("diagnostics.error.read")]
+
+    def get(self, request):
+        return Response(evaluate_release_gates(), status=status.HTTP_200_OK)

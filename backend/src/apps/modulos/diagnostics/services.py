@@ -20,7 +20,7 @@ from .extract import (
     redacted_stack,
     stack_hash,
 )
-from .models import ErrorEvent
+from .models import ErrorEvent, ErrorStatus
 
 
 def record_error_event(
@@ -67,10 +67,14 @@ def record_error_event(
             },
         )
         if not created:
-            ErrorEvent.objects.filter(pk=obj.pk).update(
-                occurrence_count=F("occurrence_count") + 1,
-                last_seen_at=now,
-                correlation_id=correlation_id or obj.correlation_id,
-            )
+            updates: dict[str, Any] = {
+                "occurrence_count": F("occurrence_count") + 1,
+                "last_seen_at": now,
+                "correlation_id": correlation_id or obj.correlation_id,
+            }
+            # Regression-sentinel: si un fallo ya 'corregido' reaparece, vuelve a 'regressed'.
+            if obj.status == ErrorStatus.FIXED:
+                updates["status"] = ErrorStatus.REGRESSED
+            ErrorEvent.objects.filter(pk=obj.pk).update(**updates)
             obj.refresh_from_db()
     return obj
