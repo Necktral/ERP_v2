@@ -26,6 +26,7 @@ from .serializers import (
     ErrorEventSerializer,
     SecurityFindingSerializer,
 )
+from .supervision import build_supervision_summary
 
 
 class ErrorEventListView(APIView):
@@ -152,6 +153,34 @@ class ReleaseReadinessView(APIView):
 
     def get(self, request):
         return Response(evaluate_release_gates(), status=status.HTTP_200_OK)
+
+
+class SupervisionView(APIView):
+    """Supervisión determinista: la cola priorizada del *qué falla y por qué* (sin IA).
+
+    Responde *qué está fallando AHORA, qué tan grave y por qué*: salud global, alertas y los
+    fallos activos ordenados por `priority_score` (con su desglose auditable). Lee el rol
+    transversal `platform_observer` (gate `diagnostics.error.read`).
+    """
+
+    permission_classes = [rbac_permission("diagnostics.error.read")]
+
+    _MAX_LIMIT = 100
+
+    def get(self, request):
+        raw = request.query_params.get("limit", "20")
+        try:
+            limit = int(raw)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "limit debe ser un entero."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        if limit < 1:
+            return Response(
+                {"detail": "limit debe ser >= 1."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        limit = min(limit, self._MAX_LIMIT)
+        return Response(build_supervision_summary(limit=limit), status=status.HTTP_200_OK)
 
 
 class AIDiagnoseView(APIView):
