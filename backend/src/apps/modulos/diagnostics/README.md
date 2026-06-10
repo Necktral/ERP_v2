@@ -62,8 +62,18 @@ evidencia DETERMINISTA** (sin IA):
 - **API**: `POST /api/diagnostics/errors/<id>/diagnose/` (permiso `diagnostics.diagnose.run`),
   `GET /api/diagnostics/diagnoses/` + detalle (`diagnostics.diagnose.read`).
 
+## Rebanada B-4 — supervisión con dientes: regression-sentinel + gate de release (sin IA)
+
+*"La IA diagnostica con evidencia; los gates bloquean; el humano decide excepciones."*
+- **Regression-sentinel** (en la captura): si un `ErrorEvent` ya `fixed` **reaparece** (mismo
+  `stack_hash`) → vuelve a **`regressed`** automáticamente. La supervisión detecta que el fallo volvió.
+- **Gate de release** (`gates.py` `evaluate_release_gates`): **un C1 abierto** (error de runtime o
+  hallazgo de seguridad) **bloquea**; devuelve verdicto + conteos + regresiones.
+  - **API**: `GET /api/diagnostics/release-readiness/` (permiso `diagnostics.error.read`).
+  - **Command**: `check_release_gates` (falla con exit≠0 si hay C1 abierto) — para el pipeline de
+    deploy (que tiene DB), no para el job de tests de CI.
+
 ## Fuera de estas rebanadas (siguientes)
-SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (B-3b: ¿la línea que falló está testeada?),
-gates `evidence-c1-guard`/`regression-sentinel` (B-4), motor IA **advisory** que rellena la hipótesis
-de causa consumiendo el gateway de Mundo A y respetando el kill switch (B-5); tenant-scoping fino;
-OpenTelemetry/traces.
+SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (¿la línea que falló está testeada?), motor IA
+**advisory** que rellena la hipótesis de causa consumiendo el gateway de Mundo A y respetando el kill
+switch (B-5); tenant-scoping fino; OpenTelemetry/traces.
