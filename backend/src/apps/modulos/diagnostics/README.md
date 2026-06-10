@@ -46,7 +46,24 @@ Requisito del dueño: **toda la IA debe poder apagarse**. Dos capas:
 - **`DIAGNOSTICS_ENABLED`** (entorno, encendido por defecto): interruptor del subsistema de
   observabilidad determinista; en `false`, la captura de errores deja de registrar.
 
+## Rebanada B-3 — causa raíz (`DiagnosticRun`): el *por qué* del fallo, sin IA
+
+Lo **fundamental** de la plataforma: cuando algo falla, supervisar y explicar **por qué**
+(cadena `síntoma → causa`). `diagnose.py` arma, para un `ErrorEvent`, un **paquete de
+evidencia DETERMINISTA** (sin IA):
+- **Contexto**: archivo/línea/función, dominio, riesgo, endpoint, correlation_id.
+- **Timeline**: ocurrencias, primera/última vez, span.
+- **Relacionados**: otros `ErrorEvent` del mismo dominio/archivo + `SecurityFinding` en ese archivo.
+- **Blast radius** + **señales** (`alta_frecuencia`, `dominio_C1`, `regresion`, `aislado`) + un
+  **resumen legible**.
+- La **hipótesis de causa** queda vacía: la pone un humano o, en el futuro y **solo con el kill
+  switch encendido** (`ai_features_enabled()`), el motor IA advisory. La supervisión del *por qué*
+  funciona **siempre, con la IA apagada**.
+- **API**: `POST /api/diagnostics/errors/<id>/diagnose/` (permiso `diagnostics.diagnose.run`),
+  `GET /api/diagnostics/diagnoses/` + detalle (`diagnostics.diagnose.read`).
+
 ## Fuera de estas rebanadas (siguientes)
-SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (B-3), gates `evidence-c1-guard`/`regression-sentinel`
-(B-4), diagnóstico IA **advisory** que consume el gateway de Mundo A y respeta el kill switch (B-5);
-tenant-scoping fino del read API; OpenTelemetry/traces.
+SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (B-3b: ¿la línea que falló está testeada?),
+gates `evidence-c1-guard`/`regression-sentinel` (B-4), motor IA **advisory** que rellena la hipótesis
+de causa consumiendo el gateway de Mundo A y respetando el kill switch (B-5); tenant-scoping fino;
+OpenTelemetry/traces.

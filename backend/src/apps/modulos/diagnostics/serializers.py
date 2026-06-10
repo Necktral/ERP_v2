@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import AIControl, ErrorEvent, SecurityFinding
+from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
 
 _LIST_FIELDS = [
     "error_id",
@@ -92,3 +92,32 @@ class AIControlUpdateSerializer(serializers.Serializer):
 
     enabled = serializers.BooleanField()
     reason = serializers.CharField(required=False, allow_blank=True, max_length=255, default="")
+
+
+_DIAGNOSIS_FIELDS = [
+    "run_id",
+    "subject_type",
+    "subject_id",
+    "trigger_type",
+    "domain",
+    "risk_class",
+    "evidence",
+    "summary",
+    "blast_radius",
+    "root_cause_hypothesis",
+    "recommended_tests",
+    "recommended_fix",
+    "confidence",
+    "ai_assisted",
+    "generated_by",
+    "status",
+    "created_at",
+    "updated_at",
+]
+
+
+class DiagnosticRunSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiagnosticRun
+        fields = _DIAGNOSIS_FIELDS
+        read_only_fields = _DIAGNOSIS_FIELDS

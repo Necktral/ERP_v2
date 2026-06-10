@@ -208,3 +208,81 @@ class AIControl(models.Model):
 
     def __str__(self) -> str:
         return f"AIControl(ai_enabled={self.ai_enabled})"
+
+
+class DiagnosisStatus(models.TextChoices):
+    OPEN = "open", "Abierto"
+    REVIEWED = "reviewed", "Revisado"
+    ACCEPTED = "accepted", "Aceptado"
+    DISMISSED = "dismissed", "Descartado"
+
+
+class DiagnosticRun(models.Model):
+    """Corrida de diagnóstico de **causa raíz** sobre un fallo (Mundo B).
+
+    El paquete de evidencia (`evidence`) es **DETERMINISTA, sin IA**: explica el *por qué*
+    de un fallo cruzando su contexto, timeline y señales relacionadas. La hipótesis de
+    causa (`root_cause_hypothesis`) la completa un humano o, en el futuro y **solo si el
+    kill switch lo permite** (`flags.ai_features_enabled()`), el motor IA advisory.
+    """
+
+    class Meta:
+        app_label = "diagnostics"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["subject_type", "subject_id"]),
+            models.Index(fields=["risk_class", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+        ]
+
+    run_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    # Sujeto (polimórfico, desacoplado: hoy un ErrorEvent; mañana un SecurityFinding).
+    subject_type = models.CharField(max_length=32, default="error_event")
+    subject_id = models.CharField(max_length=64)
+
+    trigger_type = models.CharField(max_length=16, default="manual")  # manual|runtime|scheduled
+    domain = models.CharField(max_length=64, blank=True, default="")
+    risk_class = models.CharField(
+        max_length=2, choices=RiskClass.choices, default=RiskClass.C3
+    )
+
+    # Evidencia DETERMINISTA (el "por qué", sin IA).
+    evidence = models.JSONField(default=dict, blank=True)
+    summary = models.TextField(blank=True, default="")
+    blast_radius = models.JSONField(default=dict, blank=True)
+
+    # Hipótesis / recomendaciones (humano o IA advisory; vacío por defecto).
+    root_cause_hypothesis = models.TextField(blank=True, default="")
+    recommended_tests = models.TextField(blank=True, default="")
+    recommended_fix = models.TextField(blank=True, default="")
+    confidence = models.CharField(max_length=8, blank=True, default="")  # low|medium|high
+
+    ai_assisted = models.BooleanField(default=False)
+    generated_by = models.CharField(max_length=16, default="deterministic")
+
+    status = models.CharField(
+        max_length=16, choices=DiagnosisStatus.choices, default=DiagnosisStatus.OPEN
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="diagnostic_reviews",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="diagnostic_runs",
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return (
+            f"DiagnosticRun(subject={self.subject_type}:{self.subject_id}, "
+            f"risk={self.risk_class}, ai={self.ai_assisted})"
+        )

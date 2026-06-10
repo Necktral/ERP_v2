@@ -7,10 +7,12 @@ from rest_framework.views import APIView
 
 from apps.modulos.common.permissions import rbac_permission
 
-from .models import AIControl, ErrorEvent, SecurityFinding
+from .diagnose import create_diagnostic_run
+from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
 from .serializers import (
     AIControlSerializer,
     AIControlUpdateSerializer,
+    DiagnosticRunSerializer,
     ErrorEventDetailSerializer,
     ErrorEventSerializer,
     SecurityFindingSerializer,
@@ -85,3 +87,35 @@ class AIControlView(APIView):
         ctrl.updated_by = request.user if request.user.is_authenticated else None
         ctrl.save()
         return Response(AIControlSerializer(ctrl).data, status=status.HTTP_200_OK)
+
+
+class DiagnoseErrorView(APIView):
+    """Arma el diagnóstico de causa raíz (evidencia DETERMINISTA) de un fallo."""
+
+    permission_classes = [rbac_permission("diagnostics.diagnose.run")]
+
+    def post(self, request, error_id):
+        error = get_object_or_404(ErrorEvent, error_id=error_id)
+        run = create_diagnostic_run(error=error, trigger_type="manual", created_by=request.user)
+        return Response(DiagnosticRunSerializer(run).data, status=status.HTTP_201_CREATED)
+
+
+class DiagnosticRunListView(APIView):
+    permission_classes = [rbac_permission("diagnostics.diagnose.read")]
+
+    def get(self, request):
+        qs = DiagnosticRun.objects.all()
+        for f in ("subject_id", "risk_class", "status", "domain"):
+            val = request.query_params.get(f)
+            if val:
+                qs = qs.filter(**{f: val})
+        data = DiagnosticRunSerializer(qs[:200], many=True).data
+        return Response({"results": data}, status=status.HTTP_200_OK)
+
+
+class DiagnosticRunDetailView(APIView):
+    permission_classes = [rbac_permission("diagnostics.diagnose.read")]
+
+    def get(self, request, run_id):
+        obj = get_object_or_404(DiagnosticRun, run_id=run_id)
+        return Response(DiagnosticRunSerializer(obj).data, status=status.HTTP_200_OK)

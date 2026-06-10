@@ -291,6 +291,8 @@ def seed_rbac_v01() -> SeedResult:
         "diagnostics.finding.read": "Ver el ledger de hallazgos de seguridad (SCA/SAST).",
         "diagnostics.ai_control.read": "Ver el estado del botón de apagado de la IA.",
         "diagnostics.ai_control.manage": "Encender/apagar la IA (kill switch runtime).",
+        "diagnostics.diagnose.read": "Ver diagnósticos de causa raíz de fallos.",
+        "diagnostics.diagnose.run": "Disparar el diagnóstico de causa raíz de un fallo.",
     }
 
     permissions.update(
@@ -362,6 +364,8 @@ def seed_rbac_v01() -> SeedResult:
             "diagnostics.finding.read",
             "diagnostics.ai_control.read",
             "diagnostics.ai_control.manage",
+            "diagnostics.diagnose.read",
+            "diagnostics.diagnose.run",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
