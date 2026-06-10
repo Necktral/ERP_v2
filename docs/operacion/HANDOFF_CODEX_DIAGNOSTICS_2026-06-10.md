@@ -24,10 +24,29 @@ los gates bloquean; la IA (apagable) al final.*
    heurístico (sin LLM). 55 tests verdes.
 2. **CodeUnitEvidence ("¿la línea que falló está testeada?")** — rama `feat/diagnostics-codeunit`
    (stack sobre B-5). Migración `0005`. Ver su commit.
+3. **Supervisión determinista (la cola priorizada del "qué falla y por qué")** — rama
+   `feat/diagnostics-supervision` (stack sobre CodeUnit). **SIN migración** (agregación sobre los
+   modelos existentes). Endpoint `GET /api/diagnostics/supervision/` + command `supervision_report`.
+   75 tests verdes (17 nuevos) + contract-guard. Ver detalle abajo.
 
 > **`master` LOCAL está adelantado**: ya contiene B-5 (FF). El `master` remoto está en `5abd6518`
-> (#73). Al restaurar el acceso: mergear el PR de B-5 **primero**, luego el de CodeUnitEvidence
-> (las migraciones están numeradas en orden: 0004 → 0005, sin colisión).
+> (#73). Al restaurar el acceso: mergear el PR de B-5 **primero**, luego CodeUnitEvidence, luego
+> Supervisión (stack lineal B-5 → CodeUnit → Supervisión; migraciones 0004 → 0005, sin más; sin colisión).
+
+## Supervisión determinista (rama `feat/diagnostics-supervision`)
+La pieza que materializa el principio rector *"saber por qué falla es lo fundamental"*: el ledger ya
+guardaba **qué** falla (`ErrorEvent`), **por qué** (`DiagnosticRun`) y si la línea está testeada
+(`CodeUnitEvidence`), y los gates daban un veredicto **binario**. Faltaba lo que el operador usa a
+diario: una **cola priorizada** que responda *qué está fallando AHORA, qué tan grave y por qué*.
+- `supervision.py`: `priority_score` DETERMINISTA y **auditable** (riesgo Necktral + estado + frecuencia
+  topada + recencia + cobertura de la línea) con su **desglose**; reglas de alerta (`c1_activo`,
+  `regresion`, `alta_frecuencia`, `linea_sin_test`); veredicto de salud (`blocked`/`at_risk`/`healthy`)
+  que **fusiona el gate de release**; y enlace al `DiagnosticRun` de causa raíz (el *por qué* ya calculado).
+- `GET /api/diagnostics/supervision/` (gate `diagnostics.error.read`; lo lee `platform_observer`) con
+  `limit` validado (1..100). Command `supervision_report` (`--json`) para cron/pipeline (offline-first,
+  no dispara IA ni escribe). **Sin IA, sin migración.**
+- Validado local: ruff/mypy verdes; patrón prohibido CLEAN; `makemigrations --check` sin cambios;
+  `pytest src/apps/modulos/diagnostics/tests` → 75 verdes; `test_contract_guards.py` verde.
 
 ## Aparte: roles RBAC predefinidos (rama `feat/rbac-predefined-roles`)
 Rama pusheada (commit propio `cf6247b9`, toca **solo** `rbac/seed_v01.py` + `tests/test_seed_roles.py`).
