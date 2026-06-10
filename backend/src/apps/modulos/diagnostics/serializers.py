@@ -100,6 +100,13 @@ class AIControlUpdateSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, max_length=255, default="")
 
 
+class TriageSerializer(serializers.Serializer):
+    """Payload del triage humano: el estado destino. La validación de QUÉ estados
+    puede fijar un humano (y cuáles son de la máquina) vive en `triage.py`."""
+
+    status = serializers.CharField(max_length=16)
+
+
 _DIAGNOSIS_FIELDS = [
     "run_id",
     "subject_type",

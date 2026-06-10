@@ -9,9 +9,11 @@ from .views import (
     DiagnosticRunListView,
     ErrorEventDetailView,
     ErrorEventListView,
+    ErrorEventTriageView,
     ReleaseReadinessView,
     SecurityFindingDetailView,
     SecurityFindingListView,
+    SecurityFindingTriageView,
     SupervisionView,
 )
 
@@ -27,6 +29,12 @@ urlpatterns = [
         "errors/<uuid:error_id>/diagnose/",
         DiagnoseErrorView.as_view(),
         name="diagnostics-error-diagnose",
+    ),
+    # Triage humano: confirmar / falso positivo / corregido / riesgo aceptado.
+    path(
+        "errors/<uuid:error_id>/triage/",
+        ErrorEventTriageView.as_view(),
+        name="diagnostics-error-triage",
     ),
     path("diagnoses/", DiagnosticRunListView.as_view(), name="diagnostics-diagnosis-list"),
     path(
@@ -51,6 +59,12 @@ urlpatterns = [
         "findings/<uuid:finding_id>/",
         SecurityFindingDetailView.as_view(),
         name="diagnostics-finding-detail",
+    ),
+    # Triage humano de hallazgos (accepted_risk va por el contrato de excepciones).
+    path(
+        "findings/<uuid:finding_id>/triage/",
+        SecurityFindingTriageView.as_view(),
+        name="diagnostics-finding-triage",
     ),
     # Gate de release: verdicto de bloqueo por C1 abierto.
     path(

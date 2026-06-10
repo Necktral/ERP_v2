@@ -99,7 +99,25 @@ Cierra el *por qué*: una línea que falla y **no tiene test** es una causa prob
   línea; si está `uncovered` agregan la señal **`linea_sin_test`** ("la línea que falló NO está cubierta").
 - **API**: `GET /api/diagnostics/code-evidence/` (permiso `diagnostics.error.read`).
 
+## Hardening (esta rebanada): calibración + triage + umbrales + captura CLI
+
+- **Mapa de dominios calibrado** (`domain_map.py`): cada módulo real del repo tiene clase
+  de riesgo EXPLÍCITA (test centinela lo exige; un módulo nuevo sin clasificar rompe el test).
+  Promociones clave: `rbac`/`accounts` (permisos) e `intercompany` (fiscal) son **C1**, igual
+  que `compras`/`retail_pos`/`comisariato`/`estacion_servicios` (dinero/stock). Overrides por
+  path: `common/permissions` (la imposición RBAC) cuenta como `iam`.
+- **Triage humano** (`triage.py`): `POST /api/diagnostics/errors/<id>/triage/` y
+  `findings/<id>/triage/` (permisos `diagnostics.error.triage` / `diagnostics.finding.triage`).
+  Estados de máquina no fijables; `accepted_risk` de findings va por el contrato de excepciones
+  con vencimiento (la API no permite saltárselo); el centinela de regresión le gana a un `fixed`
+  humano si el fallo reaparece. Queda rastro de quién decidió (`owner`).
+- **Umbrales operativos configurables**: `DIAGNOSTICS_SPIKE_THRESHOLD` (default 20) y
+  `DIAGNOSTICS_RECENT_WINDOW_HOURS` (default 24) por env/settings. Los pesos del score siguen
+  siendo constantes de diseño.
+- **Captura fuera de HTTP** (`capture.captured(source=...)`): context manager para management
+  commands/jobs — registra el fallo en el ledger (endpoint=source, method="CLI") y RE-LANZA.
+
 ## Fuera de estas rebanadas (siguientes)
-SAST/bandit con dominio; proveedor LLM real para B-5 (key + presupuesto/observabilidad del gateway de
-Mundo A; sigue apagado por defecto); símbolo/`last_commit` en `CodeUnitEvidence`; tenant-scoping fino;
-OpenTelemetry/traces.
+Proveedor LLM con presupuesto/observabilidad del gateway de Mundo A (sigue apagado por defecto);
+símbolo/`last_commit` en `CodeUnitEvidence`; tenant-scoping fino; auditoría EAU de las decisiones
+de triage (requiere ampliar el catálogo de `audit/contracts.py`, hoy con WIP); OpenTelemetry/traces.

@@ -25,8 +25,10 @@ from .serializers import (
     ErrorEventDetailSerializer,
     ErrorEventSerializer,
     SecurityFindingSerializer,
+    TriageSerializer,
 )
 from .supervision import build_supervision_summary
+from .triage import TriageError, triage_error, triage_finding
 
 
 class ErrorEventListView(APIView):
@@ -198,3 +200,44 @@ class AIDiagnoseView(APIView):
         except AIDisabledError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         return Response(DiagnosticRunSerializer(run).data, status=status.HTTP_200_OK)
+
+
+class ErrorEventTriageView(APIView):
+    """Triage humano de un error: confirmar / falso positivo / corregido / riesgo aceptado.
+
+    Deja rastro de quién decidió (`owner`). El centinela de regresión sigue mandando:
+    un `fixed` que reaparece vuelve a `regressed` — al ledger no se le puede mentir.
+    """
+
+    permission_classes = [rbac_permission("diagnostics.error.triage")]
+
+    def post(self, request, error_id):
+        s = TriageSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        obj = get_object_or_404(ErrorEvent, error_id=error_id)
+        try:
+            obj = triage_error(
+                error=obj, status=s.validated_data["status"], owner=request.user.username
+            )
+        except TriageError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ErrorEventSerializer(obj).data, status=status.HTTP_200_OK)
+
+
+class SecurityFindingTriageView(APIView):
+    """Triage humano de un hallazgo. `accepted_risk` NO pasa por acá: esa decisión vive
+    en el contrato de excepciones CON VENCIMIENTO (la API no permite saltárselo)."""
+
+    permission_classes = [rbac_permission("diagnostics.finding.triage")]
+
+    def post(self, request, finding_id):
+        s = TriageSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        obj = get_object_or_404(SecurityFinding, finding_id=finding_id)
+        try:
+            obj = triage_finding(
+                finding=obj, status=s.validated_data["status"], owner=request.user.username
+            )
+        except TriageError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(SecurityFindingSerializer(obj).data, status=status.HTTP_200_OK)
