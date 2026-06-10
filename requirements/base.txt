@@ -48,3 +48,10 @@ psycopg[binary]==3.3.2
 # attribute 'transform'); 0.10.0 es el par compatible verificado.
 weasyprint==62.3
 pydyf==0.10.0
+
+# IDP (Intelligent Document Processing) — etapa OCR. Tesseract es open-source; el
+# binario `tesseract-ocr` (+ idioma `spa`) se instala en la imagen (ver
+# docker/backend.Dockerfile.*). Los imports de pytesseract/Pillow son lazy en
+# apps/modulos/documents/ocr.py (no rompen si el binario falta: degradan a FAILED).
+pytesseract==0.3.13
+Pillow==11.3.0

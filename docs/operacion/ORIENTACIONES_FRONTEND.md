@@ -67,3 +67,26 @@ aceptar `logo` opcional en `BootstrapOrgSerializer`; exponer branding en `/auth/
 3. **"Branch on-demand" → correcto.** `axios.ts` manda `X-Branch-Id` solo si hay sucursal activa; no hay flujo
    "operación que exige sucursal → pedirla en el momento". **Frontend:** modal "elegí sucursal" cuando la
    operación lo requiera (el backend ya distingue con/sin sucursal).
+
+## 4. IDP — Captura y revisión de documentos (backend F1 listo)
+
+El backend del subsistema IDP (módulo `documents`) ya expone la **fase F1** (captura → OCR → revisión).
+Detalle completo en `backend/src/apps/modulos/documents/README.md`. Lo que el frontend debe construir:
+
+**a) Captura/subida** (`POST /api/documents/scans/upload/`, permiso `documents.scan.create`):
+- Cámara o selector de archivo → la imagen se manda **en base64** (`image_base64`, acepta data-URL),
+  con `doc_type` (`GENERAL`/`INVOICE`/`FUEL_TICKET`/`PAYROLL`) y `content_type?`, `branch_id?`.
+- **Offline-first (híbrido):** si no hay red, guardar la imagen local y reintentar el `POST` al
+  reconectar (mismo endpoint). El OCR lo corre el servidor; el cliente NO hace OCR.
+- Comprimir/redimensionar antes de enviar (tope backend: 8 MB).
+
+**b) Bandeja de revisión** (`GET /api/documents/scans/?status=PROCESSED`, permiso `documents.scan.read`):
+- Listar documentos por estado (`PENDING_OCR → PROCESSED → REVIEWED`, o `FAILED`). Mostrar el estado
+  con color (p. ej. `PROCESSED` ámbar pendiente de revisar, `REVIEWED` verde, `FAILED` rojo).
+- Detalle (`GET /scans/<id>/`): mostrar el `ocr_text` junto a la imagen para cotejar.
+
+**c) Confirmación humana** (`POST /api/documents/scans/<id>/review/`, permiso `documents.scan.review`):
+- Form para corregir/confirmar `extracted_fields` (F2 los llenará automáticamente) y opcional `doc_type`
+  → marca `REVIEWED`. Es el *human-in-the-loop* del pipeline (el OCR nunca es 100%).
+
+Usar contexto de empresa (`X-Company-Id`) como el resto; permisos vía el ACL (ya sembrados en `company_admin`).

@@ -284,6 +284,9 @@ def seed_rbac_v01() -> SeedResult:
         "fleet.maintenance.manage": "Configurar tipos/planes/reglas y correr alertas.",
         "fleet.meter.record": "Registrar lecturas de odómetro/horómetro.",
         "notifications.device.register": "Registrar token de dispositivo para notificaciones.",
+        "documents.scan.create": "Subir/capturar documentos para procesamiento (IDP).",
+        "documents.scan.read": "Ver documentos escaneados y su texto/campos extraídos.",
+        "documents.scan.review": "Revisar y confirmar el resultado de OCR/extracción.",
     }
 
     permissions.update(
@@ -348,6 +351,9 @@ def seed_rbac_v01() -> SeedResult:
             "org.module.read",
             "org.module.manage",
             "iam.users.create",
+            "documents.scan.create",
+            "documents.scan.read",
+            "documents.scan.review",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",

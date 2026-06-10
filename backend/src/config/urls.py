@@ -113,4 +113,5 @@ urlpatterns += [
     path("api/comisariato/", include("apps.modulos.comisariato.urls")),
     path("api/fleet/", include("apps.modulos.fleet.urls")),
     path("api/notifications/", include("apps.modulos.notifications.urls")),
+    path("api/documents/", include("apps.modulos.documents.urls")),
 ]
