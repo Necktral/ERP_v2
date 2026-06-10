@@ -14,6 +14,7 @@ from typing import Any
 
 from django.utils import timezone
 
+from .domain_map import domain_for_path, risk_class_for_domain
 from .models import AUTO_FINDING_STATES, FindingStatus, RiskClass, SecurityFinding
 
 
@@ -26,6 +27,14 @@ class RawFinding:
     fixed_version: str = ""
     cve_id: str = ""
     severity_raw: str = ""
+    # Campos SAST (vacíos para dependencias pip/npm).
+    file_path: str = ""
+    line_start: int = 0
+    symbol: str = ""
+    domain: str = ""
+    cwe_id: str = ""
+    # Riesgo precomputado por el parser (p.ej. SAST dominio-aware). Vacío => se deriva de la severidad.
+    risk_class: str = ""
 
 
 @dataclass(frozen=True)
@@ -127,6 +136,61 @@ def parse_npm_findings(payload: dict[str, Any]) -> list[RawFinding]:
     return out
 
 
+def _normalize_sast_path(path: str) -> str:
+    """Path repo-relativo estable: quita el prefijo del contenedor (`/app/`) y barras iniciales."""
+    p = (path or "").replace("\\", "/")
+    marker = "/app/"
+    idx = p.find(marker)
+    if idx != -1:
+        return p[idx + len(marker):]
+    return p.lstrip("/")
+
+
+def parse_bandit_findings(payload: dict[str, Any]) -> list[RawFinding]:
+    """bandit -f json: `results[]` (test_id, filename, line_number, issue_severity, issue_cwe).
+
+    Es SAST sobre NUESTRO código (alcanzable), así que el riesgo es **dominio-aware**
+    (`risk_for_sast`): un hallazgo severo en un dominio C1 (dinero/fiscal) es C1, no C2.
+    Dedup por (archivo, test, línea): `vuln_id="<test_id>:<line>"`, `package=<archivo>` (locus
+    para la clave natural). Los campos estructurados (file_path/line_start/symbol/domain) van
+    aparte para consulta y display.
+    """
+    out: list[RawFinding] = []
+    for r in payload.get("results") or []:
+        if not isinstance(r, dict):
+            continue
+        test_id = str(r.get("test_id", "")).strip()
+        filename = _normalize_sast_path(str(r.get("filename", "")).strip())
+        if not test_id or not filename:
+            continue
+        try:
+            line = int(r.get("line_number") or 0)
+        except (TypeError, ValueError):
+            line = 0
+        severity = str(r.get("issue_severity", "")).lower()
+        symbol = str(r.get("test_name", ""))[:255]
+        cwe = ""
+        cwe_obj = r.get("issue_cwe")
+        if isinstance(cwe_obj, dict) and cwe_obj.get("id") not in (None, ""):
+            cwe = f"CWE-{cwe_obj['id']}"
+        domain = domain_for_path(filename)
+        out.append(
+            RawFinding(
+                source_tool="bandit",
+                vuln_id=f"{test_id}:{line}",
+                package=filename,
+                severity_raw=severity,
+                file_path=filename,
+                line_start=line,
+                symbol=symbol,
+                domain=domain,
+                cwe_id=cwe,
+                risk_class=risk_for_sast(severity, domain),
+            )
+        )
+    return out
+
+
 def load_exceptions(payload: dict[str, Any]) -> list[ExceptionRule]:
     rules: list[ExceptionRule] = []
     for row in payload.get("exceptions") or []:
@@ -162,6 +226,21 @@ def risk_for_severity(severity_raw: str) -> str:
     if s in {"high", "critical", "high_or_critical"}:
         return RiskClass.C2
     return RiskClass.C3
+
+
+def risk_for_sast(severity_raw: str, domain: str) -> str:
+    """Riesgo de un hallazgo SAST (bandit). A diferencia de una dependencia, es **nuestro**
+    código (alcanzable), así que el **dominio manda**: un hallazgo severo en un dominio C1
+    (dinero/fiscal) es C1. La severidad modula: `low` es C3; `medium` no escala a C1 (baja a C2).
+    """
+    sev = (severity_raw or "").lower()
+    if sev == "low":
+        return RiskClass.C3
+    domain_risk = risk_class_for_domain(domain)  # C1/C2/C3 según dónde vive el código
+    if sev == "high":
+        return domain_risk
+    # medium: no escalar a C1 automático.
+    return RiskClass.C2 if domain_risk == RiskClass.C1 else domain_risk
 
 
 def _matching_exception(
@@ -206,7 +285,8 @@ def ingest_findings(
 
     for rf in raw_findings:
         status, expires_at, reason = _status_for(rf, exceptions, today)
-        risk = risk_for_severity(rf.severity_raw)
+        # El parser puede precomputar el riesgo (SAST dominio-aware); si no, se deriva de la severidad.
+        risk = rf.risk_class or risk_for_severity(rf.severity_raw)
         obj, created = SecurityFinding.objects.get_or_create(
             source_tool=rf.source_tool,
             package=rf.package,
@@ -217,6 +297,11 @@ def ingest_findings(
                 "cve_id": rf.cve_id,
                 "severity_raw": rf.severity_raw,
                 "risk_class": risk,
+                "file_path": rf.file_path,
+                "line_start": rf.line_start,
+                "symbol": rf.symbol,
+                "domain": rf.domain,
+                "cwe_id": rf.cwe_id,
                 "status": status,
                 "expires_at": expires_at,
                 "accepted_risk_reason": reason,
@@ -232,6 +317,11 @@ def ingest_findings(
             obj.cve_id = rf.cve_id
             obj.severity_raw = rf.severity_raw
             obj.risk_class = risk
+            obj.file_path = rf.file_path
+            obj.line_start = rf.line_start
+            obj.symbol = rf.symbol
+            obj.domain = rf.domain
+            obj.cwe_id = rf.cwe_id
             obj.last_seen_at = now
             # No pisar triage humano (confirmed/triaged/false_positive).
             if obj.status in AUTO_FINDING_STATES:
