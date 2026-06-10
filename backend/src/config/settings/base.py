@@ -86,6 +86,10 @@ env = environ.Env(
     POS_EDGE_SESSION_TTL_SEC=(int, 3600),
     POS_COMPENSATION_MAX_ATTEMPTS=(int, 8),
     POS_COMPENSATION_BACKOFF_CAP_MIN=(int, 60),
+    # Diagnóstico / IA: interruptores. La IA está APAGADA por defecto (opt-in);
+    # la observabilidad determinista (captura de errores) está encendida.
+    AI_FEATURES_ENABLED=(bool, False),
+    DIAGNOSTICS_ENABLED=(bool, True),
 )
 
 if ENV_FILE.exists():
@@ -177,6 +181,9 @@ SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT")
 SENTRY_TRACES_SAMPLE_RATE = env("SENTRY_TRACES_SAMPLE_RATE")
 SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE")
 SENTRY_RELEASE = env("SENTRY_RELEASE")
+# Diagnóstico / IA — interruptores (ver apps.modulos.diagnostics.flags).
+AI_FEATURES_ENABLED = env("AI_FEATURES_ENABLED")
+DIAGNOSTICS_ENABLED = env("DIAGNOSTICS_ENABLED")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
 AUDIT_MODULE_NAME = "AUTH"
 AUDIT_SCHEMA_VERSION = 1

@@ -21,6 +21,7 @@ evidencia, confidence) pero **sus Fases 1–4 no dependen de IA ni de Mundo A en
 
 | # | Invariante | Cómo se vuelve estructural |
 |---|---|---|
+| **J0** | **Botón de apagado**: la IA (motor de diagnóstico B-5) y la observabilidad se pueden apagar | IA → `flags.ai_features_enabled()` (kill switch global, off por defecto); observabilidad → `DIAGNOSTICS_ENABLED`. **Ya implementado** (B-2) |
 | J1 | Todo error/evento **C1** lleva `correlation_id` + `domain` + `risk_class` | Gate `evidence-c1-guard`; el handler central los rellena, no el dev |
 | J2 | **Cero secretos/PII** en logs, findings o evidencia | Reusa `audit/redaction.py` en el sink de telemetría/errores |
 | J3 | La IA **nunca** cierra findings, reclasifica C1, ni aplica fix sola | Sólo escribe `AIDiagnosis` (advisory); el cambio de estado es acción humana auditada |

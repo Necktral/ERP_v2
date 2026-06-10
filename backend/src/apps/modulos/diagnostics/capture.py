@@ -14,10 +14,14 @@ from django.core.signals import got_request_exception
 from django.db import connection
 from django.dispatch import receiver
 
+from .flags import diagnostics_enabled
+
 
 @receiver(got_request_exception)
 def capture_request_exception(sender: Any, request: Any = None, **kwargs: Any) -> None:
     try:
+        if not diagnostics_enabled():
+            return  # interruptor del subsistema de observabilidad
         exc_type, exc_value, tb = sys.exc_info()
         if exc_type is None:
             return
