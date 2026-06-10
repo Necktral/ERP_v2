@@ -40,6 +40,7 @@ class BootstrapInitSerializer(serializers.Serializer):
     username = serializers.CharField()
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
     password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
 
@@ -57,7 +58,13 @@ class BootstrapInitSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"email": "Ya existe"})
             attrs["email"] = email
 
-        # Password validators (mínimo robusto)
+        # Confirmación: ambas contraseñas deben coincidir (antes de validar fortaleza).
+        if attrs.get("password") != attrs.get("password_confirm"):
+            raise serializers.ValidationError(
+                {"password_confirm": "Las contraseñas no coinciden."}
+            )
+
+        # Password validators (mínimo robusto): longitud, clases, no-común, no-numérica.
         password_validation.validate_password(attrs["password"])
         return attrs
 
