@@ -27,7 +27,12 @@ def test_onboarding_e2e_self_service():
     # 2) Primer admin (superuser)
     r = api.post(
         "/api/v1/auth/bootstrap/init/",
-        {"username": "owner", "password": OWNER_PASS, "email": "owner@acme.test"},
+        {
+            "username": "owner",
+            "password": OWNER_PASS,
+            "password_confirm": OWNER_PASS,
+            "email": "owner@acme.test",
+        },
         format="json",
     )
     assert r.status_code == 201, r.data

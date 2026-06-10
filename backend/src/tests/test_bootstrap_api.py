@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.modulos.iam.models import OrgUnit
@@ -25,7 +26,12 @@ def test_bootstrap_init_creates_first_admin():
     root_pwd = _demo_pwd("root")
     r = client.post(
         "/api/auth/bootstrap/init/",
-        {"username": "root", "email": "root@test.com", "password": root_pwd},
+        {
+            "username": "root",
+            "email": "root@test.com",
+            "password": root_pwd,
+            "password_confirm": root_pwd,
+        },
         format="json",
     )
     assert r.status_code == 201
@@ -40,13 +46,65 @@ def test_bootstrap_init_creates_first_admin():
 
 
 @pytest.mark.django_db
+def test_bootstrap_init_rejects_password_mismatch():
+    client = APIClient()
+    r = client.post(
+        "/api/auth/bootstrap/init/",
+        {
+            "username": "root",
+            "email": "root@test.com",
+            "password": _demo_pwd("ok"),
+            "password_confirm": _demo_pwd("different"),
+        },
+        format="json",
+    )
+    assert r.status_code == 400
+    # La API envuelve los errores de validación en {"error": {"details": {...}}}.
+    assert "password_confirm" in r.data["error"]["details"]
+    assert not User.objects.filter(username="root").exists()
+
+
+@pytest.mark.django_db
+@override_settings(
+    AUTH_PASSWORD_VALIDATORS=[
+        {
+            "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+            "OPTIONS": {"min_length": 10},
+        },
+        {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+        {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+        {
+            "NAME": "apps.modulos.accounts.password_validators.PasswordComplexityValidator",
+            "OPTIONS": {"min_length": 10, "min_classes": 3},
+        },
+    ]
+)
+def test_bootstrap_status_exposes_password_policy():
+    # El settings de test vacía los validadores; forzamos los reales (como en base/prod)
+    # para verificar que _password_policy() los deriva correctamente (fuente única).
+    r = APIClient().get("/api/auth/bootstrap/status/")
+    assert r.status_code == 200
+    policy = r.data["password_policy"]
+    assert policy["min_length"] == 10
+    assert policy["min_classes"] == 3
+    assert policy["disallow_common"] is True
+    assert policy["disallow_numeric_only"] is True
+    assert "minúsculas" in policy["classes"]
+
+
+@pytest.mark.django_db
 def test_bootstrap_org_requires_auth_but_no_company_context_header():
     # 1) bootstrap init
     c = APIClient()
     root_pwd = _demo_pwd("root2")
     c.post(
         "/api/auth/bootstrap/init/",
-        {"username": "root", "email": "root2@test.com", "password": root_pwd},
+        {
+            "username": "root",
+            "email": "root2@test.com",
+            "password": root_pwd,
+            "password_confirm": root_pwd,
+        },
         format="json",
     )
 

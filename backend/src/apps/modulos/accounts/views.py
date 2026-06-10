@@ -886,6 +886,36 @@ class TwoFactorDisableView(APIView):
         return Response({"ok": True}, status=status.HTTP_200_OK)
 
 
+def _password_policy() -> dict[str, Any]:
+    """Política de contraseña derivada de AUTH_PASSWORD_VALIDATORS (fuente única).
+
+    El frontend la consume para mostrar los 'niveles de una buena contraseña' alineados
+    EXACTAMENTE con lo que el backend exige; así el medidor nunca se desincroniza.
+    """
+    validators = getattr(settings, "AUTH_PASSWORD_VALIDATORS", []) or []
+    min_length = 8
+    min_classes = 0
+    for v in validators:
+        name = v.get("NAME", "")
+        opts = v.get("OPTIONS", {}) or {}
+        if name.endswith("MinimumLengthValidator") and "min_length" in opts:
+            min_length = max(min_length, int(opts["min_length"]))
+        if name.endswith("PasswordComplexityValidator"):
+            if "min_length" in opts:
+                min_length = max(min_length, int(opts["min_length"]))
+            if "min_classes" in opts:
+                min_classes = int(opts["min_classes"])
+    return {
+        "min_length": min_length,
+        "min_classes": min_classes,
+        "classes": ["minúsculas", "mayúsculas", "números", "símbolos"],
+        "disallow_common": any(v.get("NAME", "").endswith("CommonPasswordValidator") for v in validators),
+        "disallow_numeric_only": any(
+            v.get("NAME", "").endswith("NumericPasswordValidator") for v in validators
+        ),
+    }
+
+
 class BootstrapStatusView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "heavy_reads"
@@ -899,7 +929,11 @@ class BootstrapStatusView(APIView):
         setup_required = (not has_holding) or (not has_company)
 
         return Response(
-            {"is_fresh": bool(is_fresh), "setup_required": bool(setup_required)},
+            {
+                "is_fresh": bool(is_fresh),
+                "setup_required": bool(setup_required),
+                "password_policy": _password_policy(),
+            },
             status=status.HTTP_200_OK,
         )
 
