@@ -372,6 +372,18 @@ def seed_rbac_v01() -> SeedResult:
             "rbac.assignments.update",
             "audit.read",
             "audit.export",
+            # Reporting / dashboards: company_admin se describe como "...+ reportes". El dueño
+            # del bootstrap (que recibe este rol) debe poder VER dashboards y datasets; sin esto,
+            # /dashboard (que exige report.dashboard.read) le daba 403 al recién creado.
+            "report.catalog.read",
+            "report.dataset.read",
+            "report.dataset.export",
+            "report.run.read",
+            "report.snapshot.generate",
+            "report.definition.manage",
+            "report.dashboard.read",
+            "report.dashboard.compose",
+            "accounting.report.read",
             "controls.sod.read",
             "controls.sod.manage",
             "controls.findings.read",
