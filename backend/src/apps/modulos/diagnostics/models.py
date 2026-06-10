@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -86,3 +87,124 @@ class ErrorEvent(models.Model):
             f"ErrorEvent(domain={self.domain}, risk={self.risk_class}, "
             f"type={self.exception_type}, n={self.occurrence_count})"
         )
+
+
+class FindingStatus(models.TextChoices):
+    OPEN = "open", "Abierto"
+    TRIAGED = "triaged", "Triado"
+    CONFIRMED = "confirmed", "Confirmado"
+    FIXED = "fixed", "Corregido (ya no aparece)"
+    ACCEPTED_RISK = "accepted_risk", "Riesgo aceptado (excepción vigente)"
+    FALSE_POSITIVE = "false_positive", "Falso positivo"
+
+
+# Estados que la ingesta recalcula automáticamente; el resto son decisiones humanas
+# que la re-ingesta NO debe pisar.
+AUTO_FINDING_STATES = frozenset(
+    {FindingStatus.OPEN, FindingStatus.ACCEPTED_RISK, FindingStatus.FIXED}
+)
+
+
+class SecurityFinding(models.Model):
+    """Hallazgo de seguridad persistido (Mundo B, rebanada B-2).
+
+    Convierte el JSON efímero de los scanners (pip-audit/npm-audit; SAST en una
+    sub-rebanada siguiente) en un ledger consultable, deduplicado por
+    (source_tool, package, vuln_id), consciente del contrato de excepciones con
+    vencimiento (`qa/contracts/security_exceptions.json`). La IA no entra acá: la
+    ingesta es determinista y respeta las decisiones humanas de triage.
+    """
+
+    class Meta:
+        app_label = "diagnostics"
+        ordering = ["-last_seen_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_tool", "package", "vuln_id"],
+                name="uniq_securityfinding_natural_key",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["source_tool", "status"]),
+            models.Index(fields=["risk_class", "status"]),
+            models.Index(fields=["status", "-last_seen_at"]),
+        ]
+
+    finding_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    # Identidad / origen.
+    source_tool = models.CharField(max_length=32)  # "pip" | "npm" | "bandit" | ...
+    vuln_id = models.CharField(max_length=128)  # CVE/GHSA/advisory/test id
+    package = models.CharField(max_length=255, blank=True, default="")
+    package_version = models.CharField(max_length=64, blank=True, default="")
+    fixed_version = models.CharField(max_length=64, blank=True, default="")
+    cve_id = models.CharField(max_length=64, blank=True, default="")
+    cwe_id = models.CharField(max_length=32, blank=True, default="")
+
+    # Ubicación (SAST; vacío para dependencias).
+    file_path = models.CharField(max_length=512, blank=True, default="")
+    line_start = models.PositiveIntegerField(default=0)
+    symbol = models.CharField(max_length=255, blank=True, default="")
+    domain = models.CharField(max_length=64, blank=True, default="")
+
+    # Clasificación Necktral. `reachable=unknown` por defecto (no se automatiza).
+    severity_raw = models.CharField(max_length=32, blank=True, default="")
+    risk_class = models.CharField(
+        max_length=2, choices=RiskClass.choices, default=RiskClass.C3
+    )
+    reachable = models.CharField(max_length=8, default="unknown")  # unknown|yes|no
+
+    # Estado / excepción.
+    status = models.CharField(
+        max_length=16, choices=FindingStatus.choices, default=FindingStatus.OPEN
+    )
+    owner = models.CharField(max_length=128, blank=True, default="")
+    accepted_risk_reason = models.CharField(max_length=255, blank=True, default="")
+    expires_at = models.DateField(null=True, blank=True)
+
+    first_seen_at = models.DateTimeField(default=timezone.now, editable=False)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self) -> str:
+        return (
+            f"SecurityFinding(tool={self.source_tool}, id={self.vuln_id}, "
+            f"risk={self.risk_class}, status={self.status})"
+        )
+
+
+class AIControl(models.Model):
+    """Botón de apagado runtime de la IA (singleton, pk=1).
+
+    Combinado con el flag de entorno `AI_FEATURES_ENABLED` (apagado por defecto): la IA
+    solo opera si el entorno la habilita **Y** este interruptor runtime está encendido.
+    Cualquier funcionalidad de IA DEBE consultar `flags.ai_features_enabled()`. Permite
+    apagar TODA la IA en caliente (sin redeploy) desde un admin con permiso.
+    """
+
+    SINGLETON_ID = 1
+
+    class Meta:
+        app_label = "diagnostics"
+
+    ai_enabled = models.BooleanField(default=True)
+    reason = models.CharField(max_length=255, blank=True, default="")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ai_control_updates",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls) -> AIControl:
+        obj, _ = cls.objects.get_or_create(pk=cls.SINGLETON_ID)
+        return obj
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.pk = self.SINGLETON_ID
+        super().save(*args, **kwargs)  # type: ignore[arg-type]
+
+    def __str__(self) -> str:
+        return f"AIControl(ai_enabled={self.ai_enabled})"

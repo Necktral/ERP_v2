@@ -21,6 +21,7 @@ voluntad del que programe la próxima feature).
 
 | # | Invariante | Cómo se vuelve estructural |
 |---|---|---|
+| **I0** | **Botón de apagado global**: toda la IA se puede apagar | `flags.ai_features_enabled()` = `AI_FEATURES_ENABLED` (entorno, **off por defecto**) **Y** `AIControl` runtime (el "botón", apagable en caliente); el gateway lo chequea antes de cualquier llamada a modelo. **Ya implementado** en `apps.modulos.diagnostics` (B-2) |
 | I1 | **Toda** corrida de IA produce un `AgentRun` persistido | El gateway es el ÚNICO punto de entrada; sin `AgentRun` abierto, no hay llamada a modelo |
 | I2 | Toda acción con efecto produce `AuditEvent` **encadenado** | Reutiliza `audit/writer.py` (hash-chain HMAC ya existente) — `module="AI"` |
 | I3 | **Cero autonomía C1**: dinero/stock/fiscal/permisos/CEC requieren `ApprovalRequest` + humano | Gate `ai-autonomy-guard` + `ToolPolicy.risk_class` + check en el bridge al dominio |

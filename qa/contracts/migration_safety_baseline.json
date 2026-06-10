@@ -1018,6 +1018,14 @@
       "ticket_ref": "DIAG-B1",
       "fingerprint": "09621431ba56b46bad1722ec822f29c46113882cc1a358acf3ff555000a00622"
     },
+    "backend/src/apps/modulos/diagnostics/migrations/0002_aicontrol_securityfinding.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_securityfinding_and_aicontrol_diagnostics_b2",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B2",
+      "fingerprint": "8a5348daf697875b9aacb6d82638f166fb387735f3f4256cbc813a44f81e5bde"
+    },
     "backend/src/apps/modulos/documents/migrations/0001_initial.py": {
       "risk_class": "online_safe",
       "rollout_strategy": "create_scanneddocument_table_idp_f1",

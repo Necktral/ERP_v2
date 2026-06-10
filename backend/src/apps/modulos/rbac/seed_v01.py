@@ -288,6 +288,9 @@ def seed_rbac_v01() -> SeedResult:
         "documents.scan.read": "Ver documentos escaneados y su texto/campos extraídos.",
         "documents.scan.review": "Revisar y confirmar el resultado de OCR/extracción.",
         "diagnostics.error.read": "Ver el ledger de errores de runtime (observabilidad/diagnóstico).",
+        "diagnostics.finding.read": "Ver el ledger de hallazgos de seguridad (SCA/SAST).",
+        "diagnostics.ai_control.read": "Ver el estado del botón de apagado de la IA.",
+        "diagnostics.ai_control.manage": "Encender/apagar la IA (kill switch runtime).",
     }
 
     permissions.update(
@@ -356,6 +359,9 @@ def seed_rbac_v01() -> SeedResult:
             "documents.scan.read",
             "documents.scan.review",
             "diagnostics.error.read",
+            "diagnostics.finding.read",
+            "diagnostics.ai_control.read",
+            "diagnostics.ai_control.manage",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
