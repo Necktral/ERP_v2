@@ -47,7 +47,7 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_auditor": "Auditor Estación (solo lectura de operación y reportes).",
 
         # NOMINA / Asistencia de campo
-        "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+        "field_supervisor": "Supervisor de campo: revisa/aprueba asistencia de cuadrillas con segregación de funciones.",
 
         # FLEET / Mantenimiento
         "fleet_driver": "Conductor: checklists y reportes de campo (app).",
@@ -57,8 +57,8 @@ def seed_rbac_v01() -> SeedResult:
         "fleet_clerk": "Bodega/registro de flota.",
 
         # FINCA / Manejo de fincas (agrícola)
-        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
-        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
+        "finca_mandador": "Mandador / Administrador de Finca: coordina finca, personal, labores, insumos y bitácora agrícola.",
+        "finca_capataz": "Capataz: supervisa cuadrillas, registra labores ejecutadas, asistencia e insumos en campo.",
     }
 
     permissions = {
