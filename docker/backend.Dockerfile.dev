@@ -8,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencias del sistema (psycopg, y cairo/pango para WeasyPrint → PDF de planilla)
+# Dependencias del sistema (psycopg; cairo/pango para WeasyPrint → PDF de planilla;
+# tesseract-ocr + idioma español para la etapa OCR del pipeline IDP — apps/modulos/documents)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -19,6 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     shared-mime-info \
     fonts-dejavu-core \
+    tesseract-ocr \
+    tesseract-ocr-spa \
   && rm -rf /var/lib/apt/lists/*
 
 # Dependencias Python (cacheable)

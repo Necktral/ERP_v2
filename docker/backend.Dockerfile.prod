@@ -28,7 +28,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# runtime deps (curl healthchecks, libpq postgres, cairo/pango para WeasyPrint → PDF)
+# runtime deps (curl healthchecks, libpq postgres, cairo/pango para WeasyPrint → PDF,
+# tesseract-ocr + idioma español para la etapa OCR del pipeline IDP)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
@@ -37,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf-2.0-0 \
     shared-mime-info \
     fonts-dejavu-core \
+    tesseract-ocr \
+    tesseract-ocr-spa \
   && rm -rf /var/lib/apt/lists/*
 
 # site-packages desde builder

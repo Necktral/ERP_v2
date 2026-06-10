@@ -101,6 +101,8 @@
     "modulos.dashboard->modulos.common",
     "modulos.dashboard->modulos.iam",
     "modulos.dashboard->modulos.rbac",
+    "modulos.documents->modulos.common",
+    "modulos.documents->modulos.iam",
     "modulos.estacion_servicios->kernels.facturacion",
     "modulos.estacion_servicios->kernels.inventarios",
     "modulos.estacion_servicios->modulos.audit",

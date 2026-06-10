@@ -270,6 +270,7 @@ INSTALLED_APPS += [
     "apps.modulos.comisariato.apps.ComisariatoConfig",
     "apps.modulos.notifications.apps.NotificationsConfig",
     "apps.modulos.fleet.apps.FleetConfig",
+    "apps.modulos.documents.apps.DocumentsConfig",
 ]
 
 # Notifications / FCM (Fase B): push gateado; default OFF (Fase A entrega in-app por RecordSender).
