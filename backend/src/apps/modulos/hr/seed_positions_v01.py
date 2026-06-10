@@ -39,8 +39,8 @@ class PositionSpec:
 # Catálogo CONGELADO de puestos agrícolas v0.1. Nombres canónicos (tilde en display); códigos
 # ASCII estables. Cambiar esta lista es una decisión de diseño, no un parámetro de runtime.
 POSITION_CATALOG: tuple[PositionSpec, ...] = (
-    # Cúpula: el Gerente Agrícola es el jefe de TODOS los negocios (el "superusuario", primer
-    # usuario); el Asistente de Gerencia es su delegado con los MISMOS permisos. Ambos = company_admin.
+    # Cúpula: el Gerente Agrícola es el jefe de todos los negocios (el "superusuario", primer
+    # usuario); el Asistente de Gerencia es su delegado con los mismos permisos. Ambos = company_admin.
     PositionSpec("FNC-N1-010", "Gerente Agrícola", "company_admin", _COMPANY),
     PositionSpec("FNC-N1-020", "Asistente de Gerencia", "company_admin", _COMPANY),
     # Administrador de Fincas: jefe de TODAS las fincas (manda a los Mandadores) => scope COMPANY.
