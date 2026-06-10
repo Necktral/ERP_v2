@@ -29,6 +29,25 @@ los gates bloquean; la IA (apagable) al final.*
 > (#73). Al restaurar el acceso: mergear el PR de B-5 **primero**, luego el de CodeUnitEvidence
 > (las migraciones están numeradas en orden: 0004 → 0005, sin colisión).
 
+## Aparte: roles RBAC predefinidos (rama `feat/rbac-predefined-roles`)
+Rama pusheada (commit propio `cf6247b9`, toca **solo** `rbac/seed_v01.py` + `tests/test_seed_roles.py`).
+**No agrega permisos ni migración**: define 5 roles transversales y su mapeo a permisos ya existentes:
+- `platform_observer` (observabilidad: ve+diagnostica, NO gobierna IA),
+- `ai_steward` (gobierna el kill switch de IA; SoD vs `company_admin`),
+- `accountant` (prepara/aprueba drafts, NO postea/cierra/override),
+- `collections_officer` (cartera CxC: aplica pagos, NO ajusta/castiga),
+- `viewer` (solo lectura ejecutiva; cero ops).
+
+**Dependencia mínima — apila sobre B-5, NO sobre CodeUnit:** el rol `ai_steward` referencia el permiso
+`diagnostics.ai_diagnose.run`, que **lo registra B-5** (no existe en #73). Por eso la rama se basa en
+`eeb257c8` (B-5). **No** toca nada de CodeUnit (cero referencias a `code_evidence`). Verificado: sobre
+#73 el seed hace hard-fail (permiso inexistente); sobre B-5 pasa.
+
+> **Orden de merge:** B-5 **primero**, luego `feat/rbac-predefined-roles` (en cualquier orden respecto a
+> CodeUnit; son independientes entre sí). Validado local: ruff/mypy/static-scan verdes;
+> `pytest src/apps/modulos/rbac/tests/test_seed_roles.py src/tests/test_onboarding_e2e.py` → 8 verdes.
+> `test_seed_roles.py` fija el SoD (afirma lo que cada rol DEBE y NO debe tener) y detecta drift.
+
 ## Cómo validar cada rama (compuerta local, sin CI)
 En el contenedor Docker canónico (`docker compose exec -T backend`):
 - `ruff check backend/src/apps/modulos/diagnostics` → All checks passed.
