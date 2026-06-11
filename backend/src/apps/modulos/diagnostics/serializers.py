@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
+from .models import (
+    AIControl,
+    CodeUnitEvidence,
+    DiagnosticRun,
+    ErrorEvent,
+    SecurityFinding,
+)
 
 _LIST_FIELDS = [
     "error_id",
@@ -121,3 +127,25 @@ class DiagnosticRunSerializer(serializers.ModelSerializer):
         model = DiagnosticRun
         fields = _DIAGNOSIS_FIELDS
         read_only_fields = _DIAGNOSIS_FIELDS
+
+
+_CODEUNIT_FIELDS = [
+    "path",
+    "line_start",
+    "line_end",
+    "symbol",
+    "domain",
+    "coverage_state",
+    "error_refs",
+    "security_refs",
+    "last_commit",
+    "created_at",
+    "updated_at",
+]
+
+
+class CodeUnitEvidenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CodeUnitEvidence
+        fields = _CODEUNIT_FIELDS
+        read_only_fields = _CODEUNIT_FIELDS

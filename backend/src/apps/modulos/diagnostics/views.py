@@ -10,10 +10,17 @@ from apps.modulos.common.permissions import rbac_permission
 from .ai_diagnosis import AIDisabledError, run_ai_diagnosis
 from .diagnose import create_diagnostic_run
 from .gates import evaluate_release_gates
-from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
+from .models import (
+    AIControl,
+    CodeUnitEvidence,
+    DiagnosticRun,
+    ErrorEvent,
+    SecurityFinding,
+)
 from .serializers import (
     AIControlSerializer,
     AIControlUpdateSerializer,
+    CodeUnitEvidenceSerializer,
     DiagnosticRunSerializer,
     ErrorEventDetailSerializer,
     ErrorEventSerializer,
@@ -121,6 +128,21 @@ class DiagnosticRunDetailView(APIView):
     def get(self, request, run_id):
         obj = get_object_or_404(DiagnosticRun, run_id=run_id)
         return Response(DiagnosticRunSerializer(obj).data, status=status.HTTP_200_OK)
+
+
+class CodeUnitEvidenceListView(APIView):
+    """¿La línea que falló está testeada? Evidencia por línea (cobertura + refs)."""
+
+    permission_classes = [rbac_permission("diagnostics.error.read")]
+
+    def get(self, request):
+        qs = CodeUnitEvidence.objects.all()
+        for f in ("domain", "coverage_state"):
+            val = request.query_params.get(f)
+            if val:
+                qs = qs.filter(**{f: val})
+        data = CodeUnitEvidenceSerializer(qs[:300], many=True).data
+        return Response({"results": data}, status=status.HTTP_200_OK)
 
 
 class ReleaseReadinessView(APIView):

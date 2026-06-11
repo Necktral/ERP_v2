@@ -87,6 +87,19 @@ apagada (default), el endpoint responde **409** y no toca nada.
 - **API**: `POST /api/diagnostics/diagnoses/<run_id>/ai-analyze/` (permiso `diagnostics.ai_diagnose.run`).
 - **Degradable**: endpoint manual, jamás en la ruta crítica; offline-safe con el heurístico.
 
+## `CodeUnitEvidence` — la línea de falla: ¿la línea que falló está testeada? (sin IA)
+
+Cierra el *por qué*: una línea que falla y **no tiene test** es una causa probable y accionable.
+- **No es 'log por línea'**: solo las líneas que importan (donde hay un `ErrorEvent`/`SecurityFinding`),
+  anotadas con su **estado de cobertura** desde `coverage.xml` (`covered`/`uncovered`/`unknown`).
+- **`coverage.py`** parsea el Cobertura XML que ya genera la suite y normaliza paths (`apps/…`) para
+  matchear con `ErrorEvent.file_path`. **`ingest_code_evidence`** (command `ingest_code_evidence`) ata
+  cada línea fallida a su cobertura + refs cruzadas.
+- **Integrado al diagnóstico (B-3)**: el evidence bundle y el resumen ahora incluyen la cobertura de la
+  línea; si está `uncovered` agregan la señal **`linea_sin_test`** ("la línea que falló NO está cubierta").
+- **API**: `GET /api/diagnostics/code-evidence/` (permiso `diagnostics.error.read`).
+
 ## Fuera de estas rebanadas (siguientes)
-SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (¿la línea que falló está testeada?), proveedor LLM
-real + presupuesto/observabilidad del gateway de Mundo A; tenant-scoping fino; OpenTelemetry/traces.
+SAST/bandit con dominio; proveedor LLM real para B-5 (key + presupuesto/observabilidad del gateway de
+Mundo A; sigue apagado por defecto); símbolo/`last_commit` en `CodeUnitEvidence`; tenant-scoping fino;
+OpenTelemetry/traces.
