@@ -70,6 +70,7 @@
     "modulos.cec->modulos.audit",
     "modulos.cec->modulos.common",
     "modulos.cec->modulos.compras",
+    "modulos.cec->modulos.diagnostics",
     "modulos.cec->modulos.iam",
     "modulos.cec->modulos.integration",
     "modulos.comisariato->kernels.facturacion",

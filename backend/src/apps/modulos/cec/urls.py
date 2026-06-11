@@ -5,6 +5,7 @@ from django.urls import path
 from .views import (
     CloseRunAdvanceView,
     CloseRunExecuteView,
+    CloseRunExplainView,
     CloseRunListCreateView,
     CloseRunSummaryView,
     EvidenceCreateView,
@@ -20,6 +21,7 @@ urlpatterns = [
     path("close-runs/<uuid:run_id>/advance/", CloseRunAdvanceView.as_view()),
     path("close-runs/<uuid:run_id>/execute/", CloseRunExecuteView.as_view()),
     path("close-runs/<uuid:run_id>/summary/", CloseRunSummaryView.as_view()),
+    path("close-runs/<uuid:run_id>/explain/", CloseRunExplainView.as_view()),
     path("exceptions/", ExceptionListCreateView.as_view()),
     path("exceptions/<uuid:exception_id>/resolve/", ExceptionResolveView.as_view()),
     path("evidence/", EvidenceCreateView.as_view()),

@@ -101,6 +101,10 @@ env = environ.Env(
     KNOWLEDGE_LLM_BASE_URL=(str, ""),
     KNOWLEDGE_LLM_MODEL=(str, ""),
     KNOWLEDGE_LLM_TIMEOUT=(float, 30.0),
+    # Síntesis asesora del paquete contador CEC: vacío => hereda el LLM de diagnostics.
+    CEC_LLM_BASE_URL=(str, ""),
+    CEC_LLM_MODEL=(str, ""),
+    CEC_LLM_TIMEOUT=(float, 30.0),
     # Umbrales operativos de la supervisión (dependen del volumen de cada despliegue).
     DIAGNOSTICS_SPIKE_THRESHOLD=(int, 20),
     DIAGNOSTICS_RECENT_WINDOW_HOURS=(int, 24),
@@ -204,6 +208,9 @@ DIAGNOSTICS_LLM_TIMEOUT = env("DIAGNOSTICS_LLM_TIMEOUT")
 KNOWLEDGE_LLM_BASE_URL = env("KNOWLEDGE_LLM_BASE_URL")
 KNOWLEDGE_LLM_MODEL = env("KNOWLEDGE_LLM_MODEL")
 KNOWLEDGE_LLM_TIMEOUT = env("KNOWLEDGE_LLM_TIMEOUT")
+CEC_LLM_BASE_URL = env("CEC_LLM_BASE_URL")
+CEC_LLM_MODEL = env("CEC_LLM_MODEL")
+CEC_LLM_TIMEOUT = env("CEC_LLM_TIMEOUT")
 DIAGNOSTICS_SPIKE_THRESHOLD = env("DIAGNOSTICS_SPIKE_THRESHOLD")
 DIAGNOSTICS_RECENT_WINDOW_HOURS = env("DIAGNOSTICS_RECENT_WINDOW_HOURS")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.

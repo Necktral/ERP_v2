@@ -12,6 +12,8 @@ from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.integration.services import publish_outbox_event
 
+from .ai_explainer import synthesize_explanation
+from .explainer import build_accountant_package
 from .models import CECException, CloseRun, EvidenceArtifact
 from .serializers import (
     CECExceptionCreateIn,
@@ -227,6 +229,22 @@ class CloseRunSummaryView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class CloseRunExplainView(APIView):
+    """Paquete contador: explicación SOLO LECTURA del cierre (sin outbox, sin escrituras)."""
+
+    permission_classes = [rbac_permission("cec.close_run.read")]
+
+    def get(self, request, run_id):
+        company = request.company
+        run = get_object_or_404(CloseRun, run_id=run_id, company=company)
+        package = build_accountant_package(run)
+        ai = None
+        if str(request.query_params.get("synthesize", "")).lower() in ("1", "true"):
+            ai = synthesize_explanation(package)
+        package["ai_synthesis"] = ai
+        return Response(package, status=status.HTTP_200_OK)
 
 
 class ExceptionListCreateView(APIView):

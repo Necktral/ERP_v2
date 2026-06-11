@@ -73,6 +73,18 @@ def test_accountant_has_sod_no_post_close_or_override():
 
 
 @pytest.mark.django_db
+def test_accountant_reads_cec_close_but_does_not_operate_it():
+    seed_rbac_v01()
+    p = _perms("accountant")
+    # Paquete contador: lee cierres y excepciones del CEC...
+    assert {"cec.close_run.read", "cec.exception.read"} <= p
+    # ...pero no ejecuta/avanza cierres ni resuelve excepciones (SoD).
+    assert "cec.close_run.create" not in p
+    assert "cec.close_run.update" not in p
+    assert "cec.exception.resolve" not in p
+
+
+@pytest.mark.django_db
 def test_collections_officer_no_writeoff_adjust_or_disburse():
     seed_rbac_v01()
     p = _perms("collections_officer")
