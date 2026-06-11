@@ -96,6 +96,11 @@ env = environ.Env(
     DIAGNOSTICS_LLM_BASE_URL=(str, ""),
     DIAGNOSTICS_LLM_MODEL=(str, "local"),
     DIAGNOSTICS_LLM_TIMEOUT=(float, 30.0),
+    # RAG de documentación interna (módulo knowledge): vacío => hereda el endpoint del
+    # LLM de diagnostics (un solo servidor local sirve a ambos). Sigue tras el kill switch.
+    KNOWLEDGE_LLM_BASE_URL=(str, ""),
+    KNOWLEDGE_LLM_MODEL=(str, ""),
+    KNOWLEDGE_LLM_TIMEOUT=(float, 30.0),
     # Umbrales operativos de la supervisión (dependen del volumen de cada despliegue).
     DIAGNOSTICS_SPIKE_THRESHOLD=(int, 20),
     DIAGNOSTICS_RECENT_WINDOW_HOURS=(int, 24),
@@ -196,6 +201,9 @@ DIAGNOSTICS_ENABLED = env("DIAGNOSTICS_ENABLED")
 DIAGNOSTICS_LLM_BASE_URL = env("DIAGNOSTICS_LLM_BASE_URL")
 DIAGNOSTICS_LLM_MODEL = env("DIAGNOSTICS_LLM_MODEL")
 DIAGNOSTICS_LLM_TIMEOUT = env("DIAGNOSTICS_LLM_TIMEOUT")
+KNOWLEDGE_LLM_BASE_URL = env("KNOWLEDGE_LLM_BASE_URL")
+KNOWLEDGE_LLM_MODEL = env("KNOWLEDGE_LLM_MODEL")
+KNOWLEDGE_LLM_TIMEOUT = env("KNOWLEDGE_LLM_TIMEOUT")
 DIAGNOSTICS_SPIKE_THRESHOLD = env("DIAGNOSTICS_SPIKE_THRESHOLD")
 DIAGNOSTICS_RECENT_WINDOW_HOURS = env("DIAGNOSTICS_RECENT_WINDOW_HOURS")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
@@ -246,6 +254,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",  # FTS en español (módulo knowledge)
     # Terceros
     "rest_framework",
     "rest_framework_simplejwt",
@@ -293,6 +302,7 @@ INSTALLED_APPS += [
     "apps.modulos.fleet.apps.FleetConfig",
     "apps.modulos.documents.apps.DocumentsConfig",
     "apps.modulos.diagnostics.apps.DiagnosticsConfig",
+    "apps.modulos.knowledge.apps.KnowledgeConfig",
 ]
 
 # Notifications / FCM (Fase B): push gateado; default OFF (Fase A entrega in-app por RecordSender).
