@@ -91,7 +91,7 @@ def test_correlation_and_context_from_request():
     assert ev.endpoint == "/api/x/"
     assert ev.method == "POST"
     assert ev.domain == "diagnostics"  # el frame top vive en este módulo de tests
-    assert ev.risk_class == "C3"
+    assert ev.risk_class == "C2"  # calibración: la plataforma de diagnóstico es C2
 
 
 @pytest.mark.django_db

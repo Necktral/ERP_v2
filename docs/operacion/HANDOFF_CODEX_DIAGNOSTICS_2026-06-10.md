@@ -86,10 +86,28 @@ En el contenedor Docker canónico (`docker compose exec -T backend`):
 1. **Flake preexistente de accounting**: `/api/accounting/periods/close/` da 401 intermitente
    (AUTH_INVALID_TOKEN) en la suite completa, en tests distintos entre corridas; pasa aislado; es de
    la capa auth/transacciones del kernel accounting, **no** de diagnostics. Fix futuro del kernel.
-2. **Basura sin trackear** `backend/src/apps/modulos/documents/qa/reports/static_scan.txt` (residuo de
-   #68): rompe el static-scan LOCAL (contiene el patrón prohibido); untracked → no afecta CI. Limpiar
-   aparte (no se borró por no haberlo creado nosotros).
+2. ~~Basura sin trackear `documents/qa/reports/static_scan.txt`~~ **LIMPIADO** (2026-06-10 tarde):
+   era un report generado (residuo de #68) que rompía el static-scan local; untracked, sin valor.
+
+## Actualización 2026-06-10 (tarde) — GitHub volvió; PRs creados; ola de hardening
+- **PRs en GitHub** (todos verdes al cierre): #74 B-5 → #75 CodeUnit → #76 Supervisión → #79 LLM
+  (stack lineal) → **#81 hardening** (base #79, la punta del stack). #77 roles RBAC (sobre B-5);
+  #78 HR positions y #80 SAST/bandit (independientes sobre master).
+- **Orden de merge sugerido:** 74 → 75 → 76 → 79 → 81; #77/#78/#80 en cualquier momento
+  (uniones triviales posibles: #77 y #81 tocan `rbac/seed_v01.py`; #80 y #81 tocan `findings.py`
+  vs `domain_map.py` — disjuntos, pero el risk de SAST se beneficia de la calibración de #81).
+- **#79 incluye fix**: `requests==2.34.2` pineado en `requirements/base.txt` (el CI no lo tenía
+  y el backend no arrancaba — ModuleNotFoundError; el dev container lo tenía de rebote).
+- **#80 incluye cableado**: `qa-backend-bandit` ahora emite también `qa/reports/bandit.json`
+  (mismos flags/excludes, no gatea) — el artefacto que `ingest_security_findings --bandit-report`
+  consume; registrado en el run-manifest.
+- **#81 (hardening)**: calibración real C1/C2/C3 del mapa de dominios (rbac/accounts/intercompany/
+  compras/retail_pos/comisariato/estacion_servicios fuera de C3) + test centinela; API de triage con
+  permisos `diagnostics.*.triage` (en `company_admin`); umbrales `DIAGNOSTICS_SPIKE_THRESHOLD`/
+  `DIAGNOSTICS_RECENT_WINDOW_HOURS` por env; `captured(source=...)` para errores fuera de HTTP.
+  Sin migración. 27 tests nuevos.
 
 ## Siguiente (cuando se decida)
-Proveedor LLM real para B-5 (key + presupuesto/observabilidad del gateway de Mundo A; sigue apagado por
-defecto); SAST/bandit con dominio; tenant-scoping fino del read API.
+Presupuesto/observabilidad del proveedor LLM (gateway de Mundo A; sigue apagado por defecto);
+tenant-scoping fino del read API; auditoría EAU de las decisiones de triage (requiere ampliar el
+catálogo de `audit/contracts.py`, hoy con WIP del usuario).

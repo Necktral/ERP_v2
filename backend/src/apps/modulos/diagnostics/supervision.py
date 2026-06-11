@@ -16,6 +16,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
 
 from .gates import evaluate_release_gates
@@ -50,10 +51,21 @@ _STATUS_BONUS: dict[str, int] = {
     ErrorStatus.OPEN.value: 20,
 }
 _FREQ_CAP = 200  # un error ruidoso no debe dominar: el aporte por frecuencia se topa
-_RECENT_WINDOW_HOURS = 24
-_RECENT_BONUS = 40  # visto en las últimas 24h => sube (supervisión es del AHORA)
+_RECENT_BONUS = 40  # visto en la ventana reciente => sube (supervisión es del AHORA)
 _UNCOVERED_BONUS = 80  # la línea que falló NO está testeada => más accionable/riesgoso
-_SPIKE_THRESHOLD = 20  # occurrence_count a partir del cual es "alta frecuencia"
+
+
+# Umbrales OPERATIVOS (a diferencia de los pesos, dependen del volumen real de cada
+# despliegue): configurables vía settings/env, con default seguro si no están definidos.
+
+def _spike_threshold() -> int:
+    """occurrence_count a partir del cual es "alta frecuencia" (default 20)."""
+    return int(getattr(settings, "DIAGNOSTICS_SPIKE_THRESHOLD", 20))
+
+
+def _recent_window_hours() -> int:
+    """Ventana (horas) en la que un fallo cuenta como "reciente" (default 24)."""
+    return int(getattr(settings, "DIAGNOSTICS_RECENT_WINDOW_HOURS", 24))
 
 
 def _coverage_index() -> dict[tuple[str, int], str]:
@@ -83,7 +95,7 @@ def score_error(
     status_bonus = _STATUS_BONUS.get(error.status, 0)
     frequency = min(int(error.occurrence_count), _FREQ_CAP)
     recency = 0
-    if error.last_seen_at and error.last_seen_at >= now - timedelta(hours=_RECENT_WINDOW_HOURS):
+    if error.last_seen_at and error.last_seen_at >= now - timedelta(hours=_recent_window_hours()):
         recency = _RECENT_BONUS
     uncovered = _UNCOVERED_BONUS if coverage_state == CoverageState.UNCOVERED else 0
     factors = {
@@ -105,7 +117,7 @@ def _alerts_for(error: ErrorEvent, coverage_state: str | None) -> list[dict[str,
         out.append(
             {"level": "critical", "code": "regresion", "message": "Regresión: un fallo corregido reapareció"}
         )
-    if int(error.occurrence_count) >= _SPIKE_THRESHOLD:
+    if int(error.occurrence_count) >= _spike_threshold():
         out.append(
             {
                 "level": "warning",

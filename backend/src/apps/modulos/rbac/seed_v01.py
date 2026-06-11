@@ -302,6 +302,8 @@ def seed_rbac_v01() -> SeedResult:
         "diagnostics.diagnose.read": "Ver diagnósticos de causa raíz de fallos.",
         "diagnostics.diagnose.run": "Disparar el diagnóstico de causa raíz de un fallo.",
         "diagnostics.ai_diagnose.run": "Disparar el diagnóstico IA advisory (requiere kill switch ON).",
+        "diagnostics.error.triage": "Triage humano de errores (confirmar/falso positivo/corregido/riesgo aceptado).",
+        "diagnostics.finding.triage": "Triage humano de hallazgos de seguridad (sin accepted_risk: ese va por contrato).",
     }
 
     permissions.update(
@@ -376,6 +378,8 @@ def seed_rbac_v01() -> SeedResult:
             "diagnostics.diagnose.read",
             "diagnostics.diagnose.run",
             "diagnostics.ai_diagnose.run",
+            "diagnostics.error.triage",
+            "diagnostics.finding.triage",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
