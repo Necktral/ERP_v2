@@ -10,6 +10,7 @@ from pathlib import Path
 ARTIFACTS = [
     ("static_scan.txt", "gate1"),
     ("bandit.txt", "gate1"),
+    ("bandit.json", "gate1"),
     ("ruff.txt", "gate1"),
     ("mypy_strict_critical.txt", "gate1"),
     ("mypy.txt", "gate1"),
