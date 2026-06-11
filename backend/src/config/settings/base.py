@@ -90,6 +90,12 @@ env = environ.Env(
     # la observabilidad determinista (captura de errores) está encendida.
     AI_FEATURES_ENABLED=(bool, False),
     DIAGNOSTICS_ENABLED=(bool, True),
+    # Proveedor LLM real para el motor advisory B-5 (API OpenAI-compat, p.ej. llama-server
+    # local). Vacío => heurístico determinista. El modelo vive FUERA del repo; el backend
+    # solo habla HTTP a esta URL. Sigue detrás del kill switch (AI_FEATURES_ENABLED).
+    DIAGNOSTICS_LLM_BASE_URL=(str, ""),
+    DIAGNOSTICS_LLM_MODEL=(str, "local"),
+    DIAGNOSTICS_LLM_TIMEOUT=(float, 30.0),
 )
 
 if ENV_FILE.exists():
@@ -184,6 +190,9 @@ SENTRY_RELEASE = env("SENTRY_RELEASE")
 # Diagnóstico / IA — interruptores (ver apps.modulos.diagnostics.flags).
 AI_FEATURES_ENABLED = env("AI_FEATURES_ENABLED")
 DIAGNOSTICS_ENABLED = env("DIAGNOSTICS_ENABLED")
+DIAGNOSTICS_LLM_BASE_URL = env("DIAGNOSTICS_LLM_BASE_URL")
+DIAGNOSTICS_LLM_MODEL = env("DIAGNOSTICS_LLM_MODEL")
+DIAGNOSTICS_LLM_TIMEOUT = env("DIAGNOSTICS_LLM_TIMEOUT")
 # Nombre contractual del módulo que emite eventos de auditoría para este servicio.
 AUDIT_MODULE_NAME = "AUTH"
 AUDIT_SCHEMA_VERSION = 1
