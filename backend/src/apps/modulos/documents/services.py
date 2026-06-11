@@ -1,7 +1,8 @@
-"""Lógica del pipeline IDP (F1: captura → OCR → revisión).
+"""Lógica del pipeline IDP (captura → OCR → extracción F2 → revisión).
 
 Sin dependencia de HTTP para que el `management command` y el sync reusen lo mismo.
-Audit y straight-through (F4) se suman como hardening posterior.
+La extracción (F2) produce SOLO borradores: jamás toca `linked_object_*` ni crea
+objetos de negocio — eso es F4 (integración), siempre después de la revisión humana.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from django.utils import timezone
 from apps.modulos.iam.models import OrgUnit
 
 from . import ocr as ocr_engine
+from .extraction import run_extraction
 from .models import ScannedDocument, ScanStatus
 from .storage import load_image_bytes, store_image
 
@@ -61,13 +63,49 @@ def run_ocr_on_document(doc: ScannedDocument) -> ScannedDocument:
     return doc
 
 
+def extract_fields_on_document(doc: ScannedDocument) -> ScannedDocument:
+    """Etapa F2: extrae campos del texto OCR → estado EXTRACTED (borrador para revisar).
+
+    Solo aplica sobre PROCESSED (el OCR ya corrió). Nunca toca `linked_object_*` ni
+    crea objetos de negocio: el resultado es un borrador que la revisión humana
+    confirma o corrige.
+    """
+    if doc.status != ScanStatus.PROCESSED:
+        raise ValueError(
+            f"La extracción requiere status PROCESSED (actual: {doc.status})."
+        )
+    doc.extracted_fields = run_extraction(doc.ocr_text, doc_type=doc.doc_type)
+    doc.status = ScanStatus.EXTRACTED
+    doc.save(update_fields=["extracted_fields", "status", "updated_at"])
+    return doc
+
+
 def process_pending_documents(*, limit: int = 50) -> int:
-    """Procesa con OCR los documentos PENDING_OCR (etapa híbrida: en el servidor)."""
+    """Procesa los PENDING_OCR: OCR y, si salió bien, encadena la extracción F2.
+
+    La extracción es best-effort dentro del batch: si fallara, el documento queda en
+    PROCESSED (lo recoge `process_pending_extractions`) y el OCR no se pierde.
+    """
     pending = list(
         ScannedDocument.objects.filter(status=ScanStatus.PENDING_OCR).order_by("created_at")[:limit]
     )
     for doc in pending:
         run_ocr_on_document(doc)
+        if doc.status == ScanStatus.PROCESSED:
+            try:
+                extract_fields_on_document(doc)
+            except Exception:  # noqa: BLE001 - el OCR ya quedó persistido; F2 se reintenta
+                pass
+    return len(pending)
+
+
+def process_pending_extractions(*, limit: int = 50) -> int:
+    """Extrae campos de los documentos PROCESSED rezagados (OCR previo a F2 o reintento)."""
+    pending = list(
+        ScannedDocument.objects.filter(status=ScanStatus.PROCESSED).order_by("created_at")[:limit]
+    )
+    for doc in pending:
+        extract_fields_on_document(doc)
     return len(pending)
 
 

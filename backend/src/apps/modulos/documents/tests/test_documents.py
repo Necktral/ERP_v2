@@ -63,7 +63,8 @@ def test_process_pending_runs_ocr_and_marks_processed(monkeypatch):
 
     assert n == 1
     doc = ScannedDocument.objects.get(company=company)
-    assert doc.status == ScanStatus.PROCESSED
+    # F2: el batch encadena OCR + extracción => el pipeline termina en EXTRACTED.
+    assert doc.status == ScanStatus.EXTRACTED
     assert doc.ocr_text == "TEXTO OCR"
     assert doc.ocr_engine == ocr_module.OCR_ENGINE
     assert doc.processed_at is not None
@@ -118,4 +119,5 @@ def test_command_process_pending_ocr(monkeypatch):
 
     call_command("process_pending_ocr", "--limit", "5")
 
-    assert ScannedDocument.objects.get(company=company).status == ScanStatus.PROCESSED
+    # F2: el command encadena OCR + extracción (el borrador queda listo para revisar).
+    assert ScannedDocument.objects.get(company=company).status == ScanStatus.EXTRACTED

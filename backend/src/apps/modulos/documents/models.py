@@ -1,8 +1,9 @@
 """Modelo base del subsistema IDP (Intelligent Document Processing).
 
 `ScannedDocument` es la unidad del pipeline: captura → OCR → extracción → revisión →
-integración. F1 cubre captura + OCR + revisión; los campos `extracted_fields`,
-`doc_type` y `linked_object_*` ya quedan listos para las fases F2–F4 sin reescribir.
+integración. F1 cubre captura + OCR + revisión; F2 agrega la etapa de extracción
+determinista (estado EXTRACTED = borrador con campos, cola de revisión humana).
+`linked_object_*` queda reservado para F4 (integración).
 """
 from __future__ import annotations
 
@@ -18,11 +19,13 @@ class DocumentType(models.TextChoices):
     INVOICE = "INVOICE", "Factura/Recibo"
     FUEL_TICKET = "FUEL_TICKET", "Ticket de combustible"
     PAYROLL = "PAYROLL", "Planilla/Nómina"
+    REMISION = "REMISION", "Remisión/Envío (movimiento entre fincas/bodegas)"
 
 
 class ScanStatus(models.TextChoices):
     PENDING_OCR = "PENDING_OCR", "Pendiente de OCR"
     PROCESSED = "PROCESSED", "Procesado (OCR)"
+    EXTRACTED = "EXTRACTED", "Campos extraídos (borrador, pendiente de revisión)"
     REVIEWED = "REVIEWED", "Revisado"
     FAILED = "FAILED", "Falló OCR"
 
