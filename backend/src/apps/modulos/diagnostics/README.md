@@ -73,7 +73,20 @@ evidencia DETERMINISTA** (sin IA):
   - **Command**: `check_release_gates` (falla con exit≠0 si hay C1 abierto) — para el pipeline de
     deploy (que tiene DB), no para el job de tests de CI.
 
+## Rebanada B-5 — motor IA **advisory** (rellena la hipótesis de causa), detrás del kill switch
+
+Primera pieza con IA del Mundo B. **SIEMPRE gateada por `flags.ai_features_enabled()`**: con la IA
+apagada (default), el endpoint responde **409** y no toca nada.
+- **Proveedor abstraído** (`providers.py`): `RootCauseProvider` (seam) + `HeuristicRootCauseProvider`
+  por defecto — **determinista, sin LLM, sin red ni costo** (placeholder honesto, confianza `low`). Un
+  proveedor LLM real (con key + gateway de Mundo A) lo reemplaza sin tocar el pipeline, y sigue detrás
+  del kill switch.
+- **`ai_diagnosis.run_ai_diagnosis`**: rellena `root_cause_hypothesis`/`recommended_fix`/
+  `recommended_tests`/`confidence`, marca `ai_assisted=True`, y **deja un `AIAgentRun`** (auditoría:
+  invariante "toda corrida de IA deja AgentRun"). Es advisory: la decisión sigue siendo humana.
+- **API**: `POST /api/diagnostics/diagnoses/<run_id>/ai-analyze/` (permiso `diagnostics.ai_diagnose.run`).
+- **Degradable**: endpoint manual, jamás en la ruta crítica; offline-safe con el heurístico.
+
 ## Fuera de estas rebanadas (siguientes)
-SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (¿la línea que falló está testeada?), motor IA
-**advisory** que rellena la hipótesis de causa consumiendo el gateway de Mundo A y respetando el kill
-switch (B-5); tenant-scoping fino; OpenTelemetry/traces.
+SAST/bandit con dominio (B-2b), `CodeUnitEvidence` (¿la línea que falló está testeada?), proveedor LLM
+real + presupuesto/observabilidad del gateway de Mundo A; tenant-scoping fino; OpenTelemetry/traces.

@@ -286,3 +286,47 @@ class DiagnosticRun(models.Model):
             f"DiagnosticRun(subject={self.subject_type}:{self.subject_id}, "
             f"risk={self.risk_class}, ai={self.ai_assisted})"
         )
+
+
+class AIAgentRun(models.Model):
+    """Auditoría de una corrida de IA advisory (B-5).
+
+    Invariante de gobernanza (I1 del blueprint de Mundo A): **toda corrida de IA deja un
+    AgentRun persistido**. Este es el mínimo para el motor advisory de diagnóstico;
+    generaliza al `ai_platform` de Mundo A cuando exista. Solo se crea con el kill switch
+    encendido (`flags.ai_features_enabled()`).
+    """
+
+    class Meta:
+        app_label = "diagnostics"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["agent_name", "-created_at"]),
+        ]
+
+    run_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    agent_name = models.CharField(max_length=64)
+    model_id = models.CharField(max_length=64, blank=True, default="")
+    prompt_version = models.CharField(max_length=32, blank=True, default="")
+    subject_run = models.ForeignKey(
+        DiagnosticRun,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="agent_runs",
+    )
+    status = models.CharField(max_length=16, default="completed")  # completed|failed
+    confidence = models.CharField(max_length=8, blank=True, default="")
+    latency_ms = models.PositiveIntegerField(default=0)
+    cost_estimate = models.DecimalField(max_digits=10, decimal_places=4, default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ai_agent_runs",
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    def __str__(self) -> str:
+        return f"AIAgentRun(agent={self.agent_name}, model={self.model_id}, status={self.status})"

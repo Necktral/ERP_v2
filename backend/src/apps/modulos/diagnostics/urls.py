@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     AIControlView,
+    AIDiagnoseView,
     DiagnoseErrorView,
     DiagnosticRunDetailView,
     DiagnosticRunListView,
@@ -30,6 +31,12 @@ urlpatterns = [
         "diagnoses/<uuid:run_id>/",
         DiagnosticRunDetailView.as_view(),
         name="diagnostics-diagnosis-detail",
+    ),
+    # Motor IA advisory (rellena la hipótesis de causa) — detrás del kill switch.
+    path(
+        "diagnoses/<uuid:run_id>/ai-analyze/",
+        AIDiagnoseView.as_view(),
+        name="diagnostics-diagnosis-ai-analyze",
     ),
     path("findings/", SecurityFindingListView.as_view(), name="diagnostics-finding-list"),
     path(

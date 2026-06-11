@@ -47,7 +47,7 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_auditor": "Auditor Estación (solo lectura de operación y reportes).",
 
         # NOMINA / Asistencia de campo
-        "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+        "field_supervisor": "Supervisor de campo: revisa/aprueba asistencia de cuadrillas con segregación de funciones.",
 
         # FLEET / Mantenimiento
         "fleet_driver": "Conductor: checklists y reportes de campo (app).",
@@ -57,8 +57,9 @@ def seed_rbac_v01() -> SeedResult:
         "fleet_clerk": "Bodega/registro de flota.",
 
         # FINCA / Manejo de fincas (agrícola)
-        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
-        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
+        "finca_mandador": "Mandador / Administrador de Finca: coordina finca, personal, labores, insumos y bitácora agrícola.",
+        "finca_capataz": "Capataz: supervisa cuadrillas, registra labores ejecutadas, asistencia e insumos en campo.",
+        "finca_tecnico": "Ingeniero/Técnico Agrónomo: asesor técnico — ve todo y define el plan de labores (fertilización/plagas); NO captura ejecución diaria ni postea costos.",
     }
 
     permissions = {
@@ -293,6 +294,7 @@ def seed_rbac_v01() -> SeedResult:
         "diagnostics.ai_control.manage": "Encender/apagar la IA (kill switch runtime).",
         "diagnostics.diagnose.read": "Ver diagnósticos de causa raíz de fallos.",
         "diagnostics.diagnose.run": "Disparar el diagnóstico de causa raíz de un fallo.",
+        "diagnostics.ai_diagnose.run": "Disparar el diagnóstico IA advisory (requiere kill switch ON).",
     }
 
     permissions.update(
@@ -366,6 +368,7 @@ def seed_rbac_v01() -> SeedResult:
             "diagnostics.ai_control.manage",
             "diagnostics.diagnose.read",
             "diagnostics.diagnose.run",
+            "diagnostics.ai_diagnose.run",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
@@ -987,6 +990,18 @@ def seed_rbac_v01() -> SeedResult:
         "finca.labor.read",
         "finca.work.read",
         "finca.work.capture",
+        "finca.field.read",
+    ]
+    # Agrónomo (asesor técnico): ve todo y DEFINE el plan de labores (finca.labor.manage),
+    # pero NO captura la ejecución diaria (work.capture, eso es del capataz) ni postea costos
+    # (cost.post, eso es del mandador). SoD: distinto de capataz y de mandador.
+    role_to_perms["finca_tecnico"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.report.read",
         "finca.field.read",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])

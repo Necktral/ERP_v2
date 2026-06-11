@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from apps.modulos.common.permissions import rbac_permission
 
+from .ai_diagnosis import AIDisabledError, run_ai_diagnosis
 from .diagnose import create_diagnostic_run
 from .gates import evaluate_release_gates
 from .models import AIControl, DiagnosticRun, ErrorEvent, SecurityFinding
@@ -129,3 +130,20 @@ class ReleaseReadinessView(APIView):
 
     def get(self, request):
         return Response(evaluate_release_gates(), status=status.HTTP_200_OK)
+
+
+class AIDiagnoseView(APIView):
+    """Motor IA advisory: rellena la hipótesis de causa de un diagnóstico.
+
+    SIEMPRE detrás del kill switch: si la IA está apagada → 409 (no toca nada).
+    """
+
+    permission_classes = [rbac_permission("diagnostics.ai_diagnose.run")]
+
+    def post(self, request, run_id):
+        run = get_object_or_404(DiagnosticRun, run_id=run_id)
+        try:
+            run = run_ai_diagnosis(run=run, actor=request.user)
+        except AIDisabledError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        return Response(DiagnosticRunSerializer(run).data, status=status.HTTP_200_OK)
