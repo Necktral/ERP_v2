@@ -602,6 +602,54 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "44b139a07597e70d7bc04ddb2f1e4ac2d83d9827232709502b9f456e02b68cd7"
     },
+    "backend/src/apps/modulos/diagnostics/migrations/0001_initial.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_errorevent_table_diagnostics_b1",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B1",
+      "fingerprint": "09621431ba56b46bad1722ec822f29c46113882cc1a358acf3ff555000a00622"
+    },
+    "backend/src/apps/modulos/diagnostics/migrations/0002_aicontrol_securityfinding.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_securityfinding_and_aicontrol_diagnostics_b2",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B2",
+      "fingerprint": "8a5348daf697875b9aacb6d82638f166fb387735f3f4256cbc813a44f81e5bde"
+    },
+    "backend/src/apps/modulos/diagnostics/migrations/0003_diagnosticrun.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_diagnosticrun_table_root_cause",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B3",
+      "fingerprint": "9e9739fb412bbc3d978054418eae2147fe5f2056dcf67659fccf5bdbe716663c"
+    },
+    "backend/src/apps/modulos/diagnostics/migrations/0004_aiagentrun.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_aiagentrun_table_ai_advisory",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-B5",
+      "fingerprint": "6d336eed728c977b528b30c1026a5e78d2ea4087678a55f390ce5090fb8d88fa"
+    },
+    "backend/src/apps/modulos/diagnostics/migrations/0005_codeunitevidence.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_codeunitevidence_table_coverage",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "DIAG-CODEUNIT",
+      "fingerprint": "bc1ad297170e2156ef95c016e943585b70170a9fa8a0d556c11fb94b07c11ea6"
+    },
+    "backend/src/apps/modulos/documents/migrations/0001_initial.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_scanneddocument_table_idp_f1",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "IDP-F1",
+      "fingerprint": "9b5822b0fc79db231d4f9b7a8094de978cebfbce3c5e66f48080004c40cd56c3"
+    },
     "backend/src/apps/modulos/estacion_servicios/migrations/0001_initial.py": {
       "risk_class": "expand",
       "rollout_strategy": "baseline_existing_migration",
@@ -1009,54 +1057,6 @@
       "owner": "db-architecture",
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "934f3523e156880a33e401b494d387b0748d69c6d24b0172061437faafe67f3a"
-    },
-    "backend/src/apps/modulos/diagnostics/migrations/0001_initial.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_errorevent_table_diagnostics_b1",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "DIAG-B1",
-      "fingerprint": "09621431ba56b46bad1722ec822f29c46113882cc1a358acf3ff555000a00622"
-    },
-    "backend/src/apps/modulos/diagnostics/migrations/0002_aicontrol_securityfinding.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_securityfinding_and_aicontrol_diagnostics_b2",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "DIAG-B2",
-      "fingerprint": "8a5348daf697875b9aacb6d82638f166fb387735f3f4256cbc813a44f81e5bde"
-    },
-    "backend/src/apps/modulos/diagnostics/migrations/0003_diagnosticrun.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_diagnosticrun_table_root_cause",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "DIAG-B3",
-      "fingerprint": "9e9739fb412bbc3d978054418eae2147fe5f2056dcf67659fccf5bdbe716663c"
-    },
-    "backend/src/apps/modulos/diagnostics/migrations/0004_aiagentrun.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_aiagentrun_table_ai_advisory",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "DIAG-B5",
-      "fingerprint": "6d336eed728c977b528b30c1026a5e78d2ea4087678a55f390ce5090fb8d88fa"
-    },
-    "backend/src/apps/modulos/diagnostics/migrations/0005_codeunitevidence.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_codeunitevidence_table_coverage",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "DIAG-CODEUNIT",
-      "fingerprint": "bc1ad297170e2156ef95c016e943585b70170a9fa8a0d556c11fb94b07c11ea6"
-    },
-    "backend/src/apps/modulos/documents/migrations/0001_initial.py": {
-      "risk_class": "online_safe",
-      "rollout_strategy": "create_scanneddocument_table_idp_f1",
-      "rollback_strategy": "roll_forward_preferred",
-      "owner": "backend",
-      "ticket_ref": "IDP-F1",
-      "fingerprint": "9b5822b0fc79db231d4f9b7a8094de978cebfbce3c5e66f48080004c40cd56c3"
     }
   },
   "notes": [

@@ -47,7 +47,7 @@ def seed_rbac_v01() -> SeedResult:
         "fuel_auditor": "Auditor Estación (solo lectura de operación y reportes).",
 
         # NOMINA / Asistencia de campo
-        "field_supervisor": "Jefe de área: aprueba asistencia de campo (checker SoD).",
+        "field_supervisor": "Supervisor de campo: revisa/aprueba asistencia de cuadrillas con segregación de funciones.",
 
         # FLEET / Mantenimiento
         "fleet_driver": "Conductor: checklists y reportes de campo (app).",
@@ -57,8 +57,16 @@ def seed_rbac_v01() -> SeedResult:
         "fleet_clerk": "Bodega/registro de flota.",
 
         # FINCA / Manejo de fincas (agrícola)
-        "finca_mandador": "Mandador: administra fincas, lotes, labores y bitácora agrícola.",
-        "finca_capataz": "Capataz: registra labores ejecutadas e insumos en campo.",
+        "finca_mandador": "Mandador / Administrador de Finca: coordina finca, personal, labores, insumos y bitácora agrícola.",
+        "finca_capataz": "Capataz: supervisa cuadrillas, registra labores ejecutadas, asistencia e insumos en campo.",
+        "finca_tecnico": "Ingeniero/Técnico Agrónomo: asesor técnico — ve todo y define el plan de labores (fertilización/plagas); NO captura ejecución diaria ni postea costos.",
+
+        # PLATAFORMA / FINANZAS (roles transversales)
+        "platform_observer": "SRE/observabilidad: ve errores, hallazgos y diagnósticos y corre el diagnóstico determinista; NO gobierna la IA ni toca negocio.",
+        "ai_steward": "Mayordomo de IA: gobierna el kill switch (enciende/apaga la IA) y corre el motor advisory; segregado de company_admin.",
+        "accountant": "Contador: prepara/aprueba asientos y lee finanzas; NO postea/cierra/override (SoD).",
+        "collections_officer": "Cobranza/cartera CxC: aplica pagos y ve saldos; NO ajusta ni castiga (sensible).",
+        "viewer": "Solo lectura ejecutiva: dashboards, reportes y auditoría; cero operaciones.",
     }
 
     permissions = {
@@ -995,6 +1003,18 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.capture",
         "finca.field.read",
     ]
+    # Agrónomo (asesor técnico): ve todo y DEFINE el plan de labores (finca.labor.manage),
+    # pero NO captura la ejecución diaria (work.capture, eso es del capataz) ni postea costos
+    # (cost.post, eso es del mandador). SoD: distinto de capataz y de mandador.
+    role_to_perms["finca_tecnico"] = [
+        "finca.finca.read",
+        "finca.plot.read",
+        "finca.labor.read",
+        "finca.labor.manage",
+        "finca.work.read",
+        "finca.report.read",
+        "finca.field.read",
+    ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):
         if code not in _admin_codes:
@@ -1090,6 +1110,61 @@ def seed_rbac_v01() -> SeedResult:
         for code in codes_to_add:
             if code not in current:
                 current.append(code)
+
+    # PLATAFORMA / FINANZAS — roles transversales nuevos. Solo permisos YA existentes y con
+    # SoD: cada rol se queda corto a propósito en lo sensible (apagar IA, postear/cerrar
+    # contabilidad, castigar cartera) que queda en company_admin / billing_manager.
+    role_to_perms["platform_observer"] = [
+        "diagnostics.error.read",
+        "diagnostics.finding.read",
+        "diagnostics.diagnose.read",
+        "diagnostics.diagnose.run",
+        "audit.read",
+        "report.dashboard.read",
+    ]
+    role_to_perms["ai_steward"] = [
+        "diagnostics.ai_control.read",
+        "diagnostics.ai_control.manage",
+        "diagnostics.ai_diagnose.run",
+        "diagnostics.diagnose.read",
+        "diagnostics.error.read",
+    ]
+    role_to_perms["accountant"] = [
+        "accounting.journal_draft.read",
+        "accounting.journal_draft.approve",
+        "accounting.journal_entry.read",
+        "accounting.period.read",
+        "accounting.coa.read",
+        "accounting.fx_rate.read",
+        "accounting.report.read",
+        "accounting.intercompany.read",
+        "accounting.consolidation.read",
+        "report.catalog.read",
+        "report.dataset.read",
+        "report.dataset.export",
+        "report.run.read",
+        "report.dashboard.read",
+        "audit.read",
+    ]
+    role_to_perms["collections_officer"] = [
+        "portfolio.receivable.read",
+        "portfolio.allocation.read",
+        "portfolio.allocation.write",
+        "portfolio.interest.read",
+        "portfolio.credit.read",
+        "comisariato.read",
+        "report.dashboard.read",
+        "report.dataset.read",
+    ]
+    role_to_perms["viewer"] = [
+        "report.catalog.read",
+        "report.dataset.read",
+        "report.run.read",
+        "report.dashboard.read",
+        "accounting.report.read",
+        "finca.report.read",
+        "audit.read",
+    ]
 
     roles_created = roles_updated = perms_created = perms_updated = roleperms_created = 0
 
