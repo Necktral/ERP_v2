@@ -12,6 +12,7 @@ from .views import (
     ReleaseReadinessView,
     SecurityFindingDetailView,
     SecurityFindingListView,
+    SupervisionView,
 )
 
 urlpatterns = [
@@ -57,6 +58,8 @@ urlpatterns = [
         ReleaseReadinessView.as_view(),
         name="diagnostics-release-readiness",
     ),
+    # Supervisión: la cola priorizada del "qué falla y por qué" (determinista).
+    path("supervision/", SupervisionView.as_view(), name="diagnostics-supervision"),
     # Botón de apagado de la IA (kill switch runtime).
     path("ai-control/", AIControlView.as_view(), name="diagnostics-ai-control"),
 ]
