@@ -20,10 +20,15 @@ Captura → Clasificación → OCR → Extracción → Validación → Revisión
 - **F3:** clasificación automática del `doc_type` (hoy: sugerencia por keywords en F2).
 - **F4:** validación + straight-through (auto-crear/ligar el registro de negocio).
 
-## Modo híbrido (offline-first)
-El dispositivo **captura la imagen offline** y, al reconectar, hace `POST` al endpoint de subida
-(mismo endpoint para online y para sincronización). El **OCR corre en el servidor** mediante el
-command `process_pending_ocr` (no hay runner asíncrono en el repo; se agenda por cron/systemd).
+## Modo híbrido (offline-first) — los DOS canales de entrada
+1. **App de remisiones / cámara (campo, móvil):** captura la **imagen offline** y, al reconectar,
+   hace `POST` al endpoint de subida (mismo endpoint para online y para sincronización).
+2. **PC con documentos escaneados (oficina):** sube el **PDF del escáner** al mismo endpoint;
+   `ocr.py` detecta `%PDF`, renderiza las páginas con **pypdfium2** (tope 5 págs, wheel pura sin
+   binarios de sistema) y OCRea cada una. PDF corrupto → `FAILED` (degrada, nunca rompe).
+
+El **OCR corre en el servidor** mediante el command `process_pending_ocr` (no hay runner
+asíncrono en el repo; se agenda por cron/systemd), que encadena la extracción F2.
 
 ## API (`/api/documents/`)
 | Método | Ruta | Permiso | Descripción |

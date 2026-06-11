@@ -642,6 +642,14 @@
       "ticket_ref": "IDP-F2",
       "fingerprint": "4d67c0026e04ba66e742e5017f355e1cdb89e2358f84920c0c1bee6a48c71745"
     },
+    "backend/src/apps/modulos/documents/migrations/0003_alter_scanneddocument_doc_type.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "alter_doc_type_choices_remision_idp_f2_noop_sql",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "backend",
+      "ticket_ref": "IDP-F2",
+      "fingerprint": "bc30f806b47b24b4ffa096c239c0d39492ba92bc4f900bfcfd5b17329d4c2862"
+    },
     "backend/src/apps/modulos/estacion_servicios/migrations/0001_initial.py": {
       "risk_class": "expand",
       "rollout_strategy": "baseline_existing_migration",

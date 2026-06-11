@@ -36,14 +36,26 @@ _FECHA_BARE_RE = re.compile(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}-\d{2}-\d{2})\
 _MONTO_RE = re.compile(r"(?:C\$|US\$|\$)?\s*(\d{1,3}(?:[.,]\d{3})+[.,]\d{2}|\d+[.,]\d{2})")
 
 _NUMDOC_RE = re.compile(
-    r"(?i)\b(?:factura|recibo|ticket|documento)\s*(?:n[oº°.:]*\s*)?[#:]?\s*([A-Z]?[\d][\d-]{3,19})"
+    r"(?i)\b(?:factura|recibo|ticket|documento|remisi[oó]n|env[ií]o)\s*"
+    r"(?:n[oº°.:]*\s*)?[#:]?\s*([A-Z]?[\d][\d-]{3,19})"
 )
 _PLACA_RE = re.compile(r"(?i)\bplaca\s*[:#.]?\s*([A-Z]{1,2}\s?\d{4,6})")
 _GALONES_RE = re.compile(r"(?i)\b(\d+(?:[.,]\d+)?)\s*(?:gal(?:on(?:es)?)?s?|gls?)\b")
 _LITROS_RE = re.compile(r"(?i)\b(\d+(?:[.,]\d+)?)\s*(?:litros?|lts?)\b")
 
+# Remisión (movimiento entre fincas/bodegas): origen/destino con etiqueta explícita,
+# producto etiquetado y cantidad con unidad agrícola (quintales/sacos/latas/cajas).
+_REM_ORIGEN_RE = re.compile(r"(?im)^\s*(?:env[ií]a|origen|de|desde|finca origen)\s*[:#.]\s*(.+)$")
+_REM_DESTINO_RE = re.compile(r"(?im)^\s*(?:recibe|destino|para|hacia|finca destino)\s*[:#.]\s*(.+)$")
+_REM_PRODUCTO_RE = re.compile(r"(?im)^\s*(?:producto|art[ií]culo|descripci[oó]n)\s*[:#.]\s*(.+)$")
+_CANTIDAD_RE = re.compile(
+    r"(?i)\b(\d+(?:[.,]\d+)?)\s*(quintal(?:es)?|qq|sacos?|latas?|cajas?|unidades?|bultos?)\b"
+)
+
 # Sugerencia de tipo por palabras clave (solo sugiere; el humano decide en la revisión).
+# Remisión va PRIMERO: una remisión puede mencionar productos/montos sin ser factura.
 _TYPE_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("REMISION", ("remisión", "remision", "guía de remisión", "guia de remision", "envío de", "envio de")),
     ("FUEL_TICKET", ("combustible", "diesel", "diésel", "gasolina", "galones", "bomba")),
     ("PAYROLL", ("planilla", "nómina", "nomina", "salario", "deducciones")),
     ("INVOICE", ("factura", "recibo", "consumidor final", "crédito fiscal")),
@@ -140,6 +152,21 @@ def extract_fields(text: str, *, doc_type: str = "") -> dict[str, Any]:
             m = _LITROS_RE.search(text)
             if m:
                 fields["litros"] = _field(m.group(1), "high", _line_at(text, m.start()))
+
+    if doc_type == "REMISION" or not doc_type or doc_type == "GENERAL":
+        m = _REM_ORIGEN_RE.search(text)
+        if m:
+            fields["origen"] = _field(m.group(1).strip()[:120], "high", _line_at(text, m.start()))
+        m = _REM_DESTINO_RE.search(text)
+        if m:
+            fields["destino"] = _field(m.group(1).strip()[:120], "high", _line_at(text, m.start()))
+        m = _REM_PRODUCTO_RE.search(text)
+        if m:
+            fields["producto"] = _field(m.group(1).strip()[:120], "high", _line_at(text, m.start()))
+        m = _CANTIDAD_RE.search(text)
+        if m:
+            fields["cantidad"] = _field(_norm_amount(m.group(1)) if "," in m.group(1) or "." in m.group(1) else m.group(1), "high", _line_at(text, m.start()))
+            fields["unidad"] = _field(m.group(2).lower(), "high", _line_at(text, m.start()))
 
     needs_review = sorted(
         name for name, f in fields.items() if f["confidence"] != "high"

@@ -19,6 +19,7 @@ class DocumentType(models.TextChoices):
     INVOICE = "INVOICE", "Factura/Recibo"
     FUEL_TICKET = "FUEL_TICKET", "Ticket de combustible"
     PAYROLL = "PAYROLL", "Planilla/Nómina"
+    REMISION = "REMISION", "Remisión/Envío (movimiento entre fincas/bodegas)"
 
 
 class ScanStatus(models.TextChoices):

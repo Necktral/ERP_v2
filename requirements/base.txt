@@ -55,3 +55,6 @@ pydyf==0.10.0
 # apps/modulos/documents/ocr.py (no rompen si el binario falta: degradan a FAILED).
 pytesseract==0.3.13
 Pillow==11.3.0
+# PDF escaneado (canal PC): pypdfium2 renderiza páginas PDF a imagen para el OCR.
+# Wheel autocontenida (sin binarios de sistema); import lazy en ocr.py (degrada a FAILED).
+pypdfium2==5.9.0

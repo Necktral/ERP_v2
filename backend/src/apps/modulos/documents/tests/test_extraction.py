@@ -47,6 +47,15 @@ TOTAL: C$ 980.00
 12/05/2026
 """
 
+_REMISION = """GUIA DE REMISION No. 000789
+Fecha: 20/05/2026
+Origen: Finca El Porvenir
+Destino: Beneficio Central
+Producto: Café pergamino oreado
+45 quintales
+Transporta: M 45821
+"""
+
 
 def _company() -> OrgUnit:
     t = uuid.uuid4().hex[:6]
@@ -96,6 +105,24 @@ def test_extrae_ticket_combustible():
     assert f["galones"]["value"] == "25.5"
     assert f["total"]["value"] == "980.00"
     assert out["doc_type_suggested"] == "FUEL_TICKET"
+
+
+def test_extrae_remision_entre_fincas():
+    out = extract_fields(_REMISION, doc_type=DocumentType.REMISION)
+    f = out["fields"]
+    assert f["numero_documento"]["value"] == "000789"
+    assert f["origen"]["value"] == "Finca El Porvenir"
+    assert f["destino"]["value"] == "Beneficio Central"
+    assert f["producto"]["value"] == "Café pergamino oreado"
+    assert f["cantidad"]["value"] == "45"
+    assert f["unidad"]["value"] == "quintales"
+    assert out["doc_type_suggested"] == "REMISION"
+
+
+def test_remision_se_sugiere_antes_que_factura():
+    # Una remisión puede mencionar montos/productos sin ser factura: REMISION gana.
+    out = extract_fields("GUIA DE REMISION 0001\nfactura adjunta\n10 sacos")
+    assert out["doc_type_suggested"] == "REMISION"
 
 
 def test_cedula_sin_etiqueta_es_confianza_media_y_va_a_revision():
