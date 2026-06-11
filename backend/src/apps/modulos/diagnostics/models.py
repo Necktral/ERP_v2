@@ -330,3 +330,47 @@ class AIAgentRun(models.Model):
 
     def __str__(self) -> str:
         return f"AIAgentRun(agent={self.agent_name}, model={self.model_id}, status={self.status})"
+
+
+class CoverageState(models.TextChoices):
+    COVERED = "covered", "Cubierta por tests"
+    UNCOVERED = "uncovered", "Sin cobertura"
+    UNKNOWN = "unknown", "Desconocida (no medida)"
+
+
+class CodeUnitEvidence(models.Model):
+    """Evidencia por línea relevante: **¿la línea que falló está testeada?** (sin IA).
+
+    No es 'log por línea': solo las líneas que importan (donde hay un `ErrorEvent` o un
+    `SecurityFinding`), anotadas con su estado de cobertura (desde coverage.xml) y las refs
+    cruzadas. Es la pieza que cierra el *por qué*: un fallo en una línea **sin test** es una
+    causa probable y accionable.
+    """
+
+    class Meta:
+        app_label = "diagnostics"
+        ordering = ["-updated_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["path", "line_start"], name="uniq_codeunit_path_line"),
+        ]
+        indexes = [
+            models.Index(fields=["domain", "coverage_state"]),
+            models.Index(fields=["coverage_state"]),
+        ]
+
+    path = models.CharField(max_length=512)
+    line_start = models.PositiveIntegerField()
+    line_end = models.PositiveIntegerField(default=0)
+    symbol = models.CharField(max_length=255, blank=True, default="")
+    domain = models.CharField(max_length=64, blank=True, default="")
+    coverage_state = models.CharField(
+        max_length=16, choices=CoverageState.choices, default=CoverageState.UNKNOWN
+    )
+    error_refs = models.JSONField(default=list, blank=True)
+    security_refs = models.JSONField(default=list, blank=True)
+    last_commit = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"CodeUnitEvidence({self.path}:{self.line_start} {self.coverage_state})"

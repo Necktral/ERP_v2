@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     AIControlView,
     AIDiagnoseView,
+    CodeUnitEvidenceListView,
     DiagnoseErrorView,
     DiagnosticRunDetailView,
     DiagnosticRunListView,
@@ -11,6 +12,7 @@ from .views import (
     ReleaseReadinessView,
     SecurityFindingDetailView,
     SecurityFindingListView,
+    SupervisionView,
 )
 
 urlpatterns = [
@@ -38,6 +40,12 @@ urlpatterns = [
         AIDiagnoseView.as_view(),
         name="diagnostics-diagnosis-ai-analyze",
     ),
+    # ¿La línea que falló está testeada? Evidencia de cobertura por línea.
+    path(
+        "code-evidence/",
+        CodeUnitEvidenceListView.as_view(),
+        name="diagnostics-code-evidence-list",
+    ),
     path("findings/", SecurityFindingListView.as_view(), name="diagnostics-finding-list"),
     path(
         "findings/<uuid:finding_id>/",
@@ -50,6 +58,8 @@ urlpatterns = [
         ReleaseReadinessView.as_view(),
         name="diagnostics-release-readiness",
     ),
+    # Supervisión: la cola priorizada del "qué falla y por qué" (determinista).
+    path("supervision/", SupervisionView.as_view(), name="diagnostics-supervision"),
     # Botón de apagado de la IA (kill switch runtime).
     path("ai-control/", AIControlView.as_view(), name="diagnostics-ai-control"),
 ]

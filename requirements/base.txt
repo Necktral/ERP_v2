@@ -32,6 +32,10 @@ pyotp==2.9.0
 # Observabilidad (errores)
 sentry-sdk==2.61.1
 
+# Cliente HTTP del proveedor LLM de diagnóstico (OpenAI-compat, B-5). Import a nivel
+# de módulo en diagnostics/providers.py: si falta, el backend NO arranca — debe estar pineado.
+requests==2.34.2
+
 # Static files (admin, y despliegue simple sin nginx al inicio)
 whitenoise==6.12.0
 

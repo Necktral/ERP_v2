@@ -14,7 +14,7 @@ from typing import Any
 
 from .flags import ai_features_enabled
 from .models import AIAgentRun, DiagnosticRun
-from .providers import HeuristicRootCauseProvider, RootCauseProvider
+from .providers import RootCauseProvider, get_root_cause_provider
 
 
 class AIDisabledError(RuntimeError):
@@ -27,7 +27,7 @@ def run_ai_diagnosis(
     if not ai_features_enabled():
         raise AIDisabledError("IA apagada (kill switch): encendela en /api/diagnostics/ai-control/")
 
-    prov: RootCauseProvider = provider or HeuristicRootCauseProvider()
+    prov: RootCauseProvider = provider or get_root_cause_provider()
     started = time.monotonic()
     proposal = prov.propose(run.evidence)
     latency_ms = int((time.monotonic() - started) * 1000)
