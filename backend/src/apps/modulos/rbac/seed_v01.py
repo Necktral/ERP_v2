@@ -1147,6 +1147,8 @@ def seed_rbac_v01() -> SeedResult:
         "accounting.report.read",
         "accounting.intercompany.read",
         "accounting.consolidation.read",
+        "cec.close_run.read",
+        "cec.exception.read",
         "report.catalog.read",
         "report.dataset.read",
         "report.dataset.export",
