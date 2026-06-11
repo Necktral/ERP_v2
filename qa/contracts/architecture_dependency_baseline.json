@@ -150,6 +150,8 @@
     "modulos.intercompany->modulos.common",
     "modulos.intercompany->modulos.iam",
     "modulos.intercompany->modulos.parties",
+    "modulos.knowledge->modulos.common",
+    "modulos.knowledge->modulos.diagnostics",
     "modulos.notifications->modulos.audit",
     "modulos.notifications->modulos.common",
     "modulos.notifications->modulos.integration",

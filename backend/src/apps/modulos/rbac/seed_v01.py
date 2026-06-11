@@ -304,6 +304,7 @@ def seed_rbac_v01() -> SeedResult:
         "diagnostics.ai_diagnose.run": "Disparar el diagnóstico IA advisory (requiere kill switch ON).",
         "diagnostics.error.triage": "Triage humano de errores (confirmar/falso positivo/corregido/riesgo aceptado).",
         "diagnostics.finding.triage": "Triage humano de hallazgos de seguridad (sin accepted_risk: ese va por contrato).",
+        "knowledge.docs.read": "Buscar/consultar la documentación interna (RAG; la síntesis IA respeta el kill switch).",
     }
 
     permissions.update(
@@ -380,6 +381,7 @@ def seed_rbac_v01() -> SeedResult:
             "diagnostics.ai_diagnose.run",
             "diagnostics.error.triage",
             "diagnostics.finding.triage",
+            "knowledge.docs.read",
             "hr.position.read",
             "hr.position.create",
             "hr.position.update",
@@ -994,6 +996,9 @@ def seed_rbac_v01() -> SeedResult:
         "finca.report.read",
         "finca.field.read",
         "finca.cost.post",
+        # Asistencia de campo (la pantalla del día en PC/cel): el mandador levanta la lista.
+        "nomina.field.capture",
+        "nomina.field.read",
     ]
     role_to_perms["finca_capataz"] = [
         "finca.finca.read",
@@ -1002,6 +1007,9 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.read",
         "finca.work.capture",
         "finca.field.read",
+        # Asistencia de campo: el capataz también marca novedades de su gente.
+        "nomina.field.capture",
+        "nomina.field.read",
     ]
     # Agrónomo (asesor técnico): ve todo y DEFINE el plan de labores (finca.labor.manage),
     # pero NO captura la ejecución diaria (work.capture, eso es del capataz) ni postea costos

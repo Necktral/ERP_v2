@@ -63,6 +63,7 @@ _C3_DOMAINS = frozenset(
     {
         "documents",
         "notifications",
+        "knowledge",  # RAG de docs internas: lectura, sin dinero/permisos
     }
 )
 
