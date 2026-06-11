@@ -14,7 +14,7 @@ from .serializers import (
     ScannedDocumentSerializer,
     ScannedDocumentUploadSerializer,
 )
-from .services import create_scanned_document, review_document
+from .services import create_scanned_document, extract_fields_on_document, review_document
 
 _COMPANY_REQUIRED = Response(
     {"detail": "X-Company-Id requerido"}, status=status.HTTP_400_BAD_REQUEST
@@ -84,6 +84,28 @@ class ScannedDocumentDetailView(APIView):
         if company is None:
             return _COMPANY_REQUIRED
         doc = get_object_or_404(ScannedDocument, pk=pk, company=company)
+        return Response(ScannedDocumentSerializer(doc).data, status=status.HTTP_200_OK)
+
+
+class ScannedDocumentExtractView(APIView):
+    """Etapa F2 manual: extrae campos (borrador) de un documento ya OCR'd (PROCESSED).
+
+    El batch (`process_pending_documents`) ya la encadena solo; este endpoint existe
+    para re-extraer o para documentos rezagados. La cola de revisión humana es
+    `GET /scans/?status=EXTRACTED`.
+    """
+
+    permission_classes = [rbac_permission("documents.scan.review")]
+
+    def post(self, request, pk: int):
+        company = getattr(request, "company", None)
+        if company is None:
+            return _COMPANY_REQUIRED
+        doc = get_object_or_404(ScannedDocument, pk=pk, company=company)
+        try:
+            doc = extract_fields_on_document(doc)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         return Response(ScannedDocumentSerializer(doc).data, status=status.HTTP_200_OK)
 
 
