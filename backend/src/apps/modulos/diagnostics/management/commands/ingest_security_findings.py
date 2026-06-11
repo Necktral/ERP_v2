@@ -12,6 +12,7 @@ from apps.modulos.diagnostics.findings import (
     RawFinding,
     ingest_findings,
     load_exceptions,
+    parse_bandit_findings,
     parse_npm_findings,
     parse_pip_findings,
 )
@@ -29,13 +30,19 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 class Command(BaseCommand):
     help = (
-        "Ingesta hallazgos de seguridad (pip-audit/npm-audit) al ledger SecurityFinding, "
-        "aplicando el contrato de excepciones con vencimiento. Determinista, sin IA."
+        "Ingesta hallazgos de seguridad (pip-audit/npm-audit + SAST bandit) al ledger "
+        "SecurityFinding, aplicando el contrato de excepciones con vencimiento. "
+        "El SAST se clasifica por dominio (C1/C2/C3). Determinista, sin IA."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--pip-report", default="qa_pip_audit.json")
         parser.add_argument("--npm-report", default="qa_npm_audit.json")
+        parser.add_argument(
+            "--bandit-report",
+            default="qa/reports/bandit.json",
+            help="JSON de bandit (genéralo con: bandit -f json -o qa/reports/bandit.json).",
+        )
         parser.add_argument("--exceptions", default="qa/contracts/security_exceptions.json")
         parser.add_argument("--root", default=None, help="Raíz del repo (default: BASE_DIR/../..)")
 
@@ -43,6 +50,7 @@ class Command(BaseCommand):
         root = Path(options["root"]) if options["root"] else Path(settings.BASE_DIR).parent.parent
         pip_payload = _load_json(root / options["pip_report"])
         npm_payload = _load_json(root / options["npm_report"])
+        bandit_payload = _load_json(root / options["bandit_report"])
         exc_payload = _load_json(root / options["exceptions"])
 
         raw: list[RawFinding] = []
@@ -53,6 +61,9 @@ class Command(BaseCommand):
         if npm_payload:
             raw += parse_npm_findings(npm_payload)
             sources.append("npm")
+        if bandit_payload:
+            raw += parse_bandit_findings(bandit_payload)
+            sources.append("bandit")
         exceptions: list[ExceptionRule] = load_exceptions(exc_payload)
 
         result = ingest_findings(raw_findings=raw, exceptions=exceptions, sources=sources)
