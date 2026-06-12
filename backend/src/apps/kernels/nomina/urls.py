@@ -35,9 +35,33 @@ from .views_inss import (
     PeriodInssElectionView,
     PeriodInssResolveView,
 )
+from .views_asistencia import AsistenciaHoyView
+from .biometric.views_biometric import (
+    BiometricBatchListView,
+    BiometricCheckListView,
+    BiometricDeviceDetailView,
+    BiometricDeviceListCreateView,
+    BiometricDeviceRotateTokenView,
+    BiometricImportView,
+    BiometricMapView,
+    BiometricPushView,
+    BiometricRollupView,
+)
 
 urlpatterns = [
     path("health/", HealthView.as_view()),
+    # Asistencia del día (pantalla simple del mandador/capataz — PC y cel)
+    path("asistencia/hoy/", AsistenciaHoyView.as_view()),
+    # Control biométrico (fuente ① de asistencia)
+    path("biometric/devices/", BiometricDeviceListCreateView.as_view()),
+    path("biometric/devices/<int:device_pk>/", BiometricDeviceDetailView.as_view()),
+    path("biometric/devices/<int:device_pk>/rotate-token/", BiometricDeviceRotateTokenView.as_view()),
+    path("biometric/devices/<int:device_pk>/import/", BiometricImportView.as_view()),
+    path("biometric/batches/", BiometricBatchListView.as_view()),
+    path("biometric/checks/", BiometricCheckListView.as_view()),
+    path("biometric/map/", BiometricMapView.as_view()),
+    path("biometric/rollup/", BiometricRollupView.as_view()),
+    path("biometric/push/", BiometricPushView.as_view()),
     # Configuración de tasas
     path("config/", NominaConfigView.as_view()),
     path("config/<int:config_id>/", NominaConfigDetailView.as_view()),
@@ -49,9 +73,10 @@ urlpatterns = [
     # Export legal (xlsx) — antes de la ruta de acción para no colisionar
     path("periods/<int:period_id>/sheets/<int:sheet_id>/planilla.xlsx", PayrollSheetXlsxView.as_view()),
     path("periods/<int:period_id>/sheets/<int:sheet_id>/planilla.pdf", PayrollSheetPdfView.as_view()),
-    path("periods/<int:period_id>/sheets/<int:sheet_id>/<str:action>/", PayrollSheetActionView.as_view()),
-    # Entradas por planilla
+    # Entradas por planilla — ANTES de <str:action> (que si no, atrapa "entries"
+    # como acción y exige nomina.sheet.manage en vez de nomina.entry.*)
     path("periods/<int:period_id>/sheets/<int:sheet_id>/entries/", PayrollEntryView.as_view()),
+    path("periods/<int:period_id>/sheets/<int:sheet_id>/<str:action>/", PayrollSheetActionView.as_view()),
     # Asistencia de campo — flujo diario
     path("field/work-days/", FieldWorkDayView.as_view()),
     path("field/work-days/<int:work_day_id>/", FieldWorkDayDetailView.as_view()),

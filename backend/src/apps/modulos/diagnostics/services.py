@@ -35,9 +35,9 @@ def record_error_event(
     risk = risk_class_for_domain(domain)
     shash = stack_hash(exc_type, tb)
 
-    endpoint = (getattr(request, "path", "") or "")[:512]
-    method = (getattr(request, "method", "") or "")[:16]
-    correlation_id = (getattr(request, "request_id", "") or "")[:64]
+    endpoint = str(getattr(request, "path", "") or "")[:512]
+    method = str(getattr(request, "method", "") or "")[:16]
+    correlation_id = str(getattr(request, "request_id", "") or "")[:64]
     company = getattr(request, "company", None)
     company_id = (str(getattr(company, "id", "") or ""))[:64]
     branch = getattr(request, "branch", None)

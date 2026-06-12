@@ -95,6 +95,15 @@ def test_correlation_and_context_from_request():
 
 
 @pytest.mark.django_db
+def test_request_context_coerces_non_string_values():
+    req = SimpleNamespace(request_id=12345, path=None, method=987, company=None, branch=None)
+    ev = _capture("err", request=req)
+    assert ev.correlation_id == "12345"
+    assert ev.endpoint == ""
+    assert ev.method == "987"
+
+
+@pytest.mark.django_db
 def test_message_is_hashed_not_stored_raw():
     ev = _capture("password=hunter2secret")
     assert len(ev.message_hash) == 64  # mensaje hasheado

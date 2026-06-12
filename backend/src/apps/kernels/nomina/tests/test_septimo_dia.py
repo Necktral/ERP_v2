@@ -208,7 +208,10 @@ def test_seventh_day_kept_with_justified_absence():
     _approve_day(company, branch, actor, period, worker, work_date=date(2026, 6, 3), sick=True)  # justificada
     _approve_day(company, branch, actor, period, worker, work_date=date(2026, 6, 4))
     agg = aggregate_attendance_for_employee(period=period, employee=worker)
-    assert agg["days_subsidy"] == Decimal("1.00")
+    # Enfermo sin constancia: el día no se paga ni alimenta el subsidio (manual),
+    # pero NO rompe la semana del séptimo.
+    assert agg["days_worked"] == Decimal("3.00")
+    assert agg["days_subsidy"] == Decimal("0.00")
     assert agg["seventh_day_days"] == Decimal("1.00")  # enfermedad NO rompe la semana
 
 

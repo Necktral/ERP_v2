@@ -144,6 +144,21 @@ export default boot(({ app, router }) => {
       }
     }
 
+    // Identidad del dispositivo enrolado → la bitácora registra desde QUÉ aparato
+    // se hizo cada acción (el backend solo lo acepta si el Device está ACTIVO).
+    const deviceRaw = localStorage.getItem('nt_device_identity');
+    if (deviceRaw) {
+      try {
+        const deviceId = (JSON.parse(deviceRaw) as { device_id?: string }).device_id;
+        if (deviceId) {
+          config.headers = config.headers ?? {};
+          config.headers['X-Device-Id'] = deviceId;
+        }
+      } catch {
+        /* identidad corrupta: se ignora */
+      }
+    }
+
     // Context headers (solo si no es endpoint exento)
     if (!isContextExempt(path)) {
       if (!ctx.activeCompanyId) {

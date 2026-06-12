@@ -22,7 +22,17 @@ from apps.modulos.parties.models import Party, PartyRole
 from apps.modulos.parties.services import assign_party_role
 from apps.modulos.rbac.models import Role, RoleAssignment
 
-from .models import Employee, EmploymentAssignment, JobPosition, PositionRoleMap
+from .contract_templates import render_contract_body
+from .models import (
+    Employee,
+    EmployeeLifecycleEvent,
+    EmployeeMemo,
+    EmployeeRoleMap,
+    EmploymentAssignment,
+    EmploymentContract,
+    JobPosition,
+    PositionRoleMap,
+)
 
 User = get_user_model()
 
@@ -222,6 +232,18 @@ def reconcile_employee_roles(*, employee: Employee, request=None, actor=None) ->
             elif m.scope_mode == PositionRoleMap.ScopeMode.BRANCH:
                 if a.branch_id:
                     desired.add((m.role_id, a.branch_id))
+
+    # Roles DIRECTOS del trabajador (modelo centrado en la persona, scope empresa).
+    for em_role_id in EmployeeRoleMap.objects.filter(employee=employee, is_active=True).values_list(
+        "role_id", flat=True
+    ):
+        desired.add((em_role_id, company.id))
+
+    # Trabajador dado de BAJA: no se materializa ningún rol (los maps quedan como
+    # historial para un eventual reingreso, pero los grants vivos se revocan).
+    if employee.employment_status == Employee.EmploymentStatus.BAJA:
+        desired.clear()
+
     created = reactivated = deactivated = 0
 
     with transaction.atomic():
@@ -371,6 +393,42 @@ def set_position_role_maps(*, position: JobPosition, maps: list[dict], request=N
     )
     for eid in employee_ids:
         reconcile_employee_roles(employee=Employee.objects.get(id=eid), request=request, actor=actor)
+
+
+def set_employee_role_maps(*, employee: Employee, role_ids: list, request=None, actor=None) -> None:
+    """
+    Reemplazo controlado de los roles DIRECTOS de un trabajador, luego reconcilia.
+    role_ids = [1, 5, 8, ...]
+    """
+    with transaction.atomic():
+        EmployeeRoleMap.objects.filter(employee=employee).update(is_active=False)
+        seen: set[int] = set()
+        for raw in role_ids:
+            role_id = int(raw)
+            if role_id in seen:
+                continue
+            seen.add(role_id)
+            if not Role.objects.filter(id=role_id).exists():
+                raise ValueError(f"role_id no existe: {role_id}")
+            obj, created = EmployeeRoleMap.objects.get_or_create(
+                employee=employee, role_id=role_id, defaults={"is_active": True}
+            )
+            if not created and not obj.is_active:
+                obj.is_active = True
+                obj.save(update_fields=["is_active"])
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_ROLEMAP_UPDATED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={"roles_count": len(seen)},
+    )
+
+    reconcile_employee_roles(employee=employee, request=request, actor=actor)
 
 
 def provision_user_for_employee(
@@ -556,3 +614,470 @@ def revoke_employee_access(
         "memberships_deactivated": mem_deactivated,
         "user_disabled": user_disabled,
     }
+
+
+# ---------------------------------------------------------------------------
+# Ciclo de vida laboral: suspensión / reintegro / baja / reingreso
+# ---------------------------------------------------------------------------
+
+def _employee_status_snapshot(employee: Employee) -> dict:
+    return {
+        "employment_status": employee.employment_status,
+        "is_active": employee.is_active,
+        "linked_user_id": employee.linked_user_id,
+    }
+
+
+@transaction.atomic
+def suspend_employee(
+    *,
+    employee: Employee,
+    reason_code: str,
+    reason_detail: str = "",
+    effective_date,
+    end_date=None,
+    with_pay: bool = False,
+    suspend_access: bool = False,
+    request=None,
+    actor=None,
+) -> EmployeeLifecycleEvent:
+    """Suspende al trabajador (disciplinaria, médica, permiso sin goce, etc.).
+
+    No toca sus roles: si se pide suspend_access, se bloquea el LOGIN del usuario
+    vinculado (user.is_active=False) y el reintegro lo restituye.
+    """
+    employee = Employee.objects.select_for_update(of=("self",)).select_related("company", "linked_user").get(pk=employee.pk)
+    if employee.employment_status != Employee.EmploymentStatus.ACTIVO:
+        raise ValueError("EMPLOYEE_NOT_ACTIVE")
+    if reason_code not in EmployeeLifecycleEvent.SuspensionReason.values:
+        raise ValueError("INVALID_REASON_CODE")
+
+    before = _employee_status_snapshot(employee)
+    access_suspended = False
+    linked_user = employee.linked_user
+    if suspend_access and linked_user is not None and linked_user.is_active:
+        linked_user.is_active = False
+        linked_user.save(update_fields=["is_active"])
+        access_suspended = True
+
+    employee.employment_status = Employee.EmploymentStatus.SUSPENDIDO
+    employee.save(update_fields=["employment_status", "updated_at"])
+
+    event = EmployeeLifecycleEvent.objects.create(
+        employee=employee,
+        event_type=EmployeeLifecycleEvent.EventType.SUSPENSION,
+        reason_code=reason_code,
+        reason_detail=reason_detail or "",
+        effective_date=effective_date,
+        end_date=end_date,
+        with_pay=bool(with_pay),
+        access_suspended=access_suspended,
+        created_by=actor,
+    )
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_SUSPENDED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        before_snapshot=before,
+        after_snapshot=_employee_status_snapshot(employee),
+        metadata={
+            "lifecycle_event_id": event.id,
+            "reason_code": reason_code,
+            "with_pay": bool(with_pay),
+            "access_suspended": access_suspended,
+            "effective_date": str(effective_date),
+            "end_date": str(end_date) if end_date else "",
+        },
+    )
+    return event
+
+
+@transaction.atomic
+def reinstate_employee(*, employee: Employee, reason_detail: str = "", effective_date, request=None, actor=None) -> EmployeeLifecycleEvent:
+    """Reintegra a un trabajador suspendido. Si la suspensión bloqueó el login, lo restituye."""
+    employee = Employee.objects.select_for_update(of=("self",)).select_related("company", "linked_user").get(pk=employee.pk)
+    if employee.employment_status != Employee.EmploymentStatus.SUSPENDIDO:
+        raise ValueError("EMPLOYEE_NOT_SUSPENDED")
+
+    before = _employee_status_snapshot(employee)
+
+    last_suspension = (
+        EmployeeLifecycleEvent.objects.filter(
+            employee=employee, event_type=EmployeeLifecycleEvent.EventType.SUSPENSION
+        )
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    access_restored = False
+    linked_user = employee.linked_user
+    if last_suspension and last_suspension.access_suspended and linked_user is not None:
+        if not linked_user.is_active:
+            linked_user.is_active = True
+            linked_user.save(update_fields=["is_active"])
+            access_restored = True
+
+    employee.employment_status = Employee.EmploymentStatus.ACTIVO
+    employee.save(update_fields=["employment_status", "updated_at"])
+
+    event = EmployeeLifecycleEvent.objects.create(
+        employee=employee,
+        event_type=EmployeeLifecycleEvent.EventType.REINTEGRO,
+        reason_code="FIN_SUSPENSION",
+        reason_detail=reason_detail or "",
+        effective_date=effective_date,
+        created_by=actor,
+    )
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_REINSTATED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        before_snapshot=before,
+        after_snapshot=_employee_status_snapshot(employee),
+        metadata={
+            "lifecycle_event_id": event.id,
+            "access_restored": access_restored,
+            "effective_date": str(effective_date),
+        },
+    )
+    return event
+
+
+@transaction.atomic
+def terminate_employee(
+    *,
+    employee: Employee,
+    reason_code: str,
+    reason_detail: str = "",
+    effective_date,
+    request=None,
+    actor=None,
+) -> EmployeeLifecycleEvent:
+    """Baja del trabajador (renuncia, despido, fin de contrato, etc.).
+
+    Efectos: termina asignaciones activas, revoca acceso (roles POSITION +
+    memberships, deshabilita el usuario si no pertenece a otra empresa),
+    finaliza contratos EMITIDOS vigentes y deja al empleado en estado BAJA.
+    Los EmployeeRoleMap quedan como historial para un eventual reingreso.
+    """
+    employee = Employee.objects.select_for_update(of=("self",)).select_related("company", "linked_user").get(pk=employee.pk)
+    if employee.employment_status == Employee.EmploymentStatus.BAJA:
+        raise ValueError("EMPLOYEE_ALREADY_TERMINATED")
+    if reason_code not in EmployeeLifecycleEvent.BajaReason.values:
+        raise ValueError("INVALID_REASON_CODE")
+
+    before = _employee_status_snapshot(employee)
+
+    now = timezone.now()
+    assignments_ended = EmploymentAssignment.objects.filter(employee=employee, is_active=True).update(
+        is_active=False, ended_at=now
+    )
+    contracts_closed = EmploymentContract.objects.filter(
+        employee=employee, status=EmploymentContract.Status.EMITIDO
+    ).update(status=EmploymentContract.Status.FINALIZADO)
+
+    employee.employment_status = Employee.EmploymentStatus.BAJA
+    employee.is_active = False
+    employee.save(update_fields=["employment_status", "is_active", "updated_at"])
+
+    access = None
+    if employee.linked_user_id:
+        access = revoke_employee_access(
+            employee=employee, request=request, actor=actor, disable_user=True
+        )
+
+    event = EmployeeLifecycleEvent.objects.create(
+        employee=employee,
+        event_type=EmployeeLifecycleEvent.EventType.BAJA,
+        reason_code=reason_code,
+        reason_detail=reason_detail or "",
+        effective_date=effective_date,
+        created_by=actor,
+    )
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_TERMINATED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        before_snapshot=before,
+        after_snapshot=_employee_status_snapshot(employee),
+        metadata={
+            "lifecycle_event_id": event.id,
+            "reason_code": reason_code,
+            "effective_date": str(effective_date),
+            "assignments_ended": assignments_ended,
+            "contracts_closed": contracts_closed,
+            "access_revoked": bool(access),
+        },
+    )
+    return event
+
+
+@transaction.atomic
+def rehire_employee(*, employee: Employee, reason_detail: str = "", effective_date, request=None, actor=None) -> EmployeeLifecycleEvent:
+    """Reingreso de un trabajador dado de baja (recontratación / nueva temporada).
+
+    Reactiva la ficha. El acceso al sistema NO se restituye automático: se gestiona
+    aparte (provisionar / reset de clave) para que sea una decisión explícita.
+    """
+    employee = Employee.objects.select_for_update(of=("self",)).select_related("company", "linked_user").get(pk=employee.pk)
+    if employee.employment_status != Employee.EmploymentStatus.BAJA:
+        raise ValueError("EMPLOYEE_NOT_TERMINATED")
+
+    before = _employee_status_snapshot(employee)
+    employee.employment_status = Employee.EmploymentStatus.ACTIVO
+    employee.is_active = True
+    employee.save(update_fields=["employment_status", "is_active", "updated_at"])
+
+    event = EmployeeLifecycleEvent.objects.create(
+        employee=employee,
+        event_type=EmployeeLifecycleEvent.EventType.REINGRESO,
+        reason_code="RECONTRATACION",
+        reason_detail=reason_detail or "",
+        effective_date=effective_date,
+        created_by=actor,
+    )
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_EMPLOYEE_REHIRED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        before_snapshot=before,
+        after_snapshot=_employee_status_snapshot(employee),
+        metadata={"lifecycle_event_id": event.id, "effective_date": str(effective_date)},
+    )
+    return event
+
+
+# ---------------------------------------------------------------------------
+# Contratos laborales (plantilla por caso + texto editable)
+# ---------------------------------------------------------------------------
+
+_SPANISH_MONTHS = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def _spanish_date(d) -> str:
+    if not d:
+        return ""
+    return f"{d.day} de {_SPANISH_MONTHS[d.month - 1]} de {d.year}"
+
+
+def _contract_render_context(*, employee: Employee, contract: EmploymentContract, extra: dict | None = None) -> dict:
+    from apps.modulos.org.models import CompanyProfile
+
+    profile = CompanyProfile.objects.filter(company=employee.company).first()
+    company_legal = (profile.legal_name if profile else "") or employee.company.name
+    salary_text = ""
+    if contract.salary_amount is not None:
+        salary_text = f"{contract.salary_amount:,.2f}"
+    period_labels: dict[str, str] = {
+        EmploymentContract.SalaryPeriod.MENSUAL: "de forma mensual",
+        EmploymentContract.SalaryPeriod.QUINCENAL: "de forma quincenal",
+        EmploymentContract.SalaryPeriod.SEMANAL: "de forma semanal",
+        EmploymentContract.SalaryPeriod.DIARIO: "por día laborado",
+        EmploymentContract.SalaryPeriod.POR_OBRA: "según obra o producción entregada",
+    }
+    party = employee.party if employee.party_id else None
+    ctx = {
+        "contract_type_label": contract.get_contract_type_display().upper(),
+        "company_legal_name": company_legal,
+        "company_tax_id": (profile.tax_id if profile else ""),
+        "company_address": (profile.address if profile else ""),
+        "company_city": "",
+        "employer_rep": "",
+        "employee_name": f"{employee.first_name} {employee.last_name}".strip(),
+        "employee_code": employee.employee_code or "",
+        "employee_national_id": (party.national_id if party else ""),
+        "position_name": contract.position.name if contract.position is not None else "",
+        "start_date": _spanish_date(contract.start_date),
+        "end_date": _spanish_date(contract.end_date),
+        "salary_text": salary_text,
+        "salary_period_label": period_labels.get(contract.salary_period, ""),
+        "signing_date": _spanish_date(timezone.localdate()),
+    }
+    if extra:
+        ctx.update({k: v for k, v in extra.items() if v})
+    return ctx
+
+
+@transaction.atomic
+def create_contract_draft(
+    *,
+    employee: Employee,
+    contract_type: str,
+    start_date,
+    end_date=None,
+    position: JobPosition | None = None,
+    salary_amount=None,
+    salary_period: str = EmploymentContract.SalaryPeriod.MENSUAL,
+    extra_context: dict | None = None,
+    request=None,
+    actor=None,
+) -> EmploymentContract:
+    """Crea el BORRADOR del contrato con el texto redactado desde plantilla."""
+    if contract_type not in EmploymentContract.ContractType.values:
+        raise ValueError("INVALID_CONTRACT_TYPE")
+    if salary_period not in EmploymentContract.SalaryPeriod.values:
+        raise ValueError("INVALID_SALARY_PERIOD")
+
+    contract = EmploymentContract(
+        employee=employee,
+        contract_type=contract_type,
+        position=position,
+        start_date=start_date,
+        end_date=end_date,
+        salary_amount=salary_amount,
+        salary_period=salary_period,
+        created_by=actor,
+    )
+    contract.full_clean()
+    contract.body = render_contract_body(
+        contract_type=contract_type,
+        context=_contract_render_context(employee=employee, contract=contract, extra=extra_context),
+    )
+    contract.save()
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_CONTRACT_CREATED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={
+            "contract_id": contract.id,
+            "contract_type": contract_type,
+            "start_date": str(start_date),
+            "end_date": str(end_date) if end_date else "",
+        },
+    )
+    return contract
+
+
+@transaction.atomic
+def issue_contract(*, contract: EmploymentContract, request=None, actor=None) -> EmploymentContract:
+    """BORRADOR → EMITIDO. El texto queda congelado."""
+    contract = EmploymentContract.objects.select_for_update().get(pk=contract.pk)
+    if contract.status != EmploymentContract.Status.BORRADOR:
+        raise ValueError("CONTRACT_NOT_DRAFT")
+    contract.status = EmploymentContract.Status.EMITIDO
+    contract.issued_at = timezone.now()
+    contract.save(update_fields=["status", "issued_at", "updated_at"])
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_CONTRACT_ISSUED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(contract.employee_id),
+        metadata={"contract_id": contract.id, "contract_type": contract.contract_type},
+    )
+    return contract
+
+
+@transaction.atomic
+def annul_contract(*, contract: EmploymentContract, reason: str = "", request=None, actor=None) -> EmploymentContract:
+    contract = EmploymentContract.objects.select_for_update().get(pk=contract.pk)
+    if contract.status == EmploymentContract.Status.ANULADO:
+        return contract
+    before = contract.status
+    contract.status = EmploymentContract.Status.ANULADO
+    contract.save(update_fields=["status", "updated_at"])
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_CONTRACT_ANNULLED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(contract.employee_id),
+        metadata={"contract_id": contract.id, "previous_status": before, "reason": reason or ""},
+    )
+    return contract
+
+
+# ---------------------------------------------------------------------------
+# Memorandos / relaciones laborales
+# ---------------------------------------------------------------------------
+
+@transaction.atomic
+def create_memo(
+    *,
+    employee: Employee,
+    memo_type: str,
+    subject: str,
+    body: str = "",
+    issued_date=None,
+    request=None,
+    actor=None,
+) -> EmployeeMemo:
+    if memo_type not in EmployeeMemo.MemoType.values:
+        raise ValueError("INVALID_MEMO_TYPE")
+    if not (subject or "").strip():
+        raise ValueError("MEMO_SUBJECT_REQUIRED")
+
+    memo = EmployeeMemo.objects.create(
+        employee=employee,
+        memo_type=memo_type,
+        subject=subject.strip(),
+        body=body or "",
+        issued_date=issued_date or timezone.localdate(),
+        created_by=actor,
+    )
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_MEMO_CREATED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(employee.id),
+        metadata={"memo_id": memo.id, "memo_type": memo_type, "subject": memo.subject},
+    )
+    return memo
+
+
+@transaction.atomic
+def annul_memo(*, memo: EmployeeMemo, reason: str = "", request=None, actor=None) -> EmployeeMemo:
+    memo = EmployeeMemo.objects.select_for_update().get(pk=memo.pk)
+    if memo.status == EmployeeMemo.Status.ANULADO:
+        return memo
+    memo.status = EmployeeMemo.Status.ANULADO
+    memo.save(update_fields=["status"])
+
+    write_event(
+        request=request,
+        module="HR",
+        event_type="HR_MEMO_ANNULLED",
+        reason_code="OK",
+        actor_user=actor,
+        subject_type="EMPLOYEE",
+        subject_id=str(memo.employee_id),
+        metadata={"memo_id": memo.id, "reason": reason or ""},
+    )
+    return memo

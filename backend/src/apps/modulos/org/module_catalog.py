@@ -64,9 +64,11 @@ _SPECS: tuple[ModuleSpec, ...] = (
     ModuleSpec("audit", "Auditoría", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("audit.",), legacy_acl=True),
     ModuleSpec("synchronization", "Sincronización", ModuleCategory.CORE, core=True, default_enabled=True, permission_prefixes=("sync.",), legacy_acl=True),
     # --- OPERATIONS (set base ON por defecto) ---
+    ModuleSpec("parties", "Terceros", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("parties.",)),
     ModuleSpec("payroll", "Nómina", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("nomina.",), posting_key="enable_nomina"),
     ModuleSpec("billing", "Facturación", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("billing.",), legacy_acl=True, posting_key="enable_billing"),
     ModuleSpec("reporting", "Reportes", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.",), legacy_acl=True),
+    ModuleSpec("controls", "Controles (anti-fraude)", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("controls.",)),
     ModuleSpec("analytics", "Analítica / Dashboard", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("report.dashboard.",), legacy_acl=True),
     # --- FINANCE / VERTICALES (OFF hasta activar) ---
     ModuleSpec("inventory", "Inventario", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("inventory.",), legacy_acl=True, posting_key="enable_inventory"),
@@ -76,6 +78,13 @@ _SPECS: tuple[ModuleSpec, ...] = (
     ModuleSpec("retail_pos", "Punto de Venta", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("retail.pos.",), legacy_acl=True),
     ModuleSpec("fuel", "Estación de Servicio", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("fuel.",), legacy_acl=True),
     ModuleSpec("cec", "CEC", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("cec.",)),
+    ModuleSpec("comisariato", "Comisariato", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("comisariato.",)),
+    ModuleSpec("finca", "Finca", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("finca.",)),
+    ModuleSpec("fleet", "Flota", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("fleet.",)),
+    # --- PLATAFORMA AVANZADA (ON por defecto: documentación/diagnóstico no son de giro) ---
+    ModuleSpec("documents", "Documentos (IDP)", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("documents.",)),
+    ModuleSpec("knowledge", "Conocimiento", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("knowledge.",)),
+    ModuleSpec("diagnostics", "Diagnóstico", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("diagnostics.",)),
 )
 
 _BY_CODE: dict[str, ModuleSpec] = {spec.code: spec for spec in _SPECS}

@@ -66,11 +66,11 @@ export default defineConfig((/* ctx */) => {
         [
           'vite-plugin-checker',
           {
+            // Chequeo de tipos en vivo (TypeScript). El sub-checker de ESLint queda
+            // DESACTIVADO porque vite-plugin-checker@0.11 usa `FlatESLint`, removido en
+            // ESLint 10 (`TypeError: FlatESLint is not a constructor` → crashea el dev server).
+            // ESLint sigue corriéndose aparte: `npm run lint` y el runner `frontend_ci`.
             vueTsc: true,
-            eslint: {
-              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
-              useFlatConfig: true,
-            },
           },
           { server: false },
         ],
@@ -86,6 +86,9 @@ export default defineConfig((/* ctx */) => {
         '/api': {
           target: 'http://backend:8000',
           changeOrigin: true,
+          // Reenvía la IP real del cliente (X-Forwarded-For): sin esto, la
+          // auditoría vería la IP del proxy para TODOS los celulares.
+          xfwd: true,
         },
         '/analytics': {
           target: 'http://dash_analytics:8050',

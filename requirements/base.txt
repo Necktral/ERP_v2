@@ -1,5 +1,6 @@
 # Seguridad y firmas
 cryptography==48.0.0
+defusedxml==0.7.1
 # Framework + API
 Django==6.0.6
 djangorestframework==3.17.1

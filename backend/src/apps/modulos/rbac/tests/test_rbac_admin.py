@@ -143,3 +143,46 @@ def test_assignment_revoke_via_api():
     assert resp.status_code == 200
     ra.refresh_from_db()
     assert ra.is_active is False
+
+
+# --- Usuarios del scope (pantalla "Usuarios y acceso") -----------------------
+
+@pytest.mark.django_db
+def test_scope_users_lista_con_roles_del_scope():
+    _, company, branch = _mk_org()
+    _, other_company, _ = _mk_org()
+    client = _client_with_perms(company=company, branch=branch, perm_codes=["rbac.assignments.read"])
+
+    target = _mk_user("target")
+    UserMembership.objects.create(user=target, org_unit=company, is_active=True)
+    role = _role_with_perm("inventory.read")
+    RoleAssignment.objects.create(user=target, role=role, org_unit=company, is_active=True)
+
+    ajeno = _mk_user("ajeno")
+    UserMembership.objects.create(user=ajeno, org_unit=other_company, is_active=True)
+
+    resp = client.get("/api/rbac/users/")
+    assert resp.status_code == 200, resp.data
+    ids = {row["id"] for row in resp.data["results"]}
+    assert target.id in ids
+    assert ajeno.id not in ids  # otra empresa no se mezcla
+
+    row = next(r for r in resp.data["results"] if r["id"] == target.id)
+    assert row["username"] == target.username
+    assert [r["role_name"] for r in row["roles"]] == [role.name]
+    assert row["roles"][0]["org_unit_id"] == company.id
+
+
+@pytest.mark.django_db
+def test_scope_users_busqueda_y_permiso():
+    _, company, branch = _mk_org()
+    client = _client_with_perms(company=company, branch=branch, perm_codes=["rbac.assignments.read"])
+    juan = _mk_user("juanbuscable")
+    UserMembership.objects.create(user=juan, org_unit=branch, is_active=True)
+
+    resp = client.get("/api/rbac/users/?search=juanbuscable")
+    assert resp.status_code == 200
+    assert {r["id"] for r in resp.data["results"]} == {juan.id}
+
+    sin_permiso = _client_with_perms(company=company, branch=branch, perm_codes=["inventory.read"])
+    assert sin_permiso.get("/api/rbac/users/").status_code == 403

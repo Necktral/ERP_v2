@@ -1,62 +1,87 @@
 <template>
-  <q-page class="row items-center justify-center">
-    <q-card style="width: 420px; max-width: 92vw">
-      <q-card-section>
-        <div class="text-h6">Login</div>
-        <div class="text-caption text-grey-7">Conecta contra el backend (JWT)</div>
-      </q-card-section>
+  <q-page class="login-page">
+    <div class="login-card app-fade-up">
+      <div class="login-brand">
+        <img v-if="brand.logoUrl" :src="brand.logoUrl" :alt="brand.name" class="login-logo" />
+        <span v-else class="login-mark" aria-hidden="true">◆</span>
+        <div class="login-brand__text">
+          <div class="login-brand__name">{{ brand.name }}</div>
+          <div class="login-brand__claim">{{ brand.tagline }}</div>
+        </div>
+      </div>
 
-      <q-separator />
+      <q-banner v-if="bootstrapChecked && isFresh" class="login-banner login-banner--info" rounded>
+        <div class="text-weight-medium">Primer arranque: aún no hay usuarios.</div>
+        <div class="text-caption">Crea el usuario administrador inicial y configura tu organización.</div>
+        <template #action>
+          <q-btn unelevated color="primary" label="Crear usuario inicial" to="/bootstrap" />
+        </template>
+      </q-banner>
 
-      <q-card-section>
-        <q-banner v-if="bootstrapChecked && isFresh" class="q-mb-md" dense rounded inline-actions>
-          <div class="text-weight-medium">Primer arranque: no hay usuarios creados.</div>
-          <div class="text-caption text-grey-7">
-            Crea el usuario administrador inicial y luego configura Holding → Company → Branch.
-          </div>
-          <template #action>
-            <q-btn color="primary" label="Crear usuario inicial" to="/bootstrap" />
+      <q-form class="login-form" @submit.prevent="onSubmit">
+        <q-input
+          v-model="username"
+          label="Usuario"
+          autocomplete="username"
+          outlined
+          :autofocus="!usuarioRecordado"
+          :disable="isFresh"
+        >
+          <template #prepend>
+            <q-icon name="person" />
           </template>
-        </q-banner>
+        </q-input>
 
-        <q-form @submit.prevent="onSubmit">
-          <q-input
-            v-model="username"
-            label="Username"
-            autocomplete="username"
-            outlined
-            :disable="isFresh"
-          />
-          <div class="q-mt-md" />
-          <q-input
-            v-model="password"
-            label="Password"
-            type="password"
-            autocomplete="current-password"
-            outlined
-            :disable="isFresh"
-          />
-
-          <div class="q-mt-lg">
-            <q-btn
-              :loading="loading"
-              type="submit"
-              label="Entrar"
-              color="primary"
-              class="full-width"
-              :disable="isFresh"
+        <q-input
+          v-model="password"
+          label="Contraseña"
+          :type="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
+          outlined
+          :autofocus="usuarioRecordado"
+          :disable="isFresh"
+        >
+          <template #prepend>
+            <q-icon name="lock" />
+          </template>
+          <template #append>
+            <q-icon
+              :name="showPassword ? 'visibility_off' : 'visibility'"
+              class="cursor-pointer"
+              :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              @click="showPassword = !showPassword"
             />
-          </div>
-        </q-form>
-
-        <q-banner v-if="errorMsg" class="q-mt-md" dense rounded inline-actions>
-          {{ errorMsg }}
-          <template #action>
-            <q-btn flat label="Cerrar" @click="errorMsg = null" />
           </template>
-        </q-banner>
-      </q-card-section>
-    </q-card>
+        </q-input>
+
+        <q-checkbox
+          v-model="rememberUser"
+          label="Recordar usuario"
+          dense
+          class="login-remember"
+          :disable="isFresh"
+        />
+
+        <q-btn
+          :loading="loading"
+          type="submit"
+          label="Ingresar"
+          color="primary"
+          unelevated
+          class="login-submit full-width"
+          :disable="isFresh"
+        />
+      </q-form>
+
+      <q-banner v-if="errorMsg" class="login-banner login-banner--error" rounded>
+        {{ errorMsg }}
+        <template #action>
+          <q-btn flat label="Cerrar" @click="errorMsg = null" />
+        </template>
+      </q-banner>
+
+      <div class="login-credit">Desarrollado por {{ brand.developer }}</div>
+    </div>
   </q-page>
 </template>
 
@@ -65,16 +90,24 @@ import { isAxiosError } from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from 'src/stores/auth.store';
-import { useContextStore } from 'src/stores/context.store';
 import { useSessionBootstrapStore } from 'src/stores/session-bootstrap.store';
+import { BRAND } from 'src/config/brand';
+
+const brand = BRAND;
 
 const router = useRouter();
 const auth = useAuthStore();
-const ctx = useContextStore();
 const sessionBootstrap = useSessionBootstrapStore();
 
-const username = ref('');
+// Recordar usuario: SOLO el nombre (jamás la contraseña), en este navegador.
+const REMEMBER_KEY = 'nt_remembered_username';
+const savedUsername = localStorage.getItem(REMEMBER_KEY);
+const usuarioRecordado = !!savedUsername;
+
+const username = ref(savedUsername ?? '');
 const password = ref('');
+const showPassword = ref(false);
+const rememberUser = ref(usuarioRecordado);
 
 const loading = ref(false);
 const errorMsg = ref<string | null>(null);
@@ -97,6 +130,13 @@ async function onSubmit() {
   try {
     await auth.login(username.value.trim(), password.value);
 
+    // Login correcto: persistir (o borrar) el usuario según el checkbox.
+    if (rememberUser.value) {
+      localStorage.setItem(REMEMBER_KEY, username.value.trim());
+    } else {
+      localStorage.removeItem(REMEMBER_KEY);
+    }
+
     if (auth.isTwoFactorRequired) {
       await router.replace('/login/2fa');
       return;
@@ -115,12 +155,8 @@ async function onSubmit() {
       return;
     }
 
-    if (ctx.activeCompanyId) {
-      await router.replace('/dashboard');
-      return;
-    }
-
-    await router.replace('/select-context');
+    // Frontend en reconstrucción: el app gated arranca en RR.HH.
+    await router.replace('/');
   } catch (e: unknown) {
     if (isAxiosError(e)) {
       const data: unknown = e.response?.data;
@@ -142,7 +178,7 @@ async function onSubmit() {
       ) {
         detail = (data as { detail: string }).detail;
       }
-      errorMsg.value = detail || e.message || 'Error de login';
+      errorMsg.value = detail || e.message || 'No pudimos iniciar sesión';
     } else if (e instanceof Error) {
       errorMsg.value = e.message;
     } else {
@@ -153,3 +189,104 @@ async function onSubmit() {
   }
 }
 </script>
+
+<style scoped>
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--app-space-4);
+  background: var(--app-bg-gradient);
+  background-color: var(--app-bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-5);
+  padding: var(--app-space-8) var(--app-space-6);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.login-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--app-radius-md);
+  font-size: 1.25rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--app-primary), var(--app-secondary));
+  box-shadow: var(--app-shadow-soft);
+}
+
+.login-brand__name {
+  font-family: 'Manrope', 'IBM Plex Sans', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  color: var(--app-text);
+}
+
+.login-brand__claim {
+  font-size: 0.82rem;
+  color: var(--app-text-muted);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+}
+
+.login-remember {
+  align-self: flex-start;
+  color: var(--app-text-muted);
+  font-size: 0.85rem;
+}
+
+.login-submit {
+  height: 44px;
+  font-weight: 600;
+}
+
+.login-banner {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-strong);
+}
+
+.login-banner--error {
+  border-color: rgba(193, 56, 56, 0.4);
+}
+
+.login-logo {
+  height: 44px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+}
+
+.login-credit {
+  margin-top: var(--app-space-1);
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--app-text-muted);
+}
+</style>

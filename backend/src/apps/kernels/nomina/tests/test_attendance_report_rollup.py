@@ -98,8 +98,9 @@ def test_rollup_creates_report_with_breakdown():
 
     _consolidation(company, branch, period, worker, work_date=date(2026, 6, 2), event_type=FieldWorkerEventType.PRESENT)
     _consolidation(company, branch, period, worker, work_date=date(2026, 6, 3), event_type=FieldWorkerEventType.PRESENT)
+    # Regla del dueño: enfermo sin constancia day_value 0.00; accidente laboral 1.00.
     _consolidation(company, branch, period, worker, work_date=date(2026, 6, 4), event_type=FieldWorkerEventType.SICK, day_value="0.00")
-    _consolidation(company, branch, period, worker, work_date=date(2026, 6, 5), event_type=FieldWorkerEventType.ACCIDENT, day_value="0.00")
+    _consolidation(company, branch, period, worker, work_date=date(2026, 6, 5), event_type=FieldWorkerEventType.ACCIDENT, day_value="1.00")
     _consolidation(company, branch, period, worker, work_date=date(2026, 6, 6), event_type=FieldWorkerEventType.ABSENT, day_value="0.00")
     _consolidation(company, branch, period, worker, work_date=date(2026, 6, 7), event_type=FieldWorkerEventType.PRESENT)  # domingo
 
@@ -110,10 +111,10 @@ def test_rollup_creates_report_with_breakdown():
     assert report.company == company
     assert report.branch == branch
     assert report.employee == worker
-    assert report.days_worked == Decimal("3.00")  # Jun 2, 3, 7
+    assert report.days_worked == Decimal("4.00")  # Jun 2, 3, 7 + accidente (día puesto)
     assert report.days_sick == Decimal("1.00")
     assert report.days_accident == Decimal("1.00")
-    assert report.days_subsidy == Decimal("2.00")
+    assert report.days_subsidy == Decimal("0.00")  # subsidio INSS = casilla manual
     assert report.days_absent == Decimal("1.00")
     assert report.sunday_worked_days == 1  # Jun 7
     assert report.has_conflict is False

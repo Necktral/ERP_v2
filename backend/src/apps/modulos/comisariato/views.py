@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.kernels.nomina.models import PayrollSheet
+from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
 from apps.modulos.parties.models import Party
@@ -44,6 +45,43 @@ class HealthView(APIView):
 
     def get(self, request):
         return Response({"ok": True, "module": "comisariato"}, status=status.HTTP_200_OK)
+
+
+class AccountListView(APIView):
+    """Listado paginado de cuentas de crédito (filtros: q por tercero, segment, is_active)."""
+
+    permission_classes = [rbac_permission("comisariato.read")]
+
+    def get(self, request):
+        company = getattr(request, "company", None)
+        if company is None:
+            return Response({"detail": "X-Company-Id requerido"}, status=status.HTTP_400_BAD_REQUEST)
+        qs = (
+            CustomerCreditAccount.objects.filter(company=company)
+            .select_related("party")
+            .order_by("party__display_name")
+        )
+        q = (request.query_params.get("q") or "").strip()
+        if q:
+            qs = qs.filter(party__display_name__icontains=q)
+        segment = (request.query_params.get("segment") or "").strip().upper()
+        if segment:
+            qs = qs.filter(segment=segment)
+        is_active = request.query_params.get("is_active")
+        if is_active is not None and is_active != "":
+            qs = qs.filter(is_active=is_active.lower() == "true")
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        return Response(
+            {
+                "count": total,
+                "limit": limit,
+                "offset": offset,
+                "results": [_account_payload(a) for a in rows],
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class AccountUpsertView(APIView):
@@ -145,3 +183,12 @@ class ApplyStoreCreditView(APIView):
         except ComisariatoError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(result, status=status.HTTP_200_OK)
+
+
+class AccountListUpsertView(AccountListView, AccountUpsertView):
+    """GET lista (comisariato.read) + POST upsert (comisariato.account.manage)."""
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [rbac_permission("comisariato.account.manage")()]
+        return [rbac_permission("comisariato.read")()]

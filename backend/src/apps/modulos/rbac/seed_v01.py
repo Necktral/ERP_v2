@@ -120,6 +120,11 @@ def seed_rbac_v01() -> SeedResult:
         "rbac.permissions.update": "Actualizar permisos.",
         "rbac.assignments.read": "Ver asignaciones de roles.",
         "rbac.assignments.update": "Actualizar asignaciones de roles.",
+        # Terceros (directorio de clientes/proveedores/productores)
+        "parties.party.read": "Ver terceros (clientes, proveedores, productores).",
+        "parties.party.create": "Crear terceros.",
+        "parties.party.update": "Actualizar terceros (datos y estado).",
+        "parties.role.manage": "Asignar/revocar roles del tercero (cliente/proveedor/...).",
         # Auditoría
         "audit.read": "Leer auditoría.",
         "audit.export": "Exportar auditoría.",
@@ -398,6 +403,10 @@ def seed_rbac_v01() -> SeedResult:
             "rbac.permissions.update",
             "rbac.assignments.read",
             "rbac.assignments.update",
+            "parties.party.read",
+            "parties.party.create",
+            "parties.party.update",
+            "parties.role.manage",
             "audit.read",
             "audit.export",
             # Reporting / dashboards: company_admin se describe como "...+ reportes". El dueño
@@ -1118,6 +1127,13 @@ def seed_rbac_v01() -> SeedResult:
         for code in codes_to_add:
             if code not in current:
                 current.append(code)
+
+    # ESTACIÓN (fuel): company_admin administra todo el vertical (igual criterio que
+    # comisariato/fleet); los roles operativos de estación ya tienen su subconjunto arriba.
+    for code in sorted(c for c in permissions if c.startswith("fuel.")):
+        current = role_to_perms.setdefault("company_admin", [])
+        if code not in current:
+            current.append(code)
 
     # PLATAFORMA / FINANZAS — roles transversales nuevos. Solo permisos YA existentes y con
     # SoD: cada rol se queda corto a propósito en lo sensible (apagar IA, postear/cerrar

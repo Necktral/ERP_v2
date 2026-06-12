@@ -88,7 +88,7 @@
 - `make qa-retail-pos-pilot-rollback QA_REPORTS_DIR=qa/reports`
 - `python3 qa/simulate_retail_pos_edge.py --help`
 - `pytest -q src/tests/test_retail_pos_api.py src/tests/test_sync_v2_pos_commands.py`
-- `npm run test -- src/services/__tests__/retail-pos-offline-queue.spec.ts`
+- `npm run test -- src/features/pos/__tests__/offlineQueue.spec.ts`
 
 ## Pendientes para fases siguientes
 

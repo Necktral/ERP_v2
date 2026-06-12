@@ -163,11 +163,13 @@ class PayrollEntryOut(serializers.ModelSerializer):
 
 
 class PayrollEntryCreateIn(serializers.Serializer):
-    # Identificación
+    # Identificación. Con employee_id el resto se autollena del expediente HR
+    # (la vista copia cédula/INSS/género/cargo/salario); full_name solo es
+    # obligatorio para entradas manuales sin expediente.
     employee_id = serializers.IntegerField(required=False, allow_null=True)
     inss_number = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
     cedula = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
-    full_name = serializers.CharField(max_length=160)
+    full_name = serializers.CharField(max_length=160, required=False, allow_blank=True, default="")
     gender = serializers.ChoiceField(choices=["M", "F"], required=False, allow_blank=True, default="")
     cargo = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
 
@@ -181,6 +183,9 @@ class PayrollEntryCreateIn(serializers.Serializer):
     # Salario
     base_salary_usd = serializers.DecimalField(max_digits=10, decimal_places=4, required=False, allow_null=True)
     base_salary_nio = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
+    # Jornaleros (DAILY): el cliente puede mandar el jornal directo; se convierte a la
+    # base mensual del kernel (mes de 30 días, el mismo convenio de compute_all).
+    daily_rate_nio = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, allow_null=True)
 
     # Asistencia
     days_in_period = serializers.IntegerField(min_value=1, max_value=31, default=15)
@@ -201,6 +206,24 @@ class PayrollEntryCreateIn(serializers.Serializer):
     ir_amount = serializers.DecimalField(max_digits=18, decimal_places=2, required=False, default=Decimal("0.00"))
 
     notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("full_name") and not attrs.get("employee_id"):
+            raise serializers.ValidationError(
+                {"full_name": "Obligatorio si no se da employee_id (entrada manual)."}
+            )
+        daily_rate = attrs.pop("daily_rate_nio", None)
+        if daily_rate is not None:
+            if attrs.get("salary_type") != "DAILY":
+                raise serializers.ValidationError(
+                    {"daily_rate_nio": "Solo aplica a salario por día (DAILY)."}
+                )
+            if attrs.get("base_salary_nio"):
+                raise serializers.ValidationError(
+                    {"daily_rate_nio": "Enviar jornal diario O salario mensual, no ambos."}
+                )
+            attrs["base_salary_nio"] = (daily_rate * Decimal("30")).quantize(Decimal("0.01"))
+        return attrs
 
 
 # ---------------------------------------------------------------------------

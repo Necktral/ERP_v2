@@ -354,6 +354,14 @@
       "ticket_ref": "U5-BASELINE",
       "fingerprint": "700903f16e854c3b33e4035e5968234c63d92eb9d71a22a3ea5f4339b8a1ee77"
     },
+    "backend/src/apps/kernels/nomina/migrations/0013_biometricdevice_biometricimportbatch_biometriccheck_and_more.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_biometric_tables_devices_batches_checks_personmap",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "ASISTENCIA-B1-2026-06",
+      "fingerprint": "c733cf8c22f589535c59e0fa97082aeb3af4051765a2f4e8aae8bdef170613ac"
+    },
     "backend/src/apps/kernels/payments/migrations/0001_initial.py": {
       "risk_class": "high_lock_risk",
       "rollout_strategy": "baseline_existing_migration",
@@ -833,6 +841,38 @@
       "owner": "db-architecture",
       "ticket_ref": "PR93-HR-PARTY-LINK",
       "fingerprint": "10f56f3a85d82cabc97499f60a412c9f03143e09632b5d69823ade82fc915ce2"
+    },
+    "backend/src/apps/modulos/hr/migrations/0006_employeerolemap.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_employeerolemap_table_multi_cargo",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "HR-VERTICAL-2026-06",
+      "fingerprint": "8a9ed0dfa79e963f637c4714e6722867ad4641e641ccd5149a95b2eda694bcec"
+    },
+    "backend/src/apps/modulos/hr/migrations/0007_employeelifecycleevent_employeememo_and_more.py": {
+      "risk_class": "high_lock_risk",
+      "rollout_strategy": "create_lifecycle_memo_contract_tables_plus_index_on_employee",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "HR-VERTICAL-2026-06",
+      "fingerprint": "93e2fafb0842cfb834d6c66a20e33e8dacdeb0c6000124f8193d7a72ebcdf60d"
+    },
+    "backend/src/apps/modulos/hr/migrations/0008_employee_cedula_employee_daily_rate_nio_and_more.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "add_defaulted_columns_employee_cedula_salary_inss",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "HR-VERTICAL-2026-06",
+      "fingerprint": "cc0cd883b06829d953583725dbe31b1c7859c48b8773bf1f75d3c4bd18ea809c"
+    },
+    "backend/src/apps/modulos/hr/migrations/0009_employeephoto.py": {
+      "risk_class": "online_safe",
+      "rollout_strategy": "create_employeephoto_table",
+      "rollback_strategy": "roll_forward_preferred",
+      "owner": "db-architecture",
+      "ticket_ref": "HR-VERTICAL-2026-06",
+      "fingerprint": "cbdd905fbbf14ad1ab32758c9d889d1e61e37b579b8865b3f4b4d83879f14c14"
     },
     "backend/src/apps/modulos/iam/migrations/0001_initial.py": {
       "risk_class": "expand",
