@@ -118,4 +118,5 @@ urlpatterns += [
     path("api/documents/", include("apps.modulos.documents.urls")),
     path("api/diagnostics/", include("apps.modulos.diagnostics.urls")),
     path("api/knowledge/", include("apps.modulos.knowledge.urls")),
+    path("api/financiamiento/", include("apps.modulos.financiamiento.urls")),
 ]

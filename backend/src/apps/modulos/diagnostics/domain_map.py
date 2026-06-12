@@ -25,6 +25,7 @@ _C1_DOMAINS = frozenset(
         "portfolio",
         "compras",  # genera cuentas por pagar y entradas de stock
         "retail_pos",  # ventas: dinero y stock
+        "financiamiento",  # préstamos a productores + acopio: dinero y stock
         "comisariato",  # tienda a crédito ligada a planilla: dinero
         "intercompany",  # cruces facturados entre RUCs: fiscal
         # Stock.
