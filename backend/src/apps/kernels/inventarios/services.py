@@ -627,9 +627,23 @@ def post_receive(
         factor = _q_cost(Decimal(str(movement_uom_factor))) if movement_uom_factor else Decimal("1.000000")
         qty_base = _q_qty(qty * factor) if factor != Decimal("1.000000") else qty
 
+        from .costing import (
+            CostingMethod,
+            fifo_create_layer,
+            fifo_weighted_cost,
+            resolve_costing_method,
+        )
+
+        method = resolve_costing_method(company=company, branch=branch)
         total_cost = _q_cost(qty_base * unit_cost)
         new_qty = _q_qty(bal.qty_on_hand + qty_base)
-        if new_qty == 0:
+        cost_variance = Decimal("0.000000")
+        if method == CostingMethod.STANDARD:
+            # Inventario valuado a costo estándar; la diferencia con el costo real de compra
+            # es varianza (no muta el estándar). Se sella en el movimiento y se audita.
+            cost_variance = _q_cost((unit_cost - item.standard_cost) * qty_base)
+            new_avg = _q_cost(item.standard_cost)
+        elif new_qty == 0:
             new_avg = Decimal("0.000000")
         elif bal.qty_on_hand <= 0:
             # INV-02: si el saldo previo venía en cero/negativo (stock negativo permitido),
@@ -649,6 +663,7 @@ def post_receive(
             qty_delta=qty_base,
             unit_cost=unit_cost,
             total_cost=total_cost,
+            cost_variance=cost_variance,
             lot=lot,
             expiry_date=lot.expiry_date if lot else expiry_date,
             movement_uom=movement_uom or "",
@@ -660,6 +675,17 @@ def post_receive(
             idempotency_key=idempotency_key or "",
             created_by=getattr(actor, "pk", None) and actor,
         )
+
+        if method == CostingMethod.FIFO:
+            # Materializa la capa de esta entrada y fija el promedio del balance a las capas
+            # abiertas (valuación exacta = Σ capas).
+            fifo_create_layer(
+                company=company, branch=branch, warehouse=warehouse, item=item, lot=lot,
+                movement=mov, unit_cost=unit_cost, qty=qty_base,
+            )
+            new_avg = fifo_weighted_cost(
+                company=company, branch=branch, warehouse=warehouse, item=item, fallback=unit_cost,
+            )
 
         bal.qty_on_hand = new_qty
         bal.avg_cost = new_avg
@@ -809,10 +835,36 @@ def post_issue(
         elif lot_id:
             raise ValueError("El ítem no tiene habilitado tracking de lotes.")
 
-        unit_cost = bal.avg_cost
-        total_cost = _q_cost(qty * unit_cost)
+        from .costing import (
+            CostingMethod,
+            fifo_consume,
+            fifo_weighted_cost,
+            resolve_costing_method,
+        )
+
+        method = resolve_costing_method(company=company, branch=branch)
         new_qty = _q_qty(bal.qty_on_hand - qty)
-        new_avg = Decimal("0.000000") if new_qty == 0 else bal.avg_cost
+        if method == CostingMethod.FIFO:
+            # COGS = consumo ponderado de las capas más antiguas; el balance queda en el
+            # ponderado de las capas restantes.
+            unit_cost = fifo_consume(
+                company=company, branch=branch, warehouse=warehouse, item=item,
+                qty=qty, fallback_unit_cost=bal.avg_cost,
+            )
+            new_avg = (
+                Decimal("0.000000") if new_qty == 0
+                else fifo_weighted_cost(
+                    company=company, branch=branch, warehouse=warehouse, item=item,
+                    fallback=bal.avg_cost,
+                )
+            )
+        elif method == CostingMethod.STANDARD:
+            unit_cost = _q_cost(item.standard_cost)
+            new_avg = _q_cost(item.standard_cost)
+        else:
+            unit_cost = bal.avg_cost
+            new_avg = Decimal("0.000000") if new_qty == 0 else bal.avg_cost
+        total_cost = _q_cost(qty * unit_cost)
 
         mov = StockMovement.objects.create(
             company=company,
@@ -939,8 +991,26 @@ def post_adjust(
         item = _get_item_or_error(company=company, item_id=item_id)
         bal = _get_or_create_balance_locked(company=company, branch=branch, warehouse=warehouse, item=item)
 
+        from .costing import (
+            CostingMethod,
+            fifo_consume,
+            fifo_create_layer,
+            fifo_weighted_cost,
+            resolve_costing_method,
+        )
+
+        method = resolve_costing_method(company=company, branch=branch)
         delta = _q_qty(new_qty_on_hand - bal.qty_on_hand)
-        unit_cost = bal.avg_cost
+        if method == CostingMethod.STANDARD:
+            unit_cost = _q_cost(item.standard_cost)
+        elif method == CostingMethod.FIFO and delta < 0:
+            # Una baja (merma/faltante) consume las capas más antiguas.
+            unit_cost = fifo_consume(
+                company=company, branch=branch, warehouse=warehouse, item=item,
+                qty=-delta, fallback_unit_cost=bal.avg_cost,
+            )
+        else:
+            unit_cost = bal.avg_cost
         total_cost = _q_cost(delta * unit_cost)
 
         mov = StockMovement.objects.create(
@@ -958,9 +1028,26 @@ def post_adjust(
             created_by=getattr(actor, "pk", None) and actor,
         )
 
+        if method == CostingMethod.FIFO and delta > 0:
+            # Un alza (stock encontrado) crea una capa al costo vigente del balance.
+            fifo_create_layer(
+                company=company, branch=branch, warehouse=warehouse, item=item, lot=None,
+                movement=mov, unit_cost=unit_cost, qty=delta,
+            )
+
         bal.qty_on_hand = new_qty_on_hand
+        if method == CostingMethod.STANDARD:
+            bal.avg_cost = _q_cost(item.standard_cost)
+        elif method == CostingMethod.FIFO:
+            bal.avg_cost = (
+                Decimal("0.000000") if new_qty_on_hand == 0
+                else fifo_weighted_cost(
+                    company=company, branch=branch, warehouse=warehouse, item=item,
+                    fallback=bal.avg_cost,
+                )
+            )
         bal.updated_at = timezone.now()
-        bal.save(update_fields=["qty_on_hand", "updated_at"])
+        bal.save(update_fields=["qty_on_hand", "avg_cost", "updated_at"])
 
         write_event(
             request=request,
@@ -1066,7 +1153,25 @@ def post_transfer(
         if from_bal.qty_on_hand < qty:
             raise ValueError("stock insuficiente")
 
-        unit_cost = from_bal.avg_cost
+        from .costing import (
+            CostingMethod,
+            fifo_consume,
+            fifo_create_layer,
+            fifo_weighted_cost,
+            resolve_costing_method,
+        )
+
+        method = resolve_costing_method(company=company, branch=branch)
+        if method == CostingMethod.FIFO:
+            # Consume capas del almacén origen; el costo trasladado es el ponderado consumido.
+            unit_cost = fifo_consume(
+                company=company, branch=branch, warehouse=from_wh, item=item,
+                qty=qty, fallback_unit_cost=from_bal.avg_cost,
+            )
+        elif method == CostingMethod.STANDARD:
+            unit_cost = _q_cost(item.standard_cost)
+        else:
+            unit_cost = from_bal.avg_cost
         total_cost = _q_cost(qty * unit_cost)
 
         out_mov = StockMovement.objects.create(
@@ -1104,15 +1209,38 @@ def post_transfer(
             created_by=getattr(actor, "pk", None) and actor,
         )
 
+        if method == CostingMethod.FIFO:
+            # La capa que sale del origen reaparece como capa nueva en el destino.
+            fifo_create_layer(
+                company=company, branch=branch, warehouse=to_wh, item=item, lot=None,
+                movement=in_mov, unit_cost=unit_cost, qty=qty,
+            )
+
         from_bal.qty_on_hand = _q_qty(from_bal.qty_on_hand - qty)
-        if from_bal.qty_on_hand == 0:
+        if method == CostingMethod.FIFO:
+            from_bal.avg_cost = (
+                Decimal("0.000000") if from_bal.qty_on_hand == 0
+                else fifo_weighted_cost(
+                    company=company, branch=branch, warehouse=from_wh, item=item,
+                    fallback=from_bal.avg_cost,
+                )
+            )
+        elif method == CostingMethod.STANDARD:
+            from_bal.avg_cost = _q_cost(item.standard_cost)
+        elif from_bal.qty_on_hand == 0:
             from_bal.avg_cost = Decimal("0.000000")
         from_bal.updated_at = timezone.now()
         from_bal.save(update_fields=["qty_on_hand", "avg_cost", "updated_at"])
 
         to_bal.qty_on_hand = _q_qty(to_bal.qty_on_hand + qty)
-        # avg_cost stays the same (weighted average is preserved on transfer at same cost)
-        if to_bal.qty_on_hand == 0:
+        if method == CostingMethod.FIFO:
+            to_bal.avg_cost = fifo_weighted_cost(
+                company=company, branch=branch, warehouse=to_wh, item=item, fallback=unit_cost,
+            )
+        elif method == CostingMethod.STANDARD:
+            to_bal.avg_cost = _q_cost(item.standard_cost)
+        elif to_bal.qty_on_hand == 0:
+            # avg_cost preservado en promedio móvil; si estaba vacío, toma el costo trasladado.
             to_bal.avg_cost = unit_cost
         to_bal.updated_at = timezone.now()
         to_bal.save(update_fields=["qty_on_hand", "avg_cost", "updated_at"])

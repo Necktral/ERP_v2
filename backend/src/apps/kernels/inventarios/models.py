@@ -174,6 +174,14 @@ class InventoryItem(models.Model):
         help_text="FEFO/FIFO/AVERAGE; selección manual por producto (vacío = derivado)",
     )
 
+    # Costo estándar por unidad base. Se usa SOLO cuando la política de costeo vigente es
+    # STANDARD: la valuación y el COGS van a este costo y la diferencia contra el costo
+    # real de compra se registra como varianza (no muta el estándar).
+    standard_cost = models.DecimalField(
+        max_digits=18, decimal_places=6, default=Decimal("0.000000"),
+        help_text="Costo estándar por unidad base (política de costeo STANDARD).",
+    )
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
@@ -398,6 +406,9 @@ class StockMovement(models.Model):
     qty_delta = models.DecimalField(max_digits=18, decimal_places=4)
     unit_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0.000000"))
     total_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0.000000"))
+    # Varianza de compra (precio real − estándar) × qty, solo bajo política STANDARD en una
+    # entrada. El inventario se valúa a estándar; esta varianza es la diferencia, auditable.
+    cost_variance = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal("0.000000"))
 
     # UoM en que se realizó el movimiento (puede diferir del uom base del ítem)
     movement_uom = models.CharField(max_length=16, choices=UoM.choices, blank=True, default="")
@@ -669,3 +680,60 @@ class InventoryCostPolicy(models.Model):
     def __str__(self) -> str:
         scope = f"company={self.company_id}" + (f" branch={self.branch_id}" if self.branch_id else "")
         return f"CostPolicy[{scope}] v{self.version} {self.method} active={self.is_active}"
+
+
+# ---------------------------------------------------------------------------
+# Capas de costo FIFO (PEPS) — motor de costeo por capas de recepción
+# ---------------------------------------------------------------------------
+
+
+class StockMovementCostLayer(models.Model):
+    """Capa de costo FIFO (PEPS): cada RECEIVE crea una capa con su costo unitario y la
+    cantidad que va quedando. Las salidas consumen capas en orden de creación (FIFO,
+    ``created_at`` y luego ``id``) y el COGS de la salida es la suma de lo consumido por
+    capa × su costo. Las capas SOLO se materializan cuando la política de costeo vigente es
+    FIFO; WEIGHTED_AVERAGE y STANDARD no las usan.
+
+    Estabilidad por ciclo (invariante #8): la reversa de un movimiento restaura el estado
+    de las capas (la reversa de un RECEIVE consume su capa origen; la de un ISSUE reintegra
+    a las capas lo consumido), de modo que el kardex de costo siempre cuadra con el físico.
+    """
+
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inv_cost_layers_company")
+    branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="inv_cost_layers_branch")
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="cost_layers")
+    item = models.ForeignKey(InventoryItem, on_delete=models.PROTECT, related_name="cost_layers")
+    lot = models.ForeignKey(
+        ItemLot, null=True, blank=True, on_delete=models.PROTECT, related_name="cost_layers"
+    )
+
+    source_movement = models.ForeignKey(
+        StockMovement, on_delete=models.PROTECT, related_name="cost_layers",
+        help_text="El movimiento de entrada (RECEIVE) que creó esta capa.",
+    )
+    unit_cost = models.DecimalField(max_digits=18, decimal_places=6)
+    qty_initial = models.DecimalField(max_digits=18, decimal_places=4)
+    qty_remaining = models.DecimalField(max_digits=18, decimal_places=4)
+
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "inventarios"
+        indexes = [
+            # Orden FIFO de consumo: por scope (empresa/sucursal/almacén/ítem) y antigüedad.
+            models.Index(
+                fields=["company", "branch", "warehouse", "item", "created_at"],
+                name="ix_costlayer_fifo",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(qty_remaining__gte=0), name="ck_costlayer_qty_remaining_gte_0"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(qty_initial__gt=0), name="ck_costlayer_qty_initial_gt_0"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Layer item={self.item_id} @ {self.unit_cost} rem={self.qty_remaining}/{self.qty_initial}"
