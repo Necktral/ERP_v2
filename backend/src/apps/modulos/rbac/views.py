@@ -7,7 +7,7 @@ from rest_framework import status
 from apps.modulos.common.pagination import get_limit_offset, paginate_queryset
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
-from .models import Role, Permission, RoleAssignment
+from .models import Role, Permission, RoleAssignment, RolePermission
 from .selectors import get_effective_permissions_for_scope
 from .serializers import AssignmentCreateIn
 from .services import assign_role, revoke_role_assignment
@@ -27,6 +27,7 @@ class RoleListView(APIView):
 
     def get(self, request):
         include_inactive = request.query_params.get("include_inactive") == "1"
+        include_permissions = request.query_params.get("include_permissions") == "1"
         qs = Role.objects.all().order_by("name")
         if not include_inactive:
             qs = qs.filter(is_active=True)
@@ -34,15 +35,31 @@ class RoleListView(APIView):
         limit, offset = get_limit_offset(request)
         total, rows = paginate_queryset(qs, limit=limit, offset=offset)
 
-        results = [
-            {
+        perms_by_role: dict[int, list[dict]] = {}
+        if include_permissions:
+            role_ids = [r.id for r in rows]
+            rp_qs = (
+                RolePermission.objects.filter(role_id__in=role_ids, permission__is_active=True)
+                .select_related("permission")
+                .order_by("permission__code")
+            )
+            for rp in rp_qs:
+                perms_by_role.setdefault(rp.role_id, []).append(
+                    {"code": rp.permission.code, "description": rp.permission.description or ""}
+                )
+
+        results = []
+        for r in rows:
+            item = {
                 "id": r.id,
                 "name": r.name,
                 "description": getattr(r, "description", "") or "",
                 "is_active": bool(getattr(r, "is_active", True)),
             }
-            for r in rows
-        ]
+            if include_permissions:
+                item["permissions"] = perms_by_role.get(r.id, [])
+            results.append(item)
+
         return Response(
             {"count": total, "limit": limit, "offset": offset, "results": results},
             status=status.HTTP_200_OK,
@@ -183,3 +200,67 @@ class UserEffectivePermissionsView(APIView):
         target_user = get_object_or_404(User, id=user_id)
         perms = sorted(get_effective_permissions_for_scope(target_user, company=company, branch=branch))
         return Response({"user_id": target_user.id, "permissions": perms}, status=status.HTTP_200_OK)
+
+
+class ScopeUsersView(APIView):
+    """GET /rbac/users/ — usuarios con membresía activa en la empresa (y sus sucursales),
+    con sus roles activos del scope. Base de la pantalla "Usuarios y acceso"."""
+
+    permission_classes = [rbac_permission("rbac.assignments.read")]
+
+    def get(self, request):
+        from django.db.models import Q
+
+        from apps.modulos.iam.models import UserMembership
+
+        company: OrgUnit = request.company
+        org_ids = _company_scope_org_ids(company)
+        user_ids = (
+            UserMembership.objects.filter(org_unit_id__in=org_ids, is_active=True)
+            .values_list("user_id", flat=True)
+            .distinct()
+        )
+        qs = User.objects.filter(id__in=list(user_ids)).order_by("username")
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(username__icontains=search) | Q(email__icontains=search))
+
+        limit, offset = get_limit_offset(request)
+        total, rows = paginate_queryset(qs, limit=limit, offset=offset)
+        rows = list(rows)
+
+        assignments = (
+            RoleAssignment.objects.filter(
+                org_unit_id__in=org_ids, user_id__in=[u.id for u in rows], is_active=True
+            )
+            .select_related("role", "org_unit")
+            .order_by("role__name")
+        )
+        roles_by_user: dict[int, list[dict]] = {}
+        for ra in assignments:
+            roles_by_user.setdefault(ra.user_id, []).append(
+                {
+                    "assignment_id": ra.id,
+                    "role_id": ra.role_id,
+                    "role_name": ra.role.name,
+                    "org_unit_id": ra.org_unit_id,
+                    "org_unit_name": ra.org_unit.name,
+                    "org_unit_type": ra.org_unit.unit_type,
+                    "origin": ra.origin,
+                }
+            )
+
+        results = [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email or "",
+                "is_active": u.is_active,
+                "roles": roles_by_user.get(u.id, []),
+            }
+            for u in rows
+        ]
+        return Response(
+            {"count": total, "limit": limit, "offset": offset, "results": results},
+            status=status.HTTP_200_OK,
+        )

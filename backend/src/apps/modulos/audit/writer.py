@@ -18,6 +18,7 @@ import hashlib
 import hmac
 import json
 import logging
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -46,12 +47,45 @@ def _chain_partition_key(request) -> str:
     return f"COMPANY:{company.id}"
 
 
+def _device_id_from_request(request, company) -> str:
+    """device_id para la bitácora cuando la vista no lo pasó explícito.
+
+    El frontend manda `X-Device-Id` si el aparato fue enrolado. El header por sí
+    solo es una alegación del cliente: SOLO se acepta si corresponde a un Device
+    ACTIVO de la misma company del request — si no, se ignora (queda vacío).
+    """
+    if request is None:
+        return ""
+    meta = getattr(request, "META", None) or {}
+    raw = (meta.get("HTTP_X_DEVICE_ID") or "").strip()
+    if not raw:
+        return ""
+    try:
+        device_uuid = uuid.UUID(raw)
+    except (ValueError, AttributeError, TypeError):
+        return ""
+    from apps.modulos.sync_engine.models import Device  # local: evita import circular
+
+    qs = Device.objects.filter(id=device_uuid, status=Device.Status.ACTIVE)
+    if company is not None:
+        qs = qs.filter(company=company)
+    return str(device_uuid) if qs.exists() else ""
+
+
 def _client_ip(request) -> str | None:
+    """IP del cliente para auditoría (`ip_server_seen`).
+
+    Se toma el ÚLTIMO valor de X-Forwarded-For: ese lo escribe NUESTRO proxy
+    (dev server del frontend con `xfwd`, o el reverse proxy en producción) con
+    la IP real de la conexión. Los valores anteriores son alegaciones del
+    cliente — tomar el primero permitiría falsificar la IP en la bitácora
+    mandando un X-Forwarded-For inventado.
+    """
     if request is None:
         return None
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
     if xff:
-        return xff.split(",")[0].strip()
+        return xff.split(",")[-1].strip()
     ip = request.META.get("REMOTE_ADDR")
     return ip or None
 
@@ -114,6 +148,8 @@ def write_event(
     base_req = getattr(request, "_request", request)
     company = getattr(base_req, "company", None) or getattr(request, "company", None)
     branch = getattr(base_req, "branch", None) or getattr(request, "branch", None)
+    if not device_id:
+        device_id = _device_id_from_request(base_req if base_req is not None else request, company)
     if company and "company_id" not in metadata:
         metadata["company_id"] = str(company.id)
     if branch and "branch_id" not in metadata:

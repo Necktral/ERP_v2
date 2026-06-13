@@ -731,10 +731,12 @@ class PayrollEntry(models.Model):
         # Salario básico devengado: base para INSS/IR/patronal (incluye séptimo/feriado).
         basic_earned = _r2(self.quincenal_salary + self.seventh_day_amount + self.holiday_amount)
 
-        # 7. Provisiones (sobre salario mensual proporcional a días trabajados)
-        monthly_proportional = _r2(self.daily_rate_nio * worked * 2)
-        self.vacation_provision = _r2(monthly_proportional * vacation_rate)
-        self.thirteenth_month_provision = _r2(monthly_proportional * thirteenth_rate)
+        # 7. Provisiones sobre lo DEVENGADO del período (8.33% ≈ 1 mes/año).
+        # Igual que la planilla real (excel/): ZOILA 5040→420, MARVIN 3300→275.
+        # La base mensual-proporcional (×2) duplicaba la provisión por quincena y
+        # rompía en CATORCENA (14 días ×2 ≠ mes).
+        self.vacation_provision = _r2(basic_earned * vacation_rate)
+        self.thirteenth_month_provision = _r2(basic_earned * thirteenth_rate)
 
         # 8. Total ingresos
         self.total_income = _r2(
@@ -1523,4 +1525,12 @@ from .field.models_field import (  # noqa: E402,F401
     FieldCaptureEvent,
     FieldCaptureReport,
     FieldCaptureWorkDay,
+)
+
+from .biometric.models_biometric import (  # noqa: E402,F401
+    BiometricCheck,
+    BiometricCheckDirection,
+    BiometricDevice,
+    BiometricImportBatch,
+    BiometricPersonMap,
 )

@@ -89,6 +89,15 @@ def test_factory_returns_llm_when_url_set():
     assert prov.model_id == "openthinker"
 
 
+@override_settings(DIAGNOSTICS_LLM_BASE_URL="http://llm.local:8080", DIAGNOSTICS_LLM_MAX_TOKENS=2048)
+def test_factory_pasa_max_tokens_y_el_payload_lo_usa():
+    prov = get_root_cause_provider()
+    assert prov.max_tokens == 2048
+    with patch(_POST, return_value=_fake_response(_LLM_CONTENT)) as post:
+        prov.propose(_EVIDENCE)
+    assert post.call_args.kwargs["json"]["max_tokens"] == 2048
+
+
 # --- Parseo ---------------------------------------------------------------------
 
 def test_strip_reasoning_removes_think_block():
@@ -114,6 +123,30 @@ def test_parse_unstructured_uses_full_text_as_hypothesis():
 
 def test_parse_empty_returns_none():
     assert _parse_llm_answer("<think>solo razonó</think>") is None
+
+
+def test_think_sin_cerrar_no_es_respuesta():
+    # El modelo agotó max_tokens razonando: NUNCA persistir chain-of-thought como reporte.
+    assert _strip_reasoning("<think>razonó y razonó pero se truncó") == ""
+    assert _parse_llm_answer("<think>razonó y razonó pero se truncó") is None
+
+
+def test_parse_tolera_markdown_y_multilinea():
+    # Un 7B local real (OpenThinker) responde con negritas y secciones multilínea.
+    content = (
+        "<think>pensando</think>\n"
+        "**HIPOTESIS:**  \nLa división usa dias_laborados sin guard.\n"
+        "Pasa en cierres con asistencia vacía.\n"
+        "**FIX:**  \n1. Validar dias_laborados > 0.\n2. Retornar 0 si no hay días.\n"
+        "**TEST:**  \nCerrar período sin asistencia y esperar séptimo día = 0."
+    )
+    proposal = _parse_llm_answer(content)
+    assert proposal is not None
+    assert proposal.hypothesis.startswith("La división usa dias_laborados")
+    assert "asistencia vacía" in proposal.hypothesis  # multilínea completa
+    assert "Validar dias_laborados > 0" in proposal.recommended_fix
+    assert proposal.recommended_tests.startswith("Cerrar período")
+    assert proposal.confidence == "medium"
 
 
 # --- Proveedor LLM (mockeado) ---------------------------------------------------

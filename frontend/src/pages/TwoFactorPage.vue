@@ -2,15 +2,15 @@
   <q-page class="row items-center justify-center">
     <q-card style="width: 420px; max-width: 92vw">
       <q-card-section>
-        <div class="text-h6">Verificacion 2FA</div>
-        <div class="text-caption text-grey-7">Ingresa el codigo de tu app TOTP.</div>
+        <div class="text-h6">Verificación 2FA</div>
+        <div class="text-caption text-grey-7">Ingresa el código de tu aplicación TOTP.</div>
       </q-card-section>
 
       <q-separator />
 
       <q-card-section>
         <q-form @submit.prevent="onSubmit">
-          <q-input v-model="code" label="Codigo" autocomplete="one-time-code" outlined />
+          <q-input v-model="code" label="Código" autocomplete="one-time-code" outlined />
 
           <div class="q-mt-lg">
             <q-btn

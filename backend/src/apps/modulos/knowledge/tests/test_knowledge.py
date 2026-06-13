@@ -58,6 +58,12 @@ def test_chunking_texto_sin_headings_no_pierde_contenido():
     assert "párrafo" in chunks[0].content
 
 
+def test_chunking_parrafo_monolitico_respeta_tope():
+    chunks = chunk_markdown("# Doc\n" + ("palabra " * 3000))
+    assert len(chunks) > 1
+    assert all(len(c.content) <= 4200 for c in chunks)
+
+
 # --- Ingesta (DB) --------------------------------------------------------------------
 
 @pytest.mark.django_db

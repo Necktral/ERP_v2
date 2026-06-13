@@ -96,6 +96,10 @@ env = environ.Env(
     DIAGNOSTICS_LLM_BASE_URL=(str, ""),
     DIAGNOSTICS_LLM_MODEL=(str, "local"),
     DIAGNOSTICS_LLM_TIMEOUT=(float, 30.0),
+    # Presupuesto de generación: los modelos razonadores (OpenThinker) gastan 1000-4000
+    # tokens en <think> antes de responder; con 512 se truncaban sin emitir el reporte.
+    # El contexto del servidor (-c) debe acomodar prompt + este presupuesto.
+    DIAGNOSTICS_LLM_MAX_TOKENS=(int, 4096),
     # RAG de documentación interna (módulo knowledge): vacío => hereda el endpoint del
     # LLM de diagnostics (un solo servidor local sirve a ambos). Sigue tras el kill switch.
     KNOWLEDGE_LLM_BASE_URL=(str, ""),
@@ -205,6 +209,7 @@ DIAGNOSTICS_ENABLED = env("DIAGNOSTICS_ENABLED")
 DIAGNOSTICS_LLM_BASE_URL = env("DIAGNOSTICS_LLM_BASE_URL")
 DIAGNOSTICS_LLM_MODEL = env("DIAGNOSTICS_LLM_MODEL")
 DIAGNOSTICS_LLM_TIMEOUT = env("DIAGNOSTICS_LLM_TIMEOUT")
+DIAGNOSTICS_LLM_MAX_TOKENS = env("DIAGNOSTICS_LLM_MAX_TOKENS")
 KNOWLEDGE_LLM_BASE_URL = env("KNOWLEDGE_LLM_BASE_URL")
 KNOWLEDGE_LLM_MODEL = env("KNOWLEDGE_LLM_MODEL")
 KNOWLEDGE_LLM_TIMEOUT = env("KNOWLEDGE_LLM_TIMEOUT")

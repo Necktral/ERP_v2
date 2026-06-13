@@ -83,7 +83,7 @@ def _entry(sheet, employee, *, base_salary_nio="14000.00"):
     )
 
 
-def _approve_present_day(company, branch, actor, period, worker, *, work_date, sick=False):
+def _approve_present_day(company, branch, actor, period, worker, *, work_date, sick=False, constancia=False):
     """Abre día, marca PRESENTE (opcional enfermo), consolida y aprueba → consolidación APPROVED."""
     work_day = open_field_work_day(
         request=_request(actor, company=company, branch=branch), actor=actor,
@@ -94,10 +94,12 @@ def _approve_present_day(company, branch, actor, period, worker, *, work_date, s
         work_day=work_day, lines=[{"employee": worker, "status": "PRESENT"}],
     )
     if sick:
+        metadata = {"constancia_medica": True, "day_value": "1.0"} if constancia else {}
         record_worker_event(
             request=_request(actor, company=company, branch=branch), actor=actor,
             work_day=work_day, employee=worker, event_type=FieldWorkerEventType.SICK,
             details="Gripe en el campo",
+            metadata=metadata,
         )
     consolidate_field_attendance(
         request=_request(actor, company=company, branch=branch), actor=actor, work_day=work_day
@@ -142,7 +144,9 @@ def test_apply_attendance_sets_days_worked_and_locks_consolidations():
 
 
 @pytest.mark.django_db
-def test_apply_attendance_maps_sick_to_subsidy_days():
+def test_enfermo_paga_segun_constancia_medica():
+    """REGLA del dueño: enfermo con constancia médica certificada → el día se pone;
+    sin constancia → no se paga (y el subsidio INSS queda como casilla manual)."""
     company, branch = _mk_scope()
     actor = _actor()
     create_default_nicaragua_config(
@@ -151,11 +155,13 @@ def test_apply_attendance_maps_sick_to_subsidy_days():
     period = _period(company)
     worker = _employee(company, "Ana")
     _approve_present_day(company, branch, actor, period, worker, work_date=date(2026, 6, 2))  # trabajado
-    _approve_present_day(company, branch, actor, period, worker, work_date=date(2026, 6, 3), sick=True)  # subsidio
+    _approve_present_day(company, branch, actor, period, worker, work_date=date(2026, 6, 3), sick=True)  # sin constancia
+    _approve_present_day(company, branch, actor, period, worker, work_date=date(2026, 6, 4), sick=True, constancia=True)
 
     agg = aggregate_attendance_for_employee(period=period, employee=worker)
-    assert agg["days_worked"] == Decimal("1.00")
-    assert agg["days_subsidy"] == Decimal("1.00")
+    # 1 trabajado + 1 enfermo con constancia; el enfermo sin constancia no suma.
+    assert agg["days_worked"] == Decimal("2.00")
+    assert agg["days_subsidy"] == Decimal("0.00")
 
 
 @pytest.mark.django_db

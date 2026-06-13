@@ -203,3 +203,77 @@ def test_verify_queryset_missing_head_is_flagged():
 def test_audit_bitacora_requires_authentication():
     resp = APIClient().get("/api/audit/bitacora/")
     assert resp.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# _client_ip — trazabilidad desde celulares detrás del proxy del frontend
+# ---------------------------------------------------------------------------
+
+def test_client_ip_takes_last_xff_value_from_trusted_proxy():
+    """El último valor del XFF lo escribe NUESTRO proxy (xfwd); los anteriores
+    son alegaciones del cliente. Un XFF falsificado no debe entrar a la bitácora."""
+    from types import SimpleNamespace
+
+    from apps.modulos.audit.writer import _client_ip
+
+    # Cel real detrás del proxy del frontend: el proxy agrega la IP verdadera al final
+    req = SimpleNamespace(META={"HTTP_X_FORWARDED_FOR": "192.168.1.55", "REMOTE_ADDR": "172.18.0.5"})
+    assert _client_ip(req) == "192.168.1.55"
+
+    # Atacante manda un XFF inventado; el proxy appendea la IP real → gana la real
+    req = SimpleNamespace(
+        META={"HTTP_X_FORWARDED_FOR": "1.2.3.4, 192.168.1.55", "REMOTE_ADDR": "172.18.0.5"}
+    )
+    assert _client_ip(req) == "192.168.1.55"
+
+    # Acceso directo sin proxy: REMOTE_ADDR
+    req = SimpleNamespace(META={"REMOTE_ADDR": "192.168.1.13"})
+    assert _client_ip(req) == "192.168.1.13"
+
+    assert _client_ip(None) is None
+
+
+@pytest.mark.django_db
+def test_write_event_takes_device_id_from_header_only_if_enrolled_and_active():
+    """X-Device-Id solo entra a la bitácora si es un Device ACTIVO de la company."""
+    import uuid as uuid_mod
+    from types import SimpleNamespace
+
+    from apps.modulos.audit.writer import write_event
+    from apps.modulos.iam.models import OrgUnit
+    from apps.modulos.sync_engine.models import Device
+
+    tag = uuid_mod.uuid4().hex[:6]
+    holding = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.HOLDING, name=f"H_{tag}")
+    company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name=f"C_{tag}", parent=holding)
+    other_company = OrgUnit.objects.create(unit_type=OrgUnit.UnitType.COMPANY, name=f"C2_{tag}", parent=holding)
+
+    device = Device.objects.create(company=company, label="Cel mandador", public_key=b"\x01" * 32)
+
+    def _req(device_header: str, com=company):
+        return SimpleNamespace(
+            META={"HTTP_X_DEVICE_ID": device_header} if device_header else {},
+            company=com, branch=None, _request=None, ctx=None,
+            request_id=f"req_{uuid_mod.uuid4().hex[:8]}", path="/x", method="POST", user=None,
+        )
+
+    # Dispositivo enrolado y activo de la misma company → se registra
+    ev = write_event(request=_req(str(device.id)), event_type="HR_EMPLOYEE_UPDATED", reason_code="OK",
+                     subject_type="EMPLOYEE", subject_id="1")
+    assert ev.device_id == str(device.id)
+
+    # Header inventado (UUID que no existe) → vacío
+    ev = write_event(request=_req(str(uuid_mod.uuid4())), event_type="HR_EMPLOYEE_UPDATED", reason_code="OK",
+                     subject_type="EMPLOYEE", subject_id="1")
+    assert ev.device_id == ""
+
+    # Dispositivo de OTRA empresa → vacío
+    ev = write_event(request=_req(str(device.id), com=other_company), event_type="HR_EMPLOYEE_UPDATED", reason_code="OK",
+                     subject_type="EMPLOYEE", subject_id="1")
+    assert ev.device_id == ""
+
+    # Dispositivo revocado → vacío
+    device.revoke()
+    ev = write_event(request=_req(str(device.id)), event_type="HR_EMPLOYEE_UPDATED", reason_code="OK",
+                     subject_type="EMPLOYEE", subject_id="1")
+    assert ev.device_id == ""

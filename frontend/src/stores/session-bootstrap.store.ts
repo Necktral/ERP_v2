@@ -33,6 +33,9 @@ type BootstrapSessionResponse = {
     acl_snapshot: AclSnapshot;
   };
   allowed_modules: string[];
+  enabled_modules: string[];
+  /** allowed ∩ enabled: lo que el frontend debe MOSTRAR para la empresa activa. */
+  effective_modules: string[];
   feature_flags: Record<string, boolean>;
   shell_mode: ShellMode;
   trace: {

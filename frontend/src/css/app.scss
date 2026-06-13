@@ -32,6 +32,13 @@
 
   --app-shadow-soft: 0 8px 22px rgba(24, 46, 84, 0.07);
   --app-shadow-card: 0 12px 28px rgba(24, 46, 84, 0.09);
+
+  /* Acentos de tarjetas de estadística (multi-tema) */
+  --app-stat-blue: linear-gradient(135deg, #4d92c6 0%, #3a7cae 100%);
+  --app-stat-coral: linear-gradient(135deg, #e0706b 0%, #cf5a55 100%);
+  --app-stat-teal: linear-gradient(135deg, #46c3a4 0%, #33aa8c 100%);
+  --app-stat-amber: linear-gradient(135deg, #e9a851 0%, #d8923c 100%);
+  --app-stat-violet: linear-gradient(135deg, #8a7bd8 0%, #7263c2 100%);
 }
 
 body.body--dark {
@@ -49,6 +56,12 @@ body.body--dark {
   --app-text: #e6edf8;
   --app-text-muted: #b5c1d4;
   --app-focus: #7db9ee;
+
+  --app-stat-blue: linear-gradient(135deg, #3f7ea9 0%, #2f6691 100%);
+  --app-stat-coral: linear-gradient(135deg, #cf605c 0%, #bd4d49 100%);
+  --app-stat-teal: linear-gradient(135deg, #3aaa8d 0%, #2c8e76 100%);
+  --app-stat-amber: linear-gradient(135deg, #d2963f 0%, #bf8230 100%);
+  --app-stat-violet: linear-gradient(135deg, #7668bd 0%, #6052a8 100%);
 }
 
 html,
@@ -224,6 +237,63 @@ body {
 
 .app-muted {
   color: var(--app-text-muted);
+}
+
+/* ============================================================
+   Patrones de página compartidos (reemplazan los duplicados
+   hr-/org-/usr-/nom-/asis-/dev- de cada página). Ninguna página
+   nueva define los suyos propios para estos casos.
+   ============================================================ */
+
+/* Contenedor de toda página del shell. */
+.app-page {
+  padding: var(--app-space-6);
+}
+
+/* Tabla estándar (q-table flat envuelta). */
+.app-table {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-surface);
+}
+
+/* Tarjeta de diálogo estándar. */
+.app-dialog {
+  min-width: 460px;
+  max-width: 92vw;
+  background: var(--app-surface-strong);
+}
+
+/* Formulario en columna. */
+.app-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+}
+
+/* Barra de acciones sobre el contenido. */
+.app-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--app-space-2);
+  margin-bottom: var(--app-space-5);
+}
+
+/* Texto secundario (canónica; .app-muted queda como alias). */
+.text-muted {
+  color: var(--app-text-muted);
+}
+
+@media (max-width: 599px) {
+  .app-page {
+    padding: var(--app-space-4);
+  }
+
+  .app-dialog {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 @keyframes app-fade-up {

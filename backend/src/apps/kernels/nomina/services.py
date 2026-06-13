@@ -16,6 +16,7 @@ from .models import (
     AttendanceReport,
     AttendanceSource,
     AttendanceStatus,
+    BiometricCheck,
     DEFAULT_INSS_LABORAL,
     DEFAULT_INSS_PATRONAL_LARGE,
     DEFAULT_INSS_PATRONAL_SMALL,
@@ -520,6 +521,9 @@ def _coerce_day_value(value, *, event_type: str) -> Decimal:
     if value is None:
         if event_type in {FieldWorkerEventType.PRESENT, FieldWorkerEventType.LEFT_EARLY, FieldWorkerEventType.JOINED_LATE}:
             return Decimal("1.00")
+        if event_type == FieldWorkerEventType.ACCIDENT:
+            # Regla del dueño: el accidente fue EN el trabajo → el día se pone.
+            return Decimal("1.00")
         return Decimal("0.00")
     day_value = Decimal(str(value))
     if day_value < Decimal("0.00") or day_value > Decimal("1.00"):
@@ -903,6 +907,7 @@ def _calculate_day_value(
     primary_event_type: str,
     rollcall_status: str | None,
     crew_lines: list[FieldCrewReportLine],
+    worker_events: list[FieldWorkerEvent] | None = None,
     is_split_transfer: bool = False,
 ) -> Decimal:
     if crew_lines:
@@ -913,8 +918,30 @@ def _calculate_day_value(
             return min(total, Decimal("1.00")).quantize(Decimal("0.01"))
         # Sin traslado: máximo (anti-doble-pago; un duplicado sin traslado queda BLOCKED aparte).
         return max(line.day_value for line in crew_lines).quantize(Decimal("0.01"))
+    # Sin reporte de cuadrilla: un evento puede traer el valor explícito del día
+    # (la pantalla de asistencia marca "Trabajó medio día" con day_value 0.5).
+    explicit: list[Decimal] = []
+    for ev in worker_events or []:
+        raw = ev.metadata.get("day_value") if isinstance(ev.metadata, dict) else None
+        if raw is None:
+            continue
+        try:
+            value = Decimal(str(raw))
+        except (ArithmeticError, ValueError):
+            continue
+        if Decimal("0.00") <= value <= Decimal("1.00"):
+            explicit.append(value)
+    if explicit:
+        return max(explicit).quantize(Decimal("0.01"))
     if primary_event_type in {FieldWorkerEventType.PRESENT, FieldWorkerEventType.LEFT_EARLY, FieldWorkerEventType.JOINED_LATE}:
         return Decimal("1.00")
+    if primary_event_type == FieldWorkerEventType.ACCIDENT:
+        # Accidente laboral: el día se pone (regla del dueño).
+        return Decimal("1.00")
+    if primary_event_type == FieldWorkerEventType.SICK:
+        # Enfermo paga SOLO con constancia médica certificada (llega como
+        # day_value explícito); estar en la lista de la mañana no pone el día.
+        return Decimal("0.00")
     if rollcall_status == FieldRollCallLineStatus.PRESENT:
         return Decimal("1.00")
     return Decimal("0.00")
@@ -991,11 +1018,24 @@ def consolidate_field_attendance(
     for transfer in FieldTransfer.objects.select_related("employee", "from_crew", "to_crew").filter(work_day=work_day):
         transfers_by_employee[transfer.employee_id].append(transfer)
 
+    # Fuente ① — biométrico: SOLO entra al cruce si ese día hay chequeos matched
+    # de la empresa (el aparato está en prueba/cobertura parcial; si no operó, la
+    # consolidación se comporta exactamente igual que antes).
+    biometric_by_employee: dict[int, list[BiometricCheck]] = defaultdict(list)
+    for check in BiometricCheck.objects.select_related("employee").filter(
+        company=work_day.company, work_date=work_day.work_date, employee__isnull=False
+    ):
+        if check.employee_id is None:  # el filtro ya lo excluye; estrechamiento para mypy
+            continue
+        biometric_by_employee[check.employee_id].append(check)
+    biometric_in_play = bool(biometric_by_employee)
+
     employee_ids = (
         set(rollcall_by_employee)
         | set(crew_lines_by_employee)
         | set(events_by_employee)
         | set(transfers_by_employee)
+        | set(biometric_by_employee)
     )
 
     with transaction.atomic():
@@ -1033,6 +1073,31 @@ def consolidate_field_attendance(
                 if status != FieldAttendanceConsolidationStatus.BLOCKED:
                     status = FieldAttendanceConsolidationStatus.CONFLICT
 
+            # Cruce con la fuente ① (biométrico), solo si el aparato operó ese día.
+            bio_checks = biometric_by_employee.get(employee_id, [])
+            if biometric_in_play:
+                if bio_checks and rollcall_status == FieldRollCallLineStatus.ABSENT:
+                    # La máquina dice que ENTRÓ; la lista dice ausente → conflicto duro
+                    # (señal de fraude en cualquiera de las dos direcciones).
+                    conflict_codes.append("BIOMETRIC_PRESENT_ROLLCALL_ABSENT")
+                    if status != FieldAttendanceConsolidationStatus.BLOCKED:
+                        status = FieldAttendanceConsolidationStatus.CONFLICT
+                elif not bio_checks and (
+                    rollcall_status == FieldRollCallLineStatus.PRESENT or crew_has_presence
+                ):
+                    # Presente en campo sin chequeo: advertencia (cobertura parcial
+                    # del aparato), NO conflicto duro — la entrada valida pero la
+                    # lista del mandador sigue confirmando el día.
+                    conflict_codes.append("MISSING_BIOMETRIC_CHECK")
+                    if status == FieldAttendanceConsolidationStatus.OK:
+                        status = FieldAttendanceConsolidationStatus.WARNING
+                if bio_checks and roll_line is None and not crew_lines and not worker_events:
+                    # Chequeó en el portón pero no aparece en ninguna lista/reporte:
+                    # el día NO se paga solo (day_value 0); lo resuelve nómina.
+                    conflict_codes.append("BIOMETRIC_ONLY_NOT_LISTED")
+                    if status == FieldAttendanceConsolidationStatus.OK:
+                        status = FieldAttendanceConsolidationStatus.WARNING
+
             if rollcall_status == FieldRollCallLineStatus.PRESENT and not crew_lines and status == FieldAttendanceConsolidationStatus.OK:
                 conflict_codes.append("MISSING_CREW_CONFIRMATION")
                 status = FieldAttendanceConsolidationStatus.WARNING
@@ -1046,20 +1111,27 @@ def consolidate_field_attendance(
                 primary_event_type=primary_event_type,
                 rollcall_status=rollcall_status,
                 crew_lines=crew_lines,
+                worker_events=worker_events,
                 is_split_transfer="TRANSFERRED_BETWEEN_CREWS" in conflict_codes,
             )
             employee = (
                 roll_line.employee if roll_line
                 else crew_lines[0].employee if crew_lines
                 else worker_events[0].employee if worker_events
-                else transfers[0].employee
+                else transfers[0].employee if transfers
+                else bio_checks[0].employee
             )
+            bio_times = sorted(c.checked_at for c in bio_checks)
             source_summary = {
                 "rollcall_status": rollcall_status,
                 "crew_ids": sorted(crew_ids),
                 "crew_report_line_ids": [line.id for line in crew_lines],
                 "event_ids": [event.id for event in worker_events],
                 "transfer_ids": [transfer.id for transfer in transfers],
+                "biometric_in_play": biometric_in_play,
+                "biometric_check_ids": [c.id for c in bio_checks],
+                "biometric_first_check": bio_times[0].isoformat() if bio_times else None,
+                "biometric_last_check": bio_times[-1].isoformat() if bio_times else None,
             }
             consolidation, _ = FieldAttendanceConsolidation.objects.update_or_create(
                 work_day=work_day,
@@ -1170,9 +1242,12 @@ def aggregate_attendance_for_employee(*, period: PayrollPeriod, employee) -> dic
 
     Mapeo (lo que la nómina necesita):
       - PRESENT / medio día / traslado → days_worked (suma day_value; medio día = 0.5)
-      - SICK / ACCIDENT                 → days_subsidy (día de subsidio INSS)
+      - ACCIDENT                        → days_worked 1.00 (fue EN el trabajo: el día se pone)
+      - SICK                            → days_worked según constancia médica certificada
+                                          (con constancia day_value=1.00; sin constancia 0.00)
       - ABSENT / PERMISSION / ...       → no suman (day_value 0)
-      - día trabajado en domingo        → sunday_worked_days
+      - día trabajado en domingo        → sunday_worked_days (el día puesto por
+        accidente/enfermedad NO cuenta para el bono dominical)
       - séptimo día (por semana calendario): se gana 1 si la semana tuvo trabajo y
         NO hubo falta INJUSTIFICADA (ABSENT). Subsidio/permiso/vacación NO la rompen.
     """
@@ -1196,7 +1271,14 @@ def aggregate_attendance_for_employee(*, period: PayrollPeriod, employee) -> dic
         if cons.primary_event_type == FieldWorkerEventType.ABSENT:
             weeks[wk]["unjustified_absence"] = True
         if cons.primary_event_type in _FIELD_SUBSIDY_EVENTS:
-            days_subsidy += Decimal("1.00")
+            # Regla del dueño: el día puesto (accidente laboral / enfermo con
+            # constancia) se PAGA como día de planilla — day_value ya trae la
+            # decisión (1.00 / 0.00). No alimenta el bono dominical, pero sí
+            # mantiene el séptimo. days_subsidy queda para el subsidio INSS
+            # manual (orden de reposo), no se llena solo desde el campo.
+            days_worked += cons.day_value
+            if cons.day_value > 0:
+                weeks[wk]["worked"] = True
             continue
         days_worked += cons.day_value
         if cons.day_value > 0:
@@ -1322,11 +1404,15 @@ def aggregate_attendance_report_detail(*, period: PayrollPeriod, employee) -> di
         detail["branch_ids"].add(cons.work_day.branch_id)
         event_type = cons.primary_event_type
         if event_type == FieldWorkerEventType.SICK:
+            # Registro del hecho + el día puesto (con constancia médica certificada
+            # day_value=1.00) cuenta como día pagado, igual que en la planilla.
+            # El subsidio INSS es casilla manual (orden de reposo), no automática.
             detail["days_sick"] += Decimal("1.00")
-            detail["days_subsidy"] += Decimal("1.00")
+            detail["days_worked"] += cons.day_value
         elif event_type == FieldWorkerEventType.ACCIDENT:
+            # Accidente laboral: el día SIEMPRE se pone (regla del dueño).
             detail["days_accident"] += Decimal("1.00")
-            detail["days_subsidy"] += Decimal("1.00")
+            detail["days_worked"] += cons.day_value
         elif event_type == FieldWorkerEventType.ABSENT:
             detail["days_absent"] += Decimal("1.00")
         elif event_type in _FIELD_WORKED_EVENTS:

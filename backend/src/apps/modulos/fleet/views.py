@@ -100,7 +100,31 @@ class AssetDetailView(APIView):
 
 
 class DriverView(APIView):
-    permission_classes = [rbac_permission("fleet.driver.manage")]
+    def get_permissions(self):
+        code = "fleet.driver.read" if self.request.method == "GET" else "fleet.driver.manage"
+        return [rbac_permission(code)()]
+
+    def get(self, request):
+        company = _company(request)
+        rows = Driver.objects.filter(company=company).order_by("full_name")
+        if request.query_params.get("status"):
+            rows = rows.filter(status=request.query_params["status"])
+        return Response(
+            [
+                {
+                    "id": d.id,
+                    "full_name": d.full_name,
+                    "national_id": d.national_id,
+                    "license_number": d.license_number,
+                    "license_category": d.license_category,
+                    "license_expiry": d.license_expiry,
+                    "status": d.status,
+                    "employee_id": d.employee_id,
+                }
+                for d in rows
+            ],
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         company = _company(request)
@@ -193,7 +217,20 @@ class DocumentView(APIView):
 
 
 class MaintenanceTypeView(APIView):
-    permission_classes = [rbac_permission("fleet.maintenance.manage")]
+    def get_permissions(self):
+        code = "fleet.maintenance.read" if self.request.method == "GET" else "fleet.maintenance.manage"
+        return [rbac_permission(code)()]
+
+    def get(self, request):
+        company = _company(request)
+        rows = MaintenanceType.objects.filter(company=company).order_by("name")
+        return Response(
+            [
+                {"id": m.id, "code": m.code, "name": m.name, "kind": m.kind, "trigger_basis": m.trigger_basis}
+                for m in rows
+            ],
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         company = _company(request)
@@ -205,7 +242,17 @@ class MaintenanceTypeView(APIView):
 
 
 class PlanView(APIView):
-    permission_classes = [rbac_permission("fleet.maintenance.manage")]
+    def get_permissions(self):
+        code = "fleet.maintenance.read" if self.request.method == "GET" else "fleet.maintenance.manage"
+        return [rbac_permission(code)()]
+
+    def get(self, request):
+        company = _company(request)
+        rows = MaintenancePlan.objects.filter(company=company).order_by("name")
+        return Response(
+            [{"id": p.id, "name": p.name, "asset_class": p.asset_class, "is_active": p.is_active} for p in rows],
+            status=status.HTTP_200_OK,
+        )
 
     def post(self, request):
         company = _company(request)

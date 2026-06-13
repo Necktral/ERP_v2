@@ -46,6 +46,12 @@ def _split_long(text: str) -> list[str]:
     parts: list[str] = []
     current = ""
     for para in text.split("\n\n"):
+        if len(para) > _MAX_CHUNK_CHARS:
+            if current:
+                parts.append(current)
+                current = ""
+            parts.extend(_split_oversized_paragraph(para))
+            continue
         candidate = f"{current}\n\n{para}" if current else para
         if len(candidate) > _MAX_CHUNK_CHARS and current:
             parts.append(current)
@@ -55,6 +61,22 @@ def _split_long(text: str) -> list[str]:
     if current:
         parts.append(current)
     return parts
+
+
+def _split_oversized_paragraph(text: str) -> list[str]:
+    """Fallback para OCR/markdown sin saltos: corta por palabras antes del límite."""
+    pieces: list[str] = []
+    current = ""
+    for word in text.split():
+        candidate = f"{current} {word}" if current else word
+        if len(candidate) > _MAX_CHUNK_CHARS and current:
+            pieces.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces or [text[:_MAX_CHUNK_CHARS]]
 
 
 def chunk_markdown(text: str) -> list[ChunkDraft]:

@@ -11,6 +11,7 @@ uno u otro según el setting, sin tocar el resto del pipeline.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -76,7 +77,8 @@ class HeuristicRootCauseProvider:
 
 _PROMPT_SYSTEM = (
     "Sos un analista de causa raíz de software. Respondé SOLO en español, conciso. "
-    "Devolvé exactamente tres líneas etiquetadas, sin texto extra:\n"
+    "Devolvé exactamente tres líneas etiquetadas, sin texto extra, sin markdown ni "
+    "negritas:\n"
     "HIPOTESIS: <causa probable>\nFIX: <arreglo sugerido>\nTEST: <test recomendado>"
 )
 
@@ -97,34 +99,47 @@ def _build_prompt(evidence: dict[str, Any]) -> str:
 
 def _strip_reasoning(content: str) -> str:
     """Los modelos de razonamiento (p.ej. OpenThinker) emiten `<think>...</think>`; nos
-    quedamos con lo que viene DESPUÉS del cierre."""
+    quedamos con lo que viene DESPUÉS del cierre. Un `<think>` SIN cerrar significa que el
+    modelo agotó los tokens razonando: no hay respuesta utilizable (el llamador degrada),
+    jamás persistimos chain-of-thought crudo como reporte."""
     marker = "</think>"
     idx = content.rfind(marker)
     if idx != -1:
         return content[idx + len(marker):].strip()
+    if "<think>" in content:
+        return ""
     return content.strip()
+
+
+# Etiqueta al inicio de línea, tolerante a markdown (negritas/encabezados/viñetas) y tilde.
+_LABEL_RE = re.compile(
+    r"^[\s>*#-]*(HIP[ÓO]TESIS|FIX|TEST)[\s*]*:[\s*]*", re.IGNORECASE | re.MULTILINE
+)
 
 
 def _parse_llm_answer(content: str) -> RootCauseProposal | None:
     """Parsea la respuesta etiquetada (HIPOTESIS/FIX/TEST). Si no hay nada usable → None
-    (el llamador degrada al heurístico)."""
+    (el llamador degrada al heurístico). Tolera markdown (`**HIPOTESIS:**`) y secciones
+    multilínea: un 7B local no siempre respeta el formato a la letra."""
     text = _strip_reasoning(content)
     if not text:
         return None
     fields: dict[str, str] = {}
-    for line in text.splitlines():
-        stripped = line.strip()
-        for label, key in (("HIPOTESIS", "h"), ("FIX", "f"), ("TEST", "t")):
-            if stripped.upper().startswith(label + ":"):
-                fields[key] = stripped.split(":", 1)[1].strip()
+    matches = list(_LABEL_RE.finditer(text))
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        key = m.group(1)[0].lower()  # h|f|t
+        value = text[m.end():end].strip().strip("*").strip()
+        if key not in fields and value:
+            fields[key] = value
     hypothesis = fields.get("h") or text  # sin estructura: el texto completo como hipótesis
     hypothesis = hypothesis.strip()
     if not hypothesis:
         return None
     return RootCauseProposal(
         hypothesis=hypothesis[:2000],
-        recommended_fix=fields.get("f", ""),
-        recommended_tests=fields.get("t", ""),
+        recommended_fix=fields.get("f", "")[:2000],
+        recommended_tests=fields.get("t", "")[:2000],
         confidence="medium",
     )
 
@@ -140,10 +155,20 @@ class OpenAICompatibleProvider:
 
     name = "llm"
 
-    def __init__(self, *, base_url: str, model_id: str = "local", timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        model_id: str = "local",
+        timeout: float = 30.0,
+        max_tokens: int = 4096,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_id = model_id
         self.timeout = timeout
+        # Presupuesto generoso: un modelo razonador gasta cientos de tokens en <think>
+        # ANTES de la respuesta; si se trunca ahí, no hay reporte y se degrada.
+        self.max_tokens = max_tokens
         self._fallback = HeuristicRootCauseProvider()
 
     def propose(self, evidence: dict[str, Any]) -> RootCauseProposal:
@@ -164,7 +189,7 @@ class OpenAICompatibleProvider:
                     {"role": "user", "content": _build_prompt(evidence)},
                 ],
                 "temperature": 0.2,
-                "max_tokens": 512,
+                "max_tokens": self.max_tokens,
                 "stream": False,
             },
             timeout=self.timeout,
@@ -183,4 +208,5 @@ def get_root_cause_provider() -> RootCauseProvider:
         base_url=base_url,
         model_id=str(getattr(settings, "DIAGNOSTICS_LLM_MODEL", "local") or "local"),
         timeout=float(getattr(settings, "DIAGNOSTICS_LLM_TIMEOUT", 30.0)),
+        max_tokens=int(getattr(settings, "DIAGNOSTICS_LLM_MAX_TOKENS", 4096)),
     )

@@ -135,7 +135,8 @@ def test_enrollment_challenge_create_requires_permission_and_context():
     parsed = urlparse(enrollment_uri)
     assert parsed.scheme == "https"
     assert parsed.netloc == "pwa.example.test"
-    assert parsed.fragment.startswith("/device/enroll?code=")
+    # Ruta pública del frontend reconstruido (router: /enrolar, AuthLayout).
+    assert parsed.fragment.startswith("/enrolar?code=")
     fragment_query = parsed.fragment.split("?", 1)[1]
     assert parse_qs(fragment_query).get("code") == [ok.data["enrollment_code"]]
     parsed_deep = urlparse(str(ok.data["enrollment_deep_link"]))

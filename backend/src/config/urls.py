@@ -77,6 +77,8 @@ urlpatterns = [
     path("api/org/", include("apps.modulos.org.urls")),
     # HR
     path("api/hr/", include("apps.modulos.hr.urls")),
+    # Terceros (clientes/proveedores/productores)
+    path("api/parties/", include("apps.modulos.parties.urls")),
     # Controls (Capa 3: anti-fraude / SoD / hallazgos)
     path("api/controls/", include("apps.modulos.controls.urls")),
     # Manejo de Fincas (agrícola)

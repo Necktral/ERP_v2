@@ -12,7 +12,14 @@ from apps.modulos.common.pagination import get_limit_offset, paginate_queryset a
 from apps.modulos.common.permissions import rbac_permission
 from apps.modulos.iam.models import OrgUnit
 
-from .models import NominaConfig, PayrollEntry, PayrollPeriod, PayrollSheet
+from .models import (
+    EmployeeInssEnrollment,
+    InssRegime,
+    NominaConfig,
+    PayrollEntry,
+    PayrollPeriod,
+    PayrollSheet,
+)
 from .serializers import (
     IRBracketIn,
     NominaConfigOut,
@@ -275,6 +282,39 @@ class PayrollEntryView(APIView):
         s = PayrollEntryCreateIn(data=request.data)
         s.is_valid(raise_exception=True)
         v = s.validated_data
+
+        # El expediente HR es la fuente: con employee_id se autollenan los datos
+        # de planilla; lo que venga explícito en el request manda sobre el expediente.
+        if v.get("employee_id"):
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+
+            from apps.modulos.hr.models import Employee
+
+            employee = Employee.objects.filter(id=v["employee_id"], company=company).first()
+            if employee is None:
+                raise DRFValidationError({"employee_id": "Trabajador no existe en esta empresa."})
+            sent = request.data
+            if not v.get("full_name"):
+                v["full_name"] = f"{employee.first_name} {employee.last_name}".strip()
+            if "cedula" not in sent:
+                v["cedula"] = employee.cedula
+            if "inss_number" not in sent:
+                v["inss_number"] = employee.inss_number
+            if "gender" not in sent:
+                v["gender"] = employee.gender
+            if "salary_type" not in sent:
+                v["salary_type"] = employee.salary_type
+            if "cargo" not in sent:
+                actives = employee.assignments.filter(is_active=True).select_related("position")
+                v["cargo"] = " / ".join(a.position.name for a in actives if a.position_id)[:120]
+            if "daily_rate_nio" not in sent and "base_salary_nio" not in sent:
+                if v["salary_type"] == "DAILY":
+                    v["base_salary_nio"] = (employee.daily_rate_nio * Decimal("30")).quantize(Decimal("0.01"))
+                else:
+                    v["base_salary_nio"] = employee.monthly_salary_nio
+            if "has_inss" not in sent:
+                regime = EmployeeInssEnrollment.resolve_for(employee, period.start_date)
+                v["has_inss"] = regime == InssRegime.AFFILIATED
 
         entry = PayrollEntry.objects.create(
             sheet=sheet,

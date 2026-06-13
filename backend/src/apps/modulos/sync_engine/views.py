@@ -98,7 +98,7 @@ def _sync_enrollment_links(code_plain: str) -> tuple[str, str]:
     web_base = str(getattr(settings, "SYNC_ENROLL_WEB_BASE_URL", "") or "").strip().rstrip("/")
     if not web_base:
         return deep_link, deep_link
-    web_link = f"{web_base}/#/device/enroll?code={code_param}"
+    web_link = f"{web_base}/#/enrolar?code={code_param}"
     return web_link, deep_link
 
 

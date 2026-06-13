@@ -247,7 +247,7 @@ qa-reports-dir-writable:
 
 qa-retail-pos-frontend-queue-contract-guard: qa-reports-dir-writable
 	@mkdir -p "$(QA_REPORTS_DIR)"
-	@bash -lc 'set -o pipefail; HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci bash -lc "npm ci && npm run test -- src/services/__tests__/retail-pos-offline-queue.spec.ts" | tee "$(QA_REPORTS_DIR)/frontend_pos_queue_contract_guard.txt"'
+	@bash -lc 'set -o pipefail; HOST_UID="$(HOST_UID)" HOST_GID="$(HOST_GID)" docker compose --profile qa run --rm frontend_ci bash -lc "npm ci && npm run test -- src/features/pos/__tests__/offlineQueue.spec.ts" | tee "$(QA_REPORTS_DIR)/frontend_pos_queue_contract_guard.txt"'
 
 qa-retail-pos-edge-simulator-guard: qa-reports-dir-writable
 	@mkdir -p "$(QA_REPORTS_DIR)"
