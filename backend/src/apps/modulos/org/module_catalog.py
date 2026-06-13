@@ -81,6 +81,7 @@ _SPECS: tuple[ModuleSpec, ...] = (
     ModuleSpec("comisariato", "Comisariato", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("comisariato.",)),
     ModuleSpec("finca", "Finca", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("finca.",)),
     ModuleSpec("fleet", "Flota", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("fleet.",)),
+    ModuleSpec("financiamiento", "Financiamiento (Acopio Café)", ModuleCategory.VERTICAL, default_enabled=False, permission_prefixes=("financing.",)),
     # --- PLATAFORMA AVANZADA (ON por defecto: documentación/diagnóstico no son de giro) ---
     ModuleSpec("documents", "Documentos (IDP)", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("documents.",)),
     ModuleSpec("knowledge", "Conocimiento", ModuleCategory.OPERATIONS, default_enabled=True, permission_prefixes=("knowledge.",)),

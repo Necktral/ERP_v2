@@ -315,6 +315,7 @@ INSTALLED_APPS += [
     "apps.modulos.documents.apps.DocumentsConfig",
     "apps.modulos.diagnostics.apps.DiagnosticsConfig",
     "apps.modulos.knowledge.apps.KnowledgeConfig",
+    "apps.modulos.financiamiento.apps.FinanciamientoConfig",
 ]
 
 # Notifications / FCM (Fase B): push gateado; default OFF (Fase A entrega in-app por RecordSender).

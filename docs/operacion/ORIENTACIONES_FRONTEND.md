@@ -237,3 +237,63 @@ Para pintar el home en **una sola llamada** (en vez de 4):
 - **Nota:** provisionar es **opcional por trabajador** (solo quien necesita entrar); aquí se usa como último paso del
   recorrido guiado. La UI puede tratar `PROVISIONING` como paso saltable y dar el onboarding por "suficiente" sin él.
 - El frontend igual puede derivar todo de los `count` de cada lista; este endpoint es solo conveniencia/rendimiento.
+
+## 8. Financiamiento (Acopio Café) — vertical nuevo, backend listo
+
+**Qué es:** reemplazo del programa viejo VB6 "SIFA-ACOPIO": préstamos a productores de café con
+**doble saldo C$/US$** + acopio (recepciones en custodia, fijación de precio, liquidación donde el
+café paga el préstamo). Módulo `financiamiento`, **opt-in por empresa** (CompanyModule, categoría
+VERTICAL): solo aparece en NAV si la empresa lo habilita Y el usuario tiene permisos `financing.*`.
+
+**Base URL:** `api/financiamiento/`. Header `X-Company-Id` SIEMPRE; las operaciones que mueven
+dinero/stock (desembolso, abonos, recepciones, liquidaciones) exigen también `X-Branch-Id`.
+Errores de negocio: **422** con `{"error": {"code": "FIN_*", "message": "…"}}` — mostrar `message`
+tal cual (ya viene en español) y usar `code` para lógica.
+
+**Pantallas sugeridas (en este orden de menú):**
+
+1. **Productores** — `GET/POST producers/` (crear pide `party_id`: el selector reusa la pantalla
+   de Terceros; muestra `acopio_code`, cédula, certificaciones). Detalle con su **depósito**:
+   `GET producers/<id>/deposit/` → `{received_lb, fixed_lb, available_lb, in_custody_lb}` (tarjetas).
+2. **Solicitudes** — `GET/POST applications/` + acciones `submit/`, `approve/`, `reject/`,
+   `disburse/`. Form con montos **C$ y/o US$** (al menos uno > 0), plazo en meses, tasas (corriente,
+   moratoria, comisión %), forma de desembolso, y el bloque de **garantías** (área finca mz, solar,
+   otras, café QQ — los 4 campos del SIFA). Flujo visual tipo stepper:
+   BORRADOR → PRESENTADA → APROBADA → DESEMBOLSADA (o RECHAZADA).
+   **SoD que la UI debe reflejar:** quien creó no puede aprobar; quien aprobó no puede desembolsar
+   (el backend responde 422 `FIN_SOD_VIOLATION`; deshabilitar el botón si `created_by`/`decided_by`
+   es el usuario actual).
+3. **Préstamos** — `GET loans/` (estado ACTIVO/PAGADO) y **estado de cuenta**
+   `GET loans/<id>/statement/`: `balances.NIO` y `balances.USD` (principal, interés, comisión, mora,
+   abonado, **saldo**, días de mora) + `consolidated_nio` con `rate_used`. Pantalla clave del módulo
+   (la "ESTADO DE CUENTAS" del SIFA): dos columnas por moneda + total consolidado en córdobas.
+   **Abonos:** `POST loans/<id>/payments/` `{amount, paid_currency, target_currency?, payment_method,
+   exchange_rate?}` — si paga en una moneda contra el saldo de la otra, el backend convierte con la
+   tasa del día (o la enviada) y responde `allocated` + `outstanding`.
+4. **Tasa de cambio** — `GET/POST exchange-rates/` (mantenimiento diario C$ por US$; tabla simple).
+   Sin tasa vigente, las liquidaciones en US$ y los cruces de moneda responden `FIN_RATE_REQUIRED`.
+5. **Acopio / Recepciones** — `GET/POST receptions/` `{producer_id, quality_id, physical_state,
+   sacks, gross_lb, tare_lb?}`. Si no se manda `tare_lb`, el backend aplica la tara % de la calidad
+   (catálogo `GET/POST qualities/`). Estados físicos: MOJADO/HUMEDO/OREADO/SECO. Mostrar el neto
+   calculado y el running de depósito del productor.
+6. **Fijaciones** — `GET/POST fixations/` `{producer_id, pounds, price_per_lb, currency}` — valida
+   contra `available_lb` (422 `FIN_DEPOSIT_INSUFFICIENT`).
+7. **Liquidaciones** — `POST liquidations/` `{producer_id, fixation_ids[], loan_id?, deductions:
+   [{concept, amount}]}`. La respuesta trae el desglose completo para el comprobante (formato F8 del
+   SIFA): valor bruto, retenciones, **abonado al préstamo** (`applied_to_loan` + `applied_currency`),
+   **excedente a favor del productor** (`surplus_amount`, queda como CxP en cartera) y los movimientos
+   de bodega (custodia → propia). Imprimible.
+8. **Configuración** (solo admin) — `GET/POST settings/`: ítem de café, bodega de custodia, bodega
+   propia de liquidación; y el catálogo de calidades.
+
+**Permisos por pantalla:** `financing.producer.read/write`, `financing.application.create/read/
+approve/disburse`, `financing.loan.read`, `financing.payment.register`, `financing.rate.manage`,
+`financing.reception.create/read`, `financing.fixation.create`, `financing.liquidation.create/read`,
+`financing.settings.manage`. Roles seedeados: `financing_officer` (registra, NO aprueba),
+`financing_committee` (aprueba, NO desembolsa), `acopio_manager` (recepciones/fijaciones/
+liquidaciones); `company_admin` tiene todo el vertical.
+
+**Reusar, no duplicar:** los saldos del préstamo son `portfolio.Credit` (las pantallas de Cartera ya
+los listan), el excedente es una CxP normal de cartera, y el café vive en Inventario (kardex/bodegas
+existentes muestran los movimientos `FINANCING`). Las pantallas del vertical son la VISTA del flujo;
+no inventar saldos propios en el front.

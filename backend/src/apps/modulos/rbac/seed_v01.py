@@ -61,6 +61,11 @@ def seed_rbac_v01() -> SeedResult:
         "finca_capataz": "Capataz: supervisa cuadrillas, registra labores ejecutadas, asistencia e insumos en campo.",
         "finca_tecnico": "Ingeniero/Técnico Agrónomo: asesor técnico — ve todo y define el plan de labores (fertilización/plagas); NO captura ejecución diaria ni postea costos.",
 
+        # FINANCIAMIENTO (préstamos a productores + acopio de café)
+        "financing_officer": "Oficial de financiamiento: registra productores, solicitudes y abonos; NO aprueba ni desembolsa (SoD).",
+        "financing_committee": "Comité de crédito: aprueba/rechaza solicitudes; NO desembolsa (SoD).",
+        "acopio_manager": "Encargado de acopio: recepciones de café, fijaciones de precio y liquidaciones.",
+
         # PLATAFORMA / FINANZAS (roles transversales)
         "platform_observer": "SRE/observabilidad: ve errores, hallazgos y diagnósticos y corre el diagnóstico determinista; NO gobierna la IA ni toca negocio.",
         "ai_steward": "Mayordomo de IA: gobierna el kill switch (enciende/apaga la IA) y corre el motor advisory; segregado de company_admin.",
@@ -337,6 +342,22 @@ def seed_rbac_v01() -> SeedResult:
             "comisariato.account.manage": "Crear/editar cuentas de crédito del comisariato (límite, segmento).",
             "comisariato.sell": "Vender mercadería a crédito en el comisariato.",
             "comisariato.payroll.apply": "Aplicar el crédito del comisariato a la planilla (descuento + abono).",
+            # FINANCIAMIENTO (préstamos a productores de café + acopio, ex-SIFA)
+            "financing.producer.read": "Ver productores de financiamiento.",
+            "financing.producer.write": "Crear/editar productores de financiamiento.",
+            "financing.application.create": "Registrar/presentar solicitudes de crédito.",
+            "financing.application.read": "Ver solicitudes de crédito.",
+            "financing.application.approve": "Aprobar/rechazar solicitudes de crédito (SoD: no desembolsa).",
+            "financing.application.disburse": "Desembolsar préstamos (SoD: no aprueba).",
+            "financing.loan.read": "Ver préstamos y estados de cuenta.",
+            "financing.payment.register": "Registrar abonos (recibos de caja) a préstamos.",
+            "financing.rate.manage": "Mantener la tasa de cambio C$/US$ del día.",
+            "financing.reception.create": "Registrar recepciones de café en custodia (acopio).",
+            "financing.reception.read": "Ver recepciones, depósito y fijaciones.",
+            "financing.fixation.create": "Fijar precio del café en depósito.",
+            "financing.liquidation.create": "Liquidar café fijado (compra + abono al préstamo).",
+            "financing.liquidation.read": "Ver liquidaciones.",
+            "financing.settings.manage": "Configurar el vertical (bodegas, ítem de café, calidades).",
             # SoD (maker-checker) para anulación de documentos de facturación
             "billing.doc.void.request": "Solicitar anulación de documento (maker).",
             "billing.doc.void.approve": "Aprobar anulación de documento (checker, SoD).",
@@ -1134,6 +1155,28 @@ def seed_rbac_v01() -> SeedResult:
         current = role_to_perms.setdefault("company_admin", [])
         if code not in current:
             current.append(code)
+
+    # FINANCIAMIENTO: company_admin administra el vertical completo (criterio fuel/fleet);
+    # los roles operativos quedan cortos a propósito para sostener el SoD del flujo
+    # (oficial registra → comité aprueba → admin desembolsa).
+    for code in sorted(c for c in permissions if c.startswith("financing.")):
+        current = role_to_perms.setdefault("company_admin", [])
+        if code not in current:
+            current.append(code)
+    role_to_perms["financing_officer"] = [
+        "financing.producer.read", "financing.producer.write",
+        "financing.application.create", "financing.application.read",
+        "financing.loan.read", "financing.payment.register",
+        "financing.reception.read", "financing.liquidation.read",
+    ]
+    role_to_perms["financing_committee"] = [
+        "financing.application.read", "financing.application.approve", "financing.loan.read",
+    ]
+    role_to_perms["acopio_manager"] = [
+        "financing.producer.read", "financing.reception.create", "financing.reception.read",
+        "financing.fixation.create", "financing.liquidation.create", "financing.liquidation.read",
+        "financing.loan.read",
+    ]
 
     # PLATAFORMA / FINANZAS — roles transversales nuevos. Solo permisos YA existentes y con
     # SoD: cada rol se queda corto a propósito en lo sensible (apagar IA, postear/cerrar
