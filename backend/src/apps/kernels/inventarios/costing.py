@@ -8,12 +8,25 @@ por lo que esto NO altera el costeo existente.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import transaction
 from django.utils import timezone
 
 from apps.modulos.audit.writer import write_event
 
-from .models import CostingMethod, InventoryCostPolicy
+from .models import CostingMethod, InventoryCostPolicy, StockMovementCostLayer
+
+_Q_COST = Decimal("0.000001")
+_Q_QTY = Decimal("0.0001")
+
+
+def _q_cost(v) -> Decimal:
+    return Decimal(v).quantize(_Q_COST)
+
+
+def _q_qty(v) -> Decimal:
+    return Decimal(v).quantize(_Q_QTY)
 
 
 def get_active_cost_policy(*, company, branch=None) -> InventoryCostPolicy | None:
@@ -96,3 +109,71 @@ def set_cost_policy(
         metadata={"company_id": str(company.id), "previous_version": str(current.version) if current else "0"},
     )
     return policy
+
+
+# ---------------------------------------------------------------------------
+# Motor FIFO (PEPS) por capas de costo
+# ---------------------------------------------------------------------------
+#
+# Las capas SOLO se materializan cuando la política vigente es FIFO. Cada entrada crea
+# una capa; cada salida consume las más antiguas (created_at, id) y el COGS unitario es el
+# promedio ponderado de lo consumido. La reversa de movimientos NO necesita lógica propia:
+# reusa post_receive/post_issue (ver reversal.py), así que crea/consume capas por la misma
+# vía que cualquier entrada/salida y el kardex de costo siempre cuadra con el físico.
+
+
+def fifo_create_layer(*, company, branch, warehouse, item, lot, movement, unit_cost, qty) -> None:
+    """Materializa una capa de costo para una entrada (RECEIVE / TRANSFER_IN / ajuste +)."""
+    StockMovementCostLayer.objects.create(
+        company=company, branch=branch, warehouse=warehouse, item=item, lot=lot,
+        source_movement=movement, unit_cost=_q_cost(unit_cost),
+        qty_initial=_q_qty(qty), qty_remaining=_q_qty(qty),
+    )
+
+
+def _open_layers(*, company, branch, warehouse, item):
+    return (
+        StockMovementCostLayer.objects.select_for_update()
+        .filter(company=company, branch=branch, warehouse=warehouse, item=item, qty_remaining__gt=0)
+        .order_by("created_at", "id")
+    )
+
+
+def fifo_consume(*, company, branch, warehouse, item, qty, fallback_unit_cost) -> Decimal:
+    """Consume ``qty`` de las capas más antiguas y devuelve el COGS unitario ponderado.
+
+    Si las capas no alcanzan (stock negativo permitido vía ``allow_negative``), el faltante
+    se cuesta a ``fallback_unit_cost`` (el promedio del balance), de modo que el COGS no se
+    parte ante un descubierto puntual.
+    """
+    qty = _q_qty(qty)
+    if qty <= 0:
+        return Decimal("0.000000")
+    remaining = qty
+    total = Decimal("0")
+    for layer in _open_layers(company=company, branch=branch, warehouse=warehouse, item=item):
+        if remaining <= 0:
+            break
+        take = layer.qty_remaining if layer.qty_remaining < remaining else remaining
+        total += take * layer.unit_cost
+        layer.qty_remaining = _q_qty(layer.qty_remaining - take)
+        layer.save(update_fields=["qty_remaining"])
+        remaining = _q_qty(remaining - take)
+    if remaining > 0:
+        total += remaining * _q_cost(fallback_unit_cost)
+    return _q_cost(total / qty)
+
+
+def fifo_weighted_cost(*, company, branch, warehouse, item, fallback) -> Decimal:
+    """Costo unitario ponderado de las capas abiertas (mantiene ``bal.avg_cost`` exacto en
+    FIFO: ``qty_on_hand × avg_cost == Σ capas``). Sin capas abiertas → ``fallback``."""
+    tot_qty = Decimal("0")
+    tot_val = Decimal("0")
+    for qty_rem, unit_cost in StockMovementCostLayer.objects.filter(
+        company=company, branch=branch, warehouse=warehouse, item=item, qty_remaining__gt=0
+    ).values_list("qty_remaining", "unit_cost"):
+        tot_qty += qty_rem
+        tot_val += qty_rem * unit_cost
+    if tot_qty <= 0:
+        return _q_cost(fallback)
+    return _q_cost(tot_val / tot_qty)
