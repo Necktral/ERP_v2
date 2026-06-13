@@ -122,8 +122,19 @@ def test_pdf_endpoint_denied_without_permission():
 
 @pytest.mark.django_db
 def test_render_planilla_pdf_real_bytes():
-    """Render real: solo corre si WeasyPrint (y sus libs) están instalados en la imagen."""
-    pytest.importorskip("weasyprint")
+    """Render real: corre solo si WeasyPrint Y sus libs nativas están disponibles.
+
+    `importorskip` no basta: las libs del SO (gobject/pango) pueden faltar aun con el wheel
+    instalado, y su ausencia lanza ``OSError`` (no ``ImportError``) — en esta versión, ya
+    al importar weasyprint (cffi carga las libs ahí). Capturamos import y render, y saltamos,
+    para que el test no FALLE en entornos solo-pip (corre y cubre normal donde sí están las
+    libs, p.ej. CI con la imagen del Dockerfile).
+    """
+    try:
+        import weasyprint
+        weasyprint.HTML(string="<p>x</p>").write_pdf()
+    except (ImportError, OSError) as exc:
+        pytest.skip(f"WeasyPrint no disponible (paquete o libs nativas): {exc}")
     from apps.kernels.nomina.planilla_pdf import render_planilla_pdf
 
     company, branch = _scope()
