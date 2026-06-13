@@ -16,6 +16,12 @@ from apps.modulos.estacion_servicios.views import (
     FuelShiftOpenView,
     FuelUoMPreferencesView,
 )
+from apps.modulos.estacion_servicios.views_tanks import (
+    FuelTankAdjustView,
+    FuelTankDetailView,
+    FuelTankListCreateView,
+    FuelTankReceiveView,
+)
 
 urlpatterns = [
     path("health/", FuelHealthView.as_view(), name="fuel-health"),
@@ -35,4 +41,10 @@ urlpatterns = [
 
     path("reports/shift-close/<int:shift_id>/", FuelShiftCloseReportView.as_view(), name="fuel-report-shift-close"),
     path("reports/daily-close/", FuelDailyCloseReportView.as_view(), name="fuel-report-daily-close"),
+
+    # Tanques (Ola G)
+    path("tanks/", FuelTankListCreateView.as_view(), name="fuel-tank-list-create"),
+    path("tanks/<int:tank_id>/", FuelTankDetailView.as_view(), name="fuel-tank-detail"),
+    path("tanks/<int:tank_id>/receive/", FuelTankReceiveView.as_view(), name="fuel-tank-receive"),
+    path("tanks/<int:tank_id>/adjust/", FuelTankAdjustView.as_view(), name="fuel-tank-adjust"),
 ]

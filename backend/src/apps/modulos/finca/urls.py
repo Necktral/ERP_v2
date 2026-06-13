@@ -18,6 +18,14 @@ from .views import (
     WorkOrderIssueInsumoView,
     WorkOrderListCreateView,
 )
+from .views_budget import (
+    FincaBudgetApproveView,
+    FincaBudgetArchiveView,
+    FincaBudgetDetailView,
+    FincaBudgetLinesView,
+    FincaBudgetListCreateView,
+    FincaBudgetVsActualView,
+)
 
 urlpatterns = [
     path("fincas/", FincaListView.as_view(), name="finca-list"),
@@ -36,4 +44,11 @@ urlpatterns = [
     path("reports/finca-cost/", FincaRealCostReportView.as_view(), name="finca-report-finca-cost"),
     path("reports/finca-cost/post/", FincaCostPostView.as_view(), name="finca-report-finca-cost-post"),
     path("reports/company-real-cost/", CompanyRealCostReportView.as_view(), name="finca-report-company-real-cost"),
+    # Presupuesto agrícola (Ola G)
+    path("budgets/", FincaBudgetListCreateView.as_view(), name="finca-budget-list"),
+    path("budgets/<int:budget_id>/", FincaBudgetDetailView.as_view(), name="finca-budget-detail"),
+    path("budgets/<int:budget_id>/lines/", FincaBudgetLinesView.as_view(), name="finca-budget-lines"),
+    path("budgets/<int:budget_id>/approve/", FincaBudgetApproveView.as_view(), name="finca-budget-approve"),
+    path("budgets/<int:budget_id>/archive/", FincaBudgetArchiveView.as_view(), name="finca-budget-archive"),
+    path("budgets/<int:budget_id>/vs-actual/", FincaBudgetVsActualView.as_view(), name="finca-budget-vs-actual"),
 ]

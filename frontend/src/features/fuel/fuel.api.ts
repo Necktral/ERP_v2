@@ -173,3 +173,66 @@ export async function updateUomPreferences(prefs: Partial<UomPreferences>): Prom
   const { data } = await api.put<UomPreferences>('/fuel/uom-preferences/', prefs);
   return data;
 }
+
+// --- Tanques (Ola G) ---------------------------------------------------------
+export interface FuelTank {
+  id: number;
+  branch_id: number;
+  code: string;
+  product: string;
+  product_label: string;
+  capacity_l: string;
+  current_volume_l: string;
+  low_level_l: string;
+  pct: number | null;
+  is_low: boolean;
+  is_active: boolean;
+}
+
+export interface FuelTankMovement {
+  id: number;
+  kind: 'RECEIPT' | 'DISPENSE' | 'ADJUSTMENT';
+  kind_label: string;
+  liters: string;
+  unit_cost: string | null;
+  occurred_at: string;
+  supplier_name: string;
+  document_ref: string;
+  note: string;
+}
+
+export async function listFuelTanks(): Promise<FuelTank[]> {
+  const { data } = await api.get<{ results: FuelTank[] }>('/fuel/tanks/');
+  return data.results;
+}
+
+export async function getFuelTank(tankId: number): Promise<FuelTank & { movements: FuelTankMovement[] }> {
+  const { data } = await api.get<FuelTank & { movements: FuelTankMovement[] }>(`/fuel/tanks/${tankId}/`);
+  return data;
+}
+
+export async function createFuelTank(input: {
+  code: string;
+  product: string;
+  capacity_l: string;
+  low_level_l?: string;
+}): Promise<FuelTank> {
+  const { data } = await api.post<FuelTank>('/fuel/tanks/', input);
+  return data;
+}
+
+export async function receiveFuelTank(
+  tankId: number,
+  input: { liters: string; unit_cost?: string | null; supplier_name?: string; document_ref?: string; note?: string },
+): Promise<FuelTank> {
+  const { data } = await api.post<FuelTank>(`/fuel/tanks/${tankId}/receive/`, input);
+  return data;
+}
+
+export async function adjustFuelTank(
+  tankId: number,
+  input: { liters: string; reason: string },
+): Promise<FuelTank> {
+  const { data } = await api.post<FuelTank>(`/fuel/tanks/${tankId}/adjust/`, input);
+  return data;
+}

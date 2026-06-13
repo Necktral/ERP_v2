@@ -654,6 +654,14 @@ def record_dispense(
         },
         metadata={"company_id": str(company.id), "branch_id": str(branch.id)},
     )
+
+    # Ola G: descuenta del tanque activo del producto (no-op si no hay tanque).
+    from .tank_service import apply_dispense_to_tank
+
+    apply_dispense_to_tank(
+        request=request, company=company, branch=branch, product=product,
+        liters=liters, dispense=d, actor=actor_user,
+    )
     return d
 
 def _normalize_sale_idempotency_key(value: str | None) -> str:

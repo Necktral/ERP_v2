@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -317,3 +318,112 @@ class FleetDocument(models.Model):
 
     def __str__(self) -> str:
         return f"FleetDocument<{self.doc_type}:{self.asset_id or self.driver_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Costos reales por activo (Ola G — captura manual)
+# ---------------------------------------------------------------------------
+
+
+class FuelLog(models.Model):
+    """Carga de combustible de un activo (registro manual). Calcula consumo vs. la
+    lectura anterior del medidor (km/L o L/hora)."""
+
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="fleet_fuel_logs")
+    asset = models.ForeignKey(FleetAsset, on_delete=models.CASCADE, related_name="fuel_logs")
+    occurred_at = models.DateTimeField(default=timezone.now)
+    liters = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=4)
+    total_cost = models.DecimalField(max_digits=14, decimal_places=2)
+    meter_basis = models.CharField(max_length=12, choices=MeterBasis.choices, default=MeterBasis.ODOMETER_KM)
+    meter_reading = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    # Distancia/horas recorridas desde la carga anterior (calculado).
+    distance_since_last = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    station_ref = models.CharField(max_length=160, blank=True, default="")
+    driver = models.ForeignKey(
+        Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name="fuel_logs"
+    )
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="fleet_fuel_logs_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "fleet"
+        indexes = [
+            models.Index(fields=["asset", "occurred_at"], name="ix_fuellog_asset_when"),
+            models.Index(fields=["company", "occurred_at"], name="ix_fuellog_co_when"),
+        ]
+        ordering = ["-occurred_at", "-id"]
+
+
+class MaintenanceWorkOrder(models.Model):
+    """Orden de mantenimiento ejecutada, con costo (mano de obra + repuestos)."""
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Abierta"
+        DONE = "DONE", "Completada"
+        CANCELLED = "CANCELLED", "Cancelada"
+
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="fleet_work_orders")
+    asset = models.ForeignKey(FleetAsset, on_delete=models.CASCADE, related_name="work_orders")
+    maintenance_type = models.ForeignKey(
+        MaintenanceType, null=True, blank=True, on_delete=models.SET_NULL, related_name="work_orders"
+    )
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
+    description = models.CharField(max_length=255)
+    opened_at = models.DateTimeField(default=timezone.now)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    meter_reading = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    labor_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    parts_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    vendor = models.CharField(max_length=160, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="fleet_work_orders_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "fleet"
+        indexes = [
+            models.Index(fields=["asset", "status"], name="ix_fleetwo_asset_status"),
+            models.Index(fields=["company", "opened_at"], name="ix_fleetwo_co_when"),
+        ]
+        ordering = ["-opened_at", "-id"]
+
+
+class FleetExpenseCategory(models.TextChoices):
+    TIRES = "TIRES", "Llantas"
+    INSURANCE = "INSURANCE", "Seguro"
+    TOLL = "TOLL", "Peaje"
+    CLEANING = "CLEANING", "Lavado / limpieza"
+    PERMITS = "PERMITS", "Permisos / circulación"
+    OTHER = "OTHER", "Otro"
+
+
+class FleetExpense(models.Model):
+    """Otro costo del activo no cubierto por combustible/mantenimiento."""
+
+    company = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="fleet_expenses")
+    asset = models.ForeignKey(FleetAsset, on_delete=models.CASCADE, related_name="expenses")
+    category = models.CharField(max_length=12, choices=FleetExpenseCategory.choices, default=FleetExpenseCategory.OTHER)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    occurred_on = models.DateField(default=timezone.now)
+    vendor = models.CharField(max_length=160, blank=True, default="")
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="fleet_expenses_created"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "fleet"
+        indexes = [
+            models.Index(fields=["asset", "occurred_on"], name="ix_fleetexp_asset_when"),
+            models.Index(fields=["company", "category"], name="ix_fleetexp_co_cat"),
+        ]
+        ordering = ["-occurred_on", "-id"]

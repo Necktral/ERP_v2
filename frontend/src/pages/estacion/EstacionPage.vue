@@ -9,6 +9,14 @@
       <template #actions>
         <q-btn flat no-caps icon="history" label="Turnos" to="/estacion/turnos" />
         <q-btn
+          v-if="puede('fuel.tank.read')"
+          flat
+          no-caps
+          icon="propane_tank"
+          label="Tanques"
+          to="/estacion/tanques"
+        />
+        <q-btn
           v-if="puede('fuel.reports.view')"
           flat
           no-caps

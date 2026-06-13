@@ -282,3 +282,83 @@ class FuelUoMPreference(models.Model):
                 name="uq_fuel_uom_pref_user_branch_product",
             ),
         ]
+
+
+# ---------------------------------------------------------------------------
+# Tanques (Ola G — control básico de inventario de combustible)
+# ---------------------------------------------------------------------------
+
+
+class FuelTank(models.Model):
+    """Tanque físico de combustible en una sucursal.
+
+    Control básico: el nivel (`current_volume_l`) sube con recepciones y baja con
+    los despachos del producto en esa sucursal. Sin varillaje ni conciliación de
+    mermas (alcance v1).
+    """
+
+    company = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="fuel_tanks_company")
+    branch = models.ForeignKey("iam.OrgUnit", on_delete=models.PROTECT, related_name="fuel_tanks_branch")
+    code = models.CharField(max_length=32)
+    product = models.CharField(max_length=16, choices=FuelProduct.choices)
+    capacity_l = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    current_volume_l = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal("0.0000"))
+    low_level_l = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00"),
+        help_text="Umbral para alertar nivel bajo (0 = sin alerta).",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "estacion_servicios"
+        constraints = [
+            models.UniqueConstraint(fields=["branch", "code"], name="uq_fuel_tank_branch_code"),
+            # Un solo tanque ACTIVO por producto en la sucursal → descuento de despacho sin ambigüedad.
+            models.UniqueConstraint(
+                fields=["branch", "product"],
+                condition=models.Q(is_active=True),
+                name="uq_fuel_tank_active_branch_product",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "branch", "is_active"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"FuelTank<{self.code}:{self.product}>"
+
+
+class FuelTankMovement(models.Model):
+    """Movimiento del nivel del tanque (litros con signo). Nivel = Σ litros."""
+
+    class Kind(models.TextChoices):
+        RECEIPT = "RECEIPT", "Recepción"
+        DISPENSE = "DISPENSE", "Despacho"
+        ADJUSTMENT = "ADJUSTMENT", "Ajuste"
+
+    tank = models.ForeignKey(FuelTank, on_delete=models.CASCADE, related_name="movements")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    liters = models.DecimalField(max_digits=14, decimal_places=4)  # con signo
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    occurred_at = models.DateTimeField(default=timezone.now)
+    supplier_name = models.CharField(max_length=200, blank=True, default="")
+    document_ref = models.CharField(max_length=96, blank=True, default="")
+    # Para DISPENSE: referencia al despacho que lo originó (sin duplicar el evento físico).
+    dispense = models.ForeignKey(
+        FuelDispense, null=True, blank=True, on_delete=models.SET_NULL, related_name="tank_movements"
+    )
+    note = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="fuel_tank_movements"
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        app_label = "estacion_servicios"
+        indexes = [
+            models.Index(fields=["tank", "occurred_at"]),
+            models.Index(fields=["tank", "kind"]),
+        ]
+        ordering = ["-occurred_at", "-id"]
