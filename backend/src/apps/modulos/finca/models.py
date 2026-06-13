@@ -209,3 +209,67 @@ class InsumoApplication(models.Model):
 
     def __str__(self) -> str:
         return f"{self.item_name} x{self.quantity}"
+
+
+# ---------------------------------------------------------------------------
+# Presupuesto agrícola (Ola G) — por labor × lote × ciclo, con vs-real
+# ---------------------------------------------------------------------------
+
+
+class FincaBudget(models.Model):
+    """Presupuesto de una finca para un ciclo/temporada (season_label)."""
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Borrador"
+        APPROVED = "APPROVED", "Aprobado"
+        ARCHIVED = "ARCHIVED", "Archivado"
+
+    finca = models.ForeignKey(OrgUnit, on_delete=models.PROTECT, related_name="finca_budgets")
+    season_label = models.CharField(max_length=80)
+    name = models.CharField(max_length=160)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="finca_budgets_created"
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="finca_budgets_approved"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "finca"
+        constraints = [
+            models.UniqueConstraint(fields=["finca", "season_label", "name"], name="uq_finca_budget"),
+        ]
+        indexes = [models.Index(fields=["finca", "status"])]
+        ordering = ["-created_at", "-id"]
+
+    def clean(self):
+        if self.finca_id and self.finca.unit_type != OrgUnit.UnitType.BRANCH:
+            raise ValidationError("FincaBudget.finca debe ser OrgUnit de tipo BRANCH.")
+
+
+class FincaBudgetLine(models.Model):
+    """Línea de presupuesto: jornales y costo esperado de una labor en un lote."""
+
+    budget = models.ForeignKey(FincaBudget, on_delete=models.CASCADE, related_name="lines")
+    labor = models.ForeignKey(Labor, on_delete=models.PROTECT, related_name="budget_lines")
+    plot = models.ForeignKey(Plot, on_delete=models.PROTECT, related_name="budget_lines")
+    planned_jornales = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    planned_rate = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    planned_insumos_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    planned_total = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+
+    class Meta:
+        app_label = "finca"
+        constraints = [
+            models.UniqueConstraint(fields=["budget", "labor", "plot"], name="uq_finca_budget_line"),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.planned_total = (
+            Decimal(self.planned_jornales) * Decimal(self.planned_rate) + Decimal(self.planned_insumos_amount)
+        ).quantize(Decimal("0.01"))
+        super().save(*args, **kwargs)

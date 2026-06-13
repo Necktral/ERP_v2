@@ -24,6 +24,14 @@
           to="/flota/mantenimiento"
         />
         <q-btn
+          v-if="puede('fleet.cost.read')"
+          flat
+          no-caps
+          icon="payments"
+          label="Costos"
+          to="/flota/costos"
+        />
+        <q-btn
           v-if="puede('fleet.asset.manage')"
           unelevated
           no-caps

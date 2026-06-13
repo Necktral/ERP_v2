@@ -246,6 +246,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['fuel.reports.view'] },
       },
       {
+        path: 'estacion/tanques',
+        name: 'estacion-tanques',
+        component: () => import('pages/estacion/TanquesPage.vue'),
+        meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['fuel.tank.read'] },
+      },
+      {
         path: 'pos',
         name: 'pos',
         component: () => import('pages/pos/PosPage.vue'),
@@ -276,6 +282,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['finca.field.read'] },
       },
       {
+        path: 'finca/presupuesto',
+        name: 'finca-presupuesto',
+        component: () => import('pages/finca/PresupuestoFincaPage.vue'),
+        meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['finca.budget.read'] },
+      },
+      {
         path: 'flota',
         name: 'flota',
         component: () => import('pages/flota/FlotaPage.vue'),
@@ -292,6 +304,12 @@ const routes: RouteRecordRaw[] = [
         name: 'flota-mantenimiento',
         component: () => import('pages/flota/MantenimientoPage.vue'),
         meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['fleet.maintenance.read'] },
+      },
+      {
+        path: 'flota/costos',
+        name: 'flota-costos',
+        component: () => import('pages/flota/CostosFlotaPage.vue'),
+        meta: { requiresAuth: true, requiresContext: true, requiredPermissions: ['fleet.cost.read'] },
       },
       {
         path: 'contabilidad',

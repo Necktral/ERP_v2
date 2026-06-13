@@ -150,6 +150,8 @@ def seed_rbac_v01() -> SeedResult:
         "finca.report.read": "Ver costeo de fincas/lotes.",
         "finca.field.read": "Ver costeo real desde asistencia de campo y reconciliación.",
         "finca.cost.post": "Postear (reclasificar) el costo real de la finca al GL.",
+        "finca.budget.read": "Ver presupuestos de finca y presupuesto-vs-real.",
+        "finca.budget.manage": "Crear/editar/aprobar presupuestos de finca.",
         # Sync (placeholder)
         "sync.device.enroll": "Enrolar dispositivos.",
         "sync.device.revoke": "Revocar dispositivos.",
@@ -301,6 +303,8 @@ def seed_rbac_v01() -> SeedResult:
         "fleet.maintenance.read": "Ver catálogo y planes de mantenimiento.",
         "fleet.maintenance.manage": "Configurar tipos/planes/reglas y correr alertas.",
         "fleet.meter.record": "Registrar lecturas de odómetro/horómetro.",
+        "fleet.cost.read": "Ver costos del activo (combustible/mantenimiento/gastos) y resumen.",
+        "fleet.cost.manage": "Registrar combustible, órdenes de mantenimiento y gastos.",
         "notifications.device.register": "Registrar token de dispositivo para notificaciones.",
         "documents.scan.create": "Subir/capturar documentos para procesamiento (IDP).",
         "documents.scan.read": "Ver documentos escaneados y su texto/campos extraídos.",
@@ -457,6 +461,8 @@ def seed_rbac_v01() -> SeedResult:
             "finca.report.read",
             "finca.field.read",
             "finca.cost.post",
+            "finca.budget.read",
+            "finca.budget.manage",
             "sync.device.enroll",
             "sync.device.revoke",
             "sync.batch.receive",
@@ -1026,6 +1032,8 @@ def seed_rbac_v01() -> SeedResult:
         "finca.report.read",
         "finca.field.read",
         "finca.cost.post",
+        "finca.budget.read",
+        "finca.budget.manage",
         # Asistencia de campo (la pantalla del día en PC/cel): el mandador levanta la lista.
         "nomina.field.capture",
         "nomina.field.read",
@@ -1037,6 +1045,7 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.read",
         "finca.work.capture",
         "finca.field.read",
+        "finca.budget.read",
         # Asistencia de campo: el capataz también marca novedades de su gente.
         "nomina.field.capture",
         "nomina.field.read",
@@ -1052,6 +1061,8 @@ def seed_rbac_v01() -> SeedResult:
         "finca.work.read",
         "finca.report.read",
         "finca.field.read",
+        "finca.budget.read",
+        "finca.budget.manage",
     ]
     _admin_codes = role_to_perms.get("company_admin", [])
     for code in (*_nomina_field_maker_perms, "nomina.field.approve", "nomina.period.approve"):
@@ -1121,18 +1132,24 @@ def seed_rbac_v01() -> SeedResult:
         "fleet.asset.read", "fleet.asset.manage", "fleet.driver.read", "fleet.driver.manage",
         "fleet.document.read", "fleet.document.manage", "fleet.maintenance.read",
         "fleet.maintenance.manage", "fleet.meter.record", "notifications.device.register",
+        "fleet.cost.read", "fleet.cost.manage",
     ]
     fleet_perms_supervisor = [
         "fleet.asset.read", "fleet.driver.read", "fleet.driver.manage", "fleet.document.read",
         "fleet.document.manage", "fleet.maintenance.read", "fleet.maintenance.manage",
         "fleet.meter.record", "notifications.device.register",
+        "fleet.cost.read", "fleet.cost.manage",
     ]
     fleet_perms_mechanic = [
         "fleet.asset.read", "fleet.maintenance.read", "fleet.document.read", "notifications.device.register",
+        "fleet.cost.read", "fleet.cost.manage",
     ]
-    fleet_perms_driver = ["fleet.asset.read", "fleet.meter.record", "notifications.device.register"]
+    fleet_perms_driver = [
+        "fleet.asset.read", "fleet.meter.record", "notifications.device.register", "fleet.cost.read",
+    ]
     fleet_perms_clerk = [
         "fleet.asset.read", "fleet.document.read", "fleet.document.manage", "notifications.device.register",
+        "fleet.cost.read", "fleet.cost.manage",
     ]
     role_fleet_matrix = {
         "company_admin": fleet_perms_full,

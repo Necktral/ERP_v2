@@ -16,6 +16,12 @@ from .views import (
     RuleView,
     RunAlertsView,
 )
+from .views_costs import (
+    AssetCostSummaryView,
+    AssetExpenseView,
+    AssetFuelLogView,
+    AssetMaintenanceOrderView,
+)
 
 app_name = "fleet"
 
@@ -32,4 +38,9 @@ urlpatterns = [
     path("maintenance/rules/", RuleView.as_view(), name="maintenance-rules"),
     path("maintenance/apply-plan/", ApplyPlanView.as_view(), name="maintenance-apply-plan"),
     path("alerts/run/", RunAlertsView.as_view(), name="alerts-run"),
+    # Costos por activo (Ola G)
+    path("assets/<int:asset_id>/fuel-logs/", AssetFuelLogView.as_view(), name="asset-fuel-logs"),
+    path("assets/<int:asset_id>/maintenance-orders/", AssetMaintenanceOrderView.as_view(), name="asset-maint-orders"),
+    path("assets/<int:asset_id>/expenses/", AssetExpenseView.as_view(), name="asset-expenses"),
+    path("assets/<int:asset_id>/cost-summary/", AssetCostSummaryView.as_view(), name="asset-cost-summary"),
 ]

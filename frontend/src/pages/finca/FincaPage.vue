@@ -23,6 +23,14 @@
           label="Costos"
           to="/finca/costos"
         />
+        <q-btn
+          v-if="puede('finca.budget.read')"
+          flat
+          no-caps
+          icon="request_quote"
+          label="Presupuesto"
+          to="/finca/presupuesto"
+        />
       </template>
     </PageHeader>
 

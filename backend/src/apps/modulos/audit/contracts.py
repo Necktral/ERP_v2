@@ -576,6 +576,22 @@ ALLOWED_EVENT_TYPES.update({"NOTIF_DEVICE_REGISTERED"})
 ALLOWED_REASON_CODES.update({"NOTIF_OK"})
 ALLOWED_SUBJECT_TYPES.update({"NOTIF_DEVICE"})
 
+# Ola G — Verticales: tanques (estación), costos (flota), presupuesto (finca)
+ALLOWED_EVENT_TYPES.update(
+    {
+        "FUEL_TANK_CREATED",
+        "FUEL_TANK_RECEIVED",
+        "FUEL_TANK_ADJUSTED",
+        "FLEET_FUEL_LOG_RECORDED",
+        "FLEET_MAINTENANCE_RECORDED",
+        "FLEET_EXPENSE_RECORDED",
+        "FINCA_BUDGET_CREATED",
+        "FINCA_BUDGET_APPROVED",
+        "FINCA_BUDGET_ARCHIVED",
+    }
+)
+ALLOWED_SUBJECT_TYPES.update({"FLEET_ASSET", "FLEET_COST", "FINCA_BUDGET"})
+
 
 def validate_event_type(event_type: str) -> None:
     if event_type not in ALLOWED_EVENT_TYPES:
